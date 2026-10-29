@@ -15,8 +15,9 @@ Where it says "observed", it names the exact check that was run.
 | Swift / Xcode | **not available**; `download.swift.org` is blocked by the cloud egress policy (HTTP 403) | `command -v swift`, `curl -I` |
 | macOS tools (`pbcopy`, AppKit) | not available (Linux) | `command -v pbcopy` |
 
-No real Claude request was made to study hooks. Payload shapes come from the
-documentation; fixtures in `tests/fixtures/` copy the documented examples.
+Phase 0 made no real Claude request. Phase 1.5 (2026-10-29, macOS) captured
+real payloads from Claude Desktop and the CLI; they are in
+`tests/fixtures/real_*.json` and the findings are in §7 (D1, D4, D5, D9).
 
 **Observed in the installed binary.** `grep -a` on `/opt/claude-code/bin/claude`
 (v2.1.312) finds the strings `last_assistant_message`, `background_tasks`,
@@ -151,11 +152,12 @@ nothing.
 
 | # | Topic | Status |
 |---|---|---|
-| D1 | Whether `prompt_id` is actually present in Stop/StopFailure payloads in the Desktop-bundled version | docs say "common field"; unverified. The code falls back to order-based linking |
+| D1 | Whether `prompt_id` is actually present in Stop/StopFailure payloads in the Desktop-bundled version | **Observed 2026-10-29**: present on UserPromptSubmit and Stop in Desktop 4.29.0 / Claude Code 2.1.309, with equal values (`real_desktop_*_1.json`); present on UserPromptSubmit in CLI 2.1.268. StopFailure not observed yet. The order-based fallback stays |
 | D2 | Whether `last_assistant_message` contains only the last text block or all text of the final turn when tool calls are interleaved | docs: "text content of Claude's final response". Verify with a multi-tool turn on the Mac |
 | D3 | Behavior of Stop after background tasks wake the session (same `prompt_id`?) | modeled as "same prompt_id → same turn". Verify locally |
-| D4 | Desktop Code tab Claude Code version and hook support parity | unverified; requires macOS |
-| D5 | Whether pbcopy preserves NUL characters | Prompt Relay stores NUL losslessly. The clipboard result needs a macOS check |
+| D4 | Desktop Code tab Claude Code version and hook support parity | **Observed**: Desktop 4.29.0 bundles Claude Code 2.1.309 and runs hooks from a project's `.claude/settings.local.json`; user-level hooks of other tools run alongside. Desktop does not pass the shell environment to hooks (hence `hook-config --data-dir`) |
+| D5 | Whether pbcopy preserves NUL characters | **Observed**: preserved. pbcopy → pbpaste and NSPasteboard return NUL, CRLF, C0 controls and 1.18 MB byte-identical (macOS 27.0.1). How a target app treats NUL on paste is not checked |
 | D6 | `agent_id` is a common field ("subagent or in-process teammate the hook fires in"). Can a Stop/UserPromptSubmit with `agent_id` reach the main session's hooks? | The docs say Stop is for the main agent, and SubagentStop is not connected. `agent_id` is stored but not used for correlation. Verify with a subagent/teammate turn on the Mac (LOCAL_MAC_VALIDATION M3 prompt 5) |
 | D7 | A prompt blocked by *another* UserPromptSubmit hook (hooks run in parallel) is still stored by Prompt Relay but gets no Stop. Without `prompt_id`, the next answer becomes `ambiguous` | By design (the handler cannot see other hooks' decisions); documented |
 | D8 | Interrupted turns (Esc) produce no Stop. Without `prompt_id`, the next answer becomes `ambiguous` instead of being guessed | By design; `prompt_id` avoids it |
+| D9 | Does an authentication failure fire StopFailure? | **Observed** in CLI 2.1.268 (`-p`, expired OAuth): UserPromptSubmit fired, **no** Stop and **no** StopFailure. The turn stays `awaiting_response`, which is correct (no answer is invented) |

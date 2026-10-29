@@ -16,10 +16,13 @@ unchanged; nothing leaves the device (all **met in cloud**); CLI copy works
 on macOS and a real Claude Desktop E2E passes (**pending**,
 `LOCAL_MAC_VALIDATION.md`).
 
-## Phase 1.5 — Local Mac validation (M) — next, needs the owner's Mac
+## Phase 1.5 — Local Mac validation (M) — main path ✅, follow-ups open
 Run `LOCAL_MAC_VALIDATION.md` end to end. Record the real payloads (redacted)
 as new fixtures. Resolve discrepancies D1–D5 from `HOOKS_RESEARCH.md`.
 Done when every "Requires macOS" item in STATUS has a recorded result.
+2026-10-29: the Desktop → Stop → Prompt Relay → clipboard path passed on a
+real run; D1, D4, D5 resolved. Open: ⌘V paste, CLI Stop, Esc, background
+tasks, multi-tool text, parallel sessions, StopFailure (STATUS).
 
 ## Phase 2 — Core hardening and app-facing API (mostly C)
 Proposed tasks:

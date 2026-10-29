@@ -13,16 +13,38 @@ step fails, paste the command output into the Claude session.
 >   or a sandbox project's `.claude/settings.local.json`.
 > - Do not enable capture for real projects. Use the sandbox folders below.
 > - M2 and later replace your clipboard content. Save anything you need first.
+> - **Validation data never goes to the normal data dir.** Every hook and CLI
+>   command below uses `$PR_VAL/data`. Never run `delete --all` against the
+>   default data dir (`~/Library/Application Support/PromptRelay`): it would
+>   erase real history. Cleanup removes only `$PR_VAL` (§9).
 
-## 0. Variables used below
+## 0. Variables and data isolation
 ```bash
 export PR_REPO="$HOME/code/prompt-relay"          # where you cloned the repo
-export PR_SANDBOX_A="$HOME/prompt-relay-sandbox-a"
-export PR_SANDBOX_B="$HOME/prompt-relay-sandbox-b"
+export PR_VAL="$HOME/prompt-relay-validation"     # must not exist yet
+export PR_SANDBOX_A="$PR_VAL/sandbox-a"
+export PR_SANDBOX_B="$PR_VAL/sandbox-b"
+export PROMPT_RELAY_HOME="$PR_VAL/data"           # isolated data dir for every CLI command
+test ! -e "$PR_VAL" && mkdir -m 700 "$PR_VAL" "$PR_VAL/data" && touch "$PR_VAL/.prompt-relay-validation"
+P() { "$PR_PYTHON" "$PR_REPO/bin/prompt-relay" "$@"; }
 ```
 `PR_PYTHON` (chosen in §1) runs every Prompt Relay command. `hook-config`
 pins the interpreter that runs it into the hook settings, so hooks never
 depend on `PATH`. Claude Desktop starts hooks with a minimal one.
+
+Claude Desktop does **not** pass your shell's `PROMPT_RELAY_HOME` to hooks.
+`hook-config --data-dir "$PR_VAL/data"` therefore writes the data dir into
+the hook command itself (`/usr/bin/env PROMPT_RELAY_HOME=… python
+bin/prompt-relay hook`, exec form, no shell). Use that output for both the CLI
+(`--settings`) and Desktop (`settings.local.json`). Verified on the Mac:
+Desktop hooks wrote only to `$PR_VAL/data`; the default data dir was never
+created.
+
+Before changing any configuration, list the hooks that already exist (other
+tools' global hooks run alongside ours; leave them alone):
+```bash
+"$PR_PYTHON" -c 'import json,os; h=json.load(open(os.path.expanduser("~/.claude/settings.json"))).get("hooks",{}); print({e: len(g) for e,g in h.items()})'
+```
 
 ## 1. M1 — Environment check (read-only)
 ```bash
@@ -99,13 +121,14 @@ EOF
 
 ## 4. M3 — Isolated Claude Code CLI session (no settings files touched)
 ```bash
-mkdir -p "$PR_SANDBOX_A" && cd "$PR_SANDBOX_A" && git init -q
-export PROMPT_RELAY_HOME="$HOME/prompt-relay-validation-data"   # keeps validation data separate
-P() { "$PR_PYTHON" "$PR_REPO/bin/prompt-relay" "$@"; }
-P enable "$PR_SANDBOX_A"
-P hook-config > /tmp/pr-hooks.json && cat /tmp/pr-hooks.json     # "command" must be $PR_PYTHON
-claude --settings /tmp/pr-hooks.json
+mkdir "$PR_SANDBOX_A" && cd "$PR_SANDBOX_A" && git init -q
+P enable "$PR_SANDBOX_A"                                          # writes $PR_VAL/data/config.json only
+P hook-config --data-dir "$PR_VAL/data" > "$PR_VAL/hooks.json" && cat "$PR_VAL/hooks.json"
+claude --settings "$PR_VAL/hooks.json"
 ```
+Run `claude` from a normal terminal, not from inside another Claude Code
+session (it would inherit that session's `CLAUDE_*` variables). If the CLI
+reports "OAuth session expired", log in yourself first (`claude auth login`).
 Accept the workspace trust prompt for the sandbox. Inside Claude, run:
 1. `Reply with exactly this and nothing else: "Привет, мир! 🚀" followed by a python code block that prints 1.`
 2. `List the files in this folder using a tool, then tell me how many there are.` (multi-tool turn, D2)
@@ -142,7 +165,7 @@ Save one real payload of each event as **redacted** fixtures:
 "$PR_PYTHON" - <<'EOF'
 import json, os, glob
 home = os.path.expanduser("~")
-for path in glob.glob(os.path.expanduser("~/prompt-relay-validation-data/events/*.jsonl")):
+for path in glob.glob(os.path.join(os.environ["PR_VAL"], "data/events/*.jsonl")):
     for line in open(path):
         rec = json.loads(line)
         print(json.dumps(rec["payload"], ensure_ascii=False, indent=2).replace(home, "/Users/USER"))
@@ -153,7 +176,7 @@ Review the output for private content, then save the payloads as
 `__PROJECT_A__`. `SchemaConformanceTests` picks them up automatically.
 
 Optional StopFailure check (M8, one failing API request):
-`claude --settings /tmp/pr-hooks.json --model does-not-exist -p "hi"`, then
+`claude --settings "$PR_VAL/hooks.json" --model does-not-exist -p "hi"`, then
 `P turns`. Claude Code may reject the model before any API call, in which
 case no StopFailure fires. Record which one happened.
 
@@ -161,19 +184,19 @@ case no StopFailure fires. Record which one happened.
 Desktop cannot take `--settings`, so use the sandbox's personal, gitignored
 project settings file. Real projects and `~/.claude` stay untouched.
 ```bash
-mkdir -p "$PR_SANDBOX_A/.claude"
-unset PROMPT_RELAY_HOME          # Desktop does not inherit your shell env; it uses the default data dir
-P hook-config > "$PR_SANDBOX_A/.claude/settings.local.json"
-P enable "$PR_SANDBOX_A"         # writes ~/Library/Application Support/PromptRelay/config.json
+mkdir "$PR_SANDBOX_A/.claude"
+P hook-config --data-dir "$PR_VAL/data" > "$PR_SANDBOX_A/.claude/settings.local.json"
+P enable "$PR_SANDBOX_A"         # same isolated data dir as the hook command
 ```
 In Claude Desktop, open Code, set environment **This Computer** (local),
-choose folder `$PR_SANDBOX_A`, accept trust, and repeat prompts 1–4. Then run
-`P turns` and `P copy --verify`.
+choose **exactly** the folder `$PR_SANDBOX_A` (not its parent `$PR_VAL`: a
+session opened there loads no Prompt Relay hooks and captures nothing; this
+happened once during the first run), accept trust, and repeat prompts 1–4.
+Then run `P turns` and `P copy --verify`.
 
-Record: whether hooks fired (if not, check
-`~/Library/Application Support/PromptRelay/handler.log` and the Code tab's
-Claude Code version), whether `prompt_id` is present, and any difference from
-the CLI.
+Record: whether hooks fired (if not, check `$PR_VAL/data/handler.log` and the
+Code tab's Claude Code version), whether `prompt_id` is present, and any
+difference from the CLI.
 
 ## 6. M5 — Two parallel Desktop sessions
 Set up `$PR_SANDBOX_B` the same way (`git init`, `.claude/settings.local.json`,
@@ -195,27 +218,33 @@ check the clipboard or Claude.
 
 ## 9. M9 — Cleanup and proof that nothing global changed
 ```bash
-rm -f "$PR_SANDBOX_A/.claude/settings.local.json" "$PR_SANDBOX_B/.claude/settings.local.json" /tmp/pr-hooks.json
-P disable "$PR_SANDBOX_A"; P disable "$PR_SANDBOX_B"
-P delete --all --yes                                                  # default data dir
-PROMPT_RELAY_HOME="$HOME/prompt-relay-validation-data" P delete --all --yes
-rm -rf "$HOME/prompt-relay-validation-data"
+# Removes ONLY the validation workspace: the sandboxes, their hook settings,
+# the hook JSON and the isolated data dir. The default data dir
+# (~/Library/Application Support/PromptRelay) and its history are not touched;
+# never run `delete --all` without PROMPT_RELAY_HOME pointing at $PR_VAL/data.
+test -f "$PR_VAL/.prompt-relay-validation" && [ "$PR_VAL" != "$HOME" ] && rm -rf "$PR_VAL"
 shasum -a 256 ~/.claude/settings.json ~/.claude/settings.local.json 2>/dev/null | diff /tmp/pr-claude-settings.before - && echo "Claude settings unchanged"
 git -C "$PR_REPO" status --short          # only intended changes (results, redacted fixtures)
 ```
-Optionally remove the sandbox folders and
-`~/Library/Application Support/PromptRelay`.
+The `.prompt-relay-validation` marker guards the `rm -rf`: it runs only on a
+directory created by §0.
 
-## 10. Results (copy into docs/STATUS.md)
+## 10. Results — run of 2026-10-29 (MacBook Pro M3 Pro)
+Also copied into `docs/STATUS.md`. "Not checked" means the step did not run;
+nothing below is inferred from mocks.
+
 | ID | Check | Result | Notes (versions, discrepancies) |
 |---|---|---|---|
-| M1 | Environment | | macOS ·, Python (path, version) ·, CLT ·, CLI ·, Desktop ·, Desktop Code version · |
-| — | Automated suite on macOS | | passed / failed / skipped |
-| M2 | pbcopy byte-exact (Unicode, CRLF, NUL, ~1 MB) | | D5 |
-| M3 | CLI hooks via --settings | | D1 prompt_id, D2 multi-tool text, D3 background, D6 agent_id |
-| M4 | Desktop local session hooks | | D4 |
-| M5 | Parallel sessions separated | | |
-| M6 | Interrupt → no Stop, turn not marked done | | |
-| M7 | Hook latency | | median / p95 |
-| M8 | StopFailure (optional) | | |
-| M9 | Cleanup; ~/.claude unchanged | | |
+| M1 | Environment | **Passed** | macOS 27.0.1 (26A434), arm64 Apple M3 Pro · `$PR_PYTHON=/usr/bin/python3` → Xcode 3.9.6 (also 3.11.14 Homebrew, 3.14.0 python.org) · CLT installed (Xcode.app) · CLI 2.1.268 · Desktop 4.29.0 · Desktop Code tab bundles Claude Code **2.1.309** (D4) · pbcopy/pbpaste present |
+| — | Automated suite on macOS | **Passed** | first run 78/79: `test_s17` hard-coded the Linux data path (test defect, fixed). Now 81 tests (79 + 2 new), OK, 0 skipped, on 3.9.6, 3.11.14 and 3.14.0 |
+| M2 | pbcopy byte-exact | **Passed** | 11 cases via `prompt-relay copy --verify`, read back with both `pbpaste` and NSPasteboard (`public.utf8-plain-text`): plain, Cyrillic, emoji/ZWJ/flags/combining, Markdown, nested fences, CRLF, lone CR/tabs/U+2028/BOM, C0 controls/ESC/DEL, **NUL** (D5: preserved), shell-like text, 1 176 694-byte Markdown. All identical |
+| M2b | Manual ⌘V paste into another app | **Not checked** | the clipboard was overwritten before the paste |
+| M3 | CLI hooks via `--settings` | **Partial** | UserPromptSubmit fired and was stored (`prompt_id` present, no `agent_id`). The API call failed: "OAuth session expired" (CLI not logged in). **No StopFailure fired** for that authentication failure. CLI Stop, D2, D3, D6 not checked |
+| M4 | Desktop local session hooks | **Passed (one turn)** | sandbox `settings.local.json` with `--data-dir`. UserPromptSubmit + Stop stored; Stop has the same `prompt_id` (D1 confirmed) → `link=prompt_id`, `stop_received`; `last_assistant_message` equals Claude's final text in the transcript byte for byte; `background_tasks: []`, `session_crons: []`, no `agent_id`; `permission_mode: auto`, `effort`, `scratchpad_dir` present. `copy --verify` passed. A first Desktop session opened in the parent folder captured nothing (expected) |
+| M5 | Parallel sessions separated | **Not checked** | |
+| M6 | Interrupt (Esc) → no Stop | **Not checked** | the Esc attempt ran in the parent folder, so no events exist |
+| D2 | Multi-tool final text | **Not checked** | |
+| D3 | Background task wake-up | **Not checked** | |
+| M7 | Hook latency | **Passed** | median 37.1 ms, p95 39.3 ms (target < 150 ms) |
+| M8 | StopFailure | **Not checked** | see M3: an auth failure did not fire it |
+| M9 | `~/.claude` unchanged | **Passed** | `~/.claude/settings.json` SHA-256 unchanged; existing global hooks (another tool) untouched. The validation workspace `$PR_VAL` is **kept** for the remaining checks; the default data dir was never created |

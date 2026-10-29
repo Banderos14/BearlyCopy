@@ -12,7 +12,8 @@ conversation. This file and the other docs are the full context.
 
 ## 2. Project state
 Phase 0 is complete. The cloud-verifiable part of Phase 1 is complete. The
-Mac validation (Phase 1.5) has not started. See `docs/STATUS.md` for the
+Mac validation (Phase 1.5) ran on 2026-10-29: the main path passed and some
+checks remain open (§10). See `docs/STATUS.md` for the
 verification matrix (Verified in Cloud / Verified with Mocks / Requires macOS
 / Not Implemented).
 
@@ -109,4 +110,52 @@ Then:
 6. Commit on the same branch. Do not merge into main. Do not start Phase 2,
    any UI or a hook installer. Finish with a report split into Verified on
    macOS / Failed / Not checked, and stop.
+```
+
+## 10. Local → Cloud handoff after Phase 1.5 (2026-10-29)
+A cloud session does not inherit the Mac conversation either. Read
+`CLAUDE.md`, `docs/STATUS.md` (section "Verified on macOS") and
+`docs/LOCAL_MAC_VALIDATION.md` §10 first.
+
+**State.** Branch `claude/loving-mccarthy-ossw3q`, not merged into `main`.
+The Phase 1.5 commit is the branch tip (`git log --oneline -3`).
+
+**Proven on the Mac** (real Claude Desktop 4.29.0 / Claude Code 2.1.309):
+Stop hook fires from a sandbox `.claude/settings.local.json`; Stop carries
+the prompt's `prompt_id` (`link=prompt_id`); `last_assistant_message` equals
+Claude's final text byte for byte; `copy --verify` through real pbcopy
+passes; the clipboard is byte-exact for Unicode, CRLF, NUL and 1.18 MB. The
+suite has 81 tests, 0 skipped, on Python 3.9.6 / 3.11 / 3.14.
+
+**Not proven yet (needs a later Mac session):** manual ⌘V paste, CLI Stop
+(the CLI login had expired), Esc, background tasks (D3), multi-tool text
+(D2), several messages and parallel sessions (M5), StopFailure (an auth
+failure fired none, D9), `agent_id` in a subagent turn (D6). Do not mark
+these done from the cloud.
+
+**Facts that matter for Phase 2.**
+- Claude Desktop does not pass the shell environment to hooks. Use
+  `hook-config --data-dir` for isolated setups; an installer must not rely on
+  environment variables either.
+- Users can have other tools' global hooks on the same events (observed on
+  the owner's Mac). The installer must merge, never replace (SECURITY §5).
+- Real payload fields observed: `session_id`, `transcript_path`, `cwd`,
+  `scratchpad_dir`, `prompt_id`, `permission_mode` (`auto` in Desktop),
+  `effort`, `stop_hook_active`, `last_assistant_message`, `background_tasks`,
+  `session_crons`. Fixtures: `tests/fixtures/real_*.json`.
+
+**Phase 2 in the cloud.** Scope needs the owner's approval at the start of
+the session. Candidates that need no Mac: ROADMAP Phase 2 tasks 1–3 and 5
+(`--json` API, conformance set, retention/`prune`, installer design tested
+on fixture settings only). Task 6 (Swift) can be written but not built there.
+
+Starter prompt for the cloud session:
+```
+Continue Prompt Relay in the cloud on branch claude/loving-mccarthy-ossw3q.
+Read CLAUDE.md, docs/STATUS.md, docs/CLOUD_TO_LOCAL_HANDOFF.md §10,
+docs/ROADMAP.md (Phase 2) and docs/LOCAL_MAC_VALIDATION.md §10.
+Confirm the branch tip and a clean tree, run scripts/check.sh, then propose
+the Phase 2 scope and wait for my approval before writing code. Do not merge
+into main, do not touch macOS-only items, and keep the open Phase 1.5 checks
+marked as not verified.
 ```
