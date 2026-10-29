@@ -44,10 +44,16 @@ claude plugin install prompt-relay@prompt-relay                      # user scop
 
 Then restart Claude Desktop, or run `/reload-plugins` in an open session.
 
-Why a local marketplace: Claude Code loads a relative-path plugin from a
-local-path marketplace **in place**. `CLAUDE_PLUGIN_ROOT` is
-`~/code/prompt-relay/plugin`, a stable path. Updating is `git pull` plus a
-reload, with no cache copies.
+Where the plugin runs from: **observed on the Mac** (Claude Code CLI
+2.1.268, 2026-10-29), `claude plugin install` from a local-path marketplace
+**copies** `plugin/` into
+`~/.claude/plugins/cache/prompt-relay/prompt-relay/<version>/`, and that copy
+is `CLAUDE_PLUGIN_ROOT` (`claude plugin list --json` → `installPath`). The
+earlier assumption that it loads in place was wrong. So a `git pull` alone
+does not change the running hook; after pulling, run
+`claude plugin update prompt-relay@prompt-relay` (a copy is refreshed only
+when `plugin.json`'s `version` changes) and start a new session. Whether
+`update` re-copies an unchanged version is not verified yet (M14).
 
 In Claude Desktop instead of the shell: open the Code tab, click **+** next
 to the prompt box, then **Add plugins** (or **Plugins → Browse plugins**),

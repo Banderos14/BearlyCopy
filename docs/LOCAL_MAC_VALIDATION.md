@@ -288,7 +288,9 @@ P doctor --project "$PR_PROJECT"
 ```
 Expected:
 - `list` shows `prompt-relay@prompt-relay`, `enabled: true`, with
-  `readFromFolder` pointing at `$PR_REPO/plugin` (loaded in place);
+  `installPath` under `~/.claude/plugins/cache/prompt-relay/prompt-relay/<version>/`
+  (observed 2026-10-29: a local-path marketplace install is copied, not
+  loaded in place);
 - `doctor` shows `hook python ok`, `this project capture ON`, one install
   record with `files=ok`, and no `double_registration`.
 
@@ -342,9 +344,16 @@ P sessions --project "$PR_PROJECT"                    # history still there
 ### Results (fill in)
 | ID | Check | Result | Notes |
 |---|---|---|---|
-| M10 | Suite incl. `claude plugin validate`; no leftovers | | |
-| M11 | Install from local marketplace; `details` shows 3 hooks; doctor clean | | |
-| M12 | Desktop capture via plugin (`via=plugin`), exact text, `copy --verify`; NotchBuddy unaffected; CLI Stop | | |
-| M13 | `hooks`/`permissions` in `~/.claude/settings.json` unchanged | | |
-| M14 | Capture after update/reload; history kept | | |
-| M15 | Disable stops capture; history kept; uninstall keeps history | | |
+Run of 2026-10-29 (MacBook Pro M3 Pro, macOS 27.0.1, Claude Desktop 4.29.0 /
+Claude Code 2.1.309, CLI 2.1.268 for `claude plugin` commands). The test
+project was the Phase 1.5 sandbox `~/prompt-relay-validation/sandbox-a`.
+
+| ID | Check | Result | Notes |
+|---|---|---|---|
+| M10 | Suite incl. `claude plugin validate`; no leftovers | **Passed** | 137 tests on 3.9.6, 3.11.14, 3.14.0: OK, 1 skipped by design on macOS (`test_no_usable_python_exits_zero_silently`, covered on Linux). `plugin validate --strict` and marketplace validate pass. The Phase 1.5 `sandbox-a/.claude/settings.local.json` (3 Prompt Relay hooks only, checksum-verified) was renamed to `settings.local.json.phase15-bak` before the install |
+| M11 | Install from local marketplace; `details` shows 3 hooks; doctor clean | **Passed** | `prompt-relay@prompt-relay` 0.2.0, scope user, enabled; `Hooks (3) UserPromptSubmit, Stop, StopFailure`; doctor: hook python ok (pinned 3.9.6), capture ON for sandbox-a only, 1 install record `files=ok`, no double registration. **Doc discrepancy:** installed into the cache (`installPath` …/cache/prompt-relay/prompt-relay/0.2.0), not in place; PLUGIN.md corrected |
+| M12 | Desktop capture via plugin | **Passed (Desktop)** | one prompt in a new Desktop session: handler.log `UserPromptSubmit via=plugin stored`, `Stop via=plugin stored`; same `prompt_id` → `link=prompt_id`, `stop_received`; Stop text equals the transcript's final text (37 bytes); `copy --verify` passed via pbcopy. Exactly 2 records, no `duplicate`, nothing written to the old validation data dir. Transcript `stop_hook_summary`: 5 Stop hooks incl. NotchBuddy (73 ms) and Prompt Relay `run-hook` (168 ms), `hookErrors: []`, `hasOutput: false`, `preventedContinuation: false`. NotchBuddy's own UI was not looked at. **CLI Stop: not checked** (CLI login expired). Also observed: the already-running session in the repo folder picked up the plugin and logged `project_not_enabled` (nothing stored) |
+| M13 | `hooks`/`permissions` unchanged | **Passed** | identical before/after; `claude plugin` added only `enabledPlugins["prompt-relay@prompt-relay"]` and `extraKnownMarketplaces["prompt-relay"]` (directory source) |
+| M14 | Capture after update/reload; history kept | **Not checked** | |
+| M15 | Disable / uninstall keep history | **Not checked** | the plugin stays installed and enabled |
+| — | Manual ⌘V paste into another app | **Not checked** | |

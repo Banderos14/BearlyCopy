@@ -196,7 +196,8 @@ SwiftUI app ──exec──► <python> bin/prompt-relay <command> --json ─�
   holds only code. History and `python-path` live in the data dir, which an
   update or uninstall never touches. `${CLAUDE_PLUGIN_DATA}` is not used,
   because uninstall deletes it.
-- A local-path marketplace loads the plugin in place, so the root is the
+- A local-path marketplace install is also copied into the cache (observed
+  on the Mac, CLI 2.1.268), so the root is `cache/…/<version>/`, not the
   checkout's `plugin/`.
 - Double registration (the plugin plus a settings hook) is harmless for the
   data: the second handler run finds the same fingerprint and logs

@@ -1,8 +1,7 @@
 # Status
 
-Last updated: 2026-10-29, cloud session (Phase 2B), branch
-`claude/loving-mccarthy-ossw3q`. Phase 1.5 results come from the local Mac
-session.
+Last updated: 2026-10-29, local Mac session (Phase 2B plugin validation),
+branch `claude/loving-mccarthy-ossw3q`.
 
 ## Completed
 - **Phase 0 — research & architecture**: docs, ADR-001…005, hook schema
@@ -23,7 +22,8 @@ session.
   hardening. Two defects fixed with regression tests: the unlink race
   (a hook waiting on the lock of a deleted file lost its event) and a
   damaged duplicate line crashing an append. 105 tests.
-- **Phase 2B — Claude Code plugin** (cloud; Mac check pending): plugin
+- **Phase 2B — Claude Code plugin** (cloud; **main Mac check passed**
+  2026-10-29, LOCAL_MAC_VALIDATION §11): plugin
   package `plugin/` plus a marketplace at the repo root (ADR-008,
   `docs/PLUGIN.md`), a POSIX launcher with interpreter pinning
   (`pin-python`, auto-pinned by `enable`), read-only `doctor --json`
@@ -87,6 +87,16 @@ Hook latency: `bin/prompt-relay hook` median 72.5 ms, plugin launcher median
 
 Real payloads (redacted) are fixtures: `tests/fixtures/real_*.json`.
 
+### Verified on macOS — Phase 2B plugin (2026-10-29)
+| Item | Evidence |
+|---|---|
+| Phase 2A + 2B suite on macOS | 137 tests on 3.9.6 / 3.11.14 / 3.14.0, OK, 1 skipped by design (no-Python path, covered on Linux); `ClaudeCliValidationTests` ran against CLI 2.1.268 |
+| Official install from the local marketplace | `claude plugin marketplace add` + `install`, scope user; `details`: 3 hooks |
+| Desktop → plugin → Stop → storage → copy → clipboard | `via=plugin` UserPromptSubmit + Stop, same `prompt_id`, full final text, `copy --verify` passed |
+| No double write | 2 records, no `duplicate`; Prompt Relay ran once per event (`stop_hook_summary`) |
+| Coexistence with NotchBuddy | both ran on Stop, `hookErrors: []`; `hooks`/`permissions` in `~/.claude/settings.json` identical |
+| Launcher interpreter | pinned Xcode Python 3.9.6 used (`doctor`: hook python ok) |
+
 ### Verified with Mocks
 | Item | Mock |
 |---|---|
@@ -108,11 +118,9 @@ Real payloads (redacted) are fixtures: `tests/fixtures/real_*.json`.
 | StopFailure from a real API error (M8). Observed: an expired-OAuth failure in CLI 2.1.268 fired **no** StopFailure | M8 |
 | `agent_id` with a subagent turn (D6) | M3 prompt 5 |
 
-| Phase 2A suite on macOS (APFS `flock`, `O_NOFOLLOW`, `st_nlink` after unlink, scandir) | `PYTHONS=… scripts/check.sh` on the Mac; nothing in 2A is macOS-specific, but it has not run there yet |
 | JSON API consumed by a Swift client (`JSONDecoder`, surrogate pairs) | Phase 3 |
-| Plugin installed from the local marketplace; Desktop and CLI hooks fire **via the plugin** (`via=plugin`); NotchBuddy unaffected; `hooks`/`permissions` unchanged; update, disable and uninstall keep history | LOCAL_MAC_VALIDATION §11 (M10–M15) |
-| Launcher interpreter discovery on macOS (pin, Homebrew, CLT check) | M11/M12 |
-| Phase 2A + 2B suite on macOS, incl. `ClaudeCliValidationTests` against the Mac's Claude Code | M10 |
+| Plugin: CLI hooks via the plugin; update/reload (M14); disable and uninstall keep history (M15) | LOCAL_MAC_VALIDATION §11 |
+| Launcher fallback without a pin (Homebrew / CLT order) on macOS | M11 with `pin-python --clear` |
 
 ### Not Implemented (by design in this phase)
 SwiftUI/AppKit app, notch UI, settings-merge installer (not needed: plugin
@@ -189,8 +197,16 @@ never automatic), per-record expiry inside a session.
 - `handler.log` lines gain `via=plugin|direct` before the outcome.
 - Version 0.2.0 (package and plugin manifest).
 
+## Phase 2B Mac validation (2026-10-29)
+- Main path passed: Claude Desktop → plugin hook → storage → Copy Response →
+  clipboard (LOCAL_MAC_VALIDATION §11, M10–M13).
+- Discrepancy fixed in the docs: a local-path marketplace install is copied
+  into `~/.claude/plugins/cache/…/<version>/`; it is not loaded in place
+  (PLUGIN.md §2, ARCHITECTURE). No code defect was found; no code changed.
+- The plugin stays installed (user scope) with capture on for the sandbox
+  only.
+
 ## Next agreed stage
-Phase 2B is finished in the cloud and pushed; it is waiting for the owner's
-review. Next, on the Mac: LOCAL_MAC_VALIDATION §11 (plugin install and real
-capture), then the still-open Phase 1.5 items. Proposed afterwards: Phase 3,
-the macOS app foundation (ROADMAP). It needs approval.
+Phase 2B is validated on the Mac for its main path. Still open on the Mac:
+M14/M15, CLI Stop, ⌘V paste and the Phase 1.5 items above. Proposed next:
+Phase 3, the native macOS UI (ROADMAP). It needs the owner's approval.
