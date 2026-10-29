@@ -24,6 +24,11 @@
 | T12 | Denial of service through huge stdin | 64 MiB cap; larger payloads are rejected without storing |
 | T13 | Concurrent writes corrupt history | `flock` + single-buffer append + `fsync`; partial lines isolated; tested with 12 parallel writers |
 | T14 | Hook from a repository runs Prompt Relay unexpectedly | Claude Code's workspace trust applies. Prompt Relay never writes `.claude/settings.json` into user repos |
+| T16 | Deletion removes user files outside Prompt Relay, or follows a symlink | Deletion only removes regular, non-symlink files with session-file names directly inside a non-symlink `events/`, re-checked under the file lock (`Store.safe_unlink`); config, logs and foreign files are never touched; tested with symlinked files, a symlinked `events/`, crafted paths and foreign names |
+| T17 | Deleting the history of a running session / losing a concurrent event | Sessions active in the last 30 min are kept unless `--force-active`; files changed since planning are kept; a hook waiting on the lock reopens the path after an unlink. Tested with 16 hooks and 3 concurrent deleters |
+| T18 | Accidental bulk deletion | Every destructive command previews by default and needs `--yes`; nothing is automatic, even with a retention period set |
+| T19 | Symlink planted at a session path redirects hook writes | `O_NOFOLLOW` on open; the hook logs `unsafe_path` and exits 0 |
+| T20 | API consumer gets diagnostics mixed into data | `--json` writes one JSON document to stdout and nothing to stderr; warnings and errors are structured; tested on every golden query |
 | T15 | Clipboard exposure to other apps | Inherent to the clipboard. Copying happens only on an explicit user action. *Planned:* optional "clear after N s" and marking the content as transient/concealed for clipboard managers (NSPasteboard, macOS) |
 
 ## 3. Residual risks
@@ -64,6 +69,6 @@
 ## 6. Data handling summary
 | Data | Where | Retention | Deletion |
 |---|---|---|---|
-| Prompts, responses, raw hook payloads | `events/*.jsonl` | until deleted | `prompt-relay delete --session ID --yes` / `--all --yes`, or remove the data dir |
+| Prompts, responses, raw hook payloads | `events/*.jsonl` | until deleted; optional `retention --days N` used by `prune` (never automatic) | `delete --session ID --yes` / `delete --all --yes` / `prune --yes` (each previews first; active sessions need `--force-active`), or remove the data dir |
 | Enabled project paths | `config.json` | until changed | `prompt-relay disable <dir>` |
 | Diagnostics (timestamp, event, outcome) | `handler.log` (256 KiB × 2) | rotating | delete the file |

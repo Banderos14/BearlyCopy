@@ -99,8 +99,35 @@ the earlier copy was received within 120 s. Identical prompts without
 `candidate_prompts[]`, `status`, `final_response` (the last `stop` with non-null
 text). See ARCHITECTURE §5.
 
+## config.json: retention (Phase 2A)
+
+```json
+{ "schema": 1, "enabled_projects": ["…"], "retention_days": 30 }
+```
+
+`retention_days` is optional: `null`/absent means not set; otherwise an
+integer 1…36500. It is only the default threshold for `prompt-relay prune`.
+Nothing deletes automatically. An invalid value is ignored and reported as a
+warning; it never disables capture. Older readers ignore the key.
+
+## Session file names
+
+Only names matching `<session-key>.jsonl` (see above) are session files.
+Anything else in `events/`, such as dot-files, names starting with `-`, or
+other extensions, is never listed, read or deleted. Symlinks in `events/` are
+skipped. Session files are opened with `O_NOFOLLOW`. A symlinked `events/`
+is refused (`unsafe_path`).
+
 ## Deletion
 
-`prompt-relay delete --session ID --yes` removes one session file.
-`delete --all --yes` removes all session files. `config.json` and the logs
-stay. Removing the whole `<root>` directory is always safe.
+Deletion removes whole session files; lines are never rewritten. See
+ARCHITECTURE §9 and `prompt-relay delete --help` / `prune --help`:
+- `delete --session ID|KEY --yes`, `delete --all --yes`: sessions active in
+  the last 30 min are kept unless `--force-active` is given.
+- `prune --older-than-days N --yes` (or the retention setting): deletes
+  sessions whose last activity is older than N days.
+- Without `--yes`, both only preview.
+
+`config.json`, `config.lock` and the logs are never deleted by these
+commands. Removing the whole `<root>` directory by hand is always safe when
+no Claude session is running.

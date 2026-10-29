@@ -159,3 +159,18 @@ the Phase 2 scope and wait for my approval before writing code. Do not merge
 into main, do not touch macOS-only items, and keep the open Phase 1.5 checks
 marked as not verified.
 ```
+
+## 11. State after Phase 2A (cloud, 2026-10-29)
+- Branch `claude/loving-mccarthy-ossw3q` (not merged into `main`). Phase 2A
+  commits follow `d653a45`; the tip is shown by `git log --oneline -3`.
+- New in the Core: JSON API v1 (`docs/JSON_API.md`), history management
+  (`retention`, `prune`, `delete` preview/confirmation/active protection),
+  storage path hardening. ADR-006 and ADR-007. 105 tests, green in the cloud
+  on Python 3.9 and 3.13.
+- First thing in the next Mac session: run `PYTHONS="$PR_PYTHON"
+  scripts/check.sh` once (Phase 2A has not run on macOS), then continue the
+  open Phase 1.5 checks in `docs/STATUS.md`.
+- Behavior change to know: `delete --session X --yes` keeps a session used in
+  the last 30 min (exit 6) unless `--force-active` is given.
+- Proposed next stage: Phase 2B, hook installation and management (ROADMAP).
+  It needs the owner's approval first.

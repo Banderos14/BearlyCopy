@@ -28,12 +28,13 @@ Local-first · privacy-first · no AI APIs · no network · opt-in per project �
 verbatim capture · never blocks or steers Claude Code.
 
 ## Status
-**Proof of concept (Phase 1). Not a product release.**
+**Proof of concept (Phase 2A). Not a product release.**
 - Done and tested in the cloud (Linux): the hook handler, storage, session
-  correlation, Copy Response / Copy Context, and 79 automated tests
-  (after the self-review in `docs/SELF_REVIEW.md`).
-- Pending on a real Mac: the real clipboard (`pbcopy`) and real Claude
-  Code / Claude Desktop hook runs (see `docs/LOCAL_MAC_VALIDATION.md`).
+  correlation, Copy Response / Copy Context, the JSON API for the future app,
+  history management, and 105 automated tests.
+- Verified on a real Mac (Phase 1.5): Claude Desktop → Stop hook → Prompt
+  Relay → system clipboard, byte-exact. Further Mac checks are open
+  (`docs/STATUS.md`).
 - Not started: the macOS app, notch UI and hook installer.
 
 See `docs/STATUS.md` for the exact state.
@@ -53,7 +54,9 @@ bin/prompt-relay show [--project DIR]         # print the latest final answer ve
 bin/prompt-relay copy [--verify]              # Copy Response → clipboard (macOS)
 bin/prompt-relay context                      # preview Copy Context
 bin/prompt-relay copy-context                 # Copy Context → clipboard (secret check first)
-bin/prompt-relay delete --all --yes           # erase history
+bin/prompt-relay sessions --json              # machine API for the app (docs/JSON_API.md)
+bin/prompt-relay prune --older-than-days 30   # preview deletion of old sessions; add --yes to delete
+bin/prompt-relay delete --session ID          # preview; add --yes (and --force-active for a live session)
 bin/prompt-relay hook-config                  # print hook JSON for `claude --settings`; pins this Python; writes nothing
 ```
 Hooks are **not** installed automatically. For a safe, isolated trial, follow
@@ -69,7 +72,8 @@ Requirements: macOS on Apple Silicon and any Python 3.9+. That can be
 | [PRODUCT_SPEC](docs/PRODUCT_SPEC.md) | vision, users, stories, scope, non-goals |
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | components, data flow, hook contract, correlation |
 | [DATA_MODEL](docs/DATA_MODEL.md) | on-disk format (contract for the future app) |
-| [DECISIONS](docs/DECISIONS.md) | ADR-001…005 |
+| [DECISIONS](docs/DECISIONS.md) | ADR-001…007 |
+| [JSON_API](docs/JSON_API.md) | machine-readable CLI API v1, versioning rules ([schema](docs/api/api-v1.schema.json)) |
 | [HOOKS_RESEARCH](docs/HOOKS_RESEARCH.md) | hook schemas, install options, open questions |
 | [SECURITY](docs/SECURITY.md) | threat model, privacy, installation safety |
 | [TEST_PLAN](docs/TEST_PLAN.md) | unit, integration, manual and regression tests |

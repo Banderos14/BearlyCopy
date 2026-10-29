@@ -43,7 +43,9 @@ Status: Phase 1 proof of concept. Components marked *planned* do not exist yet.
 | `gitinfo.py` | branch, HEAD, porcelain status; read-only and hardened | write `.git`, run repo-configured commands |
 | `sensitive.py` | secret-pattern findings (kind and line only) | echo secrets, alter text |
 | `clipboard.py` | `pbcopy` (macOS) or file MOCK | use a shell; guess an encoding (it forces a UTF-8 locale) |
-| `cli.py` | user commands, exit codes | install hooks or edit Claude settings |
+| `api.py` | JSON API v1: envelope and serializers over the read model (ADR-006) | write anything to stderr in `--json` mode; expose text outside `show`/`context` |
+| `retention.py` | plan, preview and execute deletion of whole session files (ADR-007) | delete without `--yes`, delete anything but plain session files in `events/`, delete active sessions unforced, run automatically |
+| `cli.py` | user commands, exit codes, `--json` dispatch | install hooks or edit Claude settings |
 
 Only `clipboard.PbcopyBackend` and the default data path are macOS-specific.
 Everything else runs and is tested on Linux.
@@ -129,13 +131,54 @@ of format.
   an explicit "tests/CI not verified" section, and a review request. The
   secret scan blocks copying until `--allow-sensitive` is passed.
 
-## 8. Boundaries with the future macOS app (ADR-004)
+## 8. JSON API for the macOS app (ADR-006)
+
+`--json` on `projects`, `sessions`, `turns`, `show`, `context`, `delete`,
+`prune` and `retention` returns one versioned JSON document (`api.py`,
+contract in `docs/JSON_API.md`, schema in `docs/api/api-v1.schema.json`).
+
+```
+SwiftUI app ──exec──► <python> bin/prompt-relay <command> --json ──► stdout: one JSON document
+     │                         (reads <data dir>, never writes except delete/prune/retention)
+     └──► NSPasteboard (writes the text from show/context itself)
+```
+
+- `api.py` holds pure serializers over the existing read model
+  (`history` → `correlation` → `events`). It adds no new storage and no state.
+- `cli.py` keeps the text output byte-compatible. In `--json` mode, every
+  message that would go to stderr becomes a structured `warning` or `error`.
+- Golden files pin the output: `tests/golden/cases` (events and queries) and
+  `tests/golden/expected` (responses).
+
+## 9. History management (ADR-007)
+
+`retention.py` plans and executes deletion of whole session files.
+
+| Command | Default | Deletes when |
+|---|---|---|
+| `delete --session ID\|KEY` / `--all` | preview, exit 2 | `--yes` |
+| `delete … --dry-run` | preview, exit 0 | never |
+| `prune [--older-than-days N]` | preview (dry run) | `--yes` |
+| `retention --days N` / `--off` | shows the setting | never (stores the default for `prune`) |
+
+- Nothing is deleted automatically. The hook never prunes.
+- *Last activity* = the later of the last event time and the file mtime. It
+  drives both age and activeness, so touching a file can only delay deletion.
+- *Active* = last activity under 30 min ago. `prune` always keeps active
+  sessions. `delete` keeps them unless `--force-active` is given (exit 6
+  otherwise).
+- Execution re-checks every file under its exclusive `flock`: it must still
+  be a regular, non-symlink file named like a session file, directly in a
+  non-symlink `events/`, with the planned size and mtime. Otherwise it is kept
+  (`skipped_changed`, `skipped_unsafe`, `vanished`).
+- A hook that was waiting for that lock sees `st_nlink == 0` after the
+  unlink and reopens the path, so a concurrent event is never lost.
+
+## 10. Boundaries with the future macOS app (ADR-004, ADR-006)
 
 - The Core owns the data format, correlation and export semantics. The app
-  must produce the same results for the shared fixtures.
-- Integration options, to decide in Phase 2 (see ROADMAP): (a) the app shells
-  out to `prompt-relay --json` commands; (b) the app re-implements the read
-  side in Swift against `DATA_MODEL.md` and the fixtures. The hook handler
-  can stay Python in both cases.
+  reads them through the JSON API (ADR-006) and must not parse the JSONL
+  files itself. `DATA_MODEL.md` stays the storage contract for the Core.
+- The hook handler stays Python and the app does not run in the hook path.
 - The app writes the clipboard with `NSPasteboard` (`.string` type),
   replacing `pbcopy`.

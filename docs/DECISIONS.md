@@ -176,3 +176,61 @@ encryption is a Phase 3+ option.
 secret.
 
 **Status.** Accepted.
+
+---
+
+## ADR-006: The macOS app talks to the Core through a versioned JSON CLI API
+
+**Context.** The SwiftUI app needs projects, sessions, turns, final texts and
+the Copy Context packet. The Core is Python (ADR-004), and the correlation
+rules are subtle (prompt_id vs sequence vs ambiguous, API errors, background
+tasks). Re-implementing them in Swift would duplicate logic that has to
+behave identically.
+
+**Decision.** The app runs `prompt-relay <command> --json` and decodes one
+versioned JSON document (`docs/JSON_API.md`, `docs/api/api-v1.schema.json`).
+Transport: ASCII-only JSON on stdout, nothing on stderr, the same exit codes
+as text mode. Golden files pin the output. Breaking changes bump
+`api_version` (JSON_API.md §6). The app does not parse the JSONL store.
+
+**Alternatives.** (a) Swift reader of the JSONL files: duplicates the
+correlation logic, and the two implementations can drift. (b) A local
+HTTP/XPC server: a long-running process, a port or a service, and more attack
+surface, for no gain in the MVP. (c) SQLite as the shared interface: a storage
+migration plus a second schema contract.
+
+**Consequences.** + One implementation of the rules, testable in the cloud.
++ The text CLI is unchanged. − A process start (about 50–100 ms) per call; the
+app should cache and refresh on change (file watching of `events/`). − The app
+needs a Python 3.9+ path, which it gets the same way as `hook-config`.
+
+**Status.** Accepted (Phase 2A). Version 1 is unreleased until the first app
+build.
+
+---
+
+## ADR-007: History deletion is explicit, previewed and file-granular
+
+**Context.** Users need retention and deletion, but the store is append-only
+JSONL written concurrently by hooks, and the data is the user's only copy.
+
+**Decision.** Deletion removes whole session files only. Every destructive
+command previews by default and needs `--yes`. `retention_days` is only the
+default threshold for `prune`; nothing deletes automatically. "Last activity"
+(the later of the last event and the file mtime) defines age and activeness.
+Sessions active in the last 30 min are kept unless `--force-active` is given.
+Execution re-checks each file under its lock, and only plain session files
+directly in `events/` can be deleted.
+
+**Alternatives.** (a) Per-record expiry by rewriting files: risks corrupting
+an append-only file that a hook may be writing, and makes concurrency much
+harder. (b) Automatic pruning in the hook: deletion as a side effect of
+capture, against explicit user control. (c) Moving files to the macOS Trash:
+better for a GUI, but it needs AppKit; the app can add it later.
+
+**Consequences.** + Simple, safe and testable deletion. + Recoverable before
+`--yes`. − Long sessions are kept or deleted as a whole. − The 30-minute
+grace period is a heuristic. A session deleted after 30 min idle and resumed
+later continues in a new file under the same key; its earlier turns are gone.
+
+**Status.** Accepted (Phase 2A).

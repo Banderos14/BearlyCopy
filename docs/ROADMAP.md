@@ -24,6 +24,13 @@ Done when every "Requires macOS" item in STATUS has a recorded result.
 real run; D1, D4, D5 resolved. Open: ⌘V paste, CLI Stop, Esc, background
 tasks, multi-tool text, parallel sessions, StopFailure (STATUS).
 
+## Phase 2A — Cloud Core for the app ✅ (cloud, 2026-10-29)
+Done: JSON API v1 (`docs/JSON_API.md`, schema, ADR-006); 13 golden cases
+including redacted real payloads; history management (retention setting,
+`prune`, `delete` preview and confirmation, active-session protection,
+ADR-007); storage path hardening (symlinks, foreign names, the unlink race).
+Original task list for reference (tasks 1–3 are done; 4–6 remain):
+
 ## Phase 2 — Core hardening and app-facing API (mostly C)
 Proposed tasks:
 1. `--json` output for `sessions`, `turns`, `show` (a stable machine API for the app) (C).
@@ -42,6 +49,27 @@ Proposed tasks:
 Done when: the JSON API is documented and tested; the conformance suite
 exists; the installer passes tests on fixture settings, including existing
 hooks, invalid JSON, duplicates and uninstall.
+
+## Phase 2B — Hook installation and management (proposed, C + M check)
+Not started. Needs the owner's approval. Proposed scope:
+1. Plugin packaging: `.claude-plugin/plugin.json` and `hooks/hooks.json`
+   using `${CLAUDE_PLUGIN_ROOT}`; Claude Code owns install and uninstall.
+2. Settings merge tool as the fallback for `~/.claude/settings.json` and
+   project `.claude/settings.local.json`: `install --dry-run` (shows a diff),
+   `install --yes` (backup, validate, merge, idempotent marker), `uninstall`
+   (removes only our entries), `status` (detects our entries and other tools'
+   hooks), all with `--json`.
+3. Tests only against fixture settings files in temp dirs: other tools'
+   hooks on the same events (seen on the owner's Mac), invalid JSON, comments,
+   duplicates, a missing file, read-only files, symlinked settings, concurrent
+   edits, and uninstall restoring the other entries.
+4. The data dir is passed in the hook command (`/usr/bin/env
+   PROMPT_RELAY_HOME=…`), never through environment variables (Desktop does
+   not pass them).
+5. Mac check (M): install into a sandbox project, then (with explicit consent)
+   user-level install, plus uninstall, with checksums.
+Done when every fixture scenario passes, uninstall leaves other hooks
+byte-identical, and the Mac check passes.
 
 ## Phase 3 — macOS app foundation (M)
 Menu-bar app (SwiftUI + AppKit); history list; full-response preview; Copy

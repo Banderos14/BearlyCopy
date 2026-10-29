@@ -21,6 +21,10 @@ clipboard.
 | Platform | default data dirs (darwin/linux); clipboard backend selection; pbcopy call uses a UTF-8 locale and no shell (mocked subprocess); secret patterns |
 | Audit regressions | prompt without prompt_id + Stop with one; prompt_id match keeps other pending prompts; inferred link never upgraded; last Stop without text has no final response; API error after Stop is surfaced; events without session_id never linked; foreign-session line ignored; torn + NUL-filled tail; existing root dir not chmod-ed; entry point exits 0 when the package is missing; concurrent `enable`; Copy Response secret warning; same-directory match by inode (mocked); repo `core.fsmonitor` not executed |
 | Schema conformance | every `documented_*.json` (and future `real_*.json`) fixture: stored verbatim and exactly once across three JSON encodings (UTF-8, `\u` escapes, pretty-printed CRLF with reordered keys); documented fields interpreted; documented turns; every fixture text byte-exact via `show` |
+| JSON API (`test_api.py`) | text mode unchanged; usage errors as JSON; lone surrogate/NUL/CRLF survive; warnings in JSON, never stderr; preview vs full text; context findings without values; storage errors as JSON; selection by `session_key`. Every `--json` output is checked: one ASCII line, empty stderr, schema-valid, `ok` ⇔ exit 0 |
+| Golden (`test_api.py::GoldenTests`) | 13 cases: single real Desktop turn, several turns, two projects, missing prompt_id, ambiguous, API error, empty response, duplicates, Unicode + Markdown, background tasks, real CLI prompt only, no session_id, empty store. Expected files are compared exactly and schema-validated |
+| History management | prune is a dry run by default; `prune --yes` deletes only old sessions and nothing else (config, log, foreign files stay); retention setting drives prune and is never automatic; an invalid retention value never disables capture; delete preview, confirmation and active protection; a file written after planning is kept; a hook waiting on the lock survives a concurrent delete; 16 hooks + 3 deleters concurrently: no lost event, no corruption |
+| Path safety | symlinked session file never read, written or deleted; symlinked `events/` refused; `safe_unlink` refuses paths outside `events/`; foreign names ignored; a damaged duplicate line cannot crash an append |
 | Source safety | no network modules, `shell=True`, `eval`/`exec`, `os.system` in sources; the hook module never prints; `.gitignore` entries |
 
 ## 2. Required scenarios (`tests/test_scenarios.py`, real executable in subprocesses)
@@ -63,3 +67,15 @@ leaves `~/.claude` unchanged (checksum compare).
 - Settings files modified by Prompt Relay.
 - Real payloads captured on the Mac are added as fixtures (redacted) and must
   keep producing the same turns.
+- Any change in `--json` output without a golden-file update (golden tests
+  fail), or a golden-file change without a schema and JSON_API.md update.
+- Deletion of anything other than a session file, or of an active session
+  without `--force-active`.
+
+## 5. Golden files
+`PROMPT_RELAY_UPDATE_GOLDEN=1 python3 -m unittest discover -s tests -k Golden`
+regenerates `tests/golden/expected`. Review the diff, then apply
+JSON_API.md §6 (compatible vs breaking). Events get fixed timestamps from
+2026-01-01T00:00:00Z. Temp paths are normalized to `__PROJECT_A__`,
+`__PROJECT_B__` and `__TMP__`, and the wall-clock `exported_at` to
+`2000-01-01T00:00:00.000000Z`.
