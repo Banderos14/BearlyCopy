@@ -366,3 +366,40 @@ same model drives every surface. − Our own window code to maintain (about
 yet observed live.
 
 **Status.** Accepted (Phase 3B), confirmed on the owner's Mac.
+
+## ADR-011: One island; app-owned imports and attachments
+
+**Context.** Phase 4 makes the island the whole interface and adds two kinds
+of data the Core never sees: reports pasted from Claude Code cloud sessions
+(the local hooks cannot observe them) and images the user attaches.
+
+**Decision.**
+1. No regular windows. The island hosts every view (Home, Projects, Recent
+   Copies, History, Import, Settings, Full Report) with Back; the menu-bar
+   item is a fallback menu that opens the island. The 3A/3C windows were
+   removed once their functions were in the island.
+2. Imports and attachments live in `<data dir>/app/`, owned by the app
+   (0700/0600, atomic writes), next to the Core's data but never read by
+   it. The Core and its JSON API are unchanged except for the Review Pack
+   wording (title, "Source" line).
+3. The Review Pack for an import is written by the app in the Core's format
+   and labels; the Core's secret patterns are mirrored in Swift and checked
+   against the Core in a test.
+4. Recent Copies and pins store references (`ReportRef`), never text.
+5. Cloud capture is manual import only, because no documented interface
+   returns cloud-session messages; `--teleport` is not used (it changes the
+   repository).
+
+**Alternatives.** (a) Imports through the Core (a new write command): more
+API surface and a second writer of the Core's store for data the hooks
+never produce. (b) Scraping Claude Desktop or claude.ai data: undocumented
+and a privacy risk. (c) Keeping the windows as a second interface: two
+places for the same functions, which Phase 4 set out to remove.
+
+**Consequences.** + one interface, one model; + the Core stays the only
+writer of captured history; + imports work offline and are labeled. − two
+secret scanners to keep equal (a test guards it); − history search over
+captured reports sees only the Core's previews.
+
+**Status.** Accepted (Phase 4).
+

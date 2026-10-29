@@ -99,7 +99,35 @@ history deletion; app icon; launch at login.
 Decision points: keep the Python handler or port it to Swift. Move to SQLite
 if a session file exceeds ~10 MB or listing exceeds ~100 ms.
 
-## Phase 4 — Notch / Dynamic-Island-style UI (M) — core delivered in 3B
+**3C (2026-10-29, implemented, awaiting the owner's confirmation and commit):**
+capture per project in Settings (Add Project, enable/disable through the
+CLI, inherited capture), following the newest answer, diagnostics in
+Settings → Status.
+
+## Phase 3D — Product Experience 2.0 (M) — folded into Phase 4
+3D.1 (single notch experience) was implemented in two iterations; the owner
+rejected the tabbed version and asked for a fuller redesign, which became
+Phase 4 below. 3D.2–3D.4 (Review Pack and History, Settings in the notch,
+the mascot) are delivered in Phase 4.
+
+## Phase 4 — Real-world workflow, native UX and mascot (M) — implemented, owner validation pending
+- P1 long real reports (100 KB+), task ↔ answer association shown honestly,
+  Review Pack with source and full answer (Core wording change only).
+- P2 one island, graphite cards on black, one white primary action, no
+  windows; every control inventoried (`PRODUCT_UX_SPEC.md` §5).
+- P3 Recent Copies (five references), History with search, pins and
+  imports, Projects with capture switches, Settings with plain-language
+  rows and Diagnostics.
+- P4 manual Cloud import (documented limits, `MACOS_APP.md` §6) and image
+  attachments (private copies, Copy Image, drag, text + images).
+- P5 Relay the bear (original, vector, facts-only reactions).
+- Open: the owner's real-screen review; real paste tests of text + images
+  into ChatGPT; one real cloud report import; one real long local report.
+Future scope: automatic cloud capture only if Anthropic documents an
+interface for it; other agents; ChatGPT API; clipboard monitoring; cloud
+storage; telemetry; public release.
+
+## Notch / Dynamic-Island-style UI (M) — delivered in 3B and Phase 4
 The notch island moved forward into Phase 3B (above). Remaining ideas:
 live observation of coexistence with Coucou, optional "follow the pointer"
 display choice, memory reduction toward the 50 MB target, and polish from
@@ -110,5 +138,5 @@ Signing and notarization, an installer, docs, licensing review of
 dependencies, a privacy policy text, and a crash-free beta period.
 
 ## Not in the current version
-UI of any kind; automatic hook installation; ChatGPT integration; clipboard
-import; cloud-session capture; screenshots; release or deploy.
+Automatic hook installation; ChatGPT integration of any kind; clipboard
+monitoring or import; cloud-session capture; screenshots; release or deploy.

@@ -207,24 +207,27 @@ SwiftUI app ──exec──► <python> bin/prompt-relay <command> --json ─�
   stdout or decides anything, so other tools' hooks (NotchBuddy) behave as
   before.
 
-## 11. The macOS app (Phase 3A, ADR-004, ADR-006, ADR-009)
+## 11. The macOS app (ADR-004, ADR-006, ADR-009, ADR-010, ADR-011)
 
 `macos/` is a Swift package: `PromptRelayKit` (API models, the CLI adapter,
-clipboard and FSEvents services, the one `AppModel`, SwiftUI components and
-surfaces) and `PromptRelayApp` (lifecycle only). Details: `docs/MACOS_APP.md`.
+clipboard, FSEvents and report-store services, the one `AppModel`, the
+island's views) and `PromptRelayApp` (lifecycle only). Details:
+`docs/MACOS_APP.md`; product rules: `docs/PRODUCT_UX_SPEC.md`.
 
 ```
- menu-bar panel ─┐                      ┌─► CoreClient ──(python -I -S -B prompt-relay … --json)──► Python Core
- main window ────┼─► AppModel (@Observable)                                              (reads the store)
- (notch, 3B) ────┘        │             └─► ClipboardService ──► NSPasteboard (.string, read-back verified)
-                          └─◄ StoreWatcher (FSEvents on events/*.jsonl, config.json) ── refresh
+ island (notch or floating) ─┐                ┌─► CoreClient ─(python -I -S -B prompt-relay … --json)─► Python Core ─► events/
+ menu-bar fallback menu ─────┴─► AppModel ────┼─► ReportStore ─► <data dir>/app/ (imports, attachments; app-owned)
+                                 (@Observable)├─► ClipboardService ─► NSPasteboard (text read back; text + images)
+                                       ▲      └─► SecretScanner (imports only; same patterns as the Core)
+                                       └── StoreWatcher (FSEvents on events/*.jsonl, config.json)
 ```
 
 Boundaries:
 
-- The Core owns the data format, correlation and export semantics. The app
-  reads them through the JSON API (ADR-006) and must not parse the JSONL
-  files itself. `DATA_MODEL.md` stays the storage contract for the Core.
-- The hook handler stays Python and the app does not run in the hook path.
-- The app writes the clipboard with `NSPasteboard` (`.string` type),
-  replacing `pbcopy`.
+- The Core owns the captured data, correlation and the local Review Pack.
+  The app reads them through the JSON API and never parses `events/`.
+- The app owns `app/` (manual imports and attachments). The Core does not
+  read it; the app does not write `events/`.
+- The hook handler stays Python; the app is never in the hook path.
+- Claude Code cloud sessions are outside both: the hooks cannot observe
+  them, so they enter only through the explicit Import (MACOS_APP.md §6).

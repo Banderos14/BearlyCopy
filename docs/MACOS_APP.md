@@ -1,297 +1,246 @@
-# Prompt Relay for macOS (Phases 3A and 3B)
+# Prompt Relay for macOS
 
-A native SwiftUI + AppKit menu-bar app for reading Claude Code's captured
-final answers and copying them with one click. It talks to the Python Core
-only through the CLI JSON API v1 (ADR-006, ADR-009). It does not read the
-JSONL store, does not re-implement correlation, has no backend and makes no
-network connections.
+A native SwiftUI + AppKit app whose whole interface is one island in the
+MacBook notch (floating below the menu bar on displays without one). It
+shows Claude Code's captured final answers and copies them, or a Review
+Pack, with one click. It talks to the Python Core only through the CLI JSON
+API v1 (ADR-006, ADR-009), has no backend and makes no network connections.
+
+The product rules, every view and every control are in
+`docs/PRODUCT_UX_SPEC.md`. This file covers building, architecture, data,
+clipboard behavior, limits and verification.
 
 ## 1. Build and run
 
 Requirements: macOS 14 or newer, Xcode (or the Command Line Tools with Swift
-5.10+), and a Python 3.9+ for the Core. The Core's Python is found the same
-way the plugin launcher finds it (§4).
+5.10+), and a Python 3.9+ for the Core (found as in §8).
 
-### In Xcode (development, debugging, Previews)
-1. Open **`macos/PromptRelay.xcworkspace`** (Finder double-click, or Xcode →
-   File → Open). Use the workspace, not the `.xcodeproj`: only the workspace
-   shows the package's test target.
-2. Choose the scheme **Prompt Relay** and the destination **My Mac**.
-3. ⌘R runs the Debug build (bundle ID `io.github.banderos14.PromptRelay.debug`,
-   so its settings are separate from the installed app). ⌘U runs the 70 Swift
-   tests. Quit the installed app first, or two menu-bar icons appear.
-4. Previews: open `Sources/PromptRelayKit/Previews/PreviewSupport.swift` and
-   show the Canvas (expanded and compact notch, menu-bar panel, main window,
-   all on built-in sample data; Debug only).
+### In Xcode (development)
+1. Open **`macos/PromptRelay.xcworkspace`** (not the `.xcodeproj`: only the
+   workspace shows the package's tests).
+2. Scheme **Prompt Relay**, destination **My Mac**. ⌘R runs the **Debug**
+   build, ⌘U the Swift tests.
+3. Previews: `Sources/PromptRelayKit/Previews/PreviewSupport.swift`
+   (Quick Peek, Expanded, compact; sample data, Debug only).
 
-What is in it: `macos/Xcode/PromptRelay.xcodeproj` holds one macOS app target
-("Prompt Relay", Debug and Release, `macos/Xcode/Info.plist`, LSUIElement,
-ad-hoc signing) that compiles the existing `Sources/PromptRelayApp/main.swift`
-and links `PromptRelayKit` from the local package (`..`); no Swift source is
-duplicated. A build phase, "Embed Python Core", copies `bin/prompt-relay` and
-`plugin/prompt_relay` into `Contents/Resources/core`.
-`macos/PromptRelay.xcworkspace` adds the package itself, so its tests run from
-the same scheme. The project file is small and written by hand; XcodeGen was
-not needed (it would have been one more tool to install).
+### Debug and Release: one at a time
+The two builds are different apps to macOS: Debug is
+`io.github.banderos14.PromptRelay.debug`, shown as **Prompt Relay Dev**
+with a hammer menu-bar icon; Release is `io.github.banderos14.PromptRelay`,
+"Prompt Relay". They have separate preferences (projects list, notch
+settings, copy history) but share the history and imports in the data dir.
+On 2026-10-29 both were running at once, which looked like two different
+apps. The safe routine:
+
+- While developing, quit the Release app and use only ⌘R in Xcode.
+- To try a finished state, quit the Debug app, then
+  `scripts/build-macos-app.sh --install` and open the Release app.
+- If both run anyway: the Release build steps aside at the notch (no two
+  islands on top of each other), ⚙ gets a small orange dot, and Settings →
+  About names the other build with a "Quit …" button. Nothing is quit
+  automatically. None of this is visible in a Release build used alone.
 
 ### From the command line
 ```bash
 scripts/build-macos-app.sh            # builds macos/build/Prompt Relay.app (SwiftPM, release)
 scripts/build-macos-app.sh --install  # also copies it to ~/Applications
-swift test --package-path macos       # Swift tests (70; one opt-in render test is skipped)
+swift test --package-path macos       # Swift tests (one opt-in render test is skipped)
 xcodebuild -workspace macos/PromptRelay.xcworkspace -scheme "Prompt Relay" -configuration Release build
 ```
 
-Then open **Prompt Relay** from `~/Applications` (Finder → Go → Home →
-Applications) or with `open "$HOME/Applications/Prompt Relay.app"`. The app
-lives in the menu bar (no Dock icon). The main window opens from the panel's
-window button.
+The bundle is ad-hoc signed for local use; it is not notarized and is not a
+release. `macos/build/` and `macos/.build/` are git-ignored. Removing the app
+leaves `~/Library/Application Support/PromptRelay` untouched.
 
-- The bundle is ad-hoc signed for local use. It is not notarized and is not a
-  release.
-- `macos/build/` and `macos/.build/` are git-ignored.
-- To remove the app: quit it (menu-bar panel → Quit) and move
-  `~/Applications/Prompt Relay.app` to the Trash. Your history in
-  `~/Library/Application Support/PromptRelay` is untouched.
+## 2. Surfaces
 
-Development run without a bundle:
-```bash
-PROMPT_RELAY_CLI="$PWD/bin/prompt-relay" swift run --package-path macos PromptRelayApp
-```
-
-## 2. Screens
-
-| Surface | What it shows |
+| Surface | Role |
 |---|---|
-| Menu-bar panel (click the clipboard icon) | project and session pickers, the session's answers newest first with a copy button on each row, the selected answer, **Copy Response** (⇧⌘C) and **Copy Context**, copy confirmation, connection line, Refresh (⌘R), Open Window, Quit |
-| Main window | projects → sessions → answers (three columns), the full verbatim answer in a selectable text view, the same copy bar |
-| Status window (click the connection line) | `doctor --json`: plugin install record, events received via the plugin, projects with capture on, Python and hook interpreter, history folder, live-update mode, findings, and what cannot be verified |
-| Notch island (Phase 3B, opt-in in Settings) | see §2B |
-| Settings (menu-bar panel → Settings…, ⌘,) | notch on/off, display, step aside for other notch apps, animation (follow Reduce Motion / smooth / reduced), "notify when an answer is ready" |
-| Empty and error states | no projects yet, no sessions yet, nothing to copy (API error, still waiting, empty answer), Core or Python missing, unreadable Core output, newer API version — each with a short explanation and Try Again |
+| Island (notch, or floating) | the interface: resting, Quick Peek on hover, Expanded on click / ⌃⌥⌘P, with Projects, Recent Copies, History, Import, Settings and Full Report inside it |
+| Menu-bar item | a small fallback menu: Open Prompt Relay, Recent Copies, History, Import Cloud Report…, Settings…, Quit; each opens the island on that view |
 
-Wording follows the product invariants: a Stop is "Claude stopped", never
-"done"; an inferred request link says "Request inferred from order"; an API
-error is never offered as an answer.
-
-## 2B. Notch island (Phase 3B)
-
-A Dynamic-Island-style surface around the MacBook camera housing. It is off
-until the user turns it on in Settings, and the menu-bar item always stays.
-
-| State | Window | What is drawn |
-|---|---|---|
-| Hidden | none | notch disabled, no notched display chosen, or display asleep |
-| Resting (compact, nothing new) | exactly the notch (e.g. 185 × 32 pt) | a black shape slightly smaller and rounder than the housing, so it stays invisible behind it; the window is the hover target |
-| Compact, answer ready | notch + two 26 pt ears | left ear: a small glyph; right ear: a green dot. Static — no animation while closed |
-| Expanded | exactly the island: 400 pt wide, notch height + 110–270 pt content | project (left of the notch) and "Stopped 4m" (right), the answer's first lines, size and link note, ‹ n of N › through earlier answers, **Copy Response** (white, the only accent), Context, and ↗ Open Full Window |
-
-- **Opening and closing.** Hover opens after 0.15 s (a pass along the top edge
-  does nothing); leaving closes after 0.35 s, and coming back cancels it, so
-  the edge never flickers. Click or ⌃⌥⌘P opens with keyboard focus: ← → older
-  / newer answer, ↩ Copy Response, Esc closes. Hover never takes focus from
-  the app you type in. An open "possible secrets" alert keeps it open.
-- **Morph.** The island grows from the notch: width, height and both corner
-  radii animate (spring, about 0.35 s); content fades in shortly after.
-  With Reduce Motion (or "Reduced" in Settings) it is a short fade. No shadow:
-  a hardware notch has none, and a shadow showed as a grey halo on light
-  desktops (fixed in review, covered by `NotchAppearanceTests`).
-- **Look.** The island is black in both appearances so it merges with the
-  housing; its text uses the dark appearance. No blue selection, no pop-up
-  menus, no fixed-height empty areas. Statuses state facts only ("Stopped",
-  "Tasks running", "API error"); a Stop never reads as "done" or "tests
-  passed". The island shows the first six lines; the full text is in the
-  window, and Copy Response always copies the Core's full `show` text.
-- **New answers.** With the notch or notifications on, each refresh also
-  runs `sessions --json` once and takes the newest session whose
-  `last_turn.status` is a Stop (the Core's correlation, not re-derived). An
-  answer newer than the last one seen raises the ears; opening the island
-  selects it and marks it seen. "Seen" is remembered across restarts, so old
-  answers are never announced again. The optional notification names the
-  project only, never the text.
-- **Displays.** One island at most, on the chosen display: Automatic = the
-  built-in notched display. A display without a notch (external monitor,
-  closed lid) gets no island; the menu-bar item remains. Unplugging the chosen
-  display falls back to Automatic. Screen-parameter changes (plug in/out,
-  resolution, scaling, arrangement), wake from sleep and Space changes re-lay
-  it out. The panel joins all Spaces including full-screen ones, sits at
-  `statusBar + 1`, and only ever covers the notch (plus ears) while closed.
-- **Coexistence with Coucou / NotchBuddy.** Both draw in the notch. When
-  Coucou (`fr.louisraille.Coucou`, `fr.louisraille.NotchBuddy`) is running and
-  "Step aside when another notch app is running" is on (default), Prompt
-  Relay shows no notch target; ⌃⌥⌘P and the menu bar still open the island.
-  Turning that off shares the spot (hover may reach either app); Settings
-  then suggests turning off Coucou's island in Coucou's own settings. Prompt
-  Relay never changes Coucou, its hooks or its settings.
-- **Cost.** No polling: hover is an `NSTrackingArea` on a window the size of
-  the notch; the window is resized for each phase. FSEvents drives updates
-  (`startBackgroundObservation` never starts the fallback timer). Opening the
-  island does not start Python when FSEvents already keeps data current.
-  `stop()` removes the window, tracking area, all six observers, the hot key
-  and timers (tested over 25 start/stop cycles).
-
-Debug builds only: `PROMPT_RELAY_DEBUG_CAPTURE_DIR=<dir>` makes the app draw
-its own notch window (real display, real data) to PNGs a few seconds after
-launch. It renders only its own window (no Screen Recording permission), so
-the menu bar and hardware notch around it are not in the images.
+There are no regular windows any more. The Phase 3A main window, menu-bar
+panel and status window and the Phase 3C settings window were removed in
+Phase 4 after everything they did moved into the island (their code is in
+git history and in `refs/backup/phase4-start`).
 
 ## 3. Architecture
 
 ```
 macos/
-├── Package.swift
-├── PromptRelay.xcworkspace                  Xcode entry point: the app project + this package
-├── Xcode/PromptRelay.xcodeproj, Info.plist  macOS app target (Debug/Release), embeds the Core
-├── Sources/PromptRelayApp/main.swift        app lifecycle: scenes, menu-bar item, Settings, notch coordinator
-└── Sources/PromptRelayKit/                  everything reusable
-    ├── Models/APIModels.swift               JSON API v1 types; open enums (unknown values never crash)
-    ├── Core/CoreLocator.swift               finds the CLI and a Python 3.9+
-    ├── Core/CommandRunner.swift             Process runner: no shell, drained pipes, timeout, size cap, off the main thread
-    ├── Core/CoreClient.swift                runs `prompt-relay … --json`, checks version/ok/exit code, maps errors
-    ├── Services/ClipboardService.swift      NSPasteboard write + read-back verification
-    ├── Services/StoreWatcher.swift          FSEvents on the data dir (events/*.jsonl, config.json)
-    ├── Presentation/AppModel.swift          the one @Observable model: data, selection, refresh, copy
-    ├── Presentation/LoadState.swift, Formatting.swift
-    ├── UI/                                  components (rows, status badge, verbatim text view, copy bar,
-    │                                        empty/error states, status, Settings) and surfaces (panel, window)
-    ├── Notch/                               NotchGeometry (pure layout), NotchInteraction (state machine),
-    │                                        NotchController (panel, tracking, observers), NotchViews,
-    │                                        NotchSettings, NotchCoordinator, HotKey
-    ├── Services/ReadyNotifier.swift         optional "answer ready" notification (project name only)
-    └── Previews/PreviewSupport.swift        Xcode Previews with sample data (Debug only)
+├── PromptRelay.xcworkspace, Xcode/          app target (Debug/Release), embeds the Core
+├── Sources/PromptRelayApp/main.swift        lifecycle: the island coordinator and the menu-bar fallback
+└── Sources/PromptRelayKit/
+    ├── Models/APIModels.swift               JSON API v1 types (open enums)
+    ├── Models/Reports.swift                 ReportRef, ReportSource, ImportedReport, ReportAttachment, CopyRecord
+    ├── Core/                                CoreLocator, CommandRunner, CoreClient (CLI adapter)
+    ├── Services/ClipboardService.swift      NSPasteboard: text (read back), text + images, one image
+    ├── Services/ReportStore.swift           app-owned data: imports and attachments (§4)
+    ├── Services/SecretScanner.swift         the Core's secret heuristics, for imported text
+    ├── Services/StoreWatcher.swift          FSEvents on events/*.jsonl and config.json
+    ├── Services/AppBuild.swift              which build this is; other builds running
+    ├── Presentation/AppModel.swift          the one @Observable model: data, selection, routes, copy, history
+    ├── Presentation/ReviewPack.swift        Review Pack for imports; attachments section
+    ├── UI/Markdown.swift                    display-only Markdown blocks (headings, lists, code, tables)
+    ├── UI/Components.swift                  status colors, verbatim text view, secrets alert
+    └── Notch/                               geometry, interaction state machine, controller (panel,
+                                             tracking, mascot), island views, settings view, mascot
 ```
 
-- **One model, several surfaces.** The menu-bar panel, the window and the
-  notch island observe the same `AppModel`; selection, copy feedback and data
-  are shared, never duplicated. The island has its own compact composition
-  but the same model, Core adapter, clipboard service and watcher.
-- **Core adapter.** `CoreClient` runs
-  `python -I -S -B <cli> <command> … --json` with a minimal environment
-  (`HOME`, `PATH=/usr/bin:/bin`, UTF-8 locale). `-I -S` match the plugin
-  launcher (no `PYTHON*` variables, no user site packages); `-B` keeps
-  `__pycache__` out of the signed bundle. The working directory is the home
-  folder and `doctor` always gets `--no-project`, so the Core never inspects
-  an arbitrary project. stdout and stderr are drained concurrently; a call
-  times out after 30 s; stdout is capped at 256 MiB.
-- **Decoding order** (JSON_API.md §6): parse → `api_version` must be 1 →
-  `ok` and exit code → payload. A traceback or empty output is
-  `malformedOutput`; `ok: false` becomes `api(code, message)`.
-- **Copy Response** always copies `final_response.text` from `show` (the full
-  verbatim text), never a preview. The row buttons fetch `show` for their
-  turn. The clipboard is written as plain text and read back; the
-  confirmation appears only when the read-back matches scalar for scalar.
-- **Copy Context** uses `context --json`. If the Core reports
-  `sensitive_findings`, nothing is copied until the user confirms in an alert
-  that lists kind, section and line (never the value), the same rule as
-  `copy-context --allow-sensitive`.
+- **One model, one navigation.** `AppModel` holds the data, the selection
+  (a local turn or an import: `currentRef`) and the island's route with
+  Back. The island is the only view of it.
+- **Core adapter.** `CoreClient` runs `python -I -S -B <cli> … --json` with a
+  minimal environment (no `PYTHON*`, no user site packages, no bytecode in
+  the bundle), from the home folder; 30 s timeout; 256 MiB output cap.
+  Decoding: parse → `api_version` 1 → `ok` and exit code → payload.
+- **Navigation never starts Python.** Opening views reuses loaded data. The
+  Core runs on history changes (FSEvents), on selection changes that need a
+  turn list or a full text, on copy, on Diagnostics, and when History
+  searches (once per changed session, then cached).
 
-## 4. Finding the Core and Python
+## 4. Data the app keeps
 
-CLI, first match wins: the `PromptRelayCLIPath` user default →
-`$PROMPT_RELAY_CLI` (development) → the copy inside the bundle,
-`Contents/Resources/core/bin/prompt-relay` (with `core/plugin/prompt_relay`
-beside it, the repository's layout).
+| What | Where | Contents |
+|---|---|---|
+| Captured history | `<data dir>/events/` | written by the hook, read through the Core only |
+| Imported reports | `<data dir>/app/imports/<id>.json` | the pasted text verbatim, optional task, project, cloud session label, import time, SHA-256 |
+| Attachments | `<data dir>/app/attachments/` + `attachments.json` | private copies of images the user chose; name, MIME type, size, SHA-256, report, provenance |
+| Recent Copies, pins, added folders, last seen answer | app preferences | references only (`ReportRef`), never text |
 
-Python, first one that passes a `>= 3.9` check:
-`PromptRelayPythonPath` user default → the pin in
-`<data dir>/python-path` (only if the file is yours) →
-`/opt/homebrew/bin/python3` → `/usr/local/bin/python3` → the python.org
-framework → `/usr/bin/python3` only when `xcode-select -p` succeeds.
+`<data dir>` is `~/Library/Application Support/PromptRelay`. `app/` is
+0700 and its files 0600, written atomically. The Core never reads `app/`;
+its prune and delete commands only touch `events/`. Nothing in `app/` is
+deleted unless the user deletes that import or removes that image (removing
+an import removes its images). A Recent Copy or pin whose report is gone says
+"No longer in history" and cannot be copied.
 
-`PROMPT_RELAY_HOME` in the app's environment selects another data dir (tests
-only).
+## 5. Clipboard and export
 
-## 5. Updating data
+- **Copy Response** writes the complete original text (`final_response.text`
+  from `show`, or the imported text) as one plain-text item and reads it
+  back scalar for scalar; only then does the island say "Copied the complete
+  response: N characters". A preview or rendered Markdown is never copied.
+- **Review Pack**: for a local report, the Core's `context` packet (title
+  "Review Pack", "Source: Claude Code on this Mac", the linked request, the
+  full answer in a fence longer than any inside it, read-only git state with
+  its collection time, provenance labels, "Not verified" for tests and CI,
+  and a request for an independent review). For an import,
+  `ReviewPack.render(imported:)` writes the same structure with "Source: …
+  imported manually", "[Supplied by you]" for the task, project and session,
+  and "[Unavailable]" for git. Attachments are listed by name, type and size
+  only, never with a local path. Likely secrets (the Core's findings for
+  local reports, `SecretScanner` for imports: the same patterns, checked
+  against the Core in a test) stop the copy until the user confirms; such a
+  pack is not added to Recent Copies.
+- **Images.** "Copy Text + Images" writes several pasteboard items: the text
+  first, then one item per image (its own type, TIFF, and a file URL to the
+  private copy). Whether a paste carries the images depends on the
+  destination app: **not yet verified with ChatGPT** (§9). The reliable
+  paths are the per-image menu (Copy Image, Show in Finder) and dragging a
+  thumbnail into the destination. Copy Response stays text-only, so the
+  one-click text path never depends on images.
+- The clipboard is written only on an explicit click, and read only by the
+  import's explicit Paste button. Nothing watches the system clipboard.
 
-- `StoreWatcher` uses FSEvents (file-level events, 0.4 s latency) on the data
-  dir and reacts only to `events/*.jsonl` and `config.json`. `handler.log` is
-  ignored because every hook run writes it, even for projects that are not
-  enabled.
-- A change triggers one refresh: projects → sessions → turns → the selected
-  answer. Refreshes coalesce (at most one running plus one queued). The full
-  text is fetched again only when the selected turn changed.
-- A file being appended while the Core reads it is handled by the Core
-  (torn lines are skipped and counted); the next event triggers another
-  refresh.
-- Fallback: if the data dir does not exist yet or FSEvents fails, a 30 s
-  timer runs **only while a surface is visible** and retries watching.
-  Refresh (⌘R) always works. The status screen and the footer say which mode
-  is active.
-- There is no polling while the app is idle with no window open.
+## 6. Cloud sessions (manual import)
 
-## 6. Privacy and safety
-- No network code; no telemetry; nothing is logged by the app (no
-  `os_log`/`print` of texts).
-- The app never writes Claude Code settings, never touches the plugin or
-  other tools' hooks (Coucou included), and never deletes history (there is
-  no delete UI).
-- The global shortcut uses the Carbon hot-key API: it sees only ⌃⌥⌘P, never
-  other keystrokes, and needs no Accessibility permission.
-- It reads only the Core's JSON output. It never opens project files; Copy
-  Context's git summary comes from the Core's read-only git collection.
-- The clipboard is written only on an explicit click.
+Claude Code cloud sessions run on Anthropic-managed VMs ("Use Claude Code in
+the cloud", code.claude.com docs). The hooks installed on this Mac never see
+them, so Prompt Relay cannot capture them automatically. What the docs offer
+and why it is not used:
 
-## 7. Verification (2026-10-29, MacBook Pro M3 Pro, macOS 27.0.1, Xcode 27.0, Swift 6.4)
-- `swift test`: 39 tests, 0 failures (1 opt-in render test skipped by default).
-  They cover: decoding of every golden API answer; Unicode, Markdown,
-  ambiguous, API-error and empty-store cases; unknown fields and enum values;
-  Core errors (missing Python or CLI, traceback output, API version 2,
-  `ok:false`, timeouts, launch failures, 3 MB output); the locator's Python
-  rules (CLT stub, foreign pin, overrides); the clipboard service on a
-  private pasteboard (NUL, CRLF, combining marks, emoji, 1.4 MB); the model's
-  defaults, empty and error states, full-text copy, API-error blocking and
-  the sensitive-context confirmation; FSEvents filtering; and an integration
-  run against the real Python Core with a temporary data dir.
-- Offscreen renders of all surfaces in light and dark (`SnapshotTests`,
-  opt-in with `PROMPT_RELAY_SNAPSHOT_DIR`, `PROMPT_RELAY_SNAPSHOT_LIVE=1`
-  for the user's own history, read-only), including the real Desktop answer
-  captured through the plugin in Phase 2B.
-- The installed app launched from `~/Applications`, idled at 0 % CPU, about
-  120 MB RSS, and the bundle signature stayed valid after use.
-- **Confirmed by the owner on the Mac:** the menu-bar icon opens the panel,
-  Copy Response copies the answer, and ⌘V pastes it without loss.
+- `claude --teleport` pulls a cloud session into a local terminal, but it
+  requires a clean git state, checks out the session's branch, and does not
+  copy messages that were compacted. It changes the repository, so Prompt
+  Relay never runs it. After a teleport, new turns in that local terminal
+  are captured as usual (they are local Claude Code turns).
+- `claude -p … --cloud <id>` only sends a message to a cloud session; it
+  does not return its answers.
+- No documented interface returns a cloud session's final messages to a
+  local tool. Prompt Relay does not read Claude Desktop caches, tokens,
+  cookies or undocumented APIs.
 
-Phase 3B (same Mac; two displays: built-in notched + external 4K):
-- Xcode: workspace scheme "Prompt Relay" builds Debug and Release; ⌘U /
-  `xcodebuild test` and `swift test`: 70 tests, 0 failures (1 opt-in render
-  test skipped). New tests: state machine (dwell, grace, rapid hover with at
-  most one timer, focus, pin, hidden), geometry and display choice with mock
-  displays (external only, re-arranged, disconnected choice, small screen),
-  settings persistence and Reduce Motion, controller lifecycle (frames per
-  phase, display changes, 25 start/stop cycles without leaks, tracking area
-  replaced not accumulated), yielding to Coucou, ‹ › navigation,
-  ready-answer arrival/announce-once/restart, coordinator, and the no-halo
-  rendering check.
-- Real app on the real display (Debug capture): resting window 185 × 32 at
-  the notch; expanded window 400 × 142 = exactly the island; only black and
-  fully transparent pixels around it (264 anti-aliased edge pixels, no grey);
-  back to 185 × 32 after closing; nothing placed on the external display.
-- Idle with the notch on: 0 % CPU, ≈119 MB RSS (release) / ≈124 MB (Debug);
-  0 Core (Python) processes in 30 one-second samples. Notch off: ≈118 MB, as
-  in 3A.
-- **Confirmed by the owner on the real screen:** the island opens from the
-  physical notch, geometry and look are right, no grey halo, and the answer
-  shows in the notch and in the main window.
+So the supported path is **Import**: copy the report in the cloud session,
+then Import → Paste Report from Clipboard → optional task, project and
+session ID → Import Report. The text is saved exactly as pasted (it cannot
+be edited in the island), marked "Cloud · imported by you", and appears on
+Home, in History and in Recent Copies like a local report. Importing the same
+text and task again shows the existing record instead of a second copy.
 
-## 8. Known limitations
-- Coexistence with Coucou is implemented and unit-tested but was not observed
-  live: Coucou was not installed or running on the test Mac (its hook files
-  and `settings.json` hooks remain and were left alone).
-- The island is black in light and dark mode by design; the window and
-  menu-bar panel follow the system theme.
-- Hover, animation and geometry were judged visually by the owner; the
-  automated checks cover frames, states and pixels, not motion quality.
-- Each Core call starts Python (about 40–60 ms); a refresh makes 3–4 calls.
-  Fine for the current history sizes; SQLite or a long-lived Core are Phase 4+
-  options (ADR-003/006).
-- Memory: about 120 MB RSS at idle (unchanged by the notch), above the
-  50 MB target in UI_RESEARCH. Not optimized; reaching it would mean a
-  different architecture, which is not justified now.
-- No app icon (the menu bar uses an SF Symbol); no settings UI for enabling
-  projects, retention or deletion (use the CLI); no launch at login.
-- A project path reported through a symlink (for example `/var` vs
-  `/private/var`) can show up as two projects; Claude Code reports real
-  paths, so this was seen only in tests.
-- Offscreen renders cannot draw the sidebar's selected-row vibrancy or the
-  key-window accent color; the live app does.
-- Not notarized; local builds only.
+## 7. The mascot
+
+Relay, a small bear cub: original vector art drawn with SwiftUI `Canvas`
+(`Notch/Mascot.swift`), nothing from Coucou/Mochi or other assets. It sits
+in the left ear at rest and at the left of the band when open. Moods map to
+facts only: *curious* when a new answer was captured, *pleased* after a
+copy, *concerned* after a failed copy or when the Core is unavailable,
+*idle* otherwise; none suggests that work or tests succeeded. Its eyes follow
+the pointer only from mouse-moved events inside the island's own window (no
+global monitoring, nothing stored; the gaze resets when the pointer leaves).
+It blinks every 3.5–7 s only while it is on screen and motion is allowed;
+with Reduce Motion it neither blinks nor moves its eyes; with the setting off
+it is gone and the resting island returns inside the camera housing.
+
+## 8. Finding the Core and Python; updating data
+
+CLI: the `PromptRelayCLIPath` default → `$PROMPT_RELAY_CLI` (development) →
+the copy in the bundle (`Contents/Resources/core`). Python, first that
+passes `>= 3.9`: `PromptRelayPythonPath` → the pin in `<data dir>/python-path`
+(only if the file is yours) → Homebrew → `/usr/local/bin` → python.org →
+`/usr/bin/python3` only when `xcode-select -p` succeeds.
+`PROMPT_RELAY_HOME` selects another data dir (tests only).
+
+FSEvents on the data dir triggers one coalesced refresh per change; the full
+text is fetched again only when the selected turn changed. If the data dir
+is missing or FSEvents fails, a 30 s timer runs only while the island is
+open. Nothing polls while idle.
+
+## 9. Verification (2026-10-29, MacBook Pro M3 Pro, macOS 27.0.1, Xcode 27.0)
+
+Phase 4, on this Mac:
+- `swift test` and `xcodebuild test` (scheme): 109 tests, 0 failures
+  (1 opt-in render test skipped); Xcode Debug and Release BUILD SUCCEEDED.
+  Python: `scripts/check.sh`, 141 tests OK (1 skipped by design), hook
+  median 37 ms.
+- Real Core, temp data dir: a 100 KB+ report (Markdown, tables, nested
+  fences, TypeScript/Python/JSON/Swift, Cyrillic, emoji, CRLF) through the
+  real hook twice (duplicate delivery): one turn, the task linked by
+  `prompt_id`, the list carries only a preview, Copy Response byte-identical
+  on a private pasteboard, the Review Pack contains the report exactly once.
+- Imports (verbatim with NUL and U+2028 after a restart, dedup, 0600/0700),
+  attachments (private copy, checksum, dedup, non-image refused, removed
+  with the import), Review Pack honesty (no invented task, no local paths),
+  the Swift secret scanner equal to the Core's on the same samples, Recent
+  Copies (five references, restart, re-copy fetches again, removed report),
+  pins, search (imports in full, local previews, cached), projects never
+  mixing, text + image clipboard items, the mascot (ears, blinking only while
+  visible, no gaze outside, Reduce Motion, reactions), menu and folder-picker
+  pinning, the floating fallback.
+- Real island on the built-in display (Debug build, the owner's data; the
+  window is exactly the island in every state): resting 237 × 32 with the
+  bear, Quick Peek 460 × 158, Home 460 × 292, Projects 231, Recent Copies
+  148, History 195, Import 354, Settings 584 (scrolls), Full Report 162,
+  then back to resting.
+- Idle: 0 % CPU over 30 s, no Python child processes, ≈164 MB RSS (Debug;
+  ≈137 MB before Phase 4: Markdown, images and the mascot).
+
+Earlier phases (3A–3D.1): the owner confirmed Copy Response → ⌘V without
+loss and the island geometry on the real screen; details in STATUS.
+
+**Not verified yet:** pasting text + images into ChatGPT (desktop app and
+web); a real Claude Code turn and a real cloud report through the new UI;
+the floating island on a real external display; hover and focus with a real
+pointer after the redesign. These need the owner (STATUS).
+
+## 10. Known limitations
+- Image paste into ChatGPT is unverified; until it is, treat "Copy Text +
+  Images" as best effort and use Copy Image or drag-and-drop.
+- History search covers imports in full but captured reports only through
+  the Core's previews (the first 200 characters of each task and answer).
+- The Markdown reader is a simple block renderer (tables show as
+  monospaced text); "Plain Text" shows the exact text.
+- Each Core call starts Python (≈40–60 ms). Memory ≈160 MB is above the
+  50 MB goal in UI_RESEARCH; not optimized.
+- Coexistence with Coucou is unit-tested but was not observed live.
+- No app icon, no launch at login; not notarized.

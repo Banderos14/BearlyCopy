@@ -1,6 +1,7 @@
 # Status
 
-Last updated: 2026-10-29, local Mac session (Phase 3B notch UI and Xcode),
+Last updated: 2026-10-29, local Mac session (Phase 4: real-world workflow,
+native UX and mascot; committed on the branch, owner validation pending),
 branch `claude/loving-mccarthy-ossw3q`.
 
 ## Completed
@@ -292,8 +293,88 @@ GitHub Actions run 40910039983 (`ab57b74`) failed on Linux / Python 3.13:
 - Known limitations: `docs/MACOS_APP.md` §8 (Coucou coexistence not observed
   live, black island in both themes by design, ≈120 MB RSS).
 
+## Phase 3C changes (implemented, not committed)
+- Settings → Projects: Add Project (folder picker, path only, capture off),
+  capture switch through `prompt-relay enable|disable`, inherited capture,
+  removal of added-only folders (history untouched). Settings → Status:
+  Core/Python, plugin, selected project's capture, last captured answer,
+  with actions when something is missing.
+- The app opens on and follows the newest finished answer unless the user
+  is looking at another one; copy hides nothing.
+- 82 Swift tests at the end of 3C. The owner's real check (add a project in
+  Settings, new answer in the notch, Copy Response, capture off) has not
+  been confirmed in chat yet.
+
+## Phase 3D.1 changes (redesigned, not committed, awaiting visual review)
+- First version (tabs Answer / Projects / History in a fixed 440 × 340
+  workspace, plus the old windows) was **rejected** by the owner: it looked
+  like a shrunken desktop app. Backups of that state and of Phase 3C are in
+  the session scratchpad (`tracked.patch`, `untracked.tar`).
+- Redesign (`docs/PRODUCT_UX_SPEC.md`): one island. Resting / Quick Peek /
+  Expanded; Home = project picker, status, request, answer, Copy Response,
+  Review Pack, Recent, All Responses, ⚙, ⋯ (Quit). Projects (capture
+  switches, Add Project with the island held open), Recent, All Responses,
+  Settings (General, Capture, Connection, About) and Full Response open
+  inside the island with Back/Esc. Navigation: `AppModel.route`.
+- Height follows content in every state (56–388 pt below the band, ≤ 60 %
+  of the display); lists scroll inside with a fade.
+- Displays without a notch: the same island floats below the menu bar,
+  opened from the menu bar or ⌃⌥⌘P.
+- App shell: no regular windows; the menu-bar item is a small menu (Open,
+  Recent, All Responses, Settings…, Quit). "Open on hover at the notch" is
+  now on by default (the island is the interface).
+- Debug/Release: Debug is named "Prompt Relay Dev" (display name) with its
+  own menu-bar icon; Release steps aside at the notch while Debug runs; a
+  dot on ⚙ and Settings → About name the other build and offer to quit it
+  on request.
+- Fixed with a regression test: a relayout re-showed the resting panel
+  with hover turned off.
+- Verified on this Mac: `swift test` 98 tests, 0 failures (1 opt-in render
+  test skipped); Xcode Debug and Release BUILD SUCCEEDED; `xcodebuild test`
+  98 tests, TEST SUCCEEDED; the real panel captured on the built-in display
+  (Debug build, real data): resting 185 × 32, peek 440 × 131, Home 440 ×
+  188, Projects 171, Recent 94, All Responses 125, Settings 388 (scrolls),
+  Full Response 122, back to 185 × 32; idle 0 % CPU, ≈137 MB RSS.
+- Not verified: a real pointer (hover, clicks while open, the ⋯ menu, the
+  folder picker) and the floating island on a real external display — the
+  capture drives the same state machine without a mouse. Needs the owner's
+  check on the real screen.
+
+## Phase 4 changes (implemented and tested; owner validation pending)
+- Recovery point before any change: `refs/backup/phase4-start` (all tracked
+  and untracked work of 3C and 3D.1), plus patch/tar copies in the session
+  scratchpad.
+- Single island, redesigned (`PRODUCT_UX_SPEC.md`, ADR-011): Home answers
+  project / task / answer / which button; graphite cards on black; one white
+  primary action; Projects, Recent Copies, History (search, pins, imports),
+  Import, Settings (plain language; Diagnostics only there) and Full Report
+  (formatted or exact text, always complete) inside the island. Removed:
+  the main, status and settings windows, the old menu-bar panel, the ⋯ menu,
+  the duplicate "Recent answers" view, the Debug badge.
+- Reports: `ReportRef` for local turns and imports; Review Pack gets a
+  "Review Pack" title and a "Source" line in the Core (the only Core change;
+  goldens updated) and an app-written pack for imports in the same format.
+- Cloud: researched in the official docs (cloud sessions run on Anthropic
+  VMs; local hooks cannot see them; `--teleport` changes the repository);
+  manual Import with verbatim storage, dedup and provenance labels.
+- Attachments: images added by the user, private copies with checksum;
+  Copy Image, drag, Copy Text + Images (multi-item pasteboard).
+- Relay the bear: original vector mascot, facts-only moods, pointer gaze
+  only inside the island, blinking only while visible, Reduce Motion and an
+  off switch.
+- Debug/Release: Debug is "Prompt Relay Dev" with its own icon; Release
+  steps aside at the notch while Debug runs; Settings → About offers to quit
+  the other build on request. Root cause: two bundle IDs launched at once.
+- Verified on this Mac: `swift test` and `xcodebuild test` 109 tests,
+  0 failures (1 opt-in skipped); Xcode Debug/Release BUILD SUCCEEDED;
+  Python 141 tests OK; a 100 KB+ report through the real hook (twice) copied
+  byte-identical; real island captured in every view; idle 0 % CPU,
+  ≈164 MB RSS (Debug).
+- **Not verified (needs the owner):** text + images pasted into ChatGPT
+  (desktop and web); a real cloud report import; a real long local report
+  through the new UI; the floating island on an external display; real
+  pointer hover/focus after the redesign.
+
 ## Next agreed stage
-Phase 3B is done and accepted on the owner's Mac. No next phase is approved.
-Candidates: Phase 3 leftovers (project/retention/delete settings, app icon,
-launch at login), the open Mac checks (plugin M14/M15, CLI Stop, Phase 1.5
-items), or Phase 5 readiness. Each needs the owner's approval.
+Phase 4 waits for the owner's validation on the real Mac (the checks
+above). After it: push the branch. No next phase is approved.
