@@ -207,7 +207,20 @@ SwiftUI app ──exec──► <python> bin/prompt-relay <command> --json ─�
   stdout or decides anything, so other tools' hooks (NotchBuddy) behave as
   before.
 
-## 11. Boundaries with the future macOS app (ADR-004, ADR-006)
+## 11. The macOS app (Phase 3A, ADR-004, ADR-006, ADR-009)
+
+`macos/` is a Swift package: `PromptRelayKit` (API models, the CLI adapter,
+clipboard and FSEvents services, the one `AppModel`, SwiftUI components and
+surfaces) and `PromptRelayApp` (lifecycle only). Details: `docs/MACOS_APP.md`.
+
+```
+ menu-bar panel ─┐                      ┌─► CoreClient ──(python -I -S -B prompt-relay … --json)──► Python Core
+ main window ────┼─► AppModel (@Observable)                                              (reads the store)
+ (notch, 3B) ────┘        │             └─► ClipboardService ──► NSPasteboard (.string, read-back verified)
+                          └─◄ StoreWatcher (FSEvents on events/*.jsonl, config.json) ── refresh
+```
+
+Boundaries:
 
 - The Core owns the data format, correlation and export semantics. The app
   reads them through the JSON API (ADR-006) and must not parse the JSONL

@@ -287,3 +287,42 @@ of the package into `plugin/`: two copies that can drift. (d) A plugin hook
   local-path marketplace does not.
 
 **Status.** Accepted (Phase 2B). Mac validation pending (LOCAL_MAC_VALIDATION §11).
+
+---
+
+## ADR-009: Native app = Swift package over the JSON CLI, with the Core bundled
+
+**Context.** Phase 3A needs a native app that lists sessions and copies
+answers without a terminal, and later a notch UI. ADR-006 already fixes the
+interface (CLI JSON API v1). Open points were the app's structure, where its
+copy of the Core comes from, and how it learns about new answers.
+
+**Decision.**
+1. A Swift package in `macos/`: a reusable `PromptRelayKit` library and a
+   thin `PromptRelayApp` executable. Every surface (menu-bar panel, window,
+   later the notch) composes the same components over one `@Observable`
+   `AppModel`.
+2. `scripts/build-macos-app.sh` assembles `Prompt Relay.app` and copies the
+   Core (`bin/prompt-relay`, `plugin/prompt_relay`) into
+   `Contents/Resources/core` in the repository's layout. The hook keeps
+   running from the plugin; the app only reads through the CLI.
+3. The app runs the CLI as `python -I -S -B` with a minimal environment and
+   finds Python with the plugin launcher's rules.
+4. Updates come from FSEvents on the data dir (`events/*.jsonl`,
+   `config.json`), with a 30 s timer only while a surface is visible when
+   watching is impossible, plus manual Refresh.
+5. macOS 14 minimum (`@Observable`, `MenuBarExtra`, `ContentUnavailableView`).
+
+**Alternatives.** (a) An Xcode project: harder to review and to build from a
+script; SwiftPM builds and tests from the command line. (b) Running the
+CLI from the checkout: the app would break when the checkout moves.
+(c) Polling the CLI: wasted process starts. (d) A Swift JSONL reader:
+rejected by ADR-006.
+
+**Consequences.** + No logic is duplicated; golden files test both sides.
++ The app works without the checkout. − The bundled Core can be older or
+newer than the plugin's copy; both read the same versioned store
+(`DATA_MODEL.md`) and the app checks `api_version`. − Each call starts
+Python (≈40–60 ms). − Local ad-hoc signing only; notarization is Phase 5.
+
+**Status.** Accepted (Phase 3A). Verified on the owner's Mac.

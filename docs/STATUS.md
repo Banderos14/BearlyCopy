@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-29, local Mac session (Phase 2B plugin validation),
+Last updated: 2026-10-29, local Mac session (Phase 3A native macOS app),
 branch `claude/loving-mccarthy-ossw3q`.
 
 ## Completed
@@ -31,6 +31,13 @@ branch `claude/loving-mccarthy-ossw3q`.
   `via=`), and the Core moved to `plugin/prompt_relay`. One defect found by
   the new tests and fixed: the launcher could not resolve its own directory
   with a minimal `PATH`. 137 tests.
+- **Phase 3A — native macOS app** (Mac): SwiftUI + AppKit menu-bar app in
+  `macos/` (ADR-009, `docs/MACOS_APP.md`): projects, sessions and answers,
+  full verbatim answer, Copy Response / Copy Context through NSPasteboard
+  with read-back confirmation, connection status from `doctor --json`, empty
+  and error states, FSEvents live updates with a fallback. Integration only
+  through the JSON API v1; the Core is bundled into the app. 39 Swift tests.
+  The Python Core was not changed.
 
 ## Verification matrix
 ### Verified in Cloud (real code, real processes, Linux)
@@ -97,6 +104,16 @@ Real payloads (redacted) are fixtures: `tests/fixtures/real_*.json`.
 | Coexistence with NotchBuddy | both ran on Stop, `hookErrors: []`; `hooks`/`permissions` in `~/.claude/settings.json` identical |
 | Launcher interpreter | pinned Xcode Python 3.9.6 used (`doctor`: hook python ok) |
 
+### Verified on macOS — Phase 3A app (2026-10-29)
+| Item | Evidence |
+|---|---|
+| Build | `scripts/build-macos-app.sh` (Xcode 27.0, Swift 6.4, macOS SDK 27.0), ad-hoc signed; signature still valid after use (`-B`: no bytecode in the bundle) |
+| Swift tests | 39 run, 0 failures, 1 opt-in render test skipped by default |
+| Real Core from the app | integration tests against the checkout's Core with a temp data dir; the bundled Core lists the real session |
+| Real history in the UI | offscreen renders with the user's history (read-only): the Phase 2B plugin answer, status screen with 5 `via=plugin` events |
+| Owner's check | menu-bar icon opens the panel; **Copy Response** copied the answer; ⌘V pasted it without loss |
+| Idle cost | 0 % CPU, ≈120 MB RSS |
+
 ### Verified with Mocks
 | Item | Mock |
 |---|---|
@@ -123,7 +140,7 @@ Real payloads (redacted) are fixtures: `tests/fixtures/real_*.json`.
 | Launcher fallback without a pin (Homebrew / CLT order) on macOS | M11 with `pin-python --clear` |
 
 ### Not Implemented (by design in this phase)
-SwiftUI/AppKit app, notch UI, settings-merge installer (not needed: plugin
+Notch UI (Phase 3B), app settings UI (enable projects, retention, delete), launch at login, app icon, notarization, settings-merge installer (not needed: plugin
 first, ADR-008), ChatGPT integration, clipboard import, encryption at rest,
 SessionStart/SessionEnd/Notification handling, automatic pruning (deliberately
 never automatic), per-record expiry inside a session.
@@ -235,7 +252,15 @@ GitHub Actions run 40910039983 (`ab57b74`) failed on Linux / Python 3.13:
 - **Not reproduced:** the exact detached race on git 2.56 in the cloud.
   Building git 2.56 here was not permitted, so CI on git 2.56 is the check.
 
+## Phase 3A changes
+- New: `macos/` (Swift package), `scripts/build-macos-app.sh`,
+  `docs/MACOS_APP.md`, ADR-009.
+- No change to the Python Core, the plugin or the JSON API.
+- Known limitations: `docs/MACOS_APP.md` §8 (Python start per call, ≈120 MB
+  RSS, no settings UI or app icon, local signing only).
+
 ## Next agreed stage
-Phase 2B is validated on the Mac for its main path. Still open on the Mac:
-M14/M15, CLI Stop, ⌘V paste and the Phase 1.5 items above. Proposed next:
-Phase 3, the native macOS UI (ROADMAP). It needs the owner's approval.
+Phase 3A is done and verified on the owner's Mac. Proposed next: **Phase 3B —
+notch UI** over the same `PromptRelayKit` components. It needs the owner's
+approval. Still open on the Mac: plugin M14/M15, CLI Stop, and the Phase 1.5
+items above (the ⌘V paste was confirmed with the app).

@@ -84,10 +84,12 @@ Done when every fixture scenario passes, uninstall leaves other hooks
 byte-identical, and the Mac check passes.
 
 ## Phase 3 — macOS app foundation (M)
-Menu-bar app (SwiftUI + AppKit); history list; full-response preview; Copy
-Response and Copy Context buttons; settings (enabled projects, delete
-history); plugin-based install with uninstall. The notch UI is designed but
-off by default.
+**3A ✅ (2026-10-29):** menu-bar app (SwiftUI + AppKit, `macos/`); projects,
+sessions and answers; full-response view; Copy Response and Copy Context;
+connection status; live updates (FSEvents). `docs/MACOS_APP.md`, ADR-009.
+**3B — next, needs approval:** notch surface over the same components.
+Still open for Phase 3: settings (enabled projects, retention, delete
+history), app icon, launch at login.
 Decision points: keep the Python handler or port it to Swift. Move to SQLite
 if a session file exceeds ~10 MB or listing exceeds ~100 ms.
 

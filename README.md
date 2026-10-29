@@ -28,15 +28,18 @@ Local-first · privacy-first · no AI APIs · no network · opt-in per project �
 verbatim capture · never blocks or steers Claude Code.
 
 ## Status
-**Proof of concept (Phase 2B). Not a product release.**
+**Proof of concept (Phase 3A). Not a product release.**
 - Done and tested in the cloud (Linux): the hook handler, storage, session
   correlation, Copy Response / Copy Context, the JSON API for the future app,
   history management, the Claude Code plugin package, and 137 automated tests.
 - Verified on a real Mac (Phase 1.5): Claude Desktop → Stop hook → Prompt
   Relay → system clipboard, byte-exact. Further Mac checks are open
   (`docs/STATUS.md`).
-- Not started: the macOS app and the notch UI. The plugin has not yet been
-  installed on a real Mac (`docs/LOCAL_MAC_VALIDATION.md` §11).
+- Native macOS menu-bar app (Phase 3A): browse answers and copy them with
+  one click, no terminal. Build: `scripts/build-macos-app.sh --install`
+  (`docs/MACOS_APP.md`).
+- The plugin is installed and verified on a real Mac
+  (`docs/LOCAL_MAC_VALIDATION.md` §11). Not started: the notch UI.
 
 ## Install as a Claude Code plugin
 ```bash
