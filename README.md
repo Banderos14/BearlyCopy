@@ -30,7 +30,8 @@ verbatim capture · never blocks or steers Claude Code.
 ## Status
 **Proof of concept (Phase 1). Not a product release.**
 - Done and tested in the cloud (Linux): the hook handler, storage, session
-  correlation, Copy Response / Copy Context, and 59 automated tests.
+  correlation, Copy Response / Copy Context, and 79 automated tests
+  (after the self-review in `docs/SELF_REVIEW.md`).
 - Pending on a real Mac: the real clipboard (`pbcopy`) and real Claude
   Code / Claude Desktop hook runs (see `docs/LOCAL_MAC_VALIDATION.md`).
 - Not started: the macOS app, notch UI and hook installer.
@@ -53,13 +54,14 @@ bin/prompt-relay copy [--verify]              # Copy Response → clipboard (mac
 bin/prompt-relay context                      # preview Copy Context
 bin/prompt-relay copy-context                 # Copy Context → clipboard (secret check first)
 bin/prompt-relay delete --all --yes           # erase history
-bin/prompt-relay hook-config --python /usr/bin/python3   # print hook JSON for `claude --settings`; writes nothing
+bin/prompt-relay hook-config                  # print hook JSON for `claude --settings`; pins this Python; writes nothing
 ```
 Hooks are **not** installed automatically. For a safe, isolated trial, follow
 `docs/LOCAL_MAC_VALIDATION.md`.
 
-Requirements: macOS on Apple Silicon, with `/usr/bin/python3` 3.9+ (Xcode
-Command Line Tools). No other dependencies.
+Requirements: macOS on Apple Silicon and any Python 3.9+. That can be
+`/usr/bin/python3` from the Xcode Command Line Tools, Homebrew or python.org.
+`bin/prompt-relay doctor` checks it. No other dependencies.
 
 ## Documentation
 | Doc | Content |
@@ -76,3 +78,4 @@ Command Line Tools). No other dependencies.
 | [LOCAL_MAC_VALIDATION](docs/LOCAL_MAC_VALIDATION.md) | step-by-step Mac checks |
 | [CLOUD_TO_LOCAL_HANDOFF](docs/CLOUD_TO_LOCAL_HANDOFF.md) | how to continue in a local session |
 | [STATUS](docs/STATUS.md) | current state, verification matrix, risks |
+| [SELF_REVIEW](docs/SELF_REVIEW.md) | Core audit results and the Phase 1.5 plan |

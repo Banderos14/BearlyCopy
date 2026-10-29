@@ -1,8 +1,10 @@
 # Test plan
 
 Run everything: `scripts/check.sh` (unit + integration on every available
-Python, plus a hook latency benchmark). One file:
-`python3 -m unittest tests.test_scenarios -v`.
+Python, plus a hook latency benchmark). A subset:
+`python3 -m unittest discover -s tests -k s08 -v`. Tests import `helpers`
+from `tests/`, so always use `discover -s tests`. A plain
+`python3 -m unittest tests.test_scenarios` fails with `ModuleNotFoundError`.
 
 Isolation guarantees for every automated test: a fresh temporary
 `PROMPT_RELAY_HOME` and project dirs; the clipboard is the **file MOCK
@@ -17,6 +19,8 @@ clipboard.
 | Hook | allowlist; `CLAUDE_PROJECT_DIR` precedence; prefix is not a parent; corrupt config fails closed; unhandled events not stored; oversized payload; unknown fields preserved; log has no message text |
 | Export | fence escaping; secret scan blocks Copy Context and never echoes secrets; git section + **.git untouched** during collection; git unavailable; hook-config is exec form; enable refuses `/` and `$HOME`; delete needs `--yes`; session prefix / project filters |
 | Platform | default data dirs (darwin/linux); clipboard backend selection; pbcopy call uses a UTF-8 locale and no shell (mocked subprocess); secret patterns |
+| Audit regressions | prompt without prompt_id + Stop with one; prompt_id match keeps other pending prompts; inferred link never upgraded; last Stop without text has no final response; API error after Stop is surfaced; events without session_id never linked; foreign-session line ignored; torn + NUL-filled tail; existing root dir not chmod-ed; entry point exits 0 when the package is missing; concurrent `enable`; Copy Response secret warning; same-directory match by inode (mocked); repo `core.fsmonitor` not executed |
+| Schema conformance | every `documented_*.json` (and future `real_*.json`) fixture: stored verbatim and exactly once across three JSON encodings (UTF-8, `\u` escapes, pretty-printed CRLF with reordered keys); documented fields interpreted; documented turns; every fixture text byte-exact via `show` |
 | Source safety | no network modules, `shell=True`, `eval`/`exec`, `os.system` in sources; the hook module never prints; `.gitignore` entries |
 
 ## 2. Required scenarios (`tests/test_scenarios.py`, real executable in subprocesses)

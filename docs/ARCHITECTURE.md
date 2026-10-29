@@ -86,15 +86,23 @@ The full rules are in the `correlation.py` docstring. Summary:
 | Situation | Result | `link` |
 |---|---|---|
 | response `prompt_id` == a captured prompt's `prompt_id` | linked | `prompt_id` (confirmed) |
-| response has a `prompt_id` that was never captured | its own turn, no request | `none` |
+| response has a `prompt_id` that was never captured, exactly one prompt pending and that prompt has **no** `prompt_id` | linked | `sequence` (inferred) |
+| response has a `prompt_id` that was never captured, otherwise | its own turn, no request | `none` |
 | no `prompt_id`; exactly one prompt since the last response | linked | `sequence` (inferred, labeled as such in exports) |
 | no `prompt_id`; several prompts pending | its own turn; the prompts are listed as candidates | `ambiguous` |
 | no `prompt_id`; no new prompt; `stop_hook_active` or the previous Stop had background tasks | joins the previous turn | unchanged |
 | no `prompt_id`; no new prompt; otherwise | its own turn | `none` |
 
 Further rules:
+- A `prompt_id` match leaves other pending prompts pending. A link inferred by
+  order is never upgraded to `prompt_id` by a later response.
+- Events stored without a `session_id` (`_no-session` file) are never linked:
+  each becomes its own turn with `link=none`.
+- Reading a session file ignores, and counts, records whose `session_id` does
+  not belong to that file.
 - One turn can hold several responses: stop-hook continuations and background
-  wake-ups. The **final response** is the last `Stop` that has text.
+  wake-ups. The **final response** is the last `Stop`. If that Stop carries no
+  text, there is no final response; older text is never promoted.
 - Status is derived from the last response event: `stop_received`,
   `stop_received_background_tasks_pending`, `stop_received_without_text`,
   `api_error`. Without responses, the status is `awaiting_response` or

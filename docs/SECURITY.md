@@ -18,7 +18,7 @@
 | T6 | Hook breaks or steers Claude Code (blocking, injected context, forced continuation) | Exit 0 always; empty stdout; no decisions; bounded time (lock wait ≤3 s, `timeout: 10`); kill switch `PROMPT_RELAY_DISABLE=1` |
 | T7 | Command injection from message text | Text is only ever data. No shell (`shell=True` banned), exec-form hook config, no `eval`. Fixtures include `$(rm -rf /)` |
 | T8 | Path traversal through `session_id` | Unsafe ids are hashed into the filename; tested with `../`, `/`, dot-files |
-| T9 | Malicious repository config runs code during git metadata collection | `core.fsmonitor=false`, `GIT_OPTIONAL_LOCKS=0`, no pager or prompts, timeout, git only at export time; `.git` checked unchanged in tests |
+| T9 | Repository config runs code during git metadata collection | **Partly mitigated.** `core.fsmonitor=false` (tested: a repo-configured fsmonitor does not run), `GIT_OPTIONAL_LOCKS=0`, no pager or prompts, a timeout, git only at export time, `.git` checked unchanged. **Not mitigated:** `git status` can still run a clean/process *filter* defined in the repo's `.git/config` (verified in the audit). Setting one requires write access to `.git/config`, which already gives code execution on any git command the user or Claude Code runs there. The risk equals running `git status` yourself |
 | T10 | Hook installation damages user settings | PoC installs nothing. Planned installer: validate JSON, back up, merge (never replace), idempotency marker, dry-run diff, reversible uninstall, explicit consent (ADR-002) |
 | T11 | Capture of unintended projects | Opt-in allowlist; fails closed on a broken config; refuses `/` and `$HOME` |
 | T12 | Denial of service through huge stdin | 64 MiB cap; larger payloads are rejected without storing |
@@ -30,10 +30,15 @@
 - History is stored **unencrypted** (protected by the account, permissions
   and FileVault). Encryption at rest with a Keychain key is future work.
 - The secret scan is heuristic: it has false negatives and false positives.
-- Python 3.9 on macOS comes from the Xcode CLT. With the default
-  `hook-config`, the shebang `/usr/bin/env python3` runs whichever `python3`
-  comes first on `PATH`. Use `hook-config --python /usr/bin/python3` to pin
-  the interpreter; LOCAL_MAC_VALIDATION does this.
+- Interpreter: `hook-config` pins the absolute path of the Python that runs
+  it (override with `--python`). Hooks therefore never resolve `python3`
+  through `PATH`. Nothing assumes `/usr/bin/python3`; without the Xcode CLT
+  that path is only an installer stub, and `doctor` reports it. If the pinned
+  interpreter or the checkout later disappears or is too old, the entry point
+  still exits 0 with a `startup_failed` line on stderr, and capture stops
+  silently until `hook-config` is regenerated.
+- Copy Context sends absolute local paths (project dir, which contains the
+  macOS user name) to ChatGPT when pasted. Visible in the `context` preview.
 - Payload text is stored verbatim by design. If Claude prints a secret, it is
   in history until deleted.
 

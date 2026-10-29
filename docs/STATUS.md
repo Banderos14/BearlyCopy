@@ -8,7 +8,9 @@ Last updated: 2026-10-29, cloud session (Linux container), branch
   research, data model, threat model, UI foundation research.
 - **Phase 1 — cloud-verifiable part**: hook handler, JSONL store,
   correlation, CLI (show / copy / context / copy-context / sessions / turns
-  / enable / disable / delete / hook-config / doctor), and 59 automated tests.
+  / enable / disable / delete / hook-config / doctor), and automated tests.
+- **Core self-review** (`docs/SELF_REVIEW.md`): 14 confirmed defects fixed in
+  `1d71087`, each with a regression test. The suite now has 79 tests.
 
 ## Verification matrix
 ### Verified in Cloud (real code, real processes, Linux)
@@ -24,11 +26,15 @@ Last updated: 2026-10-29, cloud session (Linux container), branch
 | No network constructs in sources; sockets patched to fail during hook + all export commands | `test_s16`, `SourceSafetyTests` |
 | No captured text in the repository or in `git status` | `test_s17` |
 | Python 3.9 compatibility (macOS CLT version) | full suite on 3.9.25 and 3.13.17 |
-| Hook latency | `scripts/check.sh`: median ≈ 60–73 ms, p95 ≈ 78–90 ms (cloud VM, 20 KB payload) |
+| Documented hook schemas (all documented fields, three JSON encodings, verbatim, single storage) | `SchemaConformanceTests` |
+| Hook entry point exits 0 when the package or Python is unusable | `test_hook_entry_point_exits_zero_when_package_missing` |
+| Concurrent `enable` without lost updates | `test_concurrent_enable_keeps_every_project` |
+| Repo-configured `core.fsmonitor` not executed during git collection | `test_repo_configured_fsmonitor_is_not_executed` |
+| Hook latency | `scripts/check.sh`: median 72.6 ms, p95 88.2 ms (cloud VM, 20 KB payload) |
 
-Test run (2026-10-29): Python 3.13.17 — 59 run, OK, 1 skipped (root);
-Python 3.9.25 — 59 run, OK, 1 skipped (root); as user `nobody` — 59 run,
-OK, 0 skipped. Failures: 0.
+Test run after the self-review (2026-10-29): Python 3.13.17 — 79 run, OK,
+1 skipped (root); Python 3.9.25 — 79 run, OK, 1 skipped (root); as user
+`nobody` — 79 run, OK, 0 skipped. Failures: 0.
 
 ### Verified with Mocks
 | Item | Mock |
@@ -36,6 +42,7 @@ OK, 0 skipped. Failures: 0.
 | Copy Response / Copy Context to the clipboard, byte-exact, `--verify` read-back | file MOCK clipboard (`PROMPT_RELAY_CLIPBOARD=file:…`) |
 | pbcopy invocation: exact argv, UTF-8 bytes, UTF-8 locale, no shell | `subprocess.run` patched (`test_pbcopy_backend_sets_utf8_locale`) |
 | macOS default data path | `paths.data_dir(platform="darwin")` |
+| Same directory under another spelling (case-insensitive APFS) | `os.stat` patched (`test_enabled_project_matched_by_identity`) |
 | Hook payloads | synthetic fixtures copied from the documented examples, not captured from a real Claude run |
 
 ### Implemented, requires macOS validation
@@ -45,7 +52,8 @@ OK, 0 skipped. Failures: 0.
 | Real Claude Code CLI hooks (`claude --settings`) | M3 |
 | Claude Desktop local Code session hooks | M4 |
 | `prompt_id` present in real Stop payloads (D1); multi-tool final text (D2); background wake-up (D3); Desktop's Claude Code version (D4) | M3/M4 |
-| `/usr/bin/python3` from Xcode CLT runs the suite | §2 |
+| The chosen `$PR_PYTHON` (CLT `/usr/bin/python3`, Homebrew or python.org) runs the suite; `doctor` reports the CLT state correctly | §1–§2 |
+| `agent_id` on main-session events (D6) | M3 prompt 5 |
 
 ### Not Implemented (by design in this phase)
 SwiftUI/AppKit app, notch UI, hook installer (plugin or settings merge),
@@ -63,6 +71,10 @@ output, encryption at rest, SessionStart/SessionEnd/Notification handling.
 4. The Python handler needs the Xcode CLT on the Mac (ADR-004).
 5. History is stored unencrypted (SECURITY §3).
 6. The OpenNook API is not frozen, and it requires macOS 15+ (UI_RESEARCH).
+7. `git status` can run a clean filter configured in a project's
+   `.git/config` (SECURITY T9). The risk equals running git there yourself.
+8. Without `prompt_id`, an interrupt or a prompt blocked by another hook
+   makes the next answer `ambiguous` (by design).
 
 ## Cloud environment notes
 - Swift toolchain unavailable: `download.swift.org` is blocked by the
@@ -72,6 +84,6 @@ output, encryption at rest, SessionStart/SessionEnd/Notification handling.
 
 ## Next agreed stage
 None approved yet. Proposed next steps, awaiting the owner's decision:
-1. Phase 1.5 on the Mac: run `docs/LOCAL_MAC_VALIDATION.md` and record the
-   results here.
+1. Phase 1.5 on the Mac: run `docs/LOCAL_MAC_VALIDATION.md` (plan in
+   `docs/SELF_REVIEW.md`) and record the results here.
 2. Phase 2 tasks that can run in the cloud (ROADMAP Phase 2).

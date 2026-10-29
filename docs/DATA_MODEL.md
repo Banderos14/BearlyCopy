@@ -12,7 +12,8 @@ as the SwiftUI app. Change it only together with `store.SCHEMA_VERSION`.
 
 ```
 <root>/                      0700
-  config.json                0600
+  config.json                0600  replaced atomically (unique tmp + rename)
+  config.lock                0600  serializes CLI enable/disable; the hook never takes it
   handler.log, handler.log.1 0600  rotated at 256 KiB; metadata only
   events/                    0700
     <session-key>.jsonl      0600
@@ -74,6 +75,11 @@ the earlier copy was received within 120 s. Identical prompts without
   The next writer starts a new line.
 - Skip `schema` values other than 1 as *unsupported*. Never rewrite them.
 - Take a shared `flock` while reading, if one can be obtained within 3 s.
+- Ignore, and count, records whose `session_key(payload.session_id)` differs
+  from the file's key. They never join that session.
+- The root directory is created 0700 if missing, but an existing root is
+  never chmod-ed: it may be a directory the user pointed `PROMPT_RELAY_HOME`
+  at. `events/` is always 0700.
 
 ## Normalized event (read side)
 

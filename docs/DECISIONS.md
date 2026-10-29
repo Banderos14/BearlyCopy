@@ -130,8 +130,10 @@ not need Node. (c) A shell script with `jq`: `jq` is not on stock macOS, and
 robust locking and Unicode handling are hard.
 
 **Consequences.** + Fully tested today. + Zero install on a developer Mac.
-− Python 3.9 requires the Xcode CLT; the `/usr/bin/python3` stub prompts to
-install them otherwise. This is listed as a prerequisite. − Possible later
+− Needs some Python 3.9+. `/usr/bin/python3` works only with the Xcode CLT;
+without them it is an installer stub. Homebrew or python.org Python work
+too. `hook-config` pins the absolute interpreter path, so hooks never depend
+on `PATH` (audit fix, 2026-10-29). − Possible later
 port of the handler to Swift (ROADMAP Phase 3 decision), limited by the
 format contract and fixtures. − About 60 ms interpreter start per hook;
 acceptable against a 10 s timeout.

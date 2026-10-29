@@ -156,3 +156,6 @@ nothing.
 | D3 | Behavior of Stop after background tasks wake the session (same `prompt_id`?) | modeled as "same prompt_id → same turn". Verify locally |
 | D4 | Desktop Code tab Claude Code version and hook support parity | unverified; requires macOS |
 | D5 | Whether pbcopy preserves NUL characters | Prompt Relay stores NUL losslessly. The clipboard result needs a macOS check |
+| D6 | `agent_id` is a common field ("subagent or in-process teammate the hook fires in"). Can a Stop/UserPromptSubmit with `agent_id` reach the main session's hooks? | The docs say Stop is for the main agent, and SubagentStop is not connected. `agent_id` is stored but not used for correlation. Verify with a subagent/teammate turn on the Mac (LOCAL_MAC_VALIDATION M3 prompt 5) |
+| D7 | A prompt blocked by *another* UserPromptSubmit hook (hooks run in parallel) is still stored by Prompt Relay but gets no Stop. Without `prompt_id`, the next answer becomes `ambiguous` | By design (the handler cannot see other hooks' decisions); documented |
+| D8 | Interrupted turns (Esc) produce no Stop. Without `prompt_id`, the next answer becomes `ambiguous` instead of being guessed | By design; `prompt_id` avoids it |

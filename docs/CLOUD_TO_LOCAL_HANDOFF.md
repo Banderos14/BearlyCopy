@@ -6,9 +6,9 @@ conversation. This file and the other docs are the full context.
 ## 1. Git state
 - Repository: `Banderos14/prompt-relay`
 - Branch: `claude/loving-mccarthy-ossw3q` (not merged into `main`)
-- Commits: `75688ef` (core + tests), `cd34af4` (docs + ADRs), then
-  the commit that records these SHAs (the branch tip). Confirm with
-  `git log --oneline -5`. The tip must contain this file.
+- Commits: `75688ef` (core + tests), `cd34af4` (docs + ADRs), `4ff30b9`
+  (handoff SHAs), `1d71087` (self-review fixes + regression tests), then the
+  self-review docs commit (the branch tip). Confirm with `git log --oneline -6`.
 
 ## 2. Project state
 Phase 0 is complete. The cloud-verifiable part of Phase 1 is complete. The
@@ -38,20 +38,22 @@ Core, data format as contract · ADR-005 Opt-in capture, explicit export,
 secret warnings. Details are in `docs/DECISIONS.md`.
 
 ## 5. Test results (cloud, 2026-10-29)
-- 59 tests on Python 3.13.17 and 3.9.25: all passed. 1 skipped as root
-  (permission test); it passes as a non-root user.
-- Hook latency: median ≈ 60–73 ms.
+- After the self-review: 79 tests on Python 3.13.17 and 3.9.25, all passed.
+  1 skipped as root (permission test); it passes as a non-root user.
+- Hook latency: median 72.6 ms.
+- Audit findings and fixes: `docs/SELF_REVIEW.md`.
 - Failed checks: none. Not run: anything on macOS, and any real Claude hook
   invocation.
 
 ## 6. Setup and commands on macOS
-Prerequisites: Xcode Command Line Tools (`xcode-select --install`), git,
-Claude Code CLI and/or Claude Desktop.
+Prerequisites: any Python 3.9+ (Xcode Command Line Tools' `/usr/bin/python3`,
+Homebrew or python.org), git, Claude Code CLI and/or Claude Desktop.
 ```bash
 git clone https://github.com/Banderos14/prompt-relay.git ~/code/prompt-relay
 cd ~/code/prompt-relay && git checkout claude/loving-mccarthy-ossw3q
-PYTHONS=/usr/bin/python3 scripts/check.sh
-bin/prompt-relay doctor
+export PR_PYTHON=/usr/bin/python3   # any Python 3.9+; /usr/bin/python3 only if `xcode-select -p` succeeds
+PYTHONS="$PR_PYTHON" scripts/check.sh
+"$PR_PYTHON" bin/prompt-relay doctor
 ```
 - Hook validation: `docs/LOCAL_MAC_VALIDATION.md` §4 (CLI, `--settings`) and §5
   (Desktop, sandbox `settings.local.json`).
@@ -87,11 +89,14 @@ not have its conversation. Start by reading, in order: CLAUDE.md,
 docs/STATUS.md, docs/CLOUD_TO_LOCAL_HANDOFF.md, docs/ARCHITECTURE.md,
 docs/HOOKS_RESEARCH.md, docs/LOCAL_MAC_VALIDATION.md.
 
+Also read docs/SELF_REVIEW.md (audit results and the Phase 1.5 plan).
+
 Then:
 1. Confirm the branch is claude/loving-mccarthy-ossw3q, show `git log --oneline -5`,
    and confirm the working tree is clean.
 2. Run the read-only environment check (LOCAL_MAC_VALIDATION §1) and the
-   automated suite (§2) with /usr/bin/python3. Report the exact results.
+   automated suite (§2) with the chosen Python 3.9+ ($PR_PYTHON; do not run
+   /usr/bin/python3 if `xcode-select -p` fails). Report the exact results.
 3. Walk me through LOCAL_MAC_VALIDATION §3–§9 step by step. Run the commands
    you can run yourself. Ask me to do the steps that need the Claude Desktop
    GUI, or that replace my clipboard, and wait for my confirmation before
