@@ -3,7 +3,11 @@
 Rules (docs/ARCHITECTURE.md, "Session correlation"):
 1. Events of different sessions are never combined: callers pass one session.
 2. A response whose ``prompt_id`` matches a captured prompt is linked to it
-   with link="prompt_id" (confirmed by Claude Code metadata).
+   with link="prompt_id" (confirmed by Claude Code metadata). Other pending
+   prompts stay pending.
+   A response whose ``prompt_id`` was never captured is linked by order only
+   when exactly one prompt is pending and that prompt has no ``prompt_id``
+   of its own (no conflicting evidence); otherwise it gets link="none".
 3. A response without ``prompt_id`` is linked by order only when exactly one
    prompt arrived since the previous response: link="sequence" (inferred).
    With no new prompt, a continuation (stop_hook_active, or the previous
@@ -12,7 +16,11 @@ Rules (docs/ARCHITECTURE.md, "Session correlation"):
    with link="none". With several new prompts it becomes its own turn with
    link="ambiguous" and those prompts are listed as candidates, never guessed.
 4. One prompt may get several responses (stop-hook continuations, background
-   work waking the session). The last ``stop`` is the final response.
+   work waking the session). The last ``stop`` is the final response; if that
+   Stop carried no text, there is no final response (an earlier, superseded
+   text is never promoted).
+5. ``link_events=False`` (events whose session is unknown) disables linking:
+   every event becomes its own turn with link="none".
 """
 
 from __future__ import annotations
@@ -47,11 +55,16 @@ class Turn:
     trailing: bool = False  # no response event was received after this turn's prompt
 
     @property
-    def final_response(self) -> Optional[Event]:
+    def last_stop(self) -> Optional[Event]:
         for ev in reversed(self.responses):
-            if ev.kind == "stop" and ev.text is not None:
+            if ev.kind == "stop":
                 return ev
         return None
+
+    @property
+    def final_response(self) -> Optional[Event]:
+        stop = self.last_stop
+        return stop if stop is not None and stop.text is not None else None
 
     @property
     def last_event(self) -> Optional[Event]:
@@ -78,7 +91,7 @@ class Turn:
         return ev.project_dir if ev else None
 
 
-def build_turns(events: List[Event]) -> List[Turn]:
+def build_turns(events: List[Event], link_events: bool = True) -> List[Turn]:
     turns: List[Turn] = []
     by_prompt_id: Dict[str, Turn] = {}
     since_last_response: List[Turn] = []  # prompt turns created after the last response
@@ -89,6 +102,12 @@ def build_turns(events: List[Event]) -> List[Turn]:
         return turn
 
     for ev in events:
+        if not link_events:
+            if ev.kind == "prompt":
+                new_turn(prompt=ev)
+            else:
+                new_turn(link=LINK_NONE).responses.append(ev)
+            continue
         if ev.kind == "prompt":
             turn = new_turn(prompt=ev)
             if ev.prompt_id:
@@ -99,12 +118,23 @@ def build_turns(events: List[Event]) -> List[Turn]:
         target: Optional[Turn] = None
         if ev.prompt_id and ev.prompt_id in by_prompt_id:
             target = by_prompt_id[ev.prompt_id]
-            if target.prompt is not None:
+            # Confirmed only if the prompt itself carries this id; a link
+            # inferred by order is never upgraded by a later response.
+            if target.prompt is not None and target.prompt.prompt_id == ev.prompt_id:
                 target.link = LINK_PROMPT_ID
-        elif ev.prompt_id:
-            # The prompt for this id was never captured (capture enabled
-            # mid-turn, or the prompt event was lost). Do not guess.
-            target = new_turn(link=LINK_NONE)
+            target.responses.append(ev)
+            since_last_response = [t for t in since_last_response if t is not target]
+            continue
+        if ev.prompt_id:
+            pending = [t for t in since_last_response if not t.responses]
+            if len(pending) == 1 and pending[0].prompt is not None and not pending[0].prompt.prompt_id:
+                # The prompt event carried no prompt_id; order is the only link.
+                target = pending[0]
+                target.link = LINK_SEQUENCE
+            else:
+                # The prompt for this id was never captured (capture enabled
+                # mid-turn, or the prompt event was lost). Do not guess.
+                target = new_turn(link=LINK_NONE)
             by_prompt_id[ev.prompt_id] = target
         else:
             pending = [t for t in since_last_response if not t.responses]

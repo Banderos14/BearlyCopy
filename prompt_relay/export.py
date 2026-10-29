@@ -48,14 +48,37 @@ LINK_TEXT = {
 }
 
 
+API_ERROR_AFTER_STOP = ("Claude stopped with a message, but the turn later ended with an API error "
+                        "(StopFailure); the work may be incomplete.")
+
+
 class ExportError(Exception):
     pass
+
+
+def status_text(turn: c.Turn) -> str:
+    if turn.status == c.STATUS_API_ERROR and turn.final_response is not None:
+        return API_ERROR_AFTER_STOP
+    return STATUS_TEXT.get(turn.status, turn.status)
+
+
+def warnings_for(turn: c.Turn) -> List[str]:
+    """Reasons to treat the final response with caution (shown on stderr)."""
+    final = turn.final_response
+    if final is None:
+        return []
+    found = []
+    if turn.status == c.STATUS_API_ERROR:
+        found.append(API_ERROR_AFTER_STOP)
+    elif final.has_background_tasks:
+        found.append("background tasks were still running when Claude stopped; the work may not be finished")
+    return found
 
 
 def response_text(turn: c.Turn) -> str:
     final = turn.final_response
     if final is None or final.text is None:
-        raise ExportError(STATUS_TEXT.get(turn.status, "no final response"))
+        raise ExportError(status_text(turn))
     return final.text
 
 
@@ -76,9 +99,9 @@ def request_text(turn: c.Turn) -> Optional[str]:
     return None
 
 
-def sensitive_findings(turn: c.Turn) -> List[Finding]:
+def sensitive_findings(turn: c.Turn, request: bool = True) -> List[Finding]:
     findings: List[Finding] = []
-    req = request_text(turn)
+    req = request_text(turn) if request else None
     if req:
         findings += scan(req, "request")
     final = turn.final_response
@@ -104,11 +127,13 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
     when = final.received_at if final else (turn.last_event.received_at if turn.last_event else "")
     add(f"- Response captured at: {when or UNAVAILABLE} [{CONFIRMED if when else UNAVAILABLE}]")
     add(f"- Exported at: {exported_at}")
-    add(f"- Response status: {STATUS_TEXT.get(turn.status, turn.status)} [{CONFIRMED}]")
+    add(f"- Response status: {status_text(turn)} [{CONFIRMED}]")
     if len(turn.responses) > 1:
         add(f"- Response events in this turn: {len(turn.responses)} (stop-hook continuations or background wake-ups); the last Stop is shown")
     if final and final.has_background_tasks:
         add(f"- Background tasks at Stop: {len(final.background_tasks or [])} still in flight [{CONFIRMED}]")
+    elif final and final.background_tasks is None:
+        add(f"- Background tasks at Stop: not reported by Claude Code [{UNAVAILABLE}]")
     add(f"- Request ↔ response link: {LINK_TEXT.get(turn.link, turn.link)}")
     add("")
 
@@ -129,7 +154,7 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
         add("")
         add(_block(final.text, "markdown"))
     else:
-        add(f"[{UNAVAILABLE}] {STATUS_TEXT.get(turn.status, 'No final response.')}")
+        add(f"[{UNAVAILABLE}] {status_text(turn)}")
         if turn.responses and turn.responses[-1].kind == "stop_failure":
             err = turn.responses[-1]
             add(f"- API error type: {err.error or UNAVAILABLE} [{CONFIRMED}]")

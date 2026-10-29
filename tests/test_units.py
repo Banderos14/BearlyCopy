@@ -36,10 +36,49 @@ class CorrelationTests(unittest.TestCase):
                          [("q1", "r1", "prompt_id"), ("q2", "r2", "prompt_id")])
 
     def test_unknown_prompt_id_is_not_guessed(self):
-        turns = correlation.build_turns([ev("prompt", "q"), ev("stop", "r", "zzz")])
+        # The pending prompt has a different prompt_id: conflicting evidence.
+        turns = correlation.build_turns([ev("prompt", "q", "other"), ev("stop", "r", "zzz")])
         self.assertEqual(turns[1].link, "none")
         self.assertIsNone(turns[1].prompt)
         self.assertEqual(turns[0].status, "no_matched_response")
+
+    # Regression (audit A1): prompt event without prompt_id, Stop with one.
+    def test_stop_prompt_id_with_prompt_lacking_it_links_by_order(self):
+        turns = correlation.build_turns([ev("prompt", "q"), ev("stop", "r", "pid-x"), ev("stop", "r2", "pid-x", stop_hook_active=True)])
+        self.assertEqual(len(turns), 1)
+        self.assertEqual((turns[0].link, turns[0].final_response.text), ("sequence", "r2"))
+        two = correlation.build_turns([ev("prompt", "q1"), ev("prompt", "q2"), ev("stop", "r", "pid-x")])
+        self.assertEqual(two[-1].link, "none")
+
+    # Regression (audit A2): a prompt_id match must not discard other pending prompts.
+    def test_prompt_id_match_keeps_other_pending_prompt(self):
+        turns = correlation.build_turns([ev("prompt", "q1", "a"), ev("prompt", "q2"), ev("stop", "r1", "a"), ev("stop", "r2")])
+        self.assertEqual([(t.prompt.text, t.link, t.final_response.text) for t in turns],
+                         [("q1", "prompt_id", "r1"), ("q2", "sequence", "r2")])
+
+    # Regression (audit A3): no fallback to an older, superseded Stop text.
+    def test_last_stop_without_text_has_no_final_response(self):
+        turn = correlation.build_turns([ev("prompt", "q", "a"), ev("stop", "old", "a"), ev("stop", None, "a", stop_hook_active=True)])[0]
+        self.assertIsNone(turn.final_response)
+        self.assertEqual(turn.status, "stop_received_without_text")
+        with self.assertRaises(export.ExportError):
+            export.response_text(turn)
+
+    # Regression (audit A5): events without session_id are never linked.
+    def test_no_link_mode(self):
+        turns = correlation.build_turns([ev("prompt", "q", session=None), ev("stop", "r", session=None)], link_events=False)
+        self.assertEqual([(t.link, t.prompt is None) for t in turns], [("none", False), ("none", True)])
+
+    def test_no_prompt_id_background_wake_joins_turn(self):
+        turns = correlation.build_turns([ev("prompt", "q"), ev("stop", "wait", background_tasks=[{"id": "t"}]), ev("stop", "done", background_tasks=[])])
+        self.assertEqual(len(turns), 1)
+        self.assertEqual((turns[0].status, turns[0].final_response.text), ("stop_received", "done"))
+
+    def test_interrupted_turn_without_prompt_id_is_ambiguous_not_guessed(self):
+        # Esc produces no Stop (documented), so the next answer cannot be linked by order.
+        turns = correlation.build_turns([ev("prompt", "q1"), ev("prompt", "q2"), ev("stop", "r2")])
+        self.assertEqual(turns[-1].link, "ambiguous")
+        self.assertEqual([p.text for p in turns[-1].candidate_prompts], ["q1", "q2"])
 
     def test_stop_hook_continuation_joins_previous_turn(self):
         turns = correlation.build_turns([ev("prompt", "q"), ev("stop", "r1"), ev("stop", "r2", stop_hook_active=True)])
@@ -56,6 +95,9 @@ class CorrelationTests(unittest.TestCase):
         turns = correlation.build_turns([ev("prompt", "q", "a"), ev("stop", "r", "a"), ev("stop_failure", "API Error", "a", error="server_error")])
         self.assertEqual(turns[0].status, "api_error")
         self.assertEqual(turns[0].final_response.text, "r")
+        # Regression (audit A4): the error must be surfaced, not hidden behind the text.
+        self.assertEqual(export.status_text(turns[0]), export.API_ERROR_AFTER_STOP)
+        self.assertEqual(export.warnings_for(turns[0]), [export.API_ERROR_AFTER_STOP])
 
     def test_failure_text_is_never_a_response(self):
         turns = correlation.build_turns([ev("prompt", "q", "a"), ev("stop_failure", "API Error: Rate limit reached", "a")])
@@ -81,6 +123,37 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(os.stat(self.store.root).st_mode & 0o777, 0o700)
         self.assertEqual(os.stat(self.store.events_dir).st_mode & 0o777, 0o700)
         self.assertEqual(os.stat(self.store.path_for("s")).st_mode & 0o777, 0o600)
+
+    # Regression (audit B2): a pre-existing root (PROMPT_RELAY_HOME=$HOME by
+    # mistake) must not be chmod-ed; only events/ is ours.
+    def test_existing_root_mode_is_not_changed(self):
+        root = self.root / "existing"
+        root.mkdir(mode=0o755)
+        os.chmod(root, 0o755)
+        Store(root).append(self._record({"hook_event_name": "Stop", "session_id": "s"}))
+        self.assertEqual(os.stat(root).st_mode & 0o777, 0o755)
+        self.assertEqual(os.stat(root / "events").st_mode & 0o777, 0o700)
+
+    # Regression (audit B1): a line belonging to another session is never merged.
+    def test_foreign_session_line_is_ignored(self):
+        self.store.append(self._record({"hook_event_name": "Stop", "session_id": "a", "last_assistant_message": "A"}))
+        with open(self.store.path_for("a"), "ab") as fh:
+            fh.write(json.dumps(self._record({"hook_event_name": "Stop", "session_id": "b", "last_assistant_message": "B"})).encode() + b"\n")
+        session = load_all(self.store)[0]
+        self.assertEqual([e.text for e in session.events], ["A"])
+        self.assertEqual(session.foreign_lines, 1)
+
+    def test_partial_and_nul_filled_tail_then_append(self):
+        self.store.append(self._record({"hook_event_name": "Stop", "session_id": "s", "last_assistant_message": "one"}))
+        with open(self.store.path_for("s"), "ab") as fh:
+            fh.write(b'{"schema":1,"payload":{"hook_ev' + b"\x00" * 64)  # crash: torn line + zero-filled tail
+        self.store.append(self._record({"hook_event_name": "Stop", "session_id": "s", "last_assistant_message": "two"}, 5000.0))
+        result = self.store.read_session("s")
+        self.assertEqual([r["payload"]["last_assistant_message"] for r in result.records], ["one", "two"])
+        self.assertEqual(result.corrupt_lines, 1)
+        with open(self.store.path_for("s"), "ab") as fh:
+            fh.write(b"\xff\xfe\n{\"schema\": 1, \"payload\": \"not-an-object\"}\n")
+        self.assertEqual(self.store.read_session("s").corrupt_lines, 3)
 
     def test_session_key_cannot_escape(self):
         for bad in ("../../etc/passwd", "/abs", "a/b", ".hidden", "x" * 300, "ñ", NO_SESSION_KEY):
@@ -237,19 +310,38 @@ class ExportTests(IsolatedTestCase):
         self.assertIn("[Not verified]", ctx)
         self.assertIn("All tests pass (reported).", ctx)
 
+    # Audit E2: the fsmonitor mitigation claimed in SECURITY.md T9 really works.
+    def test_repo_configured_fsmonitor_is_not_executed(self):
+        repo = self.project
+        marker = Path(self.tmp, "FSMONITOR_RAN")
+        hook_script = Path(self.tmp, "fsmonitor.sh")
+        hook_script.write_text(f"#!/bin/sh\ntouch '{marker}'\n")
+        hook_script.chmod(0o755)
+        run = lambda *a: subprocess.run(["git", "-C", repo, *a], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        run("init", "-q")
+        run("config", "core.fsmonitor", str(hook_script))
+        self.assertTrue(gitinfo.collect(repo).available)
+        self.assertFalse(marker.exists(), "repo-configured core.fsmonitor ran during metadata collection")
+
     def test_git_unavailable(self):
         self.assertFalse(gitinfo.collect(None).available)
         self.assertFalse(gitinfo.collect(self.project).available)
 
     def test_hook_config_is_exec_form_and_writes_nothing(self):
-        out = self.cli("hook-config", "--command", "/opt/pr/bin/prompt-relay")
-        cfg = json.loads(out.stdout)
+        import sys
+        # Regression (audit F2): by default the interpreter running the CLI is
+        # pinned; nothing assumes /usr/bin/python3 or the hook's PATH.
+        cfg = json.loads(self.cli("hook-config", "--command", "/opt/pr/bin/prompt-relay").stdout)
         self.assertEqual(set(cfg["hooks"]), {"UserPromptSubmit", "Stop", "StopFailure"})
         handler = cfg["hooks"]["Stop"][0]["hooks"][0]
-        self.assertEqual(handler, {"type": "command", "command": "/opt/pr/bin/prompt-relay", "args": ["hook"], "timeout": 10})
-        pinned = json.loads(self.cli("hook-config", "--command", "/opt/pr/bin/prompt-relay", "--python", "/usr/bin/python3").stdout)
-        self.assertEqual(pinned["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"], "/usr/bin/python3")
-        self.assertEqual(pinned["hooks"]["UserPromptSubmit"][0]["hooks"][0]["args"], ["/opt/pr/bin/prompt-relay", "hook"])
+        self.assertEqual(handler, {"type": "command", "command": sys.executable,
+                                   "args": ["/opt/pr/bin/prompt-relay", "hook"], "timeout": 10})
+        shebang = json.loads(self.cli("hook-config", "--command", "/opt/pr/bin/prompt-relay", "--use-shebang").stdout)
+        self.assertEqual(shebang["hooks"]["Stop"][0]["hooks"][0],
+                         {"type": "command", "command": "/opt/pr/bin/prompt-relay", "args": ["hook"], "timeout": 10})
+        missing = self.cli("hook-config", "--python", str(self.tmp / "no-such-python"))
+        self.assertEqual(missing.returncode, 2)
+        self.assertIn(b"not an executable file", missing.stderr)
         self.assertEqual(self.cli("hook-config", "--command", "relative/path").returncode, 2)
 
     def test_enable_refuses_home_and_root(self):
@@ -270,6 +362,155 @@ class ExportTests(IsolatedTestCase):
         self.assertEqual(self.cli("show", "--session", "abc").returncode, 3)  # ambiguous prefix
         self.assertEqual(self.cli("show", "--session", "abc-1").returncode, 0)
         self.assertEqual(self.cli("show", "--project", self.project_b).returncode, 3)
+
+
+class AuditRegressionTests(IsolatedTestCase):
+    # Regression (audit F1): the entry point must exit 0 even if the package
+    # cannot be imported (moved checkout) or Python is too old.
+    def test_hook_entry_point_exits_zero_when_package_missing(self):
+        import shutil, sys
+        lone = self.tmp / "lone"
+        lone.mkdir()
+        shutil.copy(str(REPO / "bin" / "prompt-relay"), str(lone / "prompt-relay"))
+        proc = subprocess.run([sys.executable, str(lone / "prompt-relay"), "hook"], input=b"{}",
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.env, timeout=30)
+        self.assertEqual((proc.returncode, proc.stdout), (0, b""))
+        self.assertIn(b"startup_failed:ModuleNotFoundError", proc.stderr)
+        self.assertNotIn(b"Traceback", proc.stderr)
+
+    # Regression (audit C1): concurrent enable must not lose projects or crash.
+    def test_concurrent_enable_keeps_every_project(self):
+        import sys
+        dirs = []
+        for i in range(16):
+            d = self.tmp / f"proj-{i}"
+            d.mkdir()
+            dirs.append(str(d.resolve()))
+        procs = [subprocess.Popen([sys.executable, str(REPO / "bin" / "prompt-relay"), "enable", d], env=self.env,
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.PIPE) for d in dirs]
+        codes = [p.wait(timeout=60) for p in procs]
+        for p in procs:
+            p.stderr.close()
+        self.assertEqual(codes, [0] * len(dirs))
+        listed = set(self.cli("projects").stdout.decode().split())
+        self.assertTrue(set(dirs) <= listed)
+        self.assertEqual(list(self.home.glob("config.json*.tmp")), [])
+
+    # Regression (audit A4): Copy Response warns when the turn ended in an API error.
+    def test_copy_warns_on_api_error_after_stop(self):
+        self.assertHookOk(self.hook(self.fx("prompt_basic.json")))
+        self.assertHookOk(self.hook(self.fx("stop_basic.json")))
+        self.assertHookOk(self.hook(self.fx("stop_failure_rate_limit.json")))
+        out = self.cli("copy")
+        self.assertEqual(out.returncode, 0)
+        self.assertIn(b"later ended with an API error", out.stderr)
+        self.assertIn("later ended with an API error", self.cli("context").stdout.decode())
+
+    # Regression (audit A5): two unknown sessions without session_id are not linked.
+    def test_events_without_session_id_are_never_linked(self):
+        self.assertHookOk(self.hook({"hook_event_name": "UserPromptSubmit", "cwd": self.project, "prompt": "question from X"}))
+        self.assertHookOk(self.hook({"hook_event_name": "Stop", "cwd": self.project, "last_assistant_message": "answer from Y"}))
+        ctx = self.cli("context").stdout.decode()
+        self.assertNotIn("question from X", ctx)
+        self.assertIn("no captured request could be linked", ctx)
+
+    # Regression (audit E1): Copy Response warns (never blocks) on suspected secrets.
+    def test_copy_response_warns_on_secrets_without_echo(self):
+        secret = "AKIA" + "ABCDEFGHIJKLMNOP"
+        self.assertHookOk(self.hook(self.fx("stop_basic.json", last_assistant_message="key " + secret)))
+        out = self.cli("copy")
+        self.assertEqual(out.returncode, 0)
+        self.assertIn(b"AWS access key id", out.stderr)
+        self.assertNotIn(secret.encode(), out.stderr)
+        self.assertEqual(self.clip.read_text(), "key " + secret)
+
+    # Regression (audit C2): the same directory under a different spelling
+    # (case-insensitive APFS, bind mount) is recognized via (st_dev, st_ino).
+    def test_enabled_project_matched_by_identity(self):
+        from unittest import mock
+        real_stat = os.stat
+        alias = "/Volumes/Alias/Project-A"
+
+        def fake_stat(path, *a, **k):
+            if str(path) == alias:
+                return real_stat(self.project)
+            if str(path) in ("/Volumes/Alias", "/Volumes"):
+                raise FileNotFoundError(path)
+            return real_stat(path, *a, **k)
+
+        cfg = config.load(self.home)
+        with mock.patch("os.stat", fake_stat):
+            self.assertTrue(config.is_enabled(cfg, alias + "/src"))
+            self.assertFalse(config.is_enabled(cfg, "/Volumes/Other"))
+
+
+class SchemaConformanceTests(IsolatedTestCase):
+    """Documented (and, later, real) payloads go through the real handler.
+
+    Fixtures named documented_*.json follow the official hooks reference;
+    real_*.json are added after the macOS validation and are picked up here.
+    """
+
+    def schema_fixtures(self):
+        from helpers import FIXTURES
+        names = sorted(p.name for p in FIXTURES.glob("documented_*.json")) + \
+            sorted(p.name for p in FIXTURES.glob("real_*.json"))
+        self.assertGreaterEqual(len(names), 5)
+        return names
+
+    def test_any_json_encoding_is_stored_verbatim_once(self):
+        from prompt_relay.store import Store
+        for name in self.schema_fixtures():
+            with self.subTest(name):
+                payload = self.fx(name, session_id="conf-" + name.split(".")[0].replace("_", "-"))
+                encodings = [
+                    json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                    json.dumps(payload, ensure_ascii=True).encode("ascii"),
+                    json.dumps(dict(reversed(list(payload.items()))), indent=2).replace("\n", "\r\n").encode() + b"\r\n",
+                ]
+                for raw in encodings:
+                    self.assertHookOk(self.hook(raw))
+                records = Store(self.home).read_session(payload["session_id"]).records
+                self.assertEqual(len(records), 1, "same event in another encoding is a duplicate")
+                self.assertEqual(records[0]["payload"], payload)
+
+    def test_documented_fields_are_interpreted(self):
+        stop = from_record({"schema": 1, "payload": self.fx("documented_stop.json")})
+        self.assertEqual((stop.kind, stop.prompt_id, stop.stop_hook_active), ("stop", "550e8400-e29b-41d4-a716-446655440000", True))
+        self.assertEqual(stop.text, "I've completed the refactoring. Here's a summary...")
+        self.assertTrue(stop.has_background_tasks)
+        self.assertEqual(len(stop.session_crons), 1)
+        prompt = from_record({"schema": 1, "payload": self.fx("documented_user_prompt_submit.json")})
+        self.assertEqual((prompt.kind, prompt.text), ("prompt", "Write a function to calculate the factorial of a number"))
+        fail = from_record({"schema": 1, "payload": self.fx("documented_stop_failure.json")})
+        self.assertEqual((fail.kind, fail.error, fail.error_details, fail.text),
+                         ("stop_failure", "rate_limit", "429 Too Many Requests", "API Error: Rate limit reached"))
+        minimal = from_record({"schema": 1, "payload": self.fx("documented_stop_failure_minimal.json")})
+        self.assertEqual((minimal.error, minimal.error_details, minimal.text), ("unknown", None, None))
+
+    def test_documented_turns(self):
+        for name in ("documented_user_prompt_submit.json", "documented_stop.json"):
+            self.assertHookOk(self.hook(self.fx(name)))
+        self.assertIn("link=prompt_id", self.cli("turns").stdout.decode())
+        self.assertIn("background_tasks_pending", self.cli("turns").stdout.decode())
+        self.assertHookOk(self.hook(self.fx("documented_stop_no_task_registry.json")))
+        self.assertEqual(self.cli("show").stdout, b"Done.")
+        self.assertIn("not reported by Claude Code [Unavailable]", self.cli("context").stdout.decode())
+        self.assertHookOk(self.hook(self.fx("documented_stop_failure_minimal.json")))
+        self.assertIn("api_error", self.cli("turns").stdout.decode())
+
+    def test_every_fixture_text_survives_show_byte_exact(self):
+        from helpers import FIXTURES
+        for path in sorted(FIXTURES.glob("*.json")):
+            if path.name.startswith("corrupt"):
+                continue
+            payload = self.fx(path.name, session_id="exact-" + path.stem.replace("_", "-"))
+            if payload.get("hook_event_name") != "Stop" or not isinstance(payload.get("last_assistant_message"), str):
+                continue
+            with self.subTest(path.name):
+                self.assertHookOk(self.hook(payload))
+                out = self.cli("show", "--session", payload["session_id"])
+                self.assertEqual(out.stdout, payload["last_assistant_message"].encode("utf-8"))
 
 
 class PlatformTests(unittest.TestCase):

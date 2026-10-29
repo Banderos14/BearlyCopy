@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 
 from prompt_relay.correlation import Turn, build_turns
 from prompt_relay.events import Event, from_record
-from prompt_relay.store import SessionFile, Store
+from prompt_relay.store import NO_SESSION_KEY, SessionFile, Store, session_key
 
 
 class SelectionError(Exception):
@@ -23,6 +23,7 @@ class Session:
     turns: List[Turn]
     corrupt_lines: int = 0
     unsupported_lines: int = 0
+    foreign_lines: int = 0  # records whose session_id does not belong to this file
     cwds: List[str] = field(default_factory=list)
 
     @property
@@ -43,12 +44,22 @@ class Session:
 
     @property
     def last_at(self) -> str:
-        return self.events[-1].received_at if self.events else ""
+        return max((ev.received_at for ev in self.events), default="")
 
 
 def load_session_file(store: Store, sf: SessionFile) -> Session:
     result = store.read_path(sf.path)
-    events = [ev for ev in (from_record(r) for r in result.records) if ev is not None]
+    events: List[Event] = []
+    foreign = 0
+    for rec in result.records:
+        ev = from_record(rec)
+        if ev is None:
+            continue
+        # Never let a stray line from another session join this one.
+        if session_key(ev.session_id) != sf.key:
+            foreign += 1
+            continue
+        events.append(ev)
     session_id = next((ev.session_id for ev in events if ev.session_id), None)
     cwds: List[str] = []
     for ev in events:
@@ -58,16 +69,18 @@ def load_session_file(store: Store, sf: SessionFile) -> Session:
         key=sf.key,
         session_id=session_id,
         events=events,
-        turns=build_turns(events),
+        # Events without a session id may come from different sessions.
+        turns=build_turns(events, link_events=sf.key != NO_SESSION_KEY),
         corrupt_lines=result.corrupt_lines,
         unsupported_lines=result.unsupported_lines,
+        foreign_lines=foreign,
         cwds=cwds,
     )
 
 
 def load_all(store: Store) -> List[Session]:
     sessions = [load_session_file(store, sf) for sf in store.session_files()]
-    sessions = [s for s in sessions if s.events or s.corrupt_lines or s.unsupported_lines]
+    sessions = [s for s in sessions if s.events or s.corrupt_lines or s.unsupported_lines or s.foreign_lines]
     sessions.sort(key=lambda s: s.last_at, reverse=True)
     return sessions
 

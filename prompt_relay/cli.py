@@ -48,10 +48,12 @@ def _store() -> Store:
 def _select(args: argparse.Namespace):
     sessions = history.load_all(_store())
     sess, turn, warnings = history.select_turn(sessions, session=args.session, project=args.project, turn=args.turn)
-    for w in warnings:
+    for w in warnings + export.warnings_for(turn):
         _err("warning: " + w)
     if sess.corrupt_lines:
         _err(f"warning: {sess.corrupt_lines} unreadable line(s) skipped in this session's history")
+    if sess.foreign_lines:
+        _err(f"warning: {sess.foreign_lines} line(s) from another session ignored in this session's file")
     return sess, turn
 
 
@@ -74,6 +76,11 @@ def cmd_hook(args: argparse.Namespace) -> int:
 
 
 def cmd_enable(args: argparse.Namespace) -> int:
+    with _config.locked(data_dir()):
+        return _enable(args)
+
+
+def _enable(args: argparse.Namespace) -> int:
     root = data_dir()
     cfg = _config.load(root)
     if cfg.error:
@@ -94,6 +101,11 @@ def cmd_enable(args: argparse.Namespace) -> int:
 
 
 def cmd_disable(args: argparse.Namespace) -> int:
+    with _config.locked(data_dir()):
+        return _disable(args)
+
+
+def _disable(args: argparse.Namespace) -> int:
     root = data_dir()
     cfg = _config.load(root)
     if cfg.error:
@@ -189,9 +201,9 @@ def cmd_copy(args: argparse.Namespace) -> int:
     if text == "":
         _err("the final response is empty; nothing copied")
         return EXIT_NOTHING
-    final = turn.final_response
-    if final is not None and final.has_background_tasks:
-        _err("warning: background tasks were still running when Claude stopped; the work may not be finished")
+    # Copy Response is the explicit verbatim copy: warn about suspected
+    # secrets, but never block or alter the text.
+    _report_findings(export.sensitive_findings(turn, request=False))
     return _copy(text, args)
 
 
@@ -256,20 +268,43 @@ def hook_settings(command: str, python: Optional[str] = None) -> dict:
     return {"hooks": {event: [{"hooks": [dict(handler)]}] for event in HOOK_EVENTS}}
 
 
+MIN_PYTHON = (3, 9)
+
+
+def _usable_python(path: str) -> Optional[str]:
+    """Why ``path`` cannot run the hook, or None if it looks usable."""
+    if not os.path.isabs(path):
+        return "path must be absolute"
+    if not (os.path.isfile(path) and os.access(path, os.X_OK)):
+        return "not an executable file"
+    return None
+
+
 def cmd_hook_config(args: argparse.Namespace) -> int:
     command = args.command or str(Path(__file__).resolve().parent.parent / "bin" / "prompt-relay")
-    for path in filter(None, (command, args.python)):
-        if not os.path.isabs(path):
-            _err(f"hook paths must be absolute: {path}")
+    # Default: pin the interpreter running this command, which is known to
+    # work. Nothing assumes /usr/bin/python3 or a particular PATH (Claude
+    # Desktop starts hooks with a minimal PATH).
+    python = None if args.use_shebang else (args.python or sys.executable)
+    if not os.path.isabs(command):
+        _err(f"hook paths must be absolute: {command}")
+        return EXIT_USAGE
+    if python:
+        problem = _usable_python(python)
+        if problem:
+            _err(f"--python {python}: {problem}")
             return EXIT_USAGE
-    print(json.dumps(hook_settings(command, args.python), indent=2))
+    print(json.dumps(hook_settings(command, python), indent=2))
     return 0
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
     root = data_dir()
     print(f"prompt-relay {__version__}")
-    print(f"python       {platform.python_version()} ({sys.executable})")
+    ok = sys.version_info[:2] >= MIN_PYTHON
+    print(f"python       {platform.python_version()} ({sys.executable}){'' if ok else '  UNSUPPORTED: need 3.9+'}")
+    if sys.platform == "darwin":
+        print(f"xcode CLT    {_xcode_clt()}")
     print(f"platform     {sys.platform} {platform.machine()} {platform.mac_ver()[0] or ''}".rstrip())
     print(f"data dir     {root}")
     if root.exists():
@@ -283,6 +318,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         print(f"clipboard    unavailable: {exc}")
     print(f"claude env   CLAUDE_CODE_REMOTE={os.environ.get('CLAUDE_CODE_REMOTE', '(unset)')}")
     return 0
+
+
+def _xcode_clt() -> str:
+    """Read-only check. Without the Command Line Tools, /usr/bin/python3 is a
+    stub that opens an install dialog instead of running Python."""
+    import subprocess
+    try:
+        proc = subprocess.run(["/usr/bin/xcode-select", "-p"], stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, timeout=5, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return "unknown (xcode-select not runnable)"
+    if proc.returncode != 0:
+        return "NOT installed: /usr/bin/python3 will not work; install with 'xcode-select --install' or use another Python 3.9+"
+    return "installed at " + proc.stdout.decode("utf-8", "replace").strip()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -335,7 +384,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("hook-config", help="print hook settings JSON for 'claude --settings' (writes nothing)")
     p.add_argument("--command", help="absolute path of the prompt-relay executable")
-    p.add_argument("--python", help="absolute path of the Python interpreter to pin, e.g. /usr/bin/python3")
+    p.add_argument("--python", help="absolute path of the Python 3.9+ interpreter to pin (default: the one running this command)")
+    p.add_argument("--use-shebang", action="store_true", help="do not pin an interpreter; rely on '#!/usr/bin/env python3' and PATH")
     p.set_defaults(func=cmd_hook_config)
 
     sub.add_parser("doctor", help="show environment diagnostics").set_defaults(func=cmd_doctor)

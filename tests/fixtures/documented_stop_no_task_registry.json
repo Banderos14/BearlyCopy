@@ -1,0 +1,11 @@
+{
+  "session_id": "doc-sess",
+  "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+  "transcript_path": "/Users/USER/.claude/projects/-proj/doc-sess.jsonl",
+  "cwd": "__PROJECT_A__",
+  "scratchpad_dir": "/tmp/claude-501/-proj/doc-sess/scratchpad",
+  "permission_mode": "default",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "Done."
+}

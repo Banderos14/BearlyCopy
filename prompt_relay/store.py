@@ -22,6 +22,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -109,10 +110,13 @@ class Store:
     # -- setup -------------------------------------------------------------
 
     def ensure(self) -> None:
+        # The root may be a directory the user pointed PROMPT_RELAY_HOME at
+        # (even $HOME): create it 0700 if missing, never chmod an existing one.
+        # events/ is ours, so its mode is enforced on every write.
         try:
-            for path in (self.root, self.events_dir):
-                path.mkdir(mode=0o700, parents=True, exist_ok=True)
-                os.chmod(path, 0o700)
+            self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+            self.events_dir.mkdir(mode=0o700, exist_ok=True)
+            os.chmod(self.events_dir, 0o700)
         except OSError as exc:
             raise StoreError("storage_unavailable", type(exc).__name__) from exc
 
@@ -222,9 +226,14 @@ class Store:
             raise StoreError("read_failed", type(exc).__name__) from exc
         files = []
         for entry in entries:
-            if entry.suffix != ".jsonl" or not entry.is_file():
+            if entry.suffix != ".jsonl":
                 continue
-            files.append(SessionFile(entry.stem, entry, entry.stat().st_mtime))
+            try:
+                st = entry.stat()
+            except FileNotFoundError:
+                continue  # deleted between listing and stat
+            if stat.S_ISREG(st.st_mode):
+                files.append(SessionFile(entry.stem, entry, st.st_mtime))
         files.sort(key=lambda f: f.mtime, reverse=True)
         return files
 

@@ -7,11 +7,13 @@ A missing or unreadable config fails closed (nothing is captured).
 
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterator, List, Optional
 
 CONFIG_SCHEMA = 1
 
@@ -50,11 +52,25 @@ def load(root: Path) -> Config:
     return Config(enabled_projects=list(projects))
 
 
+@contextlib.contextmanager
+def locked(root: Path) -> Iterator[None]:
+    """Serialize read-modify-write of config.json between CLI processes.
+    The hook only reads the config (atomically replaced), so it never waits."""
+    root = Path(root)
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd = os.open(str(root / "config.lock"), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
+
+
 def save(root: Path, config: Config) -> None:
     root = Path(root)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     path = config_path(root)
-    tmp = path.with_name(path.name + ".tmp")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{os.urandom(4).hex()}.tmp")
     data = {"schema": CONFIG_SCHEMA, "enabled_projects": sorted(set(config.enabled_projects))}
     fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
@@ -72,4 +88,31 @@ def is_enabled(config: Config, project_dir: Optional[str]) -> bool:
     for enabled in config.enabled_projects:
         if candidate == enabled or candidate.startswith(enabled.rstrip(os.sep) + os.sep):
             return True
-    return False
+    return _same_dir_match(config.enabled_projects, candidate)
+
+
+def _same_dir_match(enabled_projects: List[str], candidate: str) -> bool:
+    """Fallback when the path strings differ but name the same directory:
+    case-insensitive APFS (``~/Code/App`` vs ``~/code/app``), bind mounts.
+    Compares (st_dev, st_ino) of the candidate and its parents."""
+    ids = set()
+    for enabled in enabled_projects:
+        try:
+            st = os.stat(enabled)
+        except OSError:
+            continue
+        ids.add((st.st_dev, st.st_ino))
+    if not ids:
+        return False
+    path = candidate
+    while True:
+        try:
+            st = os.stat(path)
+        except OSError:
+            st = None
+        if st is not None and (st.st_dev, st.st_ino) in ids:
+            return True
+        parent = os.path.dirname(path)
+        if parent == path:
+            return False
+        path = parent
