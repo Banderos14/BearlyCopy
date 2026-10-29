@@ -19,7 +19,7 @@ from prompt_relay import __version__
 from prompt_relay import config as _config
 from prompt_relay import export, gitinfo, history
 from prompt_relay.clipboard import ClipboardError, get_backend
-from prompt_relay.paths import data_dir
+from prompt_relay.paths import ENV_HOME, data_dir
 from prompt_relay.store import Store, StoreError
 
 EXIT_ERROR, EXIT_USAGE, EXIT_NOTHING, EXIT_CLIPBOARD, EXIT_SENSITIVE = 1, 2, 3, 4, 5
@@ -258,13 +258,19 @@ def cmd_delete(args: argparse.Namespace) -> int:
     return 0
 
 
-def hook_settings(command: str, python: Optional[str] = None) -> dict:
+ENV_PROGRAM = "/usr/bin/env"
+
+
+def hook_settings(command: str, python: Optional[str] = None, home: Optional[str] = None) -> dict:
     """Exec-form hook settings. With ``python``, the interpreter is pinned
-    instead of resolving ``python3`` through PATH via the script's shebang."""
-    if python:
-        handler = {"type": "command", "command": python, "args": [command, "hook"], "timeout": 10}
-    else:
-        handler = {"type": "command", "command": command, "args": ["hook"], "timeout": 10}
+    instead of resolving ``python3`` through PATH via the script's shebang.
+    With ``home``, the hook runs through ``/usr/bin/env PROMPT_RELAY_HOME=…``
+    (still no shell), so it writes to that data dir even where the hook's
+    environment cannot be set, such as Claude Desktop."""
+    argv = ([python] if python else []) + [command, "hook"]
+    if home:
+        argv = [ENV_PROGRAM, ENV_HOME + "=" + home] + argv
+    handler = {"type": "command", "command": argv[0], "args": argv[1:], "timeout": 10}
     return {"hooks": {event: [{"hooks": [dict(handler)]}] for event in HOOK_EVENTS}}
 
 
@@ -294,7 +300,11 @@ def cmd_hook_config(args: argparse.Namespace) -> int:
         if problem:
             _err(f"--python {python}: {problem}")
             return EXIT_USAGE
-    print(json.dumps(hook_settings(command, python), indent=2))
+    home = args.data_dir
+    if home is not None and not (os.path.isabs(home) and os.path.isdir(home)):
+        _err(f"--data-dir {home}: must be an existing absolute directory")
+        return EXIT_USAGE
+    print(json.dumps(hook_settings(command, python, home), indent=2))
     return 0
 
 
@@ -386,6 +396,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--command", help="absolute path of the prompt-relay executable")
     p.add_argument("--python", help="absolute path of the Python 3.9+ interpreter to pin (default: the one running this command)")
     p.add_argument("--use-shebang", action="store_true", help="do not pin an interpreter; rely on '#!/usr/bin/env python3' and PATH")
+    p.add_argument("--data-dir", help="absolute data dir the hook writes to (sets PROMPT_RELAY_HOME through /usr/bin/env; for isolated checks)")
     p.set_defaults(func=cmd_hook_config)
 
     sub.add_parser("doctor", help="show environment diagnostics").set_defaults(func=cmd_doctor)

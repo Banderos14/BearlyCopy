@@ -1,0 +1,10 @@
+{
+  "session_id": "1ed3d2bb-3765-455d-8ce4-eab713c46706",
+  "transcript_path": "/Users/USER/.claude/projects/-Users-USER-prompt-relay-validation-sandbox-a/1ed3d2bb-3765-455d-8ce4-eab713c46706.jsonl",
+  "cwd": "__PROJECT_A__",
+  "scratchpad_dir": "/private/tmp/claude-501/-Users-USER-prompt-relay-validation-sandbox-a/1ed3d2bb-3765-455d-8ce4-eab713c46706/scratchpad",
+  "prompt_id": "eef09244-e6de-4883-8180-d8132e981143",
+  "permission_mode": "auto",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Напиши ровно: Привет, мир! 🚀"
+}

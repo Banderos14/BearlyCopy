@@ -280,7 +280,9 @@ class RequiredScenarios(IsolatedTestCase):
         self.assertHookOk(self.hook(self.fx("prompt_basic.json", prompt=marker), env=env))
         self.assertHookOk(self.hook(self.fx("stop_basic.json", last_assistant_message=marker), env=env))
         self.assertEqual(repo_status(), before)
-        default_dir = Path(env["HOME"]) / ".local" / "share" / "prompt-relay"
+        from prompt_relay.paths import data_dir
+        default_dir = data_dir(env)  # the platform default under the temporary HOME
+        self.assertTrue(str(default_dir).startswith(env["HOME"]))
         stored = (default_dir / "events" / "sess-a.jsonl").read_text()
         self.assertIn(marker, stored)
         grep = subprocess.run(["grep", "-rl", "--exclude-dir=.git", marker, str(REPO)], stdout=subprocess.PIPE)

@@ -1,0 +1,9 @@
+{
+  "session_id": "d8365e27-9b63-41ae-b93a-008c5687f834",
+  "transcript_path": "/Users/USER/.claude/projects/-Users-USER-prompt-relay-validation-sandbox-a/d8365e27-9b63-41ae-b93a-008c5687f834.jsonl",
+  "cwd": "__PROJECT_A__",
+  "prompt_id": "6e338ad9-ac6a-43f4-bd36-6fc5a026e136",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python code block that prints 1."
+}

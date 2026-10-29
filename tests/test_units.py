@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import REPO, IsolatedTestCase, load_fixture
+from helpers import BIN, REPO, IsolatedTestCase, load_fixture
 
 from prompt_relay import config, correlation, export, gitinfo, hook, paths, sensitive
 from prompt_relay.clipboard import ClipboardError, FileBackend, PbcopyBackend, get_backend
@@ -344,6 +344,33 @@ class ExportTests(IsolatedTestCase):
         self.assertIn(b"not an executable file", missing.stderr)
         self.assertEqual(self.cli("hook-config", "--command", "relative/path").returncode, 2)
 
+    def test_hook_config_data_dir_isolates_hooks_without_env(self):
+        import subprocess
+        import sys
+        from prompt_relay.paths import data_dir
+        # Phase 1.5: Claude Desktop starts hooks without the shell's
+        # PROMPT_RELAY_HOME, so isolated checks pin the data dir in the
+        # command itself (/usr/bin/env, still exec form, no shell).
+        iso = self.tmp / "validation data"
+        iso.mkdir()
+        cfg = json.loads(self.cli("hook-config", "--data-dir", str(iso)).stdout)
+        handler = cfg["hooks"]["Stop"][0]["hooks"][0]
+        self.assertEqual(handler["command"], "/usr/bin/env")
+        self.assertEqual(handler["args"], ["PROMPT_RELAY_HOME=" + str(iso), sys.executable,
+                                           str(BIN), "hook"])
+        env = {k: v for k, v in self.env.items() if k != "PROMPT_RELAY_HOME"}
+        env["PROMPT_RELAY_HOME"] = str(iso)
+        self.assertEqual(self.cli("enable", self.project, env=env).returncode, 0)
+        del env["PROMPT_RELAY_HOME"]
+        proc = subprocess.run([handler["command"], *handler["args"]], env=env,
+                              input=json.dumps(self.fx("stop_basic.json")).encode(),
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertHookOk(proc)
+        self.assertEqual(len(list((iso / "events").glob("*.jsonl"))), 1)
+        self.assertFalse(data_dir(env).exists(), "the default data dir must stay untouched")
+        for bad in ("relative/dir", str(self.tmp / "missing")):
+            self.assertEqual(self.cli("hook-config", "--data-dir", bad).returncode, 2)
+
     def test_enable_refuses_home_and_root(self):
         os.makedirs(self.env["HOME"], exist_ok=True)
         self.assertEqual(self.cli("enable", self.env["HOME"]).returncode, 1)
@@ -498,6 +525,21 @@ class SchemaConformanceTests(IsolatedTestCase):
         self.assertIn("not reported by Claude Code [Unavailable]", self.cli("context").stdout.decode())
         self.assertHookOk(self.hook(self.fx("documented_stop_failure_minimal.json")))
         self.assertIn("api_error", self.cli("turns").stdout.decode())
+
+    def test_real_desktop_turn_links_by_prompt_id(self):
+        # Phase 1.5: captured from Claude Desktop 4.29.0 (Claude Code 2.1.309).
+        # D1: Stop carries the prompt's prompt_id; no agent_id on the main turn.
+        prompt = self.fx("real_desktop_user_prompt_submit_1.json")
+        stop = self.fx("real_desktop_stop_1.json")
+        self.assertEqual(prompt["prompt_id"], stop["prompt_id"])
+        self.assertNotIn("agent_id", prompt)
+        self.assertNotIn("agent_id", stop)
+        for payload in (prompt, stop):
+            self.assertHookOk(self.hook(payload))
+        turns = self.cli("turns").stdout.decode()
+        self.assertIn("link=prompt_id", turns)
+        self.assertIn("stop_received", turns)
+        self.assertEqual(self.cli("show").stdout, "Привет, мир! 🚀".encode("utf-8"))
 
     def test_every_fixture_text_survives_show_byte_exact(self):
         from helpers import FIXTURES
