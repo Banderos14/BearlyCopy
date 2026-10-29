@@ -6,8 +6,9 @@ conversation. This file and the other docs are the full context.
 ## 1. Git state
 - Repository: `Banderos14/prompt-relay`
 - Branch: `claude/loving-mccarthy-ossw3q` (not merged into `main`)
-- Code commit: `75688ef` ("Add Prompt Relay core: …"). The exact tip commit
-  is in §9. Always confirm with `git log -1`.
+- Commits: `75688ef` (core + tests), `cd34af4` (docs + ADRs), then
+  the commit that records these SHAs (the branch tip). Confirm with
+  `git log --oneline -5`. The tip must contain this file.
 
 ## 2. Project state
 Phase 0 is complete. The cloud-verifiable part of Phase 1 is complete. The
