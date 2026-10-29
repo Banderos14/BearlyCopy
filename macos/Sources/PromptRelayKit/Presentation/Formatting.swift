@@ -56,6 +56,16 @@ public enum Wording {
         return f.localizedString(for: date, relativeTo: now)
     }
 
+    /// "now", "4m", "2h", "3d": for tight spaces such as the notch.
+    public static func short(_ iso: String?, now: Date = Date()) -> String {
+        guard let date = date(iso) else { return "—" }
+        let s = max(0, Int(now.timeIntervalSince(date)))
+        if s < 60 { return "now" }
+        if s < 3600 { return "\(s / 60)m" }
+        if s < 86_400 { return "\(s / 3600)h" }
+        return "\(s / 86_400)d"
+    }
+
     public static func absolute(_ iso: String?) -> String {
         guard let date = date(iso) else { return "—" }
         return date.formatted(date: .abbreviated, time: .standard)

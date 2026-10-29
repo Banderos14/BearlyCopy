@@ -45,6 +45,24 @@ final class SnapshotTests: XCTestCase {
             try render(ConnectionStatusView(model: model), size: NSSize(width: 520, height: 600),
                        appearance: appearance, to: "\(dir)/\(prefix)-status-\(name).png")
         }
+        for (expanded, indicator, name) in [(true, false, "expanded"), (false, true, "compact-ready"), (false, false, "resting")] {
+            let presentation = NotchPresentation()
+            presentation.notchSize = CGSize(width: 185, height: 32)
+            presentation.islandWidth = NotchLayout.expandedWidth
+            presentation.isExpanded = expanded
+            presentation.showsIndicator = indicator
+            let interaction = NotchInteraction(scheduler: MainQueueScheduler())
+            for (appearance, theme) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] {
+                // First pass lets the island measure its content; the second draws at that height.
+                for _ in 0..<2 {
+                    let height = expanded ? 32 + presentation.contentHeight + NotchLayout.shadowInset : 32
+                    let width = expanded ? NotchLayout.expandedWidth + NotchLayout.shadowInset * 2 : 185 + 2 * NotchLayout.earWidth + 40
+                    try render(NotchRootView(model: model, presentation: presentation, interaction: interaction, actions: actions),
+                               size: NSSize(width: width, height: height), appearance: appearance,
+                               to: "\(dir)/\(prefix)-notch-\(name)-\(theme).png", clear: true)
+                }
+            }
+        }
         let empty = AppModel(core: FakeCore(projects: []), clipboard: ClipboardService(pasteboard: pasteboard), dataDirectory: nil)
         await empty.refreshNow()
         try render(MenuPanelView(model: empty, actions: actions), size: NSSize(width: 420, height: 420),
@@ -57,9 +75,11 @@ final class SnapshotTests: XCTestCase {
                    appearance: .darkAqua, to: "\(dir)/error-menu-dark.png")
     }
 
-    private func render<V: View>(_ view: V, size: NSSize, appearance: NSAppearance.Name, to path: String) throws {
+    private func render<V: View>(_ view: V, size: NSSize, appearance: NSAppearance.Name, to path: String,
+                                 clear: Bool = false) throws {
+        // The notch is drawn over a mid-grey "desktop" so its shape is visible.
         let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height)
-            .background(Color(nsColor: .windowBackgroundColor)))
+            .background(clear ? Color.gray.opacity(0.5) : Color(nsColor: .windowBackgroundColor)))
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false

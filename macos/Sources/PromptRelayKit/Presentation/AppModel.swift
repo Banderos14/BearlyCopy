@@ -3,8 +3,8 @@ import Foundation
 import Observation
 
 /// The single presentation model. The menu-bar panel, the main window and the
-/// future notch surface all observe this one object, so there is one source
-/// of truth and no second UI system.
+/// notch surface all observe this one object, so there is one source of truth
+/// and no second UI system.
 @MainActor
 @Observable
 public final class AppModel {
@@ -45,7 +45,33 @@ public final class AppModel {
     /// Set when Copy Context found likely secrets; the UI asks before copying.
     public var pendingSensitiveContext: ContextData?
 
+    // MARK: Ready answer (notch indicator, notifications)
+
+    /// The newest answer Claude Code finished in any captured project, from
+    /// the sessions' `last_turn` (the Core's correlation, not re-derived).
+    public struct ReadyAnswer: Equatable, Sendable {
+        public let sessionKey: String
+        public let projectPath: String?
+        public let projectName: String
+        public let turnIndex: Int
+        public let status: TurnStatus
+        public let at: String
+    }
+
+    public private(set) var readyAnswer: ReadyAnswer?
+    /// A newer answer arrived since the user last opened a surface.
+    public private(set) var hasUnseenAnswer = false
+    /// Load `readyAnswer` on every refresh (one extra Core call). On only
+    /// while the notch or notifications are enabled.
+    public var tracksReadyAnswers = false {
+        didSet { if tracksReadyAnswers && !oldValue { refresh() } }
+    }
+    /// Called once per newly arrived answer (for an optional notification).
+    public var onNewAnswer: ((ReadyAnswer) -> Void)?
+
     public static let pollSeconds = 30
+    static let lastSeenKey = "answers.lastSeenAt"
+    private let stateDefaults: UserDefaults?
 
     private let core: CoreProviding
     private let clipboard: ClipboardService
@@ -54,21 +80,32 @@ public final class AppModel {
     private var pollTimer: Timer?
     private var refreshing = false
     private var refreshAgain = false
+    private var refreshWaiters: [CheckedContinuation<Void, Never>] = []
     private var generation = 0
     private var feedbackReset: Task<Void, Never>?
     private var visibleSurfaces = 0
 
-    public init(core: CoreProviding, clipboard: ClipboardService, dataDirectory: URL?) {
+    /// `stateDefaults` remembers which answer was last seen, so a restart
+    /// does not announce old answers again (nil in tests: nothing persisted).
+    public init(core: CoreProviding, clipboard: ClipboardService, dataDirectory: URL?,
+                stateDefaults: UserDefaults? = nil) {
         self.core = core
         self.clipboard = clipboard
         self.dataDirectory = dataDirectory
+        self.stateDefaults = stateDefaults
+        lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
     }
+
+    private var lastSeenAt: String? {
+        didSet { stateDefaults?.set(lastSeenAt, forKey: Self.lastSeenKey) }
+    }
+    private var lastAnnouncedAt: String?
 
     /// The live app: the CLI adapter, the general pasteboard, the default data dir.
     public static func live() -> AppModel {
         let locator = CoreLocator()
         return AppModel(core: CoreClient.live(locator: locator), clipboard: ClipboardService(),
-                        dataDirectory: locator.dataDirectory)
+                        dataDirectory: locator.dataDirectory, stateDefaults: .standard)
     }
 
     // MARK: Derived
@@ -117,9 +154,19 @@ public final class AppModel {
         visibleSurfaces += 1
         if visibleSurfaces == 1 {
             startWatching()
-            refresh()
+            // With FSEvents running the data is already current: opening a
+            // surface does not start Python again.
+            if refreshMode != .watching || lastRefresh == nil { refresh() }
             if doctor.value == nil { loadDoctor() }
         }
+    }
+
+    /// For the always-present compact notch: keep history current through
+    /// FSEvents without making any surface "visible", so no fallback timer
+    /// runs in the background.
+    public func startBackgroundObservation() {
+        startWatching(allowPolling: false)
+        if lastRefresh == nil { refresh() }
     }
 
     public func surfaceDisappeared() {
@@ -127,7 +174,7 @@ public final class AppModel {
         if visibleSurfaces == 0 { stopPolling() }
     }
 
-    func startWatching() {
+    func startWatching(allowPolling: Bool = true) {
         guard watcher?.state != .watching else { return }
         if let dir = dataDirectory {
             let watcher = StoreWatcher(directory: dir) { [weak self] in
@@ -141,7 +188,7 @@ public final class AppModel {
             }
         }
         refreshMode = .polling(seconds: Self.pollSeconds)
-        startPolling()
+        if allowPolling { startPolling() }
     }
 
     private func startPolling() {
@@ -171,9 +218,14 @@ public final class AppModel {
         Task { await performRefresh() }
     }
 
-    /// Awaitable refresh (tests, first load).
+    /// Awaitable refresh: returns once data is current, including when a
+    /// refresh was already running (it then waits for that one and its rerun).
     public func refreshNow() async {
-        if refreshing { refreshAgain = true; return }
+        if refreshing {
+            refreshAgain = true
+            await withCheckedContinuation { refreshWaiters.append($0) }
+            return
+        }
         refreshing = true
         await performRefresh()
     }
@@ -182,9 +234,13 @@ public final class AppModel {
         repeat {
             refreshAgain = false
             await loadProjects()
+            if tracksReadyAnswers { await loadReadyAnswer() }
         } while refreshAgain
         refreshing = false
         lastRefresh = Date()
+        let waiters = refreshWaiters
+        refreshWaiters.removeAll()
+        for waiter in waiters { waiter.resume() }
     }
 
     private func loadProjects() async {
@@ -277,6 +333,68 @@ public final class AppModel {
             detail = .failed(Self.coreError(error), previous: nil)
             detailWarnings = []
         }
+    }
+
+    private func loadReadyAnswer() async {
+        guard let result = try? await core.sessions(project: nil) else { return }
+        let ready = result.data.sessions
+            .filter { session in
+                guard let status = session.lastTurn?.status else { return false }
+                return status == .stopReceived || status == .stopReceivedBackgroundTasksPending
+            }
+            .max { (Wording.date($0.lastEventAt) ?? .distantPast) < (Wording.date($1.lastEventAt) ?? .distantPast) }
+        guard let session = ready, let last = session.lastTurn, let at = session.lastEventAt else {
+            readyAnswer = nil
+            return
+        }
+        let answer = ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
+                                 projectName: Wording.projectName(session.project), turnIndex: last.index,
+                                 status: last.status, at: at)
+        readyAnswer = answer
+        guard let seen = lastSeenAt else {
+            // First run: everything already captured counts as seen.
+            lastSeenAt = at
+            return
+        }
+        if Self.isNewer(at, than: seen) {
+            hasUnseenAnswer = true
+            if lastAnnouncedAt != at {
+                lastAnnouncedAt = at
+                onNewAnswer?(answer)
+            }
+        }
+    }
+
+    static func isNewer(_ a: String, than b: String) -> Bool {
+        guard let da = Wording.date(a), let db = Wording.date(b) else { return a > b }
+        return da > db
+    }
+
+    /// The user looked at the newest answer (opened the notch or a window).
+    public func acknowledgeReadyAnswer() {
+        hasUnseenAnswer = false
+        if let at = readyAnswer?.at { lastSeenAt = at }
+    }
+
+    /// Select the newest ready answer in every list, then load it.
+    public func revealReadyAnswer() async {
+        guard let answer = readyAnswer else { return }
+        acknowledgeReadyAnswer()
+        if let path = answer.projectPath {
+            let projectPaths = (projects.value ?? []).compactMap(\.path)
+            // The session's project, or the enabled root it lives under.
+            let match = projectPaths.first { $0 == path }
+                ?? projectPaths.filter { path.hasPrefix($0.hasSuffix("/") ? $0 : $0 + "/") }.max { $0.count < $1.count }
+            if let match, match != selectedProjectPath {
+                selectedProjectPath = match
+                sessions = .idle
+            }
+        }
+        let sessionChanged = selectedSessionKey != answer.sessionKey
+        selectedSessionKey = answer.sessionKey
+        selectedTurnIndex = answer.turnIndex
+        if sessionChanged { turns = .idle; detail = .idle }
+        await loadSessions()
     }
 
     // MARK: Selection

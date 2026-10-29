@@ -98,3 +98,14 @@ final class DecodingTests: XCTestCase {
         XCTAssertEqual(turn.link, .unknown("telepathy"))
     }
 }
+
+final class WordingTests: XCTestCase {
+    func testShortRelativeTime() {
+        let now = Wording.date("2026-10-29T12:00:00.000000Z")!
+        XCTAssertEqual(Wording.short("2026-10-29T11:59:30.000000Z", now: now), "now")
+        XCTAssertEqual(Wording.short("2026-10-29T11:56:00.000000Z", now: now), "4m")
+        XCTAssertEqual(Wording.short("2026-10-29T10:00:00.000000Z", now: now), "2h")
+        XCTAssertEqual(Wording.short("2026-10-26T12:00:00.000000Z", now: now), "3d")
+        XCTAssertEqual(Wording.short(nil, now: now), "—")
+    }
+}

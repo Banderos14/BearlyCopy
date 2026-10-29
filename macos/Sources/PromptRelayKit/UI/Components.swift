@@ -23,7 +23,7 @@ public struct StatusBadge: View {
         .accessibilityElement(children: .combine)
     }
 
-    var color: Color {
+    public var color: Color {
         switch status {
         case .stopReceived: return .green
         case .stopReceivedBackgroundTasksPending, .awaitingResponse: return .orange

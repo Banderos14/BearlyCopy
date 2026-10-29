@@ -1,18 +1,21 @@
 import SwiftUI
 
 // Surfaces: compositions of the shared components over the one AppModel.
-// Phase 3B adds a notch surface here; it reuses the same pieces.
+// The notch surface (Notch/NotchViews.swift) reuses the same pieces.
 
 /// Actions a surface cannot perform itself (opening windows, quitting); the
 /// app lifecycle supplies them.
 public struct SurfaceActions {
     public var openWindow: () -> Void
     public var openStatus: () -> Void
+    public var openSettings: () -> Void
     public var quit: () -> Void
 
-    public init(openWindow: @escaping () -> Void, openStatus: @escaping () -> Void, quit: @escaping () -> Void) {
+    public init(openWindow: @escaping () -> Void, openStatus: @escaping () -> Void,
+                openSettings: @escaping () -> Void = {}, quit: @escaping () -> Void) {
         self.openWindow = openWindow
         self.openStatus = openStatus
+        self.openSettings = openSettings
         self.quit = quit
     }
 }
@@ -236,6 +239,9 @@ public struct MenuPanelView: View {
         HStack {
             ConnectionFooter(model: model, openStatus: actions.openStatus)
             Spacer()
+            Button("Settings…") { actions.openSettings() }
+                .buttonStyle(.borderless)
+                .keyboardShortcut(",")
             Button("Quit") { actions.quit() }
                 .buttonStyle(.borderless)
                 .keyboardShortcut("q")

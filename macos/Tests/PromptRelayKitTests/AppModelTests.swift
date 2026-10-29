@@ -10,6 +10,7 @@ final class FakeCore: CoreProviding, @unchecked Sendable {
     var showResult: (String, Int) -> Result<CoreResult<ShowData>, CoreError>
     var contextResult: Result<CoreResult<ContextData>, CoreError> = .failure(.api(code: "not_found", message: "none"))
     private(set) var showCalls: [(String, Int)] = []
+    private(set) var sessionsCalls = 0
 
     init(projects: [ProjectInfo]) {
         projectsResult = .success(CoreResult(data: ProjectsData(projects: projects, settings: RetentionSettings(retentionDays: nil, automaticDeletion: false)), warnings: []))
@@ -18,7 +19,10 @@ final class FakeCore: CoreProviding, @unchecked Sendable {
 
     func projects() async throws -> CoreResult<ProjectsData> { try projectsResult.get() }
     func sessions(project: String?) async throws -> CoreResult<SessionsData> {
-        CoreResult(data: SessionsData(projectFilter: project, sessions: sessionsByProject[project ?? ""] ?? []), warnings: [])
+        sessionsCalls += 1
+        let list = project.map { sessionsByProject[$0] ?? [] }
+            ?? sessionsByProject.values.flatMap { $0 }.sorted { ($0.lastEventAt ?? "") > ($1.lastEventAt ?? "") }
+        return CoreResult(data: SessionsData(projectFilter: project, sessions: list), warnings: [])
     }
     func turns(sessionKey: String) async throws -> CoreResult<TurnsData> {
         guard let turns = turnsBySession[sessionKey] else { throw CoreError.api(code: "not_found", message: "no session") }
@@ -43,10 +47,11 @@ func project(_ path: String, sessions: Int, last: String?) -> ProjectInfo {
     """.utf8))
 }
 
-func sessionSummary(_ key: String, project: String, last: String) -> SessionSummary {
+func sessionSummary(_ key: String, project: String, last: String, lastTurn: Int = 1,
+                    status: String = "stop_received") -> SessionSummary {
     try! JSONDecoder().decode(SessionSummary.self, from: Data("""
     {"session_id":"\(key)","session_key":"\(key)","project":{"path":"\(project)","name":"p"},"first_event_at":"\(last)",
-     "last_event_at":"\(last)","event_count":2,"turn_count":1,"cwds":[],"last_turn":{"index":1,"status":"stop_received"},
+     "last_event_at":"\(last)","event_count":2,"turn_count":\(lastTurn),"cwds":[],"last_turn":{"index":\(lastTurn),"status":"\(status)"},
      "integrity":{"corrupt_lines":0,"unsupported_lines":0,"foreign_lines":0}}
     """.utf8))
 }
