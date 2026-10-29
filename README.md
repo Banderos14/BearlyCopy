@@ -28,7 +28,7 @@ Local-first · privacy-first · no AI APIs · no network · opt-in per project �
 verbatim capture · never blocks or steers Claude Code.
 
 ## Status
-**Proof of concept (Phase 3A). Not a product release.**
+**Proof of concept (Phase 3B). Not a product release.**
 - Done and tested in the cloud (Linux): the hook handler, storage, session
   correlation, Copy Response / Copy Context, the JSON API for the future app,
   history management, the Claude Code plugin package, and 137 automated tests.
@@ -39,7 +39,10 @@ verbatim capture · never blocks or steers Claude Code.
   one click, no terminal. Build: `scripts/build-macos-app.sh --install`
   (`docs/MACOS_APP.md`).
 - The plugin is installed and verified on a real Mac
-  (`docs/LOCAL_MAC_VALIDATION.md` §11). Not started: the notch UI.
+  (`docs/LOCAL_MAC_VALIDATION.md` §11).
+- Notch island (Phase 3B, opt-in in Settings): a Dynamic-Island-style card
+  that grows from the MacBook notch with the latest answer and Copy Response.
+  Develop in Xcode with `macos/PromptRelay.xcworkspace` (`docs/MACOS_APP.md`).
 
 ## Install as a Claude Code plugin
 ```bash
@@ -93,7 +96,8 @@ Requirements: macOS on Apple Silicon and any Python 3.9+. That can be
 | [SECURITY](docs/SECURITY.md) | threat model, privacy, installation safety |
 | [TEST_PLAN](docs/TEST_PLAN.md) | unit, integration, manual and regression tests |
 | [ROADMAP](docs/ROADMAP.md) | phases and acceptance criteria |
-| [UI_RESEARCH](docs/UI_RESEARCH.md) | notch UI foundations (research only) |
+| [UI_RESEARCH](docs/UI_RESEARCH.md) | notch UI foundations, OpenNook vs custom panel, Coucou reference |
+| [MACOS_APP](docs/MACOS_APP.md) | the macOS app and notch island: build, Xcode, architecture, verification |
 | [LOCAL_MAC_VALIDATION](docs/LOCAL_MAC_VALIDATION.md) | step-by-step Mac checks |
 | [CLOUD_TO_LOCAL_HANDOFF](docs/CLOUD_TO_LOCAL_HANDOFF.md) | how to continue in a local session |
 | [STATUS](docs/STATUS.md) | current state, verification matrix, risks |

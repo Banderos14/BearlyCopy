@@ -87,16 +87,23 @@ byte-identical, and the Mac check passes.
 **3A ✅ (2026-10-29):** menu-bar app (SwiftUI + AppKit, `macos/`); projects,
 sessions and answers; full-response view; Copy Response and Copy Context;
 connection status; live updates (FSEvents). `docs/MACOS_APP.md`, ADR-009.
-**3B — next, needs approval:** notch surface over the same components.
-Still open for Phase 3: settings (enabled projects, retention, delete
-history), app icon, launch at login.
+**3B ✅ (2026-10-29, accepted by the owner on the real screen):**
+Dynamic-Island-style notch island (custom NSPanel + SwiftUI, ADR-010):
+resting / compact / expanded states, hover with dwell and grace, keyboard
+(⌃⌥⌘P, ← →, ↩, Esc), Reduce Motion, display choice and no-notch fallback,
+"answer ready" indicator and optional notification, coexistence with
+Coucou, Settings, and an Xcode workspace with Debug/Release and Previews.
+`docs/MACOS_APP.md` §1 and §2B.
+Still open for Phase 3: settings for enabled projects, retention and
+history deletion; app icon; launch at login.
 Decision points: keep the Python handler or port it to Swift. Move to SQLite
 if a session file exceeds ~10 MB or listing exceeds ~100 ms.
 
-## Phase 4 — Notch / Dynamic-Island-style UI (M)
-Hover expansion, animations, compact status, multi-monitor handling, and a
-fallback for Macs without a notch. Evaluate OpenNook (Apache-2.0) against a
-custom NSPanel (`UI_RESEARCH.md`).
+## Phase 4 — Notch / Dynamic-Island-style UI (M) — core delivered in 3B
+The notch island moved forward into Phase 3B (above). Remaining ideas:
+live observation of coexistence with Coucou, optional "follow the pointer"
+display choice, memory reduction toward the 50 MB target, and polish from
+day-to-day use.
 
 ## Phase 5 — Public-release readiness (M)
 Signing and notarization, an installer, docs, licensing review of

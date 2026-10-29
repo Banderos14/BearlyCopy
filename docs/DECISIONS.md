@@ -326,3 +326,43 @@ newer than the plugin's copy; both read the same versioned store
 Python (≈40–60 ms). − Local ad-hoc signing only; notarization is Phase 5.
 
 **Status.** Accepted (Phase 3A). Verified on the owner's Mac.
+
+---
+
+## ADR-010: Notch island = custom NSPanel + SwiftUI, presentation layer only
+
+**Context.** Phase 3B adds a Dynamic-Island-style surface around the MacBook
+notch. Candidates: OpenNook (framework) or a custom panel. Coucou
+(NotchBuddy), MIT-licensed code with all-rights-reserved assets, is installed
+on the owner's Mac and uses the same screen area.
+
+**Decision.**
+1. A custom borderless, non-activating `NSPanel` at `statusBar + 1`, on all
+   Spaces including full screen, hosting a SwiftUI island. No dependency.
+2. The window is resized to the island for every phase (notch, notch + ears,
+   expanded card sized to its content) and hover uses an `NSTrackingArea`, so
+   nothing polls and no transparent area catches clicks.
+3. A pure state machine (`NotchInteraction`) owns transitions: dwell 0.15 s
+   to open on hover, 0.35 s grace to close, click/⌃⌥⌘P open with focus,
+   pinning while an alert is open. Geometry is pure (`NotchLayout`,
+   `DisplayChoice`) and tested with mock displays.
+4. The island is a presentation layer over the existing `AppModel`,
+   `CoreClient`, `ClipboardService` and `StoreWatcher`; it adds no data path.
+5. Off by default; one island on the chosen notched display; no island on
+   displays without a notch (the menu-bar item stays). When Coucou runs, the
+   island steps aside by default (setting), and Prompt Relay never changes
+   Coucou.
+6. No shadow and a black island in both appearances, so it merges with the
+   hardware notch.
+
+**Alternatives.** (a) OpenNook: macOS 15+, pre-1.0 API, owns the app entry
+point. (b) Coucou's approach (fixed large panel, pointer polling at
+8–60 Hz, `ignoresMouseEvents` toggling): smooth but costs wake-ups while idle.
+(c) One panel per display: rejected (clutter, duplicate hover targets).
+
+**Consequences.** + Zero idle cost; + full control of look and tests; + the
+same model drives every surface. − Our own window code to maintain (about
+600 lines with tests). − Coexistence with Coucou is tested with mocks, not
+yet observed live.
+
+**Status.** Accepted (Phase 3B), confirmed on the owner's Mac.

@@ -1,8 +1,30 @@
-# Future macOS UI — research notes (no UI is implemented)
+# macOS UI — research notes
 
-Status: desk research only, done in the cloud on 2026-10-29. Nothing here was
-built or run. Every performance or compatibility statement below must be
-re-checked on a Mac in Phase 3/4.
+Status: desk research from the cloud (2026-10-29), followed by the Phase 3B
+decision on the Mac (below). The notch UI is implemented with a custom
+NSPanel + SwiftUI (ADR-010, `docs/MACOS_APP.md` §2B).
+
+## Phase 3B decision (2026-10-29, on the Mac)
+| Criterion | OpenNook | Custom NSPanel + SwiftUI (chosen) |
+|---|---|---|
+| Integration | owns the app entry point (`NookApp.main`), would replace our App/MenuBarExtra lifecycle | a controller next to the existing app; reuses AppModel, CoreClient, ClipboardService, StoreWatcher |
+| API stability | pre-1.0, no stability policy, empty Releases page | our own small API, covered by tests |
+| Minimum macOS | 15 | 14 (our target) |
+| License | Apache-2.0 + MIT (NookSurface) — fine, but a dependency | none |
+| Hover / animation | built in | NSTrackingArea + SwiftUI shape morph; no polling |
+| Multi-display / no notch | notch-fused or floating capsule; display choice | one island on the chosen notched display; menu-bar item elsewhere |
+| Reuse of existing UI | its own view tree | the same model and components |
+
+Reference studied: **Coucou** (`Louis-CFM/coucou`, the app installed as
+NotchBuddy), code under the MIT license; its name, character, icons and
+sounds are all rights reserved (LICENSE-ASSETS) and none were used. No Coucou
+code was copied. Techniques compared: Coucou keeps a fixed 720 × 560
+transparent NSPanel at `mainMenu + 3`, polls the pointer at 8/20/60 Hz and
+toggles `ignoresMouseEvents`; Prompt Relay instead resizes its panel to the
+island for each phase and uses a tracking area, so it costs nothing while
+idle. Both override `constrainFrameRect` so AppKit keeps the panel in the
+menu-bar band. Coucou's compact state adds 80 pt ears; Prompt Relay uses
+26 pt.
 
 ## Planned interface
 Notch / Dynamic-Island-style panel that opens on hover: compact Claude status,

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-29, local Mac session (Phase 3A native macOS app),
+Last updated: 2026-10-29, local Mac session (Phase 3B notch UI and Xcode),
 branch `claude/loving-mccarthy-ossw3q`.
 
 ## Completed
@@ -38,6 +38,14 @@ branch `claude/loving-mccarthy-ossw3q`.
   and error states, FSEvents live updates with a fallback. Integration only
   through the JSON API v1; the Core is bundled into the app. 39 Swift tests.
   The Python Core was not changed.
+- **Phase 3B — notch UI and Xcode foundation** (Mac; accepted by the owner
+  on the real screen): Dynamic-Island-style island around the MacBook notch
+  (custom NSPanel + SwiftUI, ADR-010, `docs/MACOS_APP.md` §2B) over the same
+  AppModel; Settings; "answer ready" indicator; coexistence with Coucou;
+  `macos/PromptRelay.xcworkspace` with a Debug/Release app target and
+  Previews. The first design was rejected in review (too large, window-like)
+  and redesigned; a grey shadow halo found in review was removed with a
+  regression test. 70 Swift tests. Python Core, plugin and JSON API unchanged.
 
 ## Verification matrix
 ### Verified in Cloud (real code, real processes, Linux)
@@ -114,6 +122,16 @@ Real payloads (redacted) are fixtures: `tests/fixtures/real_*.json`.
 | Owner's check | menu-bar icon opens the panel; **Copy Response** copied the answer; ⌘V pasted it without loss |
 | Idle cost | 0 % CPU, ≈120 MB RSS |
 
+### Verified on macOS — Phase 3B notch UI (2026-10-29)
+| Item | Evidence |
+|---|---|
+| Xcode | workspace scheme "Prompt Relay": Debug and Release BUILD SUCCEEDED; `xcodebuild test`: 70 tests, 0 failures (1 opt-in render test skipped) |
+| `swift test` | 70 tests, 0 failures, stable across repeated runs |
+| Real panel geometry | Debug capture on the built-in display: resting 185 × 32 at the notch; expanded 400 × 142 = the island; back to 185 × 32; nothing on the external display |
+| No halo | only black and transparent pixels around the island (264 anti-aliased edge pixels); `NotchAppearanceTests` fails if a shadow returns |
+| Idle cost | notch on: 0 % CPU, ≈119 MB RSS, no Python in 30 s of sampling; notch off ≈118 MB |
+| Owner's visual check | island opens from the physical notch; geometry and look correct; no grey halo; answer shown in the notch and main window |
+
 ### Verified with Mocks
 | Item | Mock |
 |---|---|
@@ -140,7 +158,7 @@ Real payloads (redacted) are fixtures: `tests/fixtures/real_*.json`.
 | Launcher fallback without a pin (Homebrew / CLT order) on macOS | M11 with `pin-python --clear` |
 
 ### Not Implemented (by design in this phase)
-Notch UI (Phase 3B), app settings UI (enable projects, retention, delete), launch at login, app icon, notarization, settings-merge installer (not needed: plugin
+App settings for enabling projects, retention and deletion (the app has interface settings only), launch at login, app icon, notarization, settings-merge installer (not needed: plugin
 first, ADR-008), ChatGPT integration, clipboard import, encryption at rest,
 SessionStart/SessionEnd/Notification handling, automatic pruning (deliberately
 never automatic), per-record expiry inside a session.
@@ -259,8 +277,23 @@ GitHub Actions run 40910039983 (`ab57b74`) failed on Linux / Python 3.13:
 - Known limitations: `docs/MACOS_APP.md` §8 (Python start per call, ≈120 MB
   RSS, no settings UI or app icon, local signing only).
 
+## Phase 3B changes
+- New: `Sources/PromptRelayKit/Notch/` (geometry, state machine, controller,
+  views, settings, coordinator, hot key), `UI/PreferencesView.swift`,
+  `Services/ReadyNotifier.swift`, `Previews/PreviewSupport.swift`,
+  `macos/Xcode/` (project, Info.plist, shared scheme),
+  `macos/PromptRelay.xcworkspace`, ADR-010.
+- AppModel: ready-answer tracking across projects (one extra `sessions`
+  call, only while the notch or notifications are on), remembered "seen"
+  answer, `revealReadyAnswer`, background observation without the fallback
+  timer, `refreshNow` now waits for a refresh already running (a defect found
+  by the new tests), and no Python call when a surface opens while FSEvents
+  is live.
+- Known limitations: `docs/MACOS_APP.md` §8 (Coucou coexistence not observed
+  live, black island in both themes by design, ≈120 MB RSS).
+
 ## Next agreed stage
-Phase 3A is done and verified on the owner's Mac. Proposed next: **Phase 3B —
-notch UI** over the same `PromptRelayKit` components. It needs the owner's
-approval. Still open on the Mac: plugin M14/M15, CLI Stop, and the Phase 1.5
-items above (the ⌘V paste was confirmed with the app).
+Phase 3B is done and accepted on the owner's Mac. No next phase is approved.
+Candidates: Phase 3 leftovers (project/retention/delete settings, app icon,
+launch at login), the open Mac checks (plugin M14/M15, CLI Stop, Phase 1.5
+items), or Phase 5 readiness. Each needs the owner's approval.
