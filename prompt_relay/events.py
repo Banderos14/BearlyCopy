@@ -1,0 +1,89 @@
+"""Normalized view of stored hook envelopes.
+
+Only fields documented in the official Claude Code hooks reference are read
+(see docs/HOOKS_RESEARCH.md). Every field is treated as optional and
+type-checked; the raw payload stays untouched in the envelope.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+# Events the hook handler stores. Everything else is ignored, not persisted.
+KIND_BY_EVENT = {
+    "UserPromptSubmit": "prompt",
+    "Stop": "stop",
+    "StopFailure": "stop_failure",
+}
+
+
+def _str(value: Any) -> Optional[str]:
+    return value if isinstance(value, str) else None
+
+
+def _nonempty_str(value: Any) -> Optional[str]:
+    return value if isinstance(value, str) and value else None
+
+
+def _list(value: Any) -> Optional[List[Any]]:
+    return value if isinstance(value, list) else None
+
+
+@dataclass
+class Event:
+    record_id: str
+    received_at: str
+    kind: str
+    session_id: Optional[str]
+    prompt_id: Optional[str]
+    cwd: Optional[str]
+    project_dir: Optional[str]
+    transcript_path: Optional[str]
+    # UserPromptSubmit.prompt, Stop.last_assistant_message, or for
+    # StopFailure the rendered API error string (never Claude's answer).
+    text: Optional[str]
+    stop_hook_active: Optional[bool]
+    background_tasks: Optional[List[Any]]
+    session_crons: Optional[List[Any]]
+    error: Optional[str]
+    error_details: Optional[str]
+    agent_id: Optional[str]
+
+    @property
+    def has_background_tasks(self) -> bool:
+        return bool(self.background_tasks)
+
+
+def from_record(record: Dict[str, Any]) -> Optional[Event]:
+    payload = record.get("payload")
+    if not isinstance(payload, dict):
+        return None
+    kind = KIND_BY_EVENT.get(payload.get("hook_event_name"))  # type: ignore[arg-type]
+    if kind is None:
+        return None
+    context = record.get("context") if isinstance(record.get("context"), dict) else {}
+    cwd = _nonempty_str(payload.get("cwd"))
+    project_dir = _nonempty_str(context.get("claude_project_dir")) or cwd
+    if kind == "prompt":
+        text = _str(payload.get("prompt"))
+    else:
+        text = _str(payload.get("last_assistant_message"))
+    stop_hook_active = payload.get("stop_hook_active")
+    return Event(
+        record_id=str(record.get("record_id", "")),
+        received_at=str(record.get("received_at", "")),
+        kind=kind,
+        session_id=_nonempty_str(payload.get("session_id")),
+        prompt_id=_nonempty_str(payload.get("prompt_id")),
+        cwd=cwd,
+        project_dir=project_dir,
+        transcript_path=_nonempty_str(payload.get("transcript_path")),
+        text=text,
+        stop_hook_active=stop_hook_active if isinstance(stop_hook_active, bool) else None,
+        background_tasks=_list(payload.get("background_tasks")),
+        session_crons=_list(payload.get("session_crons")),
+        error=_nonempty_str(payload.get("error")),
+        error_details=_str(payload.get("error_details")),
+        agent_id=_nonempty_str(payload.get("agent_id")),
+    )

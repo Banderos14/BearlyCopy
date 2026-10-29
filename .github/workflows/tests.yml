@@ -1,0 +1,36 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      macos:
+        description: "Also run on a macOS runner (uses more expensive minutes)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: PYTHONS=python scripts/check.sh
+
+  macos:
+    # Opt-in only. Exercises the code on macOS; it is not a substitute for
+    # docs/LOCAL_MAC_VALIDATION.md (no Claude Desktop, no interactive clipboard).
+    if: github.event_name == 'workflow_dispatch' && inputs.macos
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: PYTHONS=/usr/bin/python3 scripts/check.sh

@@ -1,0 +1,6 @@
+{
+  "session_id": "sess-min",
+  "hook_event_name": "UserPromptSubmit",
+  "cwd": "__PROJECT_A__",
+  "prompt": "Minimal prompt"
+}
