@@ -290,6 +290,26 @@ class ExportTests(IsolatedTestCase):
         # Copy Response is the user's explicit verbatim copy and is not blocked
         self.assertEqual(self.cli("copy").returncode, 0)
 
+    def test_review_pack_keeps_a_long_markdown_report_verbatim(self):
+        # Phase 4: a realistic 100 KB+ report with nested fences, tables, CRLF,
+        # Cyrillic and emoji survives the Review Pack unchanged, exactly once.
+        section = ("## Итоги 🚀\r\n\r\n| Файл | Статус |\n|---|---|\n| `a.swift` | ✅ |\n\n"
+                   "```swift\nlet x = \"```\"\n```\n\n````text\n```nested```\n````\n\n"
+                   "- пункт\n  - вложенный пункт\n\n```json\n{\"ok\": true, \"emoji\": \"👍🏽\"}\n```\n\n")
+        report = "".join("# Раздел %d\n\n%s" % (i, section) for i in range(500))
+        self.assertGreater(len(report), 100_000)
+        self.assertHookOk(self.hook(self.fx("prompt_basic.json")))
+        self.assertHookOk(self.hook(self.fx("stop_basic.json", last_assistant_message=report)))
+        out = self.cli("context")
+        self.assertEqual(out.returncode, 0)
+        text = out.stdout.decode("utf-8")
+        self.assertTrue(text.startswith("# Review Pack:"))
+        self.assertIn("- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]", text)
+        self.assertEqual(text.count(report), 1, "the full report, unmodified, once")
+        fence = export.fence(report)
+        self.assertGreater(len(fence), 4, "the wrapping fence is longer than every fence inside")
+        self.assertIn(fence + "markdown\n" + report + "\n" + fence, text)
+
     # Fixture repos are created with auto-maintenance off. `git commit` starts
     # `git maintenance run --auto`, and since git 2.47 it detaches: it holds
     # .git/objects/maintenance.lock after commit returns and removes it later,

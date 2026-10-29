@@ -114,13 +114,14 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
     final = turn.final_response
     lines: List[str] = []
     add = lines.append
-    add("# Claude Code result for review (exported by Prompt Relay)")
+    add("# Review Pack: Claude Code result for independent review (exported by Prompt Relay)")
     add("")
     add("Provenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; "
         "[Reported by Claude] = Claude's own words, not checked; "
         "[Not verified] = no independent source; [Unavailable] = could not be determined.")
     add("")
     add("## Session")
+    add(f"- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [{CONFIRMED}]")
     add(f"- Project: {session.project_name} — {session.project_dir or UNAVAILABLE} [{CONFIRMED if session.project_dir else UNAVAILABLE}]")
     add(f"- Session ID: {session.session_id or UNAVAILABLE} [{CONFIRMED if session.session_id else UNAVAILABLE}]")
     add(f"- Turn: {turn.index} of {len(session.turns)}")
