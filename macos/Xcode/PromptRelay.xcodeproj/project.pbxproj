@@ -1,0 +1,271 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AB0000000000000000000101 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000201 /* main.swift */; };
+		AB0000000000000000000102 /* PromptRelayKit in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000000000000000000901 /* PromptRelayKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		AB0000000000000000000201 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = main.swift; path = ../Sources/PromptRelayApp/main.swift; sourceTree = SOURCE_ROOT; };
+		AB0000000000000000000202 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AB0000000000000000000203 /* Prompt Relay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Prompt Relay.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AB0000000000000000000301 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AB0000000000000000000102 /* PromptRelayKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AB0000000000000000000401 = {
+			isa = PBXGroup;
+			children = (
+				AB0000000000000000000402 /* App */,
+				AB0000000000000000000403 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AB0000000000000000000402 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				AB0000000000000000000201 /* main.swift */,
+				AB0000000000000000000202 /* Info.plist */,
+			);
+			name = App;
+			sourceTree = "<group>";
+		};
+		AB0000000000000000000403 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AB0000000000000000000203 /* Prompt Relay.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AB0000000000000000000501 /* Prompt Relay */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB0000000000000000000802 /* Build configuration list for PBXNativeTarget "Prompt Relay" */;
+			buildPhases = (
+				AB0000000000000000000601 /* Sources */,
+				AB0000000000000000000301 /* Frameworks */,
+				AB0000000000000000000602 /* Embed Python Core */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Prompt Relay";
+			packageProductDependencies = (
+				AB0000000000000000000901 /* PromptRelayKit */,
+			);
+			productName = "Prompt Relay";
+			productReference = AB0000000000000000000203 /* Prompt Relay.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AB0000000000000000000701 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+			};
+			buildConfigurationList = AB0000000000000000000801 /* Build configuration list for PBXProject "PromptRelay" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = AB0000000000000000000401;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AB0000000000000000000A01 /* XCLocalSwiftPackageReference ".." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = AB0000000000000000000403 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AB0000000000000000000501 /* Prompt Relay */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		AB0000000000000000000602 /* Embed Python Core */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Embed Python Core";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Copies the Python Core (bin/prompt-relay + plugin/prompt_relay) into\n# Contents/Resources/core in the repository's layout, as\n# scripts/build-macos-app.sh does. Nothing else from the repository is copied.\nset -eu\nrepo=\"${SRCROOT}/../..\"\ncore=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/core\"\nrm -rf \"$core\"\nmkdir -p \"$core/bin\" \"$core/plugin/prompt_relay\"\ncp \"$repo/bin/prompt-relay\" \"$core/bin/prompt-relay\"\ncp \"$repo\"/plugin/prompt_relay/*.py \"$core/plugin/prompt_relay/\"\nchmod 755 \"$core/bin/prompt-relay\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AB0000000000000000000601 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AB0000000000000000000101 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AB0000000000000000000811 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AB0000000000000000000812 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		AB0000000000000000000821 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 0.2.0;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.banderos14.PromptRelay.debug;
+				PRODUCT_NAME = "Prompt Relay";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AB0000000000000000000822 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 0.2.0;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.banderos14.PromptRelay;
+				PRODUCT_NAME = "Prompt Relay";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AB0000000000000000000801 /* Build configuration list for PBXProject "PromptRelay" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB0000000000000000000811 /* Debug */,
+				AB0000000000000000000812 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB0000000000000000000802 /* Build configuration list for PBXNativeTarget "Prompt Relay" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB0000000000000000000821 /* Debug */,
+				AB0000000000000000000822 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		AB0000000000000000000A01 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AB0000000000000000000901 /* PromptRelayKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PromptRelayKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = AB0000000000000000000701 /* Project object */;
+}
