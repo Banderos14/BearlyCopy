@@ -11,7 +11,14 @@ Layout under the data directory (see docs/DATA_MODEL.md):
 Concurrency: every append takes an exclusive ``flock`` on the session file,
 checks for duplicates, writes the line with a single buffer and fsyncs.
 Readers take a shared lock. A line cut short by a killed writer is skipped as
-corrupt by readers, and the next writer starts on a fresh line.
+corrupt by readers, and the next writer starts on a fresh line. If the file
+was deleted while a writer waited for the lock, the writer reopens the path
+instead of writing into the unlinked file.
+
+Path safety: session files are opened with O_NOFOLLOW, symlinks inside
+events/ are never listed, read or deleted, and a symlinked events/ directory
+is refused (``unsafe_path``). The data root itself may be a symlink chosen by
+the user.
 """
 
 from __future__ import annotations
@@ -34,8 +41,10 @@ LOCK_TIMEOUT_S = 3.0
 # they arrive within this window; later identical payloads are kept.
 DEDUP_WINDOW_S = 120.0
 NO_SESSION_KEY = "_no-session"
+APPEND_REOPEN_ATTEMPTS = 3
 
 _SAFE_KEY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_O_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
 
 
 class StoreError(Exception):
@@ -58,6 +67,7 @@ class SessionFile:
     key: str
     path: Path
     mtime: float
+    size: int = 0
 
 
 def session_key(session_id: Optional[str]) -> str:
@@ -116,9 +126,21 @@ class Store:
         try:
             self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
             self.events_dir.mkdir(mode=0o700, exist_ok=True)
+            self.check_events_dir()
             os.chmod(self.events_dir, 0o700)
+        except StoreError:
+            raise
         except OSError as exc:
             raise StoreError("storage_unavailable", type(exc).__name__) from exc
+
+    def check_events_dir(self) -> None:
+        """events/ must be a real directory, never a symlink to elsewhere."""
+        try:
+            st = os.lstat(str(self.events_dir))
+        except FileNotFoundError:
+            return
+        if not stat.S_ISDIR(st.st_mode):
+            raise StoreError("unsafe_path", "events is not a plain directory")
 
     def path_for(self, session_id: Optional[str]) -> Path:
         return self.events_dir / (session_key(session_id) + ".jsonl")
@@ -129,14 +151,26 @@ class Store:
         """Append ``record``. Returns "stored" or "duplicate"."""
         self.ensure()
         path = self.path_for(record.get("session_id"))
+        for _ in range(APPEND_REOPEN_ATTEMPTS):
+            outcome = self._append_once(path, record)
+            if outcome != "reopen":
+                return outcome
+        raise StoreError("write_failed", "file kept disappearing")
+
+    def _append_once(self, path: Path, record: Dict[str, Any]) -> str:
         line = encode_record(record)
         try:
-            fd = os.open(str(path), os.O_RDWR | os.O_APPEND | os.O_CREAT, 0o600)
+            fd = os.open(str(path), os.O_RDWR | os.O_APPEND | os.O_CREAT | _O_NOFOLLOW, 0o600)
         except OSError as exc:
+            if exc.errno == errno.ELOOP:
+                raise StoreError("unsafe_path", "session file is a symlink") from exc
             raise StoreError("storage_unavailable", type(exc).__name__) from exc
         try:
             _lock(fd, fcntl.LOCK_EX, self.lock_timeout)
-            size = os.fstat(fd).st_size
+            st = os.fstat(fd)
+            if st.st_nlink == 0:
+                return "reopen"  # deleted (delete/prune) while we waited
+            size = st.st_size
             existing = os.pread(fd, size, 0) if size else b""
             if self._is_duplicate(existing, record):
                 return "duplicate"
@@ -170,7 +204,11 @@ class Store:
                 continue
             if has_prompt_id:
                 return True
-            if abs(now - float(old.get("received_at_epoch", 0))) <= DEDUP_WINDOW_S:
+            try:
+                old_epoch = float(old.get("received_at_epoch", 0))
+            except (TypeError, ValueError):
+                continue  # a damaged line never blocks a new event
+            if abs(now - old_epoch) <= DEDUP_WINDOW_S:
                 return True
         return False
 
@@ -179,10 +217,12 @@ class Store:
     def read_path(self, path: Path) -> ReadResult:
         result = ReadResult()
         try:
-            fd = os.open(str(path), os.O_RDONLY)
+            fd = os.open(str(path), os.O_RDONLY | _O_NOFOLLOW)
         except FileNotFoundError:
             return result
         except OSError as exc:
+            if exc.errno == errno.ELOOP:
+                raise StoreError("unsafe_path", "session file is a symlink") from exc
             raise StoreError("read_failed", type(exc).__name__) from exc
         try:
             try:
@@ -218,37 +258,75 @@ class Store:
         return self.read_path(self.path_for(session_id))
 
     def session_files(self) -> List[SessionFile]:
+        """Regular ``*.jsonl`` files directly in events/. Symlinks are skipped."""
+        self.check_events_dir()
         try:
-            entries = list(self.events_dir.iterdir())
+            entries = list(os.scandir(str(self.events_dir)))
         except FileNotFoundError:
             return []
         except OSError as exc:
             raise StoreError("read_failed", type(exc).__name__) from exc
         files = []
         for entry in entries:
-            if entry.suffix != ".jsonl":
-                continue
+            if not self.is_session_file_name(entry.name):
+                continue  # not ours: other files are never read or deleted
             try:
-                st = entry.stat()
+                st = entry.stat(follow_symlinks=False)
             except FileNotFoundError:
                 continue  # deleted between listing and stat
             if stat.S_ISREG(st.st_mode):
-                files.append(SessionFile(entry.stem, entry, st.st_mtime))
-        files.sort(key=lambda f: f.mtime, reverse=True)
+                key = entry.name[: -len(".jsonl")]
+                files.append(SessionFile(key, Path(entry.path), st.st_mtime, st.st_size))
+        files.sort(key=lambda f: (f.mtime, f.key), reverse=True)
         return files
 
     # -- delete ------------------------------------------------------------
 
-    def delete_path(self, path: Path) -> bool:
-        try:
-            path.unlink()
-            return True
-        except FileNotFoundError:
+    def is_session_file_name(self, name: str) -> bool:
+        if not name.endswith(".jsonl"):
             return False
+        key = name[: -len(".jsonl")]
+        return key == NO_SESSION_KEY or bool(_SAFE_KEY.match(key))
 
-    def delete_all(self) -> int:
-        count = 0
-        for sf in self.session_files():
-            if self.delete_path(sf.path):
-                count += 1
-        return count
+    def safe_unlink(self, sf: SessionFile) -> str:
+        """Delete one session file, re-checked under its exclusive lock.
+
+        Returns "deleted", "vanished" or "changed" (written since it was
+        planned). Raises StoreError("unsafe_path") for anything that is not a
+        plain session file directly inside events/.
+        """
+        self.check_events_dir()
+        path = Path(sf.path)
+        if (os.path.realpath(str(path.parent)) != os.path.realpath(str(self.events_dir))
+                or not self.is_session_file_name(path.name)):
+            raise StoreError("unsafe_path", "not a session file inside events/")
+        try:
+            fd = os.open(str(path), os.O_RDONLY | _O_NOFOLLOW)
+        except FileNotFoundError:
+            return "vanished"
+        except OSError as exc:
+            if exc.errno == errno.ELOOP:
+                raise StoreError("unsafe_path", "session file is a symlink") from exc
+            raise StoreError("delete_failed", type(exc).__name__) from exc
+        try:
+            st = os.fstat(fd)
+            if not stat.S_ISREG(st.st_mode):
+                raise StoreError("unsafe_path", "not a regular file")
+            _lock(fd, fcntl.LOCK_EX, self.lock_timeout)
+            st = os.fstat(fd)
+            if st.st_nlink == 0:
+                return "vanished"
+            if st.st_size != sf.size or st.st_mtime != sf.mtime:
+                return "changed"
+            try:
+                current = os.lstat(str(path))
+            except FileNotFoundError:
+                return "vanished"
+            if (current.st_dev, current.st_ino) != (st.st_dev, st.st_ino):
+                return "changed"  # replaced by another file since we opened it
+            os.unlink(str(path))
+            return "deleted"
+        except OSError as exc:
+            raise StoreError("delete_failed", type(exc).__name__) from exc
+        finally:
+            os.close(fd)

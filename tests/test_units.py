@@ -198,7 +198,9 @@ class StoreTests(unittest.TestCase):
     def test_delete(self):
         for sid in ("a", "b"):
             self.store.append(self._record({"hook_event_name": "Stop", "session_id": sid}))
-        self.assertEqual(self.store.delete_all(), 2)
+        from prompt_relay import retention
+        plan = retention.execute(self.store, retention.plan_delete(self.store, all_sessions=True, force_active=True))
+        self.assertEqual(plan.count(retention.DELETED), 2)
         self.assertEqual(self.store.session_files(), [])
 
     def test_empty_store(self):
@@ -380,7 +382,11 @@ class ExportTests(IsolatedTestCase):
         self.assertHookOk(self.hook(self.fx("stop_basic.json")))
         self.assertEqual(self.cli("delete", "--all").returncode, 2)
         self.assertEqual(len(self.records("sess-a")), 1)
-        self.assertEqual(self.cli("delete", "--session", "sess-a", "--yes").returncode, 0)
+        # Phase 2A: a session written to in the last 30 min is active and kept.
+        kept = self.cli("delete", "--session", "sess-a", "--yes")
+        self.assertEqual(kept.returncode, 6)
+        self.assertEqual(len(self.records("sess-a")), 1)
+        self.assertEqual(self.cli("delete", "--session", "sess-a", "--yes", "--force-active").returncode, 0)
         self.assertEqual(self.records("sess-a"), [])
 
     def test_session_prefix_and_project_filter(self):

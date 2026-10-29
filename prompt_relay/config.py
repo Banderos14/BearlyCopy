@@ -16,12 +16,22 @@ from pathlib import Path
 from typing import Iterator, List, Optional
 
 CONFIG_SCHEMA = 1
+MAX_RETENTION_DAYS = 36500
 
 
 @dataclass
 class Config:
     enabled_projects: List[str] = field(default_factory=list)
     error: Optional[str] = None  # set when the file exists but is unusable
+    # Default age threshold for ``prompt-relay prune``; None = not set. There is
+    # no automatic deletion: nothing prunes unless the user runs prune --yes.
+    retention_days: Optional[int] = None
+    # A bad retention value never disables capture; it is reported instead.
+    retention_error: Optional[str] = None
+
+
+def valid_retention_days(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= MAX_RETENTION_DAYS
 
 
 def normalize_project_path(path: str) -> str:
@@ -49,7 +59,14 @@ def load(root: Path) -> Config:
     projects = data.get("enabled_projects")
     if not isinstance(projects, list) or not all(isinstance(p, str) for p in projects):
         return Config(error="config_invalid_projects")
-    return Config(enabled_projects=list(projects))
+    cfg = Config(enabled_projects=list(projects))
+    retention = data.get("retention_days")
+    if retention is not None:
+        if valid_retention_days(retention):
+            cfg.retention_days = retention
+        else:
+            cfg.retention_error = "config_invalid_retention_days"
+    return cfg
 
 
 @contextlib.contextmanager
@@ -71,7 +88,8 @@ def save(root: Path, config: Config) -> None:
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     path = config_path(root)
     tmp = path.with_name(f"{path.name}.{os.getpid()}.{os.urandom(4).hex()}.tmp")
-    data = {"schema": CONFIG_SCHEMA, "enabled_projects": sorted(set(config.enabled_projects))}
+    data = {"schema": CONFIG_SCHEMA, "enabled_projects": sorted(set(config.enabled_projects)),
+            "retention_days": config.retention_days}
     fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2)

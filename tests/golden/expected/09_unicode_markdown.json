@@ -1,0 +1,241 @@
+{
+  "show_markdown": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 2,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 2
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 246,
+            "preview": "# Summary\n\n## Changes\n\n- **Bold** and _italic_\n- [link](https://example.com)\n\n```python\ndef f(x):\n    return x * 2  # comment\n```\n\n````markdown\nNested fence:\n```bash\necho \"hi\"\n```\n````\n\n| a | b |\n|---",
+            "prompt_id": "pm",
+            "received_at": "2026-01-01T00:00:03.000000Z",
+            "text": "# Summary\n\n## Changes\n\n- **Bold** and _italic_\n- [link](https://example.com)\n\n```python\ndef f(x):\n    return x * 2  # comment\n```\n\n````markdown\nNested fence:\n```bash\necho \"hi\"\n```\n````\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n> quote\n\n```\nplain block\n```\n",
+            "truncated": true,
+            "utf8_bytes": 246
+          },
+          "index": 2,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 8,
+            "preview": "markdown",
+            "prompt_id": "pm",
+            "received_at": "2026-01-01T00:00:02.000000Z",
+            "text": "markdown",
+            "truncated": false,
+            "utf8_bytes": 8
+          },
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show_unicode": {
+    "argv": [
+      "show",
+      "--session",
+      "sess-a",
+      "--turn",
+      "1"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 2,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 2
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 197,
+            "preview": "Готово! Всё работает ✅\nEnglish line.\nEmoji: 👩🏽‍💻 🇺🇦 🚀\nSpecial: <>&\"' \\ $HOME `$(rm -rf /)` %s {0} \t tab\r\nCRLF line\nZero-width:​| RTL: שלום | CJK: 日本語 | NUL:\u0000| combining: é\n   trailing spaces   \n\n\n",
+            "prompt_id": "pu",
+            "received_at": "2026-01-01T00:00:01.000000Z",
+            "text": "Готово! Всё работает ✅\nEnglish line.\nEmoji: 👩🏽‍💻 🇺🇦 🚀\nSpecial: <>&\"' \\ $HOME `$(rm -rf /)` %s {0} \t tab\r\nCRLF line\nZero-width:​| RTL: שלום | CJK: 日本語 | NUL:\u0000| combining: é\n   trailing spaces   \n\n\n",
+            "truncated": false,
+            "utf8_bytes": 249
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 21,
+            "preview": "Unicode, пожалуйста 🙏",
+            "prompt_id": "pu",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "text": "Unicode, пожалуйста 🙏",
+            "truncated": false,
+            "utf8_bytes": 34
+          },
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 2,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 2
+        },
+        "turns": [
+          {
+            "background_tasks": {
+              "count": 0,
+              "reported": true
+            },
+            "candidate_request_turns": [],
+            "error": null,
+            "final_response": {
+              "char_count": 197,
+              "preview": "Готово! Всё работает ✅\nEnglish line.\nEmoji: 👩🏽‍💻 🇺🇦 🚀\nSpecial: <>&\"' \\ $HOME `$(rm -rf /)` %s {0} \t tab\r\nCRLF line\nZero-width:​| RTL: שלום | CJK: 日本語 | NUL:\u0000| combining: é\n   trailing spaces   \n\n\n",
+              "prompt_id": "pu",
+              "received_at": "2026-01-01T00:00:01.000000Z",
+              "truncated": false,
+              "utf8_bytes": 249
+            },
+            "index": 1,
+            "link": "prompt_id",
+            "request": {
+              "char_count": 21,
+              "preview": "Unicode, пожалуйста 🙏",
+              "prompt_id": "pu",
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 34
+            },
+            "response_event_count": 1,
+            "status": "stop_received"
+          },
+          {
+            "background_tasks": {
+              "count": 0,
+              "reported": true
+            },
+            "candidate_request_turns": [],
+            "error": null,
+            "final_response": {
+              "char_count": 246,
+              "preview": "# Summary\n\n## Changes\n\n- **Bold** and _italic_\n- [link](https://example.com)\n\n```python\ndef f(x):\n    return x * 2  # comment\n```\n\n````markdown\nNested fence:\n```bash\necho \"hi\"\n```\n````\n\n| a | b |\n|---",
+              "prompt_id": "pm",
+              "received_at": "2026-01-01T00:00:03.000000Z",
+              "truncated": true,
+              "utf8_bytes": 246
+            },
+            "index": 2,
+            "link": "prompt_id",
+            "request": {
+              "char_count": 8,
+              "preview": "markdown",
+              "prompt_id": "pm",
+              "received_at": "2026-01-01T00:00:02.000000Z",
+              "truncated": false,
+              "utf8_bytes": 8
+            },
+            "response_event_count": 1,
+            "status": "stop_received"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

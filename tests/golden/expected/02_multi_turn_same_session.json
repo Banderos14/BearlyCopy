@@ -1,0 +1,241 @@
+{
+  "show": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 2,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 2
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 13,
+            "preview": "second answer",
+            "prompt_id": "p-2",
+            "received_at": "2026-01-01T00:00:03.000000Z",
+            "text": "second answer",
+            "truncated": false,
+            "utf8_bytes": 13
+          },
+          "index": 2,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 14,
+            "preview": "second request",
+            "prompt_id": "p-2",
+            "received_at": "2026-01-01T00:00:02.000000Z",
+            "text": "second request",
+            "truncated": false,
+            "utf8_bytes": 14
+          },
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show_turn_1": {
+    "argv": [
+      "show",
+      "--session",
+      "sess-a",
+      "--turn",
+      "1"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 2,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 2
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 12,
+            "preview": "first answer",
+            "prompt_id": "p-1",
+            "received_at": "2026-01-01T00:00:01.000000Z",
+            "text": "first answer",
+            "truncated": false,
+            "utf8_bytes": 12
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 13,
+            "preview": "first request",
+            "prompt_id": "p-1",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "text": "first request",
+            "truncated": false,
+            "utf8_bytes": 13
+          },
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 2,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 2
+        },
+        "turns": [
+          {
+            "background_tasks": {
+              "count": 0,
+              "reported": true
+            },
+            "candidate_request_turns": [],
+            "error": null,
+            "final_response": {
+              "char_count": 12,
+              "preview": "first answer",
+              "prompt_id": "p-1",
+              "received_at": "2026-01-01T00:00:01.000000Z",
+              "truncated": false,
+              "utf8_bytes": 12
+            },
+            "index": 1,
+            "link": "prompt_id",
+            "request": {
+              "char_count": 13,
+              "preview": "first request",
+              "prompt_id": "p-1",
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 13
+            },
+            "response_event_count": 1,
+            "status": "stop_received"
+          },
+          {
+            "background_tasks": {
+              "count": 0,
+              "reported": true
+            },
+            "candidate_request_turns": [],
+            "error": null,
+            "final_response": {
+              "char_count": 13,
+              "preview": "second answer",
+              "prompt_id": "p-2",
+              "received_at": "2026-01-01T00:00:03.000000Z",
+              "truncated": false,
+              "utf8_bytes": 13
+            },
+            "index": 2,
+            "link": "prompt_id",
+            "request": {
+              "char_count": 14,
+              "preview": "second request",
+              "prompt_id": "p-2",
+              "received_at": "2026-01-01T00:00:02.000000Z",
+              "truncated": false,
+              "utf8_bytes": 14
+            },
+            "response_event_count": 1,
+            "status": "stop_received"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

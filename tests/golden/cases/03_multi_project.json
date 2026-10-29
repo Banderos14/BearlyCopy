@@ -1,0 +1,62 @@
+{
+  "description": "Interleaved sessions in two projects never mix; project filters select the right answer.",
+  "events": [
+    {
+      "fixture": "prompt_basic.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "pa",
+        "prompt": "A request"
+      }
+    },
+    {
+      "fixture": "prompt_basic.json",
+      "project": "B",
+      "override": {
+        "session_id": "sess-b",
+        "prompt_id": "pb",
+        "prompt": "B request"
+      }
+    },
+    {
+      "fixture": "stop_basic.json",
+      "project": "B",
+      "override": {
+        "session_id": "sess-b",
+        "prompt_id": "pb",
+        "last_assistant_message": "B answer"
+      }
+    },
+    {
+      "fixture": "stop_basic.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "pa",
+        "last_assistant_message": "A answer"
+      }
+    }
+  ],
+  "queries": {
+    "projects": [
+      "projects"
+    ],
+    "sessions": [
+      "sessions"
+    ],
+    "sessions_b": [
+      "sessions",
+      "--project",
+      "__PROJECT_B__"
+    ],
+    "show_a": [
+      "show",
+      "--project",
+      "__PROJECT_A__"
+    ],
+    "show_b": [
+      "show",
+      "--project",
+      "__PROJECT_B__"
+    ]
+  }
+}

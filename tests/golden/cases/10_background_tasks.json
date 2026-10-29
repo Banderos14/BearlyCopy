@@ -1,0 +1,43 @@
+{
+  "description": "Documented Stop with an in-flight background task, then a Stop without the task registry arrays.",
+  "events": [
+    {
+      "fixture": "documented_user_prompt_submit.json",
+      "project": "A"
+    },
+    {
+      "fixture": "documented_stop.json",
+      "project": "A"
+    },
+    {
+      "fixture": "documented_user_prompt_submit.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "doc-2",
+        "prompt": "second"
+      }
+    },
+    {
+      "fixture": "documented_stop_no_task_registry.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "doc-2"
+      }
+    }
+  ],
+  "queries": {
+    "turns": [
+      "turns"
+    ],
+    "show_turn_1": [
+      "show",
+      "--session",
+      "doc-sess",
+      "--turn",
+      "1"
+    ],
+    "show": [
+      "show"
+    ]
+  }
+}

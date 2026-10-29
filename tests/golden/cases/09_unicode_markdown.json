@@ -1,0 +1,50 @@
+{
+  "description": "Cyrillic, emoji, CRLF, NUL, RTL and long Markdown with nested fences survive exactly (as \\u escapes).",
+  "events": [
+    {
+      "fixture": "prompt_basic.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "pu",
+        "prompt": "Unicode, пожалуйста 🙏"
+      }
+    },
+    {
+      "fixture": "stop_unicode.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "pu"
+      }
+    },
+    {
+      "fixture": "prompt_basic.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "pm",
+        "prompt": "markdown"
+      }
+    },
+    {
+      "fixture": "stop_markdown.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "pm"
+      }
+    }
+  ],
+  "queries": {
+    "turns": [
+      "turns"
+    ],
+    "show_unicode": [
+      "show",
+      "--session",
+      "sess-a",
+      "--turn",
+      "1"
+    ],
+    "show_markdown": [
+      "show"
+    ]
+  }
+}

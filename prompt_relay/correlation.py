@@ -51,6 +51,7 @@ class Turn:
     responses: List[Event] = field(default_factory=list)
     link: str = LINK_NONE
     candidate_prompts: List[Event] = field(default_factory=list)
+    candidate_turns: List[int] = field(default_factory=list)  # indexes of the candidate prompts' turns
     continued_by_sequence: bool = False
     trailing: bool = False  # no response event was received after this turn's prompt
 
@@ -142,7 +143,8 @@ def build_turns(events: List[Event], link_events: bool = True) -> List[Turn]:
                 target = pending[0]
                 target.link = LINK_SEQUENCE
             elif len(pending) > 1:
-                target = new_turn(link=LINK_AMBIGUOUS, candidate_prompts=[t.prompt for t in pending if t.prompt])
+                target = new_turn(link=LINK_AMBIGUOUS, candidate_prompts=[t.prompt for t in pending if t.prompt],
+                                  candidate_turns=[t.index for t in pending])
             else:
                 previous = turns[-1] if turns else None
                 continuation = bool(ev.stop_hook_active) or bool(

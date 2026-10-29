@@ -1,0 +1,246 @@
+{
+  "show": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 2,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "doc-sess",
+          "session_key": "doc-sess",
+          "turn_count": 2
+        },
+        "turn": {
+          "background_tasks": {
+            "count": null,
+            "reported": false
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 5,
+            "preview": "Done.",
+            "prompt_id": "doc-2",
+            "received_at": "2026-01-01T00:00:03.000000Z",
+            "text": "Done.",
+            "truncated": false,
+            "utf8_bytes": 5
+          },
+          "index": 2,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 6,
+            "preview": "second",
+            "prompt_id": "doc-2",
+            "received_at": "2026-01-01T00:00:02.000000Z",
+            "text": "second",
+            "truncated": false,
+            "utf8_bytes": 6
+          },
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show_turn_1": {
+    "argv": [
+      "show",
+      "--session",
+      "doc-sess",
+      "--turn",
+      "1"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 2,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "doc-sess",
+          "session_key": "doc-sess",
+          "turn_count": 2
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 1,
+            "reported": true
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 51,
+            "preview": "I've completed the refactoring. Here's a summary...",
+            "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+            "received_at": "2026-01-01T00:00:01.000000Z",
+            "text": "I've completed the refactoring. Here's a summary...",
+            "truncated": false,
+            "utf8_bytes": 51
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 55,
+            "preview": "Write a function to calculate the factorial of a number",
+            "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "text": "Write a function to calculate the factorial of a number",
+            "truncated": false,
+            "utf8_bytes": 55
+          },
+          "response_event_count": 1,
+          "status": "stop_received_background_tasks_pending"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": [
+        {
+          "code": "background_tasks_pending",
+          "message": "background tasks were still running when Claude stopped; the work may not be finished"
+        }
+      ]
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 2,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "doc-sess",
+          "session_key": "doc-sess",
+          "turn_count": 2
+        },
+        "turns": [
+          {
+            "background_tasks": {
+              "count": 1,
+              "reported": true
+            },
+            "candidate_request_turns": [],
+            "error": null,
+            "final_response": {
+              "char_count": 51,
+              "preview": "I've completed the refactoring. Here's a summary...",
+              "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+              "received_at": "2026-01-01T00:00:01.000000Z",
+              "truncated": false,
+              "utf8_bytes": 51
+            },
+            "index": 1,
+            "link": "prompt_id",
+            "request": {
+              "char_count": 55,
+              "preview": "Write a function to calculate the factorial of a number",
+              "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 55
+            },
+            "response_event_count": 1,
+            "status": "stop_received_background_tasks_pending"
+          },
+          {
+            "background_tasks": {
+              "count": null,
+              "reported": false
+            },
+            "candidate_request_turns": [],
+            "error": null,
+            "final_response": {
+              "char_count": 5,
+              "preview": "Done.",
+              "prompt_id": "doc-2",
+              "received_at": "2026-01-01T00:00:03.000000Z",
+              "truncated": false,
+              "utf8_bytes": 5
+            },
+            "index": 2,
+            "link": "prompt_id",
+            "request": {
+              "char_count": 6,
+              "preview": "second",
+              "prompt_id": "doc-2",
+              "received_at": "2026-01-01T00:00:02.000000Z",
+              "truncated": false,
+              "utf8_bytes": 6
+            },
+            "response_event_count": 1,
+            "status": "stop_received"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

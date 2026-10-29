@@ -1,0 +1,52 @@
+{
+  "description": "Two prompts and two Stops in one session, linked by prompt_id; show defaults to the latest turn.",
+  "events": [
+    {
+      "fixture": "prompt_basic.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "p-1",
+        "prompt": "first request"
+      }
+    },
+    {
+      "fixture": "stop_basic.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "p-1",
+        "last_assistant_message": "first answer"
+      }
+    },
+    {
+      "fixture": "prompt_basic.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "p-2",
+        "prompt": "second request"
+      }
+    },
+    {
+      "fixture": "stop_basic.json",
+      "project": "A",
+      "override": {
+        "prompt_id": "p-2",
+        "last_assistant_message": "second answer"
+      }
+    }
+  ],
+  "queries": {
+    "turns": [
+      "turns"
+    ],
+    "show": [
+      "show"
+    ],
+    "show_turn_1": [
+      "show",
+      "--session",
+      "sess-a",
+      "--turn",
+      "1"
+    ]
+  }
+}

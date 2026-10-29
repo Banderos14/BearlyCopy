@@ -1,0 +1,989 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Banderos14/prompt-relay/docs/api/api-v1.schema.json",
+  "title": "Prompt Relay CLI JSON API, version 1",
+  "description": "Envelope written by every `prompt-relay <command> --json`. `data` follows $defs/<command>_data (see docs/JSON_API.md \u00a73). Closed for the producer; consumers must ignore unknown fields and unknown enum values.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "command",
+    "ok",
+    "data",
+    "error",
+    "warnings"
+  ],
+  "properties": {
+    "api_version": {
+      "const": 1
+    },
+    "command": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "data": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/error"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/warning"
+      }
+    }
+  },
+  "x-command-data": {
+    "projects": "projects_data",
+    "sessions": "sessions_data",
+    "turns": "turns_data",
+    "show": "show_data",
+    "context": "context_data",
+    "delete": "plan_data",
+    "prune": "plan_data",
+    "retention": "retention_data"
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$"
+    },
+    "timestamp_or_null": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "usage_error",
+            "not_found",
+            "ambiguous_selection",
+            "no_final_response",
+            "confirmation_required",
+            "active_session",
+            "unsafe_path",
+            "storage_error",
+            "config_error",
+            "internal_error"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "project_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "awaiting_response",
+        "no_matched_response",
+        "stop_received",
+        "stop_received_background_tasks_pending",
+        "stop_received_without_text",
+        "api_error"
+      ]
+    },
+    "link": {
+      "enum": [
+        "prompt_id",
+        "sequence",
+        "ambiguous",
+        "none"
+      ]
+    },
+    "session_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cwds",
+        "event_count",
+        "first_event_at",
+        "integrity",
+        "last_event_at",
+        "last_turn",
+        "project",
+        "session_id",
+        "session_key",
+        "turn_count"
+      ],
+      "properties": {
+        "session_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "session_key": {
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/project_ref"
+        },
+        "first_event_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "last_event_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "turn_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cwds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_turn": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "index",
+                "status"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "status": {
+                  "$ref": "#/$defs/status"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "corrupt_lines",
+            "foreign_lines",
+            "unsupported_lines"
+          ],
+          "properties": {
+            "corrupt_lines": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unsupported_lines": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "foreign_lines": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "text_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "char_count",
+        "preview",
+        "prompt_id",
+        "received_at",
+        "truncated",
+        "utf8_bytes"
+      ],
+      "properties": {
+        "preview": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "char_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        }
+      }
+    },
+    "text_full": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "char_count",
+        "preview",
+        "prompt_id",
+        "received_at",
+        "text",
+        "truncated",
+        "utf8_bytes"
+      ],
+      "properties": {
+        "preview": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "char_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "turn_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "background_tasks",
+        "candidate_request_turns",
+        "error",
+        "final_response",
+        "index",
+        "link",
+        "request",
+        "response_event_count",
+        "status"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "link": {
+          "$ref": "#/$defs/link"
+        },
+        "request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text_summary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "final_response": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text_summary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "response_event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "background_tasks": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "count",
+                "reported"
+              ],
+              "properties": {
+                "reported": {
+                  "type": "boolean"
+                },
+                "count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "details",
+                "message",
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "details": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_request_turns": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "turn_full": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "background_tasks",
+        "candidate_request_turns",
+        "error",
+        "final_response",
+        "index",
+        "link",
+        "request",
+        "response_event_count",
+        "status"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "link": {
+          "$ref": "#/$defs/link"
+        },
+        "request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text_full"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "final_response": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text_full"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "response_event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "background_tasks": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "count",
+                "reported"
+              ],
+              "properties": {
+                "reported": {
+                  "type": "boolean"
+                },
+                "count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "details",
+                "message",
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "details": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_request_turns": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "automatic_deletion",
+        "retention_days"
+      ],
+      "properties": {
+        "retention_days": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "automatic_deletion": {
+          "const": false
+        }
+      }
+    },
+    "projects_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projects",
+        "settings"
+      ],
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "capture_enabled",
+              "explicitly_enabled",
+              "last_event_at",
+              "name",
+              "path",
+              "session_count"
+            ],
+            "properties": {
+              "path": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "capture_enabled": {
+                "type": "boolean"
+              },
+              "explicitly_enabled": {
+                "type": "boolean"
+              },
+              "session_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "last_event_at": {
+                "$ref": "#/$defs/timestamp_or_null"
+              }
+            }
+          }
+        },
+        "settings": {
+          "$ref": "#/$defs/settings"
+        }
+      }
+    },
+    "sessions_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_filter",
+        "sessions"
+      ],
+      "properties": {
+        "project_filter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sessions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/session_summary"
+          }
+        }
+      }
+    },
+    "turns_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "turns"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/session_summary"
+        },
+        "turns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/turn_summary"
+          }
+        }
+      }
+    },
+    "show_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "turn"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/session_summary"
+        },
+        "turn": {
+          "$ref": "#/$defs/turn_full"
+        }
+      }
+    },
+    "context_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exported_at",
+        "git",
+        "sensitive_findings",
+        "session",
+        "text",
+        "turn"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/session_summary"
+        },
+        "turn": {
+          "$ref": "#/$defs/turn_summary"
+        },
+        "exported_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "text": {
+          "type": "string"
+        },
+        "sensitive_findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "line",
+              "section"
+            ],
+            "properties": {
+              "section": {
+                "enum": [
+                  "request",
+                  "response"
+                ]
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "kind": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "git": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "available",
+            "branch",
+            "changed_file_count",
+            "changed_files_truncated",
+            "head",
+            "reason"
+          ],
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "branch": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "head": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "changed_file_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "changed_files_truncated": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "plan_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_grace_minutes",
+        "criteria",
+        "cutoff",
+        "dry_run",
+        "items",
+        "now",
+        "operation",
+        "summary"
+      ],
+      "properties": {
+        "operation": {
+          "enum": [
+            "prune",
+            "delete"
+          ]
+        },
+        "dry_run": {
+          "type": "boolean"
+        },
+        "criteria": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "all",
+            "force_active",
+            "older_than_days",
+            "session"
+          ],
+          "properties": {
+            "older_than_days": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "session": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "all": {
+              "type": "boolean"
+            },
+            "force_active": {
+              "type": "boolean"
+            }
+          }
+        },
+        "now": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "cutoff": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "active_grace_minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "action",
+              "bytes",
+              "last_activity_at",
+              "project",
+              "reason",
+              "session_id",
+              "session_key",
+              "turn_count"
+            ],
+            "properties": {
+              "session_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "session_key": {
+                "type": "string"
+              },
+              "project": {
+                "$ref": "#/$defs/project_ref"
+              },
+              "last_activity_at": {
+                "$ref": "#/$defs/timestamp"
+              },
+              "turn_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "action": {
+                "enum": [
+                  "would_delete",
+                  "deleted",
+                  "skipped_active",
+                  "skipped_changed",
+                  "skipped_unsafe",
+                  "vanished",
+                  "failed"
+                ]
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bytes_freed",
+            "deleted",
+            "failed",
+            "matched",
+            "skipped",
+            "would_delete"
+          ],
+          "properties": {
+            "matched": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "would_delete": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "deleted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "skipped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bytes_freed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "retention_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "automatic_deletion",
+        "retention_days"
+      ],
+      "properties": {
+        "retention_days": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "automatic_deletion": {
+          "const": false
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "description": "Redacted real Claude Desktop 4.29.0 turn (Phase 1.5): UserPromptSubmit + Stop linked by prompt_id.",
+  "events": [
+    {
+      "fixture": "real_desktop_user_prompt_submit_1.json",
+      "project": "A"
+    },
+    {
+      "fixture": "real_desktop_stop_1.json",
+      "project": "A"
+    }
+  ],
+  "queries": {
+    "projects": [
+      "projects"
+    ],
+    "sessions": [
+      "sessions"
+    ],
+    "turns": [
+      "turns"
+    ],
+    "show": [
+      "show"
+    ],
+    "context": [
+      "context"
+    ]
+  }
+}

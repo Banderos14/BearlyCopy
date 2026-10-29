@@ -1,0 +1,297 @@
+{
+  "context": {
+    "argv": [
+      "context"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "context",
+      "data": {
+        "exported_at": "2000-01-01T00:00:00.000000Z",
+        "git": {
+          "available": false,
+          "branch": null,
+          "changed_file_count": 0,
+          "changed_files_truncated": false,
+          "head": null,
+          "reason": "not a Git work tree (or git is not installed)"
+        },
+        "sensitive_findings": [],
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:01.000000Z",
+          "last_turn": {
+            "index": 1,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "1ed3d2bb-3765-455d-8ce4-eab713c46706",
+          "session_key": "1ed3d2bb-3765-455d-8ce4-eab713c46706",
+          "turn_count": 1
+        },
+        "text": "# Claude Code result for review (exported by Prompt Relay)\n\nProvenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; [Reported by Claude] = Claude's own words, not checked; [Not verified] = no independent source; [Unavailable] = could not be determined.\n\n## Session\n- Project: project-a — __PROJECT_A__ [Confirmed locally]\n- Session ID: 1ed3d2bb-3765-455d-8ce4-eab713c46706 [Confirmed locally]\n- Turn: 1 of 1\n- Response captured at: 2026-01-01T00:00:01.000000Z [Confirmed locally]\n- Exported at: 2000-01-01T00:00:00.000000Z\n- Response status: Stop event received. Claude finished responding; this does NOT mean the task succeeded. [Confirmed locally]\n- Request ↔ response link: request and response share the same prompt_id\n\n## Original user request\n[Confirmed locally]\n\n```text\nНапиши ровно: Привет, мир! 🚀\n```\n\n## Claude final response\n[Reported by Claude] Verbatim text of Claude's last message for this turn.\n\n```markdown\nПривет, мир! 🚀\n```\n\n## Git state (read-only, collected at export time 2000-01-01T00:00:00.000000Z)\n- [Unavailable] not a Git work tree (or git is not installed)\n\n## Tests and CI\n- [Not verified] Prompt Relay has no independent source of test or CI results. Any statement about tests, builds or CI in Claude's response is reported by Claude only.\n\n## Verification status\n- Claude's claims of success, passing tests or completed work: [Not verified]\n- Completion signal: Claude Code Stop hook event, which only means Claude stopped responding [Confirmed locally]\n\n## Request for review\nPlease review this result independently. Check whether the response actually fulfils the original request, point out unsupported claims, risks and missing verification, and propose the next concrete step or follow-up prompt for Claude Code.\n",
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 14,
+            "preview": "Привет, мир! 🚀",
+            "prompt_id": "eef09244-e6de-4883-8180-d8132e981143",
+            "received_at": "2026-01-01T00:00:01.000000Z",
+            "truncated": false,
+            "utf8_bytes": 26
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 28,
+            "preview": "Напиши ровно: Привет, мир! 🚀",
+            "prompt_id": "eef09244-e6de-4883-8180-d8132e981143",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "truncated": false,
+            "utf8_bytes": 51
+          },
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "projects": {
+    "argv": [
+      "projects"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "projects",
+      "data": {
+        "projects": [
+          {
+            "capture_enabled": true,
+            "explicitly_enabled": true,
+            "last_event_at": "2026-01-01T00:00:01.000000Z",
+            "name": "project-a",
+            "path": "__PROJECT_A__",
+            "session_count": 1
+          },
+          {
+            "capture_enabled": true,
+            "explicitly_enabled": true,
+            "last_event_at": null,
+            "name": "project-b",
+            "path": "__PROJECT_B__",
+            "session_count": 0
+          }
+        ],
+        "settings": {
+          "automatic_deletion": false,
+          "retention_days": null
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "sessions": {
+    "argv": [
+      "sessions"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "sessions",
+      "data": {
+        "project_filter": null,
+        "sessions": [
+          {
+            "cwds": [
+              "__PROJECT_A__"
+            ],
+            "event_count": 2,
+            "first_event_at": "2026-01-01T00:00:00.000000Z",
+            "integrity": {
+              "corrupt_lines": 0,
+              "foreign_lines": 0,
+              "unsupported_lines": 0
+            },
+            "last_event_at": "2026-01-01T00:00:01.000000Z",
+            "last_turn": {
+              "index": 1,
+              "status": "stop_received"
+            },
+            "project": {
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "session_id": "1ed3d2bb-3765-455d-8ce4-eab713c46706",
+            "session_key": "1ed3d2bb-3765-455d-8ce4-eab713c46706",
+            "turn_count": 1
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:01.000000Z",
+          "last_turn": {
+            "index": 1,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "1ed3d2bb-3765-455d-8ce4-eab713c46706",
+          "session_key": "1ed3d2bb-3765-455d-8ce4-eab713c46706",
+          "turn_count": 1
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 14,
+            "preview": "Привет, мир! 🚀",
+            "prompt_id": "eef09244-e6de-4883-8180-d8132e981143",
+            "received_at": "2026-01-01T00:00:01.000000Z",
+            "text": "Привет, мир! 🚀",
+            "truncated": false,
+            "utf8_bytes": 26
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 28,
+            "preview": "Напиши ровно: Привет, мир! 🚀",
+            "prompt_id": "eef09244-e6de-4883-8180-d8132e981143",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "text": "Напиши ровно: Привет, мир! 🚀",
+            "truncated": false,
+            "utf8_bytes": 51
+          },
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:01.000000Z",
+          "last_turn": {
+            "index": 1,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "1ed3d2bb-3765-455d-8ce4-eab713c46706",
+          "session_key": "1ed3d2bb-3765-455d-8ce4-eab713c46706",
+          "turn_count": 1
+        },
+        "turns": [
+          {
+            "background_tasks": {
+              "count": 0,
+              "reported": true
+            },
+            "candidate_request_turns": [],
+            "error": null,
+            "final_response": {
+              "char_count": 14,
+              "preview": "Привет, мир! 🚀",
+              "prompt_id": "eef09244-e6de-4883-8180-d8132e981143",
+              "received_at": "2026-01-01T00:00:01.000000Z",
+              "truncated": false,
+              "utf8_bytes": 26
+            },
+            "index": 1,
+            "link": "prompt_id",
+            "request": {
+              "char_count": 28,
+              "preview": "Напиши ровно: Привет, мир! 🚀",
+              "prompt_id": "eef09244-e6de-4883-8180-d8132e981143",
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 51
+            },
+            "response_event_count": 1,
+            "status": "stop_received"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

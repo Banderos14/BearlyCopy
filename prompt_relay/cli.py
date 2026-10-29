@@ -1,7 +1,12 @@
 """prompt-relay command-line interface.
 
-Exit codes: 0 ok · 1 error · 2 usage · 3 nothing to export ·
-4 clipboard failure · 5 export blocked by sensitive-content check.
+Exit codes: 0 ok · 1 error · 2 usage / confirmation required · 3 nothing
+found or nothing to export · 4 clipboard failure · 5 export blocked by the
+sensitive-content check · 6 kept by active-session protection.
+
+``--json`` (projects, sessions, turns, show, context, delete, prune,
+retention) switches to the machine API in ``api.py``: exactly one JSON
+document on stdout, nothing on stderr, same exit codes.
 """
 
 from __future__ import annotations
@@ -13,17 +18,26 @@ import os
 import platform
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from prompt_relay import __version__
+from prompt_relay import __version__, api
 from prompt_relay import config as _config
-from prompt_relay import export, gitinfo, history
+from prompt_relay import export, gitinfo, history, retention
 from prompt_relay.clipboard import ClipboardError, get_backend
 from prompt_relay.paths import ENV_HOME, data_dir
 from prompt_relay.store import Store, StoreError
 
-EXIT_ERROR, EXIT_USAGE, EXIT_NOTHING, EXIT_CLIPBOARD, EXIT_SENSITIVE = 1, 2, 3, 4, 5
+EXIT_ERROR, EXIT_USAGE, EXIT_NOTHING, EXIT_CLIPBOARD, EXIT_SENSITIVE, EXIT_ACTIVE = 1, 2, 3, 4, 5, 6
 HOOK_EVENTS = ("UserPromptSubmit", "Stop", "StopFailure")
+
+
+class CommandError(Exception):
+    """A failure that maps to an exit code and, in --json mode, an API error."""
+
+    def __init__(self, exit_code: int, code: str, message: str, data: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message)
+        self.exit_code = exit_code
+        self.error = api.ApiError(code, message, data)
 
 
 def _err(msg: str) -> None:
@@ -31,7 +45,7 @@ def _err(msg: str) -> None:
 
 
 def _now() -> str:
-    return _dt.datetime.now(tz=_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return _dt.datetime.now(tz=_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 def _preview(text: Optional[str], width: int = 60) -> str:
@@ -45,22 +59,35 @@ def _store() -> Store:
     return Store(data_dir())
 
 
+def _json(args: argparse.Namespace) -> bool:
+    return bool(getattr(args, "json", False))
+
+
+def _emit(args: argparse.Namespace, data: Dict[str, Any], warnings: Optional[List[Dict[str, str]]] = None) -> int:
+    sys.stdout.buffer.write(api.dumps(api.envelope(args.command_name, data, warnings)))
+    sys.stdout.flush()
+    return 0
+
+
 def _select(args: argparse.Namespace):
+    """Returns (session, turn, warnings as API objects). Text mode prints them."""
     sessions = history.load_all(_store())
-    sess, turn, warnings = history.select_turn(sessions, session=args.session, project=args.project, turn=args.turn)
-    for w in warnings + export.warnings_for(turn):
-        _err("warning: " + w)
-    if sess.corrupt_lines:
-        _err(f"warning: {sess.corrupt_lines} unreadable line(s) skipped in this session's history")
-    if sess.foreign_lines:
-        _err(f"warning: {sess.foreign_lines} line(s) from another session ignored in this session's file")
-    return sess, turn
+    sess, turn, selection = history.select_turn(sessions, session=args.session, project=args.project, turn=args.turn)
+    warnings = api.turn_warnings(sess, turn, selection)
+    if not _json(args):
+        for w in warnings:
+            _err("warning: " + w["message"])
+    return sess, turn, warnings
 
 
 def _add_selectors(p: argparse.ArgumentParser) -> None:
     p.add_argument("--session", help="session id or unique prefix")
     p.add_argument("--project", help="limit to sessions whose project dir is this path or below it")
     p.add_argument("--turn", type=int, help="1-based turn number within the session")
+
+
+def _add_json(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--json", action="store_true", help="machine-readable output (docs/JSON_API.md)")
 
 
 def _write_stdout(text: str) -> None:
@@ -124,17 +151,41 @@ def _disable(args: argparse.Namespace) -> int:
 def cmd_projects(args: argparse.Namespace) -> int:
     cfg = _config.load(data_dir())
     if cfg.error:
-        _err(f"config is unusable ({cfg.error}); capture is OFF for all projects")
-        return EXIT_ERROR
-    if not cfg.enabled_projects:
-        print("no projects enabled (capture is off)")
-    for p in cfg.enabled_projects:
-        print(p)
-    return 0
+        raise CommandError(EXIT_ERROR, api.CONFIG_ERROR,
+                           f"config is unusable ({cfg.error}); capture is OFF for all projects")
+    if not _json(args):
+        if not cfg.enabled_projects:
+            print("no projects enabled (capture is off)")
+        for p in cfg.enabled_projects:
+            print(p)
+        return 0
+    sessions = history.load_all(_store())
+    by_path: Dict[Optional[str], List[history.Session]] = {}
+    for s in sessions:
+        by_path.setdefault(s.project_dir, []).append(s)
+    paths = set(by_path) | set(cfg.enabled_projects)
+    projects = []
+    for path in sorted(paths, key=lambda p: (p is None, p or "")):
+        group = by_path.get(path, [])
+        ref = api.project_ref(path)
+        ref.update({
+            "capture_enabled": path is not None and _config.is_enabled(cfg, path),
+            "explicitly_enabled": path in cfg.enabled_projects,
+            "session_count": len(group),
+            "last_event_at": max((s.last_at for s in group if s.last_at), default=None),
+        })
+        projects.append(ref)
+    warnings = []
+    if cfg.retention_error:
+        warnings.append(api.warning("retention_setting_invalid", "retention_days in config.json is invalid and ignored"))
+    data = {"projects": projects, "settings": {"retention_days": cfg.retention_days, "automatic_deletion": False}}
+    return _emit(args, data, warnings)
 
 
 def cmd_sessions(args: argparse.Namespace) -> int:
     sessions = history.filter_sessions(history.load_all(_store()), project=args.project)
+    if _json(args):
+        return _emit(args, {"project_filter": args.project, "sessions": [api.session_summary(s) for s in sessions]})
     if not sessions:
         print("no captured sessions")
         return 0
@@ -149,9 +200,11 @@ def cmd_sessions(args: argparse.Namespace) -> int:
 def cmd_turns(args: argparse.Namespace) -> int:
     sessions = history.filter_sessions(history.load_all(_store()), session=args.session, project=args.project)
     if not sessions:
-        _err("no captured sessions match the selection")
-        return EXIT_NOTHING
+        raise CommandError(EXIT_NOTHING, api.NOT_FOUND, "no captured sessions match the selection")
     sess = sessions[0]
+    if _json(args):
+        data = {"session": api.session_summary(sess), "turns": [api.turn_object(t) for t in sess.turns]}
+        return _emit(args, data, api.integrity_warnings(sess))
     print(f"session {sess.session_id or sess.key}  project {sess.project_dir or '-'}")
     for t in sess.turns:
         final = t.final_response
@@ -161,12 +214,14 @@ def cmd_turns(args: argparse.Namespace) -> int:
 
 
 def cmd_show(args: argparse.Namespace) -> int:
-    sess, turn = _select(args)
+    sess, turn, warnings = _select(args)
     try:
         text = export.response_text(turn)
     except export.ExportError as exc:
-        _err(str(exc))
-        return EXIT_NOTHING
+        data = {"session": api.session_summary(sess), "turn": api.turn_object(turn, full=True)}
+        raise CommandError(EXIT_NOTHING, api.NO_FINAL_RESPONSE, str(exc), data)
+    if _json(args):
+        return _emit(args, {"session": api.session_summary(sess), "turn": api.turn_object(turn, full=True)}, warnings)
     _write_stdout(text)
     return 0
 
@@ -192,7 +247,7 @@ def _copy(text: str, args: argparse.Namespace) -> int:
 
 
 def cmd_copy(args: argparse.Namespace) -> int:
-    sess, turn = _select(args)
+    sess, turn, _ = _select(args)
     try:
         text = export.response_text(turn)
     except export.ExportError as exc:
@@ -208,14 +263,34 @@ def cmd_copy(args: argparse.Namespace) -> int:
 
 
 def _context(args: argparse.Namespace):
-    sess, turn = _select(args)
+    sess, turn, warnings = _select(args)
     git = gitinfo.collect(sess.project_dir)
-    return turn, export.render_context(sess, turn, git, _now())
+    exported_at = _now()
+    return sess, turn, warnings, git, exported_at, export.render_context(sess, turn, git, exported_at)
 
 
 def cmd_context(args: argparse.Namespace) -> int:
-    turn, text = _context(args)
+    sess, turn, warnings, git, exported_at, text = _context(args)
     findings = export.sensitive_findings(turn)
+    if _json(args):
+        if findings:
+            warnings.append(api.warning("sensitive_content", f"{len(findings)} line(s) look like secrets or credentials"))
+        data = {
+            "session": api.session_summary(sess),
+            "turn": api.turn_object(turn),
+            "exported_at": exported_at,
+            "text": text,
+            "sensitive_findings": api.findings(findings),
+            "git": {
+                "available": git.available,
+                "reason": git.reason or None,
+                "branch": git.branch,
+                "head": git.head,
+                "changed_file_count": len(git.changed_files),
+                "changed_files_truncated": git.changed_files_truncated,
+            },
+        }
+        return _emit(args, data, warnings)
     _write_stdout(text)
     _report_findings(findings)
     return 0
@@ -230,7 +305,7 @@ def _report_findings(findings) -> None:
 
 
 def cmd_copy_context(args: argparse.Namespace) -> int:
-    turn, text = _context(args)
+    sess, turn, _, _, _, text = _context(args)
     findings = export.sensitive_findings(turn)
     if findings and not args.allow_sensitive:
         _report_findings(findings)
@@ -240,23 +315,115 @@ def cmd_copy_context(args: argparse.Namespace) -> int:
     return _copy(text, args)
 
 
-def cmd_delete(args: argparse.Namespace) -> int:
-    store = _store()
-    if not args.yes:
-        _err("deletion is permanent; re-run with --yes to confirm")
-        return EXIT_USAGE
-    if args.all:
-        n = store.delete_all()
-        print(f"deleted {n} session file(s)")
-        return 0
-    sessions = history.filter_sessions(history.load_all(store), session=args.session)
-    if len(sessions) != 1:
-        _err("no single session matches; nothing deleted")
-        return EXIT_NOTHING
-    store.delete_path(store.path_for(sessions[0].session_id))
-    print(f"deleted session {sessions[0].session_id}")
+# -- history management --------------------------------------------------------
+
+def _size(n: int) -> str:
+    return f"{n} B" if n < 1024 else (f"{n / 1024:.1f} KB" if n < 1 << 20 else f"{n / (1 << 20):.1f} MB")
+
+
+def _print_plan(plan: retention.Plan, dry_run: bool) -> None:
+    for it in plan.items:
+        when = api.iso(it.last_activity_epoch) or "-"
+        reason = f"  ({it.reason})" if it.reason else ""
+        print(f"{it.action:<15} {it.session.session_id or it.file.key}  {it.session.project_name}  "
+              f"last activity {when}  {_size(it.file.size)}{reason}")
+    if dry_run:
+        n = plan.count(retention.WOULD_DELETE)
+        size = sum(it.file.size for it in plan.items if it.action == retention.WOULD_DELETE)
+        print(f"dry run: {n} session file(s) would be deleted ({_size(size)}); nothing was deleted")
+    else:
+        print(f"deleted {plan.count(retention.DELETED)} session file(s); "
+              f"skipped {plan.count(retention.SKIPPED_ACTIVE, retention.SKIPPED_CHANGED, retention.SKIPPED_UNSAFE)}; "
+              f"failed {plan.count(retention.FAILED)}")
+
+
+def _finish_plan(args: argparse.Namespace, plan: retention.Plan, dry_run: bool, confirm_needed: bool) -> int:
+    data = api.plan_object(plan, dry_run)
+    warnings = []
+    active = plan.count(retention.SKIPPED_ACTIVE)
+    if active:
+        warnings.append(api.warning("active_sessions_kept",
+                                    f"{active} session(s) active in the last {retention.ACTIVE_GRACE_S // 60} min were kept"))
+    if confirm_needed:
+        raise CommandError(EXIT_USAGE, api.CONFIRMATION_REQUIRED,
+                           "deletion is permanent; re-run with --yes to confirm (or --dry-run to preview)", data)
+    failed = plan.count(retention.FAILED, retention.SKIPPED_UNSAFE)
+    if not _json(args):
+        _print_plan(plan, dry_run)
+        for w in warnings:
+            _err("warning: " + w["message"])
+    if failed:
+        raise CommandError(EXIT_ERROR, api.STORAGE_ERROR, f"{failed} session file(s) could not be deleted safely", data)
+    if plan.kind == "delete" and active and not dry_run:
+        raise CommandError(EXIT_ACTIVE, api.ACTIVE_SESSION,
+                           "active session(s) were kept; re-run with --force-active to delete them", data)
+    if _json(args):
+        return _emit(args, data, warnings)
     return 0
 
+
+def cmd_delete(args: argparse.Namespace) -> int:
+    store = _store()
+    plan = retention.plan_delete(store, session=args.session, all_sessions=args.all, force_active=args.force_active)
+    if args.dry_run:
+        return _finish_plan(args, plan, dry_run=True, confirm_needed=False)
+    if not args.yes:
+        if not _json(args):
+            _print_plan(plan, dry_run=True)
+        return _finish_plan(args, plan, dry_run=True, confirm_needed=True)
+    retention.execute(store, plan)
+    return _finish_plan(args, plan, dry_run=False, confirm_needed=False)
+
+
+def cmd_prune(args: argparse.Namespace) -> int:
+    days = args.older_than_days
+    if days is None:
+        cfg = _config.load(data_dir())
+        if cfg.error:
+            raise CommandError(EXIT_ERROR, api.CONFIG_ERROR, f"config is unusable ({cfg.error})")
+        days = cfg.retention_days
+    if days is None:
+        raise CommandError(EXIT_USAGE, api.USAGE_ERROR,
+                           "no retention period set; pass --older-than-days N or run 'prompt-relay retention --days N'")
+    if not _config.valid_retention_days(days):
+        raise CommandError(EXIT_USAGE, api.USAGE_ERROR, f"--older-than-days must be 1..{_config.MAX_RETENTION_DAYS}")
+    store = _store()
+    plan = retention.plan_prune(store, days)
+    dry_run = not args.yes
+    if not dry_run:
+        retention.execute(store, plan)
+    return _finish_plan(args, plan, dry_run=dry_run, confirm_needed=False)
+
+
+def cmd_retention(args: argparse.Namespace) -> int:
+    root = data_dir()
+    with _config.locked(root):
+        cfg = _config.load(root)
+        if cfg.error:
+            raise CommandError(EXIT_ERROR, api.CONFIG_ERROR, f"config is unusable ({cfg.error})")
+        if args.days is not None or args.off:
+            if args.days is not None and not _config.valid_retention_days(args.days):
+                raise CommandError(EXIT_USAGE, api.USAGE_ERROR, f"--days must be 1..{_config.MAX_RETENTION_DAYS}")
+            cfg.retention_days = None if args.off else args.days
+            cfg.retention_error = None
+            _config.save(root, cfg)
+    data = {"retention_days": cfg.retention_days, "automatic_deletion": False}
+    warnings = []
+    if cfg.retention_error:
+        warnings.append(api.warning("retention_setting_invalid", "retention_days in config.json is invalid and ignored"))
+    if _json(args):
+        return _emit(args, data, warnings)
+    for w in warnings:
+        _err("warning: " + w["message"])
+    if cfg.retention_days is None:
+        print("retention: not set (history is kept until you delete it)")
+    else:
+        print(f"retention: {cfg.retention_days} day(s). Nothing is deleted automatically; "
+              f"run 'prompt-relay prune' to preview and 'prune --yes' to delete.")
+    return 0
+
+
+# -- hook configuration and diagnostics ----------------------------------------
 
 ENV_PROGRAM = "/usr/bin/env"
 
@@ -310,7 +477,7 @@ def cmd_hook_config(args: argparse.Namespace) -> int:
 
 def cmd_doctor(args: argparse.Namespace) -> int:
     root = data_dir()
-    print(f"prompt-relay {__version__}")
+    print(f"prompt-relay {__version__} (JSON API v{api.API_VERSION})")
     ok = sys.version_info[:2] >= MIN_PYTHON
     print(f"python       {platform.python_version()} ({sys.executable}){'' if ok else '  UNSUPPORTED: need 3.9+'}")
     if sys.platform == "darwin":
@@ -321,6 +488,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         print(f"  mode       {oct(root.stat().st_mode & 0o777)}")
     cfg = _config.load(root)
     print(f"projects     {'ERROR ' + cfg.error if cfg.error else (len(cfg.enabled_projects) or 'none enabled')}")
+    print(f"retention    {cfg.retention_days or 'not set'} (automatic deletion: off)")
     try:
         backend = get_backend()
         print(f"clipboard    {backend.name}")
@@ -344,8 +512,26 @@ def _xcode_clt() -> str:
     return "installed at " + proc.stdout.decode("utf-8", "replace").strip()
 
 
+# -- parser ---------------------------------------------------------------------
+
+class _Parser(argparse.ArgumentParser):
+    """In --json mode, usage errors become a JSON error document (exit 2)."""
+
+    json_mode = False
+
+    def error(self, message: str) -> None:  # type: ignore[override]
+        if _Parser.json_mode:
+            parts = self.prog.split()
+            command = parts[1] if len(parts) > 1 else None
+            doc = api.envelope(command, error=api.ApiError(api.USAGE_ERROR, message))  # type: ignore[arg-type]
+            sys.stdout.buffer.write(api.dumps(doc))
+            sys.stdout.flush()
+            sys.exit(EXIT_USAGE)
+        super().error(message)
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="prompt-relay", description="Local capture and export of Claude Code results.")
+    parser = _Parser(prog="prompt-relay", description="Local capture and export of Claude Code results.")
     parser.add_argument("--version", action="version", version=f"prompt-relay {__version__}")
     sub = parser.add_subparsers(dest="command_name", required=True)
 
@@ -357,18 +543,23 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("disable", help="disable capture for a project directory")
     p.add_argument("path")
     p.set_defaults(func=cmd_disable)
-    sub.add_parser("projects", help="list projects with capture enabled").set_defaults(func=cmd_projects)
+    p = sub.add_parser("projects", help="list projects with capture enabled (--json: also projects with history)")
+    _add_json(p)
+    p.set_defaults(func=cmd_projects)
 
     p = sub.add_parser("sessions", help="list captured sessions")
     p.add_argument("--project")
+    _add_json(p)
     p.set_defaults(func=cmd_sessions)
     p = sub.add_parser("turns", help="list turns of a session (latest session by default)")
     p.add_argument("--session")
     p.add_argument("--project")
+    _add_json(p)
     p.set_defaults(func=cmd_turns)
 
     p = sub.add_parser("show", help="print the full final response verbatim")
     _add_selectors(p)
+    _add_json(p)
     p.set_defaults(func=cmd_show)
 
     for name, func, helptext in (("copy", cmd_copy, "Copy Response: copy the final response verbatim"),
@@ -383,14 +574,33 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("context", help="preview the Copy Context text without copying")
     _add_selectors(p)
+    _add_json(p)
     p.set_defaults(func=cmd_context)
 
-    p = sub.add_parser("delete", help="permanently delete captured history")
+    p = sub.add_parser("delete", help="delete captured history (preview first; --yes to delete)")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--session")
     g.add_argument("--all", action="store_true")
-    p.add_argument("--yes", action="store_true")
+    p.add_argument("--yes", action="store_true", help="confirm the permanent deletion")
+    p.add_argument("--dry-run", action="store_true", help="only show what would be deleted")
+    p.add_argument("--force-active", action="store_true",
+                   help=f"also delete sessions active in the last {retention.ACTIVE_GRACE_S // 60} minutes")
+    _add_json(p)
     p.set_defaults(func=cmd_delete)
+
+    p = sub.add_parser("prune", help="delete sessions older than the retention period (dry run unless --yes)")
+    p.add_argument("--older-than-days", type=int, help="age threshold in days (default: the retention setting)")
+    p.add_argument("--yes", action="store_true", help="really delete; without it only a preview is shown")
+    p.add_argument("--dry-run", action="store_true", help="preview only (the default)")
+    _add_json(p)
+    p.set_defaults(func=cmd_prune)
+
+    p = sub.add_parser("retention", help="show or set the retention period used by prune")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--days", type=int, help="keep history for N days (used by prune; never automatic)")
+    g.add_argument("--off", action="store_true", help="clear the retention period")
+    _add_json(p)
+    p.set_defaults(func=cmd_retention)
 
     p = sub.add_parser("hook-config", help="print hook settings JSON for 'claude --settings' (writes nothing)")
     p.add_argument("--command", help="absolute path of the prompt-relay executable")
@@ -404,14 +614,28 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    _Parser.json_mode = "--json" in argv
     args = build_parser().parse_args(argv)
+    json_mode = _json(args)
     try:
         return int(args.func(args) or 0)
+    except CommandError as exc:
+        failure, code = exc.error, exc.exit_code
     except history.SelectionError as exc:
-        _err(str(exc))
-        return EXIT_NOTHING
+        failure, code = api.ApiError(exc.code, str(exc)), EXIT_NOTHING
     except StoreError as exc:
-        _err(f"storage error: {exc.code}")
-        return EXIT_ERROR
+        kind = api.UNSAFE_PATH if exc.code == "unsafe_path" else api.STORAGE_ERROR
+        failure, code = api.ApiError(kind, f"storage error: {exc.code}"), EXIT_ERROR
     except BrokenPipeError:
         return 0
+    except Exception as exc:  # pragma: no cover - last resort, keeps --json output valid
+        if not json_mode:
+            raise
+        failure, code = api.ApiError(api.INTERNAL_ERROR, f"internal error: {type(exc).__name__}"), EXIT_ERROR
+    if json_mode:
+        sys.stdout.buffer.write(api.dumps(api.envelope(args.command_name, error=failure)))
+        sys.stdout.flush()
+    else:
+        _err(failure.message)
+    return code

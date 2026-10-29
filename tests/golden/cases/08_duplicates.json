@@ -1,0 +1,22 @@
+{
+  "description": "The same Stop delivered three times is stored once.",
+  "events": [
+    {
+      "fixture": "prompt_basic.json",
+      "project": "A"
+    },
+    {
+      "fixture": "stop_basic.json",
+      "project": "A",
+      "repeat": 3
+    }
+  ],
+  "queries": {
+    "sessions": [
+      "sessions"
+    ],
+    "turns": [
+      "turns"
+    ]
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "show": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 3,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:02.000000Z",
+          "last_turn": {
+            "index": 3,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-min",
+          "session_key": "sess-min",
+          "turn_count": 3
+        },
+        "turn": {
+          "background_tasks": {
+            "count": null,
+            "reported": false
+          },
+          "candidate_request_turns": [
+            1,
+            2
+          ],
+          "error": null,
+          "final_response": {
+            "char_count": 10,
+            "preview": "which one?",
+            "prompt_id": null,
+            "received_at": "2026-01-01T00:00:02.000000Z",
+            "text": "which one?",
+            "truncated": false,
+            "utf8_bytes": 10
+          },
+          "index": 3,
+          "link": "ambiguous",
+          "request": null,
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 3,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:02.000000Z",
+          "last_turn": {
+            "index": 3,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-min",
+          "session_key": "sess-min",
+          "turn_count": 3
+        },
+        "turns": [
+          {
+            "background_tasks": null,
+            "candidate_request_turns": [],
+            "error": null,
+            "final_response": null,
+            "index": 1,
+            "link": "none",
+            "request": {
+              "char_count": 5,
+              "preview": "first",
+              "prompt_id": null,
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 5
+            },
+            "response_event_count": 0,
+            "status": "no_matched_response"
+          },
+          {
+            "background_tasks": null,
+            "candidate_request_turns": [],
+            "error": null,
+            "final_response": null,
+            "index": 2,
+            "link": "none",
+            "request": {
+              "char_count": 6,
+              "preview": "second",
+              "prompt_id": null,
+              "received_at": "2026-01-01T00:00:01.000000Z",
+              "truncated": false,
+              "utf8_bytes": 6
+            },
+            "response_event_count": 0,
+            "status": "no_matched_response"
+          },
+          {
+            "background_tasks": {
+              "count": null,
+              "reported": false
+            },
+            "candidate_request_turns": [
+              1,
+              2
+            ],
+            "error": null,
+            "final_response": {
+              "char_count": 10,
+              "preview": "which one?",
+              "prompt_id": null,
+              "received_at": "2026-01-01T00:00:02.000000Z",
+              "truncated": false,
+              "utf8_bytes": 10
+            },
+            "index": 3,
+            "link": "ambiguous",
+            "request": null,
+            "response_event_count": 1,
+            "status": "stop_received"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

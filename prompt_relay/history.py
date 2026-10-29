@@ -12,7 +12,11 @@ from prompt_relay.store import NO_SESSION_KEY, SessionFile, Store, session_key
 
 
 class SelectionError(Exception):
-    pass
+    """``code`` is "not_found" or "ambiguous_selection" (JSON API error codes)."""
+
+    def __init__(self, message: str, code: str = "not_found") -> None:
+        super().__init__(message)
+        self.code = code
 
 
 @dataclass
@@ -45,6 +49,10 @@ class Session:
     @property
     def last_at(self) -> str:
         return max((ev.received_at for ev in self.events), default="")
+
+    @property
+    def last_event_epoch(self) -> Optional[float]:
+        return max((ev.received_at_epoch for ev in self.events if ev.received_at_epoch is not None), default=None)
 
 
 def load_session_file(store: Store, sf: SessionFile) -> Session:
@@ -98,12 +106,15 @@ def filter_sessions(sessions: List[Session], session: Optional[str] = None, proj
         root = os.path.realpath(os.path.expanduser(project))
         result = [s for s in result if _same_or_under(s.project_dir, root)]
     if session:
-        exact = [s for s in result if s.session_id == session]
+        # Exact session id, or the exact session_key from the JSON API (the only
+        # handle for hashed ids and the _no-session bucket). Prefixes: ids only.
+        exact = [s for s in result if s.session_id == session or s.key == session]
         if exact:
             return exact
         matches = [s for s in result if s.session_id and s.session_id.startswith(session)]
         if len(matches) > 1:
-            raise SelectionError(f"session prefix '{session}' is ambiguous ({len(matches)} sessions)")
+            raise SelectionError(f"session prefix '{session}' is ambiguous ({len(matches)} sessions)",
+                                 "ambiguous_selection")
         result = matches
     return result
 
@@ -126,7 +137,7 @@ def select_turn(
     warnings: List[str] = []
     if turn is not None:
         if len(candidates) > 1 and session is None:
-            raise SelectionError("--turn requires --session when several sessions match")
+            raise SelectionError("--turn requires --session when several sessions match", "ambiguous_selection")
         sess = candidates[0]
         if not 1 <= turn <= len(sess.turns):
             raise SelectionError(f"session has {len(sess.turns)} turn(s); --turn {turn} is out of range")

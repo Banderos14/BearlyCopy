@@ -1,0 +1,202 @@
+{
+  "context": {
+    "argv": [
+      "context"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "context",
+      "data": {
+        "exported_at": "2000-01-01T00:00:00.000000Z",
+        "git": {
+          "available": false,
+          "branch": null,
+          "changed_file_count": 0,
+          "changed_files_truncated": false,
+          "head": null,
+          "reason": "not a Git work tree (or git is not installed)"
+        },
+        "sensitive_findings": [],
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:01.000000Z",
+          "last_turn": {
+            "index": 1,
+            "status": "api_error"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 1
+        },
+        "text": "# Claude Code result for review (exported by Prompt Relay)\n\nProvenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; [Reported by Claude] = Claude's own words, not checked; [Not verified] = no independent source; [Unavailable] = could not be determined.\n\n## Session\n- Project: project-a — __PROJECT_A__ [Confirmed locally]\n- Session ID: sess-a [Confirmed locally]\n- Turn: 1 of 1\n- Response captured at: 2026-01-01T00:00:01.000000Z [Confirmed locally]\n- Exported at: 2000-01-01T00:00:00.000000Z\n- Response status: The turn ended with an API error (StopFailure). There is no successful final response. [Confirmed locally]\n- Request ↔ response link: request and response share the same prompt_id\n\n## Original user request\n[Confirmed locally]\n\n```text\nAdd input validation to the signup form and run the tests.\n```\n\n## Claude final response\n[Unavailable] The turn ended with an API error (StopFailure). There is no successful final response.\n- API error type: rate_limit [Confirmed locally]\n\n## Git state (read-only, collected at export time 2000-01-01T00:00:00.000000Z)\n- [Unavailable] not a Git work tree (or git is not installed)\n\n## Tests and CI\n- [Not verified] Prompt Relay has no independent source of test or CI results. Any statement about tests, builds or CI in Claude's response is reported by Claude only.\n\n## Verification status\n- Claude's claims of success, passing tests or completed work: [Not verified]\n- Completion signal: Claude Code Stop hook event, which only means Claude stopped responding [Confirmed locally]\n\n## Request for review\nPlease review this result independently. Check whether the response actually fulfils the original request, point out unsupported claims, risks and missing verification, and propose the next concrete step or follow-up prompt for Claude Code.\n",
+        "turn": {
+          "background_tasks": null,
+          "candidate_request_turns": [],
+          "error": {
+            "details": "429 Too Many Requests",
+            "message": "API Error: Rate limit reached",
+            "type": "rate_limit"
+          },
+          "final_response": null,
+          "index": 1,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 58,
+            "preview": "Add input validation to the signup form and run the tests.",
+            "prompt_id": "11111111-1111-4111-8111-111111111111",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "truncated": false,
+            "utf8_bytes": 58
+          },
+          "response_event_count": 1,
+          "status": "api_error"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 3,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:01.000000Z",
+          "last_turn": {
+            "index": 1,
+            "status": "api_error"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 1
+        },
+        "turn": {
+          "background_tasks": null,
+          "candidate_request_turns": [],
+          "error": {
+            "details": "429 Too Many Requests",
+            "message": "API Error: Rate limit reached",
+            "type": "rate_limit"
+          },
+          "final_response": null,
+          "index": 1,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 58,
+            "preview": "Add input validation to the signup form and run the tests.",
+            "prompt_id": "11111111-1111-4111-8111-111111111111",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "text": "Add input validation to the signup form and run the tests.",
+            "truncated": false,
+            "utf8_bytes": 58
+          },
+          "response_event_count": 1,
+          "status": "api_error"
+        }
+      },
+      "error": {
+        "code": "no_final_response",
+        "message": "The turn ended with an API error (StopFailure). There is no successful final response."
+      },
+      "ok": false,
+      "warnings": []
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:01.000000Z",
+          "last_turn": {
+            "index": 1,
+            "status": "api_error"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 1
+        },
+        "turns": [
+          {
+            "background_tasks": null,
+            "candidate_request_turns": [],
+            "error": {
+              "details": "429 Too Many Requests",
+              "message": "API Error: Rate limit reached",
+              "type": "rate_limit"
+            },
+            "final_response": null,
+            "index": 1,
+            "link": "prompt_id",
+            "request": {
+              "char_count": 58,
+              "preview": "Add input validation to the signup form and run the tests.",
+              "prompt_id": "11111111-1111-4111-8111-111111111111",
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 58
+            },
+            "response_event_count": 1,
+            "status": "api_error"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

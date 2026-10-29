@@ -49,6 +49,7 @@ class Event:
     error: Optional[str]
     error_details: Optional[str]
     agent_id: Optional[str]
+    received_at_epoch: Optional[float] = None
 
     @property
     def has_background_tasks(self) -> bool:
@@ -86,4 +87,11 @@ def from_record(record: Dict[str, Any]) -> Optional[Event]:
         error=_nonempty_str(payload.get("error")),
         error_details=_str(payload.get("error_details")),
         agent_id=_nonempty_str(payload.get("agent_id")),
+        received_at_epoch=_epoch(record.get("received_at_epoch")),
     )
+
+
+def _epoch(value: Any) -> Optional[float]:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value) if value == value and abs(value) < 1e11 else None  # reject NaN/absurd

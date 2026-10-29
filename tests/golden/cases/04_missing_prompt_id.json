@@ -1,0 +1,41 @@
+{
+  "description": "No prompt_id on either side: links are inferred from order (link=sequence) and labeled as such.",
+  "events": [
+    {
+      "fixture": "prompt_minimal.json",
+      "project": "A",
+      "override": {
+        "prompt": "q1"
+      }
+    },
+    {
+      "fixture": "stop_minimal.json",
+      "project": "A",
+      "override": {
+        "last_assistant_message": "a1"
+      }
+    },
+    {
+      "fixture": "prompt_minimal.json",
+      "project": "A",
+      "override": {
+        "prompt": "q2"
+      }
+    },
+    {
+      "fixture": "stop_minimal.json",
+      "project": "A",
+      "override": {
+        "last_assistant_message": "a2"
+      }
+    }
+  ],
+  "queries": {
+    "turns": [
+      "turns"
+    ],
+    "show": [
+      "show"
+    ]
+  }
+}

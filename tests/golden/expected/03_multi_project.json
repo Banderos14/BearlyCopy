@@ -1,0 +1,291 @@
+{
+  "projects": {
+    "argv": [
+      "projects"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "projects",
+      "data": {
+        "projects": [
+          {
+            "capture_enabled": true,
+            "explicitly_enabled": true,
+            "last_event_at": "2026-01-01T00:00:03.000000Z",
+            "name": "project-a",
+            "path": "__PROJECT_A__",
+            "session_count": 1
+          },
+          {
+            "capture_enabled": true,
+            "explicitly_enabled": true,
+            "last_event_at": "2026-01-01T00:00:02.000000Z",
+            "name": "project-b",
+            "path": "__PROJECT_B__",
+            "session_count": 1
+          }
+        ],
+        "settings": {
+          "automatic_deletion": false,
+          "retention_days": null
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "sessions": {
+    "argv": [
+      "sessions"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "sessions",
+      "data": {
+        "project_filter": null,
+        "sessions": [
+          {
+            "cwds": [
+              "__PROJECT_A__"
+            ],
+            "event_count": 2,
+            "first_event_at": "2026-01-01T00:00:00.000000Z",
+            "integrity": {
+              "corrupt_lines": 0,
+              "foreign_lines": 0,
+              "unsupported_lines": 0
+            },
+            "last_event_at": "2026-01-01T00:00:03.000000Z",
+            "last_turn": {
+              "index": 1,
+              "status": "stop_received"
+            },
+            "project": {
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "session_id": "sess-a",
+            "session_key": "sess-a",
+            "turn_count": 1
+          },
+          {
+            "cwds": [
+              "__PROJECT_B__"
+            ],
+            "event_count": 2,
+            "first_event_at": "2026-01-01T00:00:01.000000Z",
+            "integrity": {
+              "corrupt_lines": 0,
+              "foreign_lines": 0,
+              "unsupported_lines": 0
+            },
+            "last_event_at": "2026-01-01T00:00:02.000000Z",
+            "last_turn": {
+              "index": 1,
+              "status": "stop_received"
+            },
+            "project": {
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
+            "session_id": "sess-b",
+            "session_key": "sess-b",
+            "turn_count": 1
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "sessions_b": {
+    "argv": [
+      "sessions",
+      "--project",
+      "__PROJECT_B__"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "sessions",
+      "data": {
+        "project_filter": "__PROJECT_B__",
+        "sessions": [
+          {
+            "cwds": [
+              "__PROJECT_B__"
+            ],
+            "event_count": 2,
+            "first_event_at": "2026-01-01T00:00:01.000000Z",
+            "integrity": {
+              "corrupt_lines": 0,
+              "foreign_lines": 0,
+              "unsupported_lines": 0
+            },
+            "last_event_at": "2026-01-01T00:00:02.000000Z",
+            "last_turn": {
+              "index": 1,
+              "status": "stop_received"
+            },
+            "project": {
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
+            "session_id": "sess-b",
+            "session_key": "sess-b",
+            "turn_count": 1
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show_a": {
+    "argv": [
+      "show",
+      "--project",
+      "__PROJECT_A__"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "index": 1,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "turn_count": 1
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 8,
+            "preview": "A answer",
+            "prompt_id": "pa",
+            "received_at": "2026-01-01T00:00:03.000000Z",
+            "text": "A answer",
+            "truncated": false,
+            "utf8_bytes": 8
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 9,
+            "preview": "A request",
+            "prompt_id": "pa",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "text": "A request",
+            "truncated": false,
+            "utf8_bytes": 9
+          },
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show_b": {
+    "argv": [
+      "show",
+      "--project",
+      "__PROJECT_B__"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "cwds": [
+            "__PROJECT_B__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:01.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:02.000000Z",
+          "last_turn": {
+            "index": 1,
+            "status": "stop_received"
+          },
+          "project": {
+            "name": "project-b",
+            "path": "__PROJECT_B__"
+          },
+          "session_id": "sess-b",
+          "session_key": "sess-b",
+          "turn_count": 1
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true
+          },
+          "candidate_request_turns": [],
+          "error": null,
+          "final_response": {
+            "char_count": 8,
+            "preview": "B answer",
+            "prompt_id": "pb",
+            "received_at": "2026-01-01T00:00:02.000000Z",
+            "text": "B answer",
+            "truncated": false,
+            "utf8_bytes": 8
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "request": {
+            "char_count": 9,
+            "preview": "B request",
+            "prompt_id": "pb",
+            "received_at": "2026-01-01T00:00:01.000000Z",
+            "text": "B request",
+            "truncated": false,
+            "utf8_bytes": 9
+          },
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

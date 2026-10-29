@@ -1,0 +1,24 @@
+{
+  "description": "StopFailure instead of Stop: status api_error, no final response, show fails with no_final_response.",
+  "events": [
+    {
+      "fixture": "prompt_basic.json",
+      "project": "A"
+    },
+    {
+      "fixture": "stop_failure_rate_limit.json",
+      "project": "A"
+    }
+  ],
+  "queries": {
+    "turns": [
+      "turns"
+    ],
+    "show": [
+      "show"
+    ],
+    "context": [
+      "context"
+    ]
+  }
+}
