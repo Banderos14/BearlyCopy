@@ -27,6 +27,7 @@ from prompt_relay.store import SCHEMA_VERSION, Store, StoreError, fingerprint
 MAX_STDIN_BYTES = 64 * 1024 * 1024
 LOG_MAX_BYTES = 256 * 1024
 ENV_DISABLE = "PROMPT_RELAY_DISABLE"
+ENV_VIA = "PROMPT_RELAY_VIA"  # set to "plugin" by plugin/hooks/run-hook
 
 
 def _utc_iso(epoch: float) -> str:
@@ -96,7 +97,13 @@ def process(raw: bytes, env: Mapping[str, str], now: Optional[float] = None, roo
         return label, exc.code
 
 
-def _log(root: Path, event: str, outcome: str) -> None:
+def via_label(env: Mapping[str, str]) -> str:
+    """How the handler was started: "plugin" (the plugin launcher) or "direct"
+    (a settings-based hook, bin/prompt-relay hook, or a test)."""
+    return "plugin" if env.get(ENV_VIA) == "plugin" else "direct"
+
+
+def _log(root: Path, event: str, outcome: str, via: str = "direct") -> None:
     try:
         if not root.is_dir():
             return
@@ -108,7 +115,9 @@ def _log(root: Path, event: str, outcome: str) -> None:
             pass
         fd = os.open(str(path), os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
         try:
-            os.write(fd, f"{_utc_iso(time.time())} {event} {outcome}\n".encode("ascii", "replace"))
+            # Format: <utc> <event> via=<plugin|direct> <outcome>. The outcome
+            # stays the last token; older lines have no via= field.
+            os.write(fd, f"{_utc_iso(time.time())} {event} via={via} {outcome}\n".encode("ascii", "replace"))
         finally:
             os.close(fd)
     except Exception:
@@ -133,5 +142,5 @@ def main(stdin: Any = None, env: Optional[Mapping[str, str]] = None) -> int:
         except Exception:
             pass
     if root is not None and outcome != "disabled":
-        _log(root, event, outcome)
+        _log(root, event, outcome, via_label(env))
     return 0

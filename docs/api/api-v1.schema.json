@@ -57,7 +57,8 @@
     "context": "context_data",
     "delete": "plan_data",
     "prune": "plan_data",
-    "retention": "retention_data"
+    "retention": "retention_data",
+    "doctor": "doctor_data"
   },
   "$defs": {
     "timestamp": {
@@ -982,6 +983,339 @@
         },
         "automatic_deletion": {
           "const": false
+        }
+      }
+    },
+    "doctor_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capture",
+        "configuration",
+        "core",
+        "findings",
+        "observed",
+        "storage",
+        "unverified"
+      ],
+      "properties": {
+        "core": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "api_version",
+            "pinned_python",
+            "prompt_relay_version",
+            "python"
+          ],
+          "properties": {
+            "prompt_relay_version": {
+              "type": "string"
+            },
+            "api_version": {
+              "const": 1
+            },
+            "python": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "executable",
+                "supported",
+                "version"
+              ],
+              "properties": {
+                "executable": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                },
+                "supported": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "pinned_python": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "state"
+              ],
+              "properties": {
+                "path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "enum": [
+                    "ok",
+                    "not_set",
+                    "missing",
+                    "not_executable",
+                    "invalid"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "data_dir",
+            "exists",
+            "session_files",
+            "writable"
+          ],
+          "properties": {
+            "data_dir": {
+              "type": "string"
+            },
+            "exists": {
+              "type": "boolean"
+            },
+            "writable": {
+              "type": "boolean"
+            },
+            "session_files": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "capture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "config_error",
+            "enabled_projects",
+            "project"
+          ],
+          "properties": {
+            "config_error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "enabled_projects": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "project": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "capture_enabled",
+                    "path"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "capture_enabled": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "configuration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "plugin",
+            "settings"
+          ],
+          "properties": {
+            "plugin": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "file",
+                "records",
+                "state"
+              ],
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "records": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "install_path",
+                      "launcher_found",
+                      "manifest_found",
+                      "scope",
+                      "version"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "scope": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "version": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "install_path": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "manifest_found": {
+                        "type": "boolean"
+                      },
+                      "launcher_found": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "settings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "enabled_plugins",
+                  "file",
+                  "foreign_hooks",
+                  "prompt_relay_hooks",
+                  "scope",
+                  "state"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "enum": [
+                      "user",
+                      "project",
+                      "local"
+                    ]
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "prompt_relay_hooks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "event"
+                      ],
+                      "properties": {
+                        "event": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "foreign_hooks": {
+                    "type": "object"
+                  },
+                  "enabled_plugins": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "observed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "by_via",
+            "lines_scanned",
+            "log_file",
+            "outcomes",
+            "state"
+          ],
+          "properties": {
+            "log_file": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "lines_scanned": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "by_via": {
+              "type": "object"
+            },
+            "outcomes": {
+              "type": "object"
+            }
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "level",
+              "message"
+            ],
+            "properties": {
+              "level": {
+                "enum": [
+                  "ok",
+                  "warning",
+                  "error"
+                ]
+              },
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "unverified": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }

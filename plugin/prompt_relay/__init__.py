@@ -4,4 +4,4 @@ Platform-independent core. The only macOS-specific piece is the pbcopy
 clipboard backend in ``clipboard.py``. Standard library only; Python 3.9+.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

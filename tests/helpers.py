@@ -19,11 +19,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 REPO = Path(__file__).resolve().parent.parent
+PLUGIN = REPO / "plugin"            # Claude Code plugin root; holds the package
+PACKAGE = PLUGIN / "prompt_relay"
 FIXTURES = REPO / "tests" / "fixtures"
 BIN = REPO / "bin" / "prompt-relay"
 
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
+if str(PLUGIN) not in sys.path:
+    sys.path.insert(0, str(PLUGIN))
 
 
 def load_fixture(name: str, project: str, **overrides: Any) -> Dict[str, Any]:

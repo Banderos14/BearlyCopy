@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import BIN, REPO, IsolatedTestCase, load_fixture
+from helpers import BIN, PACKAGE, PLUGIN, REPO, IsolatedTestCase, load_fixture
 
 from prompt_relay import config, correlation, export, gitinfo, hook, paths, sensitive
 from prompt_relay.clipboard import ClipboardError, FileBackend, PbcopyBackend, get_backend
@@ -266,7 +266,7 @@ class HookUnitTests(unittest.TestCase):
             hook.main(io.BytesIO(b"{broken TOPSECRET-xyz"), env)
         log = (self.root / "handler.log").read_text()
         self.assertNotIn("TOPSECRET", log)
-        self.assertIn("Stop stored", log)
+        self.assertIn("Stop via=direct stored", log)
         self.assertIn("invalid_json", log)
 
 
@@ -593,7 +593,7 @@ class PlatformTests(unittest.TestCase):
 
 
 class SourceSafetyTests(unittest.TestCase):
-    SOURCES = sorted((REPO / "prompt_relay").glob("*.py")) + [REPO / "bin" / "prompt-relay"]
+    SOURCES = sorted(PACKAGE.glob("*.py")) + [REPO / "bin" / "prompt-relay", PLUGIN / "hooks" / "prompt_relay_hook.py"]
 
     def test_no_network_or_dynamic_execution_in_sources(self):
         import re
@@ -604,7 +604,7 @@ class SourceSafetyTests(unittest.TestCase):
 
     def test_hook_never_prints(self):
         import re
-        self.assertIsNone(re.search(r"\bprint\(|sys\.stdout", (REPO / "prompt_relay" / "hook.py").read_text()))
+        self.assertIsNone(re.search(r"\bprint\(|sys\.stdout", (PACKAGE / "hook.py").read_text()))
 
     def test_gitignore_excludes_local_data(self):
         text = (REPO / ".gitignore").read_text()

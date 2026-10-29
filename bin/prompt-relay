@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Entry point that runs from a repository checkout without installation."""
+"""Entry point that runs from a repository checkout without installation.
+
+The package lives inside the Claude Code plugin root (plugin/prompt_relay),
+so the checkout and the installed plugin run the same code.
+"""
 
 import os
 import sys
@@ -11,7 +15,7 @@ if sys.argv[1:] == ["hook"]:
     try:
         if sys.version_info < (3, 9):
             raise RuntimeError("python_too_old")
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "plugin"))
         from prompt_relay.hook import main as hook_main
     except BaseException as exc:  # noqa: B902 - deliberately broad
         try:
@@ -23,7 +27,7 @@ if sys.argv[1:] == ["hook"]:
 
 if sys.version_info < (3, 9):
     sys.exit("prompt-relay: Python 3.9 or newer is required")
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "plugin"))
 
 from prompt_relay.cli import main  # noqa: E402
 

@@ -10,7 +10,7 @@ status=0
 for py in $PYTHONS; do
   [ -x "$(command -v "$py" 2>/dev/null)" ] || continue
   echo "== $("$py" --version 2>&1) ($py)"
-  "$py" -m compileall -q prompt_relay bin >/dev/null
+  "$py" -m compileall -q plugin bin >/dev/null
   if ! "$py" -m unittest discover -s tests; then status=1; fi
 done
 
@@ -32,5 +32,14 @@ for i in range(50):
     times.append((time.perf_counter() - t) * 1000)
 times.sort()
 print(f"median {times[25]:.1f} ms, p95 {times[47]:.1f} ms, max {times[-1]:.1f} ms")
+plugin = []
+for i in range(50):
+    raw = json.dumps({"hook_event_name": "Stop", "session_id": "bench", "prompt_id": "pl" + str(i),
+                      "cwd": tmp + "/proj", "last_assistant_message": "x" * 20000}).encode()
+    t = time.perf_counter()
+    subprocess.run(["/bin/sh", "plugin/hooks/run-hook"], input=raw, env=env, check=True)
+    plugin.append((time.perf_counter() - t) * 1000)
+plugin.sort()
+print(f"plugin launcher: median {plugin[25]:.1f} ms, p95 {plugin[47]:.1f} ms, max {plugin[-1]:.1f} ms")
 EOF
 exit $status

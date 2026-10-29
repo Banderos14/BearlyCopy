@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 
 from prompt_relay import __version__, api
 from prompt_relay import config as _config
-from prompt_relay import export, gitinfo, history, retention
+from prompt_relay import export, gitinfo, history, integration, retention, runtime
 from prompt_relay.clipboard import ClipboardError, get_backend
 from prompt_relay.paths import ENV_HOME, data_dir
 from prompt_relay.store import Store, StoreError
@@ -124,6 +124,41 @@ def _enable(args: argparse.Namespace) -> int:
         cfg.enabled_projects.append(path)
         _config.save(root, cfg)
     print(f"capture enabled for {path}")
+    _pin_if_needed(root)
+    return 0
+
+
+def _pin_if_needed(root: Path) -> None:
+    """Pin the running interpreter for the plugin launcher unless a usable pin
+    exists, so plugin hooks work without any PATH setup."""
+    _, state = runtime.read_pin(root)
+    if state == runtime.OK:
+        return
+    try:
+        version = runtime.write_pin(root, sys.executable)
+    except (ValueError, OSError) as exc:
+        _err(f"warning: could not pin {sys.executable} for the plugin hook: {exc}")
+        return
+    print(f"plugin hooks will use Python {'.'.join(map(str, version))} ({sys.executable})")
+
+
+def cmd_pin_python(args: argparse.Namespace) -> int:
+    root = data_dir()
+    if args.clear:
+        removed = runtime.clear_pin(root)
+        print("pinned interpreter removed" if removed else "no interpreter was pinned")
+        return 0
+    if args.show:
+        path, state = runtime.read_pin(root)
+        print(f"{state}: {path}" if path else state)
+        return 0 if state in (runtime.OK, runtime.NOT_SET) else EXIT_ERROR
+    python = args.python or sys.executable
+    try:
+        version = runtime.write_pin(root, python)
+    except (ValueError, OSError) as exc:
+        _err(f"{python}: {exc}")
+        return EXIT_USAGE
+    print(f"plugin hooks will use Python {'.'.join(map(str, version))} ({python})")
     return 0
 
 
@@ -453,8 +488,17 @@ def _usable_python(path: str) -> Optional[str]:
     return None
 
 
+def _checkout_bin() -> Optional[str]:
+    """bin/prompt-relay of a repository checkout (plugin/prompt_relay/../../bin)."""
+    candidate = Path(__file__).resolve().parent.parent.parent / "bin" / "prompt-relay"
+    return str(candidate) if candidate.is_file() else None
+
+
 def cmd_hook_config(args: argparse.Namespace) -> int:
-    command = args.command or str(Path(__file__).resolve().parent.parent / "bin" / "prompt-relay")
+    command = args.command or _checkout_bin()
+    if command is None:
+        _err("no repository checkout found next to this package; pass --command")
+        return EXIT_USAGE
     # Default: pin the interpreter running this command, which is known to
     # work. Nothing assumes /usr/bin/python3 or a particular PATH (Claude
     # Desktop starts hooks with a minimal PATH).
@@ -476,26 +520,58 @@ def cmd_hook_config(args: argparse.Namespace) -> int:
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
-    root = data_dir()
-    print(f"prompt-relay {__version__} (JSON API v{api.API_VERSION})")
-    ok = sys.version_info[:2] >= MIN_PYTHON
-    print(f"python       {platform.python_version()} ({sys.executable}){'' if ok else '  UNSUPPORTED: need 3.9+'}")
+    project = args.project
+    if project is None and not args.no_project:
+        project = os.getcwd()
+    if project:
+        project = _config.normalize_project_path(project)
+    report = integration.diagnose(os.environ, project, tuple(sys.version_info[:3]), sys.executable)
+    report["core"]["prompt_relay_version"] = __version__
+    report["core"]["api_version"] = api.API_VERSION
+    if _json(args):
+        warnings = [api.warning(f["code"], f["message"]) for f in report["findings"] if f["level"] != "ok"]
+        return _emit(args, report, warnings)
+    _print_doctor(report)
+    return 0
+
+
+def _print_doctor(report: Dict[str, Any]) -> None:
+    core, storage, capture = report["core"], report["storage"], report["capture"]
+    print(f"prompt-relay {core['prompt_relay_version']} (JSON API v{core['api_version']})")
+    py = core["python"]
+    print(f"python       {py['version']} ({py['executable']}){'' if py['supported'] else '  UNSUPPORTED: need 3.9+'}")
+    pin = core["pinned_python"]
+    print(f"hook python  {pin['state']}{': ' + pin['path'] if pin['path'] else ''}")
     if sys.platform == "darwin":
         print(f"xcode CLT    {_xcode_clt()}")
     print(f"platform     {sys.platform} {platform.machine()} {platform.mac_ver()[0] or ''}".rstrip())
-    print(f"data dir     {root}")
-    if root.exists():
-        print(f"  mode       {oct(root.stat().st_mode & 0o777)}")
-    cfg = _config.load(root)
-    print(f"projects     {'ERROR ' + cfg.error if cfg.error else (len(cfg.enabled_projects) or 'none enabled')}")
-    print(f"retention    {cfg.retention_days or 'not set'} (automatic deletion: off)")
+    print(f"data dir     {storage['data_dir']} ({'writable' if storage['writable'] else 'NOT writable'}, "
+          f"{storage['session_files']} session file(s))")
+    print(f"projects     {'ERROR ' + capture['config_error'] if capture['config_error'] else (len(capture['enabled_projects']) or 'none enabled')}")
+    if capture["project"]:
+        print(f"this project {'capture ON' if capture['project']['capture_enabled'] else 'capture off'} ({capture['project']['path']})")
+    plugin = report["configuration"]["plugin"]
+    print(f"plugin       install records: {len(plugin['records'])} ({plugin['state']}, {plugin['file']})")
+    for rec in plugin["records"]:
+        print(f"               {rec['id']} scope={rec['scope']} version={rec['version']} files={'ok' if rec['manifest_found'] and rec['launcher_found'] else 'MISSING'}")
+    for s in report["configuration"]["settings"]:
+        ours = len(s["prompt_relay_hooks"])
+        foreign = sum(s["foreign_hooks"].values())
+        flags = ", ".join(f"{k}={v}" for k, v in s["enabled_plugins"].items()) or "-"
+        print(f"settings     {s['scope']:<7} {s['state']:<12} prompt-relay hooks: {ours}  other hooks: {foreign}  enabledPlugins: {flags}")
+    seen = report["observed"]
+    vias = ", ".join(f"{k}: {v['events']} (last {v['last_at']})" for k, v in seen["by_via"].items()) or "none"
+    print(f"observed     {vias}  [{seen['log_file']}, metadata only]")
     try:
         backend = get_backend()
         print(f"clipboard    {backend.name}")
     except ClipboardError as exc:
         print(f"clipboard    unavailable: {exc}")
-    print(f"claude env   CLAUDE_CODE_REMOTE={os.environ.get('CLAUDE_CODE_REMOTE', '(unset)')}")
-    return 0
+    print(f"retention    {_config.load(data_dir()).retention_days or 'not set'} (automatic deletion: off)")
+    for f in report["findings"]:
+        print(f"{f['level'].upper():<12} {f['code']}: {f['message']}")
+    for note in report["unverified"]:
+        print(f"UNVERIFIED   {note}")
 
 
 def _xcode_clt() -> str:
@@ -609,7 +685,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--data-dir", help="absolute data dir the hook writes to (sets PROMPT_RELAY_HOME through /usr/bin/env; for isolated checks)")
     p.set_defaults(func=cmd_hook_config)
 
-    sub.add_parser("doctor", help="show environment diagnostics").set_defaults(func=cmd_doctor)
+    p = sub.add_parser("doctor", help="diagnose Python, storage, capture and the Claude Code integration (read-only)")
+    p.add_argument("--project", help="project to check (default: the current directory)")
+    p.add_argument("--no-project", action="store_true", help="skip the project checks")
+    _add_json(p)
+    p.set_defaults(func=cmd_doctor)
+
+    p = sub.add_parser("pin-python", help="choose the Python 3.9+ the plugin hook runs with")
+    p.add_argument("--python", help="absolute interpreter path (default: the one running this command)")
+    p.add_argument("--show", action="store_true", help="show the pinned interpreter")
+    p.add_argument("--clear", action="store_true", help="remove the pin (the launcher then searches)")
+    p.set_defaults(func=cmd_pin_python)
     return parser
 
 
