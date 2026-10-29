@@ -246,14 +246,23 @@ def cmd_delete(args: argparse.Namespace) -> int:
     return 0
 
 
-def hook_settings(command: str) -> dict:
-    handler = {"type": "command", "command": command, "args": ["hook"], "timeout": 10}
+def hook_settings(command: str, python: Optional[str] = None) -> dict:
+    """Exec-form hook settings. With ``python``, the interpreter is pinned
+    instead of resolving ``python3`` through PATH via the script's shebang."""
+    if python:
+        handler = {"type": "command", "command": python, "args": [command, "hook"], "timeout": 10}
+    else:
+        handler = {"type": "command", "command": command, "args": ["hook"], "timeout": 10}
     return {"hooks": {event: [{"hooks": [dict(handler)]}] for event in HOOK_EVENTS}}
 
 
 def cmd_hook_config(args: argparse.Namespace) -> int:
     command = args.command or str(Path(__file__).resolve().parent.parent / "bin" / "prompt-relay")
-    print(json.dumps(hook_settings(command), indent=2))
+    for path in filter(None, (command, args.python)):
+        if not os.path.isabs(path):
+            _err(f"hook paths must be absolute: {path}")
+            return EXIT_USAGE
+    print(json.dumps(hook_settings(command, args.python), indent=2))
     return 0
 
 
@@ -326,6 +335,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("hook-config", help="print hook settings JSON for 'claude --settings' (writes nothing)")
     p.add_argument("--command", help="absolute path of the prompt-relay executable")
+    p.add_argument("--python", help="absolute path of the Python interpreter to pin, e.g. /usr/bin/python3")
     p.set_defaults(func=cmd_hook_config)
 
     sub.add_parser("doctor", help="show environment diagnostics").set_defaults(func=cmd_doctor)

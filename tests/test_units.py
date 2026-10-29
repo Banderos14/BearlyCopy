@@ -247,6 +247,10 @@ class ExportTests(IsolatedTestCase):
         self.assertEqual(set(cfg["hooks"]), {"UserPromptSubmit", "Stop", "StopFailure"})
         handler = cfg["hooks"]["Stop"][0]["hooks"][0]
         self.assertEqual(handler, {"type": "command", "command": "/opt/pr/bin/prompt-relay", "args": ["hook"], "timeout": 10})
+        pinned = json.loads(self.cli("hook-config", "--command", "/opt/pr/bin/prompt-relay", "--python", "/usr/bin/python3").stdout)
+        self.assertEqual(pinned["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"], "/usr/bin/python3")
+        self.assertEqual(pinned["hooks"]["UserPromptSubmit"][0]["hooks"][0]["args"], ["/opt/pr/bin/prompt-relay", "hook"])
+        self.assertEqual(self.cli("hook-config", "--command", "relative/path").returncode, 2)
 
     def test_enable_refuses_home_and_root(self):
         os.makedirs(self.env["HOME"], exist_ok=True)
