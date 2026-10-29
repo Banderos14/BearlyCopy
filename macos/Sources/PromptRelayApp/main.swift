@@ -2,8 +2,10 @@ import AppKit
 import PromptRelayKit
 import SwiftUI
 
-// App lifecycle only: scenes, the menu-bar item, the notch coordinator and
-// window routing. All behavior lives in PromptRelayKit.
+// App lifecycle only: the island (notch, or floating on a display without
+// one), the menu-bar item as its fallback way in, and the hotkey. All
+// behavior lives in PromptRelayKit. There are no regular windows: projects,
+// history, settings and the full response open inside the island.
 
 @MainActor
 final class AppServices {
@@ -14,17 +16,16 @@ final class AppServices {
     let notifier = ReadyNotifier()
     private(set) var coordinator: NotchCoordinator?
 
-    /// Started once, after launch, so the notch exists even before any
-    /// window or the menu panel was opened.
+    /// Started once, after launch, so the island exists before anything is clicked.
     func startNotch() {
         guard coordinator == nil else { return }
-        let model = self.model, settings = self.settings
+        let model = self.model, settings = self.settings, notifier = self.notifier
         coordinator = NotchCoordinator(model: model, settings: settings, notifier: notifier) {
-            NotchController(model: model, settings: settings, actions: Actions.current)
+            NotchController(model: model, settings: settings, actions: Actions.current, notifier: notifier)
         }
         #if DEBUG
         // Debug builds: PROMPT_RELAY_DEBUG_CAPTURE_DIR=<dir> renders the real
-        // notch panel to PNGs a few seconds after launch (see NotchController).
+        // island to PNGs a few seconds after launch (see NotchController).
         if let dir = ProcessInfo.processInfo.environment["PROMPT_RELAY_DEBUG_CAPTURE_DIR"] {
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 4_000_000_000)
@@ -32,6 +33,12 @@ final class AppServices {
             }
         }
         #endif
+    }
+
+    /// Opens the island on a view (menu-bar item, window actions).
+    func present(_ route: AppModel.IslandRoute) {
+        // After the menu has closed, so the island can take the keyboard.
+        DispatchQueue.main.async { MainActor.assumeIsolated { self.coordinator?.controller?.present(route) } }
     }
 }
 
@@ -46,67 +53,38 @@ struct PromptRelayApp: App {
     private let services = AppServices.shared
 
     var body: some Scene {
-        Window("Prompt Relay", id: "main") {
-            MainWindowView(model: services.model, actions: Actions.current)
-                .background(WindowActionsBridge())
-        }
-        .defaultSize(width: 1040, height: 680)
-
-        Window("Prompt Relay Status", id: "status") {
-            ConnectionStatusView(model: services.model)
-                .onAppear { services.model.loadDoctor() }
-        }
-        .defaultSize(width: 520, height: 560)
-        .windowResizability(.contentSize)
-
-        Settings {
-            PreferencesView(settings: services.settings, notifier: services.notifier)
-                .background(WindowActionsBridge())
-        }
-
+        // The fallback way in: open the island, its settings, or quit.
         MenuBarExtra {
-            MenuPanelView(model: services.model, actions: Actions.current)
-                .background(WindowActionsBridge())
+            Button("Open Prompt Relay  \(HotKeyRegistration.displayString)") { services.present(.home) }
+            Button("Recent Copies") { services.present(.copies) }
+            Button("History") { services.present(.history) }
+            Button("Import Cloud Report…") { services.present(.importReport) }
+            Divider()
+            Button("Settings…") { services.present(.settings) }
+                .keyboardShortcut(",")
+            Divider()
+            Button("Quit Prompt Relay") { NSApp.terminate(nil) }
+                .keyboardShortcut("q")
         } label: {
-            Image(systemName: "doc.on.clipboard")
-                .accessibilityLabel("Prompt Relay")
+            // A Debug build has its own icon, so two running builds are told apart.
+            Image(systemName: AppBuild.isDebugBuild ? "hammer.circle" : "doc.on.clipboard")
+                .accessibilityLabel(AppBuild.isDebugBuild ? "Prompt Relay (Debug)" : "Prompt Relay")
         }
-        .menuBarExtraStyle(.window)
+        .menuBarExtraStyle(.menu)
     }
 }
 
-/// Window actions captured from the SwiftUI environment, so kit views (and
-/// the notch panel, which is outside SwiftUI's scene graph) can open windows.
+/// What the island asks the app shell to do. "Open the window" now means
+/// the full response inside the island.
 @MainActor
 enum Actions {
-    static var open: (String) -> Void = { _ in }
-    static var settings: () -> Void = {}
-
     static var current: SurfaceActions {
         SurfaceActions(
-            openWindow: { show("main") },
-            openStatus: { show("status") },
-            openSettings: { NSApp.activate(ignoringOtherApps: true); settings() },
+            openWindow: { AppServices.shared.present(.reader) },
+            openStatus: { AppServices.shared.present(.settings) },
+            openSettings: { AppServices.shared.present(.settings) },
             quit: { NSApp.terminate(nil) }
         )
-    }
-
-    static func show(_ id: String) {
-        NSApp.activate(ignoringOtherApps: true)
-        open(id)
-    }
-}
-
-private struct WindowActionsBridge: View {
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.openSettings) private var openSettings
-
-    var body: some View {
-        Color.clear.onAppear {
-            let open = openWindow, settings = openSettings
-            Actions.open = { open(id: $0) }
-            Actions.settings = { settings() }
-        }
     }
 }
 

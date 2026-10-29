@@ -14,9 +14,11 @@ public struct ScreenDescriptor: Equatable, Sendable {
     /// Menu-bar areas left and right of the notch (`NSScreen.auxiliaryTop…Area`), global coordinates.
     public let auxiliaryTopLeft: CGRect?
     public let auxiliaryTopRight: CGRect?
+    /// Height of the menu bar on this display (where the floating island hangs).
+    public let menuBarHeight: CGFloat
 
     public init(displayID: UInt32, name: String, isBuiltIn: Bool, frame: CGRect, safeAreaTop: CGFloat,
-                auxiliaryTopLeft: CGRect?, auxiliaryTopRight: CGRect?) {
+                auxiliaryTopLeft: CGRect?, auxiliaryTopRight: CGRect?, menuBarHeight: CGFloat = 24) {
         self.displayID = displayID
         self.name = name
         self.isBuiltIn = isBuiltIn
@@ -24,6 +26,7 @@ public struct ScreenDescriptor: Equatable, Sendable {
         self.safeAreaTop = safeAreaTop
         self.auxiliaryTopLeft = auxiliaryTopLeft
         self.auxiliaryTopRight = auxiliaryTopRight
+        self.menuBarHeight = menuBarHeight
     }
 
     /// The camera housing, in global coordinates, or nil on displays without one.
@@ -52,7 +55,8 @@ extension ScreenDescriptor {
         self.init(displayID: id, name: screen.localizedName, isBuiltIn: CGDisplayIsBuiltin(id) != 0,
                   frame: frame, safeAreaTop: screen.safeAreaInsets.top,
                   auxiliaryTopLeft: global(screen.auxiliaryTopLeftArea),
-                  auxiliaryTopRight: global(screen.auxiliaryTopRightArea))
+                  auxiliaryTopRight: global(screen.auxiliaryTopRightArea),
+                  menuBarHeight: max(0, frame.maxY - screen.visibleFrame.maxY))
     }
 }
 
@@ -83,21 +87,33 @@ public enum DisplayChoice: Hashable, Sendable {
 /// from a `ScreenDescriptor`.
 ///
 /// The window always matches the island it shows, so the transparent area
-/// that could swallow clicks is never larger than the island's shadow.
+/// that could swallow clicks is never larger than the island itself.
 public struct NotchLayout: Equatable, Sendable {
+    /// The camera housing; for the floating island, a zero-width band below
+    /// the menu bar where the island hangs.
     public let notch: CGRect
     /// Resting state with an indicator: the notch plus two small ears.
     public let compact: CGRect
-    /// The largest expanded island (its real height follows its content).
+    /// The widest and tallest expanded island (x, width, top edge).
     public let expanded: CGRect
+    /// No camera housing on this display: the island floats below the menu
+    /// bar, rounded on every side, and has no resting hover target.
+    public let isFloating: Bool
+    /// Tallest content below the band on this display; longer content scrolls.
+    public let maxContentHeight: CGFloat
     let screenTop: CGFloat
 
     /// Width of each ear beside the camera housing in the compact state.
     public static let earWidth: CGFloat = 26
-    /// Expanded island: a compact card, not a window (≈ 400 × 150–300 pt).
-    public static let expandedWidth: CGFloat = 400
-    public static let minContentHeight: CGFloat = 110
-    public static let maxContentHeight: CGFloat = 270
+    /// The open island: a compact card, not a window.
+    public static let expandedWidth: CGFloat = 460
+    public static let minContentHeight: CGFloat = 56
+    /// The open island is never taller than this (band included)…
+    public static let maxIslandHeight: CGFloat = 600
+    /// …nor than this share of the display height below it.
+    public static let maxScreenShare: CGFloat = 0.72
+    /// Gap between the menu bar and the floating island.
+    public static let floatingGap: CGFloat = 6
     /// Margin around the island inside the window. Zero: the island has no
     /// shadow (like the hardware notch), so the window is exactly the island
     /// and nothing semi-transparent or grey surrounds it.
@@ -105,15 +121,30 @@ public struct NotchLayout: Equatable, Sendable {
 
     public init?(screen: ScreenDescriptor) {
         guard let notch = screen.notchRect else { return nil }
+        self.init(notch: notch, top: screen.frame.maxY, screen: screen.frame, floating: false)
+    }
+
+    /// The fallback on a display without a notch: the same island, centered
+    /// below the menu bar.
+    public init(floatingOn screen: ScreenDescriptor) {
+        let top = screen.frame.maxY - screen.menuBarHeight - Self.floatingGap
+        let band = CGRect(x: screen.frame.midX, y: top - 32, width: 0, height: 32)
+        self.init(notch: band, top: top, screen: screen.frame, floating: true)
+    }
+
+    private init(notch: CGRect, top: CGFloat, screen: CGRect, floating: Bool) {
         self.notch = notch
-        screenTop = screen.frame.maxY
+        screenTop = top
+        isFloating = floating
         compact = notch.insetBy(dx: -Self.earWidth, dy: 0)
-        let islandWidth = min(max(Self.expandedWidth, notch.width + 2 * Self.earWidth + 40), screen.frame.width - 40)
+        let islandWidth = min(max(Self.expandedWidth, notch.width + 2 * Self.earWidth + 40), screen.width - 40)
         let width = islandWidth + Self.shadowInset * 2
-        let height = notch.height + Self.maxContentHeight + Self.shadowInset
+        let available = ((top - screen.minY) * Self.maxScreenShare).rounded()
+        let height = max(notch.height + Self.minContentHeight, min(Self.maxIslandHeight, available))
+        maxContentHeight = height - notch.height
         var x = notch.midX - width / 2
-        x = max(screen.frame.minX, min(x, screen.frame.maxX - width))  // stay on this display
-        expanded = CGRect(x: x, y: screenTop - height, width: width, height: height)
+        x = max(screen.minX, min(x, screen.maxX - width))  // stay on this display
+        expanded = CGRect(x: x, y: top - height - Self.shadowInset, width: width, height: height + Self.shadowInset)
     }
 
     /// Size of the expanded island itself (without the shadow margin).
@@ -122,7 +153,7 @@ public struct NotchLayout: Equatable, Sendable {
     /// Expanded window for a measured content height: as tall as the island,
     /// so no empty transparent area hangs below it.
     public func expandedFrame(contentHeight: CGFloat) -> CGRect {
-        let content = min(max(contentHeight, Self.minContentHeight), Self.maxContentHeight)
+        let content = min(max(contentHeight, Self.minContentHeight), maxContentHeight)
         let height = notch.height + content + Self.shadowInset
         return CGRect(x: expanded.minX, y: screenTop - height, width: expanded.width, height: height)
     }

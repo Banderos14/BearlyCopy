@@ -125,6 +125,14 @@ public final class NotchInteraction {
         }
     }
 
+    /// Quick Peek → Workspace (the expand button): the open panel takes
+    /// keyboard focus, so leaving it with the pointer no longer closes it.
+    public func focus() {
+        guard phase.isExpanded else { return }
+        cancelTimers()
+        phase = .expanded(focused: true)
+    }
+
     /// Escape, a copy that should dismiss, or the panel losing key status.
     public func close() {
         guard phase.isExpanded else { return }

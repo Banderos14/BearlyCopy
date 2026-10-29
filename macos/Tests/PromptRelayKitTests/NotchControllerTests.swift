@@ -35,6 +35,7 @@ final class NotchControllerTests: XCTestCase {
         defaults = UserDefaults(suiteName: suite)
         settings = NotchSettings(defaults: defaults)
         settings.animation = .reduced
+        settings.mascotEnabled = false     // geometry tests: no ears unless a test turns the mascot on
         screens = FakeScreens([externalScreen(), builtInScreen()])
         clock = ManualScheduler()
         center = NotificationCenter()
@@ -90,6 +91,7 @@ final class NotchControllerTests: XCTestCase {
     }
 
     func testArrowStepsThroughAnswersWithoutLists() async {
+        core.sessionsByProject["/p"] = [sessionSummary("s", project: "/p", last: "2026-10-29T16:20:00.000000Z", lastTurn: 3)]
         core.turnsBySession["s"] = [turn(1, preview: "one", chars: 3), turn(2, status: "awaiting_response", preview: nil),
                                     turn(3, preview: "three", chars: 5)]
         await model.refreshNow()
@@ -130,7 +132,7 @@ final class NotchControllerTests: XCTestCase {
         let layout = try XCTUnwrap(controller.layout)
         assertFrame(controller.panelFrame, layout.notch, "no indicator: exactly the notch, nothing else covered")
         XCTAssertEqual(notchPanels().count, 1)
-        XCTAssertEqual(controller.observerCount, 6, "screens, wake ×2, space, app launch/quit")
+        XCTAssertEqual(controller.observerCount, 8, "screens, wake ×2, space, app launch/quit, menu begin/end")
         controller.stop()
     }
 
@@ -140,8 +142,8 @@ final class NotchControllerTests: XCTestCase {
         screens.screens = [externalScreen()]            // lid closed / built-in display off
         center.post(name: NSApplication.didChangeScreenParametersNotification, object: nil)
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-        XCTAssertEqual(controller.interaction.phase, .hidden)
-        XCTAssertEqual(notchPanels().count, 0, "no notch panel without a notch: the menu-bar item remains")
+        XCTAssertTrue(controller.layout?.isFloating ?? false, "no notch: the island floats, opened from the menu bar")
+        XCTAssertEqual(notchPanels().count, 0, "no resting panel without a notch")
 
         screens.screens = [externalScreen(), builtInScreen(origin: CGPoint(x: 1920, y: 0))]   // re-arranged
         workspace.post(name: NSWorkspace.didWakeNotification, object: nil)
@@ -165,7 +167,7 @@ final class NotchControllerTests: XCTestCase {
         await settle(0.2)
         let measured = controller.presentation.contentHeight
         XCTAssertGreaterThanOrEqual(measured, NotchLayout.minContentHeight)
-        XCTAssertLessThanOrEqual(measured, NotchLayout.maxContentHeight)
+        XCTAssertLessThanOrEqual(measured, controller.layout?.maxContentHeight ?? 0)
         assertFrame(controller.panelFrame, controller.layout?.expandedFrame(contentHeight: measured))
         XCTAssertEqual(controller.panelFrame?.maxY ?? 0, 982, accuracy: 1)
         controller.interaction.pointerExited()
@@ -174,6 +176,177 @@ final class NotchControllerTests: XCTestCase {
         XCTAssertFalse(controller.presentation.isExpanded)
         await settle(0.3)  // the window shrinks after the content
         assertFrame(controller.panelFrame, controller.layout?.notch)
+        controller.stop()
+    }
+
+    func testHoverOpensQuickPeekAndAClickOpensTheIslandOnHome() async throws {
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        let layout = try XCTUnwrap(controller.layout)
+
+        controller.interaction.pointerEntered()
+        clock.advance(0.2)
+        XCTAssertEqual(controller.presentation.surface, .peek, "hover shows the quick peek")
+        XCTAssertEqual(controller.interaction.phase, .expanded(focused: false))
+        await settle(0.4)
+        let peekHeight = try XCTUnwrap(controller.panelFrame?.height)
+
+        controller.interaction.focus()                      // the peek's expand button
+        XCTAssertEqual(controller.presentation.surface, .expanded)
+        XCTAssertEqual(controller.interaction.phase, .expanded(focused: true))
+        await settle(0.4)
+        // Sized to its content: the window is exactly the island, no empty area.
+        assertFrame(controller.panelFrame, layout.expandedFrame(contentHeight: controller.presentation.contentHeight))
+        XCTAssertGreaterThan(controller.panelFrame?.height ?? 0, peekHeight, "Home adds the footer to the peek")
+        XCTAssertLessThanOrEqual(controller.panelFrame?.height ?? .infinity, NotchLayout.maxIslandHeight)
+
+        // Views open inside the island; Esc goes back, then closes.
+        model.navigate(to: .settings)
+        await settle(0.4)
+        assertFrame(controller.panelFrame, layout.expandedFrame(contentHeight: controller.presentation.contentHeight))
+        controller.cancel()
+        XCTAssertEqual(model.route, .home)
+        XCTAssertTrue(controller.interaction.phase.isExpanded)
+
+        // Leaving with the pointer does not close the focused island.
+        controller.interaction.pointerExited()
+        clock.advance(1)
+        XCTAssertTrue(controller.interaction.phase.isExpanded)
+
+        controller.cancel()                                 // Esc on Home
+        XCTAssertEqual(controller.interaction.phase, .compact)
+        await settle(0.4)
+        assertFrame(controller.panelFrame, layout.notch)
+
+        // A click on the notch opens the island directly, on Home.
+        model.navigate(to: .projects)
+        controller.interaction.toggle()
+        XCTAssertEqual(controller.presentation.surface, .expanded)
+        XCTAssertEqual(model.route, .home)
+        controller.stop()
+    }
+
+    func testMenuBarOpensTheIslandOnAView() async throws {
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        controller.present(.settings)
+        XCTAssertEqual(controller.interaction.phase, .expanded(focused: true))
+        XCTAssertEqual(model.route, .settings)
+        controller.present(.history)                       // already open: switches view
+        XCTAssertEqual(model.route, .history)
+        controller.stop()
+    }
+
+    func testWithoutANotchTheIslandFloatsAndOpensOnlyOnRequest() async throws {
+        screens.screens = [externalScreen(origin: .zero)]
+        let controller = makeController()
+        controller.start()
+        let layout = try XCTUnwrap(controller.layout)
+        XCTAssertTrue(layout.isFloating)
+        XCTAssertFalse(controller.hasRestingTarget)
+        XCTAssertEqual(notchPanels().count, 0, "nothing at the top edge of a display without a notch")
+        controller.present(.home)
+        XCTAssertTrue(controller.panelIsVisible)
+        XCTAssertTrue(controller.presentation.isFloating)
+        XCTAssertEqual(controller.panelFrame?.maxY ?? 0, 1080 - 24 - NotchLayout.floatingGap, accuracy: 1, "below the menu bar")
+        XCTAssertEqual(controller.panelFrame?.midX ?? 0, 960, accuracy: 1)
+        controller.cancel()
+        await settle(0.4)
+        XCTAssertEqual(notchPanels().count, 0)
+        controller.stop()
+    }
+
+    func testTheFolderPickerKeepsTheIslandOpen() async throws {
+        let controller = makeController()
+        controller.start()
+        controller.interaction.pointerEntered()
+        clock.advance(0.2)
+        model.isPresentingSystemDialog = true
+        await settle()
+        XCTAssertTrue(controller.interaction.isPinned)
+        controller.interaction.pointerExited()
+        controller.interaction.focusLost()                 // the picker takes the keyboard
+        clock.advance(1)
+        XCTAssertTrue(controller.interaction.phase.isExpanded)
+        model.isPresentingSystemDialog = false
+        await settle()
+        XCTAssertFalse(controller.interaction.isPinned)
+        XCTAssertEqual(controller.interaction.phase, .expanded(focused: true), "the island takes the keyboard back")
+        controller.stop()
+    }
+
+    func testMascotSitsInTheLeftEarBlinksOnlyWhileVisibleAndReactsToFacts() async throws {
+        settings.mascotEnabled = true
+        settings.animation = .full
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        assertFrame(controller.panelFrame, controller.layout?.compact, "the bear needs the ears")
+        XCTAssertTrue(controller.presentation.showsMascot)
+        XCTAssertTrue(controller.isBlinkLoopRunning, "blinks while the resting island is on screen")
+
+        controller.look(at: CGPoint(x: 200, y: 16))       // pointer far right of the left ear
+        XCTAssertGreaterThan(controller.presentation.mascot.gaze.x, 0.5)
+        controller.pointerLeft()
+        XCTAssertEqual(controller.presentation.mascot.gaze, .zero, "no pointer outside the island is followed")
+
+        controller.react(newAnswer: false, copy: .copied(.response, characters: 3), coreDown: false)
+        XCTAssertEqual(controller.presentation.mascot.mood, .pleased)
+        controller.react(newAnswer: false, copy: .failed("x"), coreDown: false)
+        XCTAssertEqual(controller.presentation.mascot.mood, .concerned)
+        controller.react(newAnswer: true, copy: .idle, coreDown: false)
+        XCTAssertEqual(controller.presentation.mascot.mood, .curious, "a captured answer, not a claim of success")
+
+        settings.notchEnabled = false                      // hidden at rest: no animation work at all
+        controller.relayout()
+        XCTAssertFalse(controller.isBlinkLoopRunning)
+        settings.notchEnabled = true
+        settings.animation = .reduced                      // Reduce Motion: no blinking, no eye movement
+        controller.relayout()
+        XCTAssertFalse(controller.isBlinkLoopRunning)
+        controller.look(at: CGPoint(x: 200, y: 16))
+        XCTAssertEqual(controller.presentation.mascot.gaze, .zero)
+        settings.mascotEnabled = false
+        controller.relayout()
+        await settle(0.3)
+        assertFrame(controller.panelFrame, controller.layout?.notch, "mascot off: back inside the camera housing")
+        controller.stop()
+        XCTAssertFalse(controller.isBlinkLoopRunning)
+    }
+
+    func testAnOpenMenuKeepsTheIslandOpen() async throws {
+        let controller = makeController()
+        controller.start()
+        controller.interaction.pointerEntered()
+        clock.advance(0.2)
+        center.post(name: NSMenu.didBeginTrackingNotification, object: NSMenu())
+        XCTAssertTrue(controller.interaction.isPinned)
+        controller.interaction.pointerExited()              // the pointer moves into the menu
+        clock.advance(1)
+        XCTAssertTrue(controller.interaction.phase.isExpanded, "the ⋯ menu does not fold the island")
+        center.post(name: NSMenu.didEndTrackingNotification, object: NSMenu())
+        XCTAssertFalse(controller.interaction.isPinned)
+        clock.advance(0.4)
+        XCTAssertEqual(controller.interaction.phase, .compact, "closes once the menu is gone and the pointer is outside")
+        controller.stop()
+    }
+
+    func testArrowKeysStepAnswersOnlyOnHome() async throws {
+        core.sessionsByProject["/p"] = [sessionSummary("s", project: "/p", last: "2026-10-29T16:20:00.000000Z", lastTurn: 2)]
+        core.turnsBySession["s"] = [turn(1, preview: "one", chars: 3), turn(2, preview: "two", chars: 3)]
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        controller.interaction.toggle()
+        XCTAssertEqual(model.selectedTurnIndex, 2)
+        model.navigate(to: .history)
+        XCTAssertFalse(controller.handleKeyForTesting(.older), "lists keep their own arrow keys")
+        XCTAssertEqual(model.selectedTurnIndex, 2)
+        model.goBack()
+        XCTAssertTrue(controller.handleKeyForTesting(.older))
+        XCTAssertEqual(model.selectedTurnIndex, 1)
         controller.stop()
     }
 
@@ -240,16 +413,18 @@ final class NotchControllerTests: XCTestCase {
     func testCoordinatorFollowsSettings() async {
         settings.notchEnabled = false
         let coordinator = NotchCoordinator(model: model, settings: settings, notifier: ReadyNotifier()) { self.makeController() }
-        XCTAssertNil(coordinator.controller)
-        XCTAssertFalse(model.tracksReadyAnswers)
+        XCTAssertEqual(coordinator.controller?.isRunning, true, "the island is the interface: it always runs")
+        XCTAssertEqual(coordinator.controller?.hasRestingTarget, false, "hover off: nothing at the notch")
+        XCTAssertEqual(notchPanels().count, 0)
+        XCTAssertTrue(model.tracksReadyAnswers)
         settings.notchEnabled = true
         await settle()
-        XCTAssertEqual(coordinator.controller?.isRunning, true)
-        XCTAssertTrue(model.tracksReadyAnswers)
+        XCTAssertEqual(coordinator.controller?.hasRestingTarget, true)
+        XCTAssertEqual(notchPanels().count, 1)
         settings.notchEnabled = false
         await settle()
-        XCTAssertNil(coordinator.controller)
         XCTAssertEqual(notchPanels().count, 0)
+        coordinator.controller?.stop()
     }
 }
 
@@ -300,16 +475,19 @@ final class ReadyAnswerTests: XCTestCase {
         XCTAssertFalse(restarted.hasUnseenAnswer)
     }
 
-    func testTrackingIsOffByDefaultSoNoExtraCoreCall() async {
+    func testTrackingCostsExactlyOneExtraSessionsCall() async {
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayReady-\(UUID().uuidString)"))
         defer { board.releaseGlobally() }
         let core = FakeCore(projects: [project("/a", sessions: 1, last: "2026-10-29T10:00:00.000000Z")])
         core.sessionsByProject["/a"] = [sessionSummary("a1", project: "/a", last: "2026-10-29T10:00:00.000000Z")]
         core.turnsBySession["a1"] = [turn(1)]
         let model = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil)
+        XCTAssertTrue(model.tracksReadyAnswers, "on by default: the app opens on the newest answer")
         await model.refreshNow()
-        XCTAssertEqual(core.sessionsCalls, 1, "only the selected project's sessions")
-        XCTAssertNil(model.readyAnswer)
+        XCTAssertEqual(core.sessionsCalls, 2, "all sessions once, plus the selected project's")
+        model.tracksReadyAnswers = false
+        await model.refreshNow()
+        XCTAssertEqual(core.sessionsCalls, 3)
     }
 }
 
@@ -317,7 +495,7 @@ final class ReadyAnswerTests: XCTestCase {
 /// semi-transparent halo around the island on light desktops.
 @MainActor
 final class NotchAppearanceTests: XCTestCase {
-    func render(expanded: Bool, indicator: Bool) throws -> NSBitmapImageRep {
+    func render(expanded: Bool, indicator: Bool, full: Bool = false) throws -> NSBitmapImageRep {
         _ = NSApplication.shared
         let model = PreviewFixtures.model()
         let p = NotchPresentation()
@@ -325,7 +503,9 @@ final class NotchAppearanceTests: XCTestCase {
         p.isExpanded = expanded
         p.showsIndicator = indicator
         p.contentHeight = 150
-        let size = expanded ? NSSize(width: NotchLayout.expandedWidth, height: 32 + 150) : NSSize(width: 185 + 52, height: 32)
+        p.surface = full ? .expanded : .peek
+        let height: CGFloat = 32 + 150
+        let size = expanded ? NSSize(width: NotchLayout.expandedWidth, height: height) : NSSize(width: 185 + 52, height: 32)
         let host = NSHostingView(rootView: NotchRootView(model: model, presentation: p,
                                                          interaction: NotchInteraction(scheduler: MainQueueScheduler()),
                                                          actions: PreviewFixtures.actions)
@@ -356,8 +536,8 @@ final class NotchAppearanceTests: XCTestCase {
 
     func testNoHaloAroundTheIsland() throws {
         XCTAssertEqual(NotchLayout.shadowInset, 0)
-        for (expanded, indicator) in [(true, false), (false, true), (false, false)] {
-            let rep = try render(expanded: expanded, indicator: indicator)
+        for (expanded, indicator, full) in [(true, false, false), (true, false, true), (false, true, false), (false, false, false)] {
+            let rep = try render(expanded: expanded, indicator: indicator, full: full)
             let perimeter = 2 * (rep.pixelsWide + rep.pixelsHigh)
             XCTAssertLessThan(semiTransparentCount(rep), perimeter * 2,
                               "only anti-aliased edges, no shadow (expanded \(expanded), indicator \(indicator))")

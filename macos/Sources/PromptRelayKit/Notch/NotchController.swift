@@ -6,7 +6,17 @@ import SwiftUI
 @MainActor
 @Observable
 public final class NotchPresentation {
+    /// What the open island shows.
+    public enum Surface: Equatable, Sendable {
+        /// Quick Peek, opened by hover: the newest answer and the copy actions.
+        case peek
+        /// Expanded, opened by a click, ⌃⌥⌘P or the menu-bar item: the one
+        /// interface, with its views (projects, history, settings…) inside.
+        case expanded
+    }
+
     public internal(set) var isExpanded = false
+    public internal(set) var surface: Surface = .peek
     public internal(set) var isFocused = false
     public internal(set) var reduceMotion = false
     /// Size of the camera housing on the active display.
@@ -16,19 +26,31 @@ public final class NotchPresentation {
     /// Height the expanded content needs (measured by the view); the island
     /// and its window follow it, so there is never empty space below.
     public internal(set) var contentHeight: CGFloat = NotchLayout.minContentHeight
+    /// Tallest content on the active display; lists and long text scroll inside it.
+    public internal(set) var maxContentHeight: CGFloat = 388
+    /// No notch on the display: the island floats below the menu bar.
+    public internal(set) var isFloating = false
     /// Show the small "answer ready" ears beside the notch.
     public internal(set) var showsIndicator = false
+    /// Relay the bear beside the notch and in the band (Settings → Appearance).
+    public internal(set) var showsMascot = false
+    public let mascot = MascotState()
+    /// The resting island has ears: a new answer, or the mascot.
+    var hasEars: Bool { showsIndicator || showsMascot }
     var onContentHeight: ((CGFloat) -> Void)?
 
     public init() {}
 
     /// Called by the view when its content size changes.
     func reportContentHeight(_ height: CGFloat) {
-        let clamped = min(max(height.rounded(.up), NotchLayout.minContentHeight), NotchLayout.maxContentHeight)
+        let clamped = min(max(height.rounded(.up), NotchLayout.minContentHeight), maxContentHeight)
         guard abs(clamped - contentHeight) >= 1 else { return }
-        contentHeight = clamped
-        onContentHeight?(clamped)
+        if let onContentHeight { onContentHeight(clamped) } else { contentHeight = clamped }
     }
+
+    /// Height available to a scrolling list inside a view with a header and
+    /// a footer of `chrome` points.
+    func listHeight(chrome: CGFloat) -> CGFloat { max(80, maxContentHeight - chrome) }
 
     var animation: Animation? {
         reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.34, dampingFraction: 0.86)
@@ -61,9 +83,17 @@ public final class LiveNotchNeighbors: NotchNeighbors {
     public static let bundleIDs: Set<String> = ["fr.louisraille.Coucou", "fr.louisraille.NotchBuddy"]
     public init() {}
     public var running: [String] {
-        NSWorkspace.shared.runningApplications
+        let apps = NSWorkspace.shared.runningApplications
+        var names = apps
             .filter { $0.bundleIdentifier.map(Self.bundleIDs.contains) ?? false }
             .map { $0.localizedName ?? $0.bundleIdentifier ?? "another notch app" }
+        // The Release build steps aside for a Debug build being developed, so
+        // two Prompt Relay islands never sit on top of each other.
+        if AppBuild.bundleID == AppBuild.releaseBundleID,
+           apps.contains(where: { $0.bundleIdentifier == AppBuild.debugBundleID }) {
+            names.append(AppBuild.name(of: AppBuild.debugBundleID))
+        }
+        return names
     }
 }
 
@@ -80,6 +110,9 @@ public final class NotchController {
     /// Another notch app runs and the user prefers to yield: the island has
     /// no hover target, and ⌃⌥⌘P or the menu-bar item open the panel.
     public private(set) var isYielding = false
+    /// The resting island is shown and opens on hover (a notch, the setting
+    /// on, not yielding). Otherwise it opens from the menu bar or ⌃⌥⌘P only.
+    public private(set) var hasRestingTarget = false
     public private(set) var neighborNames: [String] = []
 
     private let model: AppModel
@@ -90,13 +123,21 @@ public final class NotchController {
     private let actions: SurfaceActions
     private let makeHotKey: @MainActor () -> HotKeyRegistration?
     private let neighbors: NotchNeighbors
+    private let notifier: ReadyNotifier
     private var panel: NotchPanel?
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
     private var hotKey: HotKeyRegistration?
     private var collapseWork: DispatchWorkItem?
     private var observingModel = false
+    private var menuTracking = false
+    private var sensitivePending = false
+    private var dialogOpen = false
+    var blinkTask: Task<Void, Never>?
+    private var resizeWork: DispatchWorkItem?
+    /// The view `present(_:)` asked for, applied when the island opens.
+    private var pendingRoute: AppModel.IslandRoute?
 
-    public init(model: AppModel, settings: NotchSettings, actions: SurfaceActions,
+    public init(model: AppModel, settings: NotchSettings, actions: SurfaceActions, notifier: ReadyNotifier? = nil,
                 screens: ScreenProviding? = nil,
                 scheduler: NotchScheduling? = nil,
                 center: NotificationCenter = .default,
@@ -111,9 +152,10 @@ public final class NotchController {
         self.workspaceCenter = workspaceCenter ?? NSWorkspace.shared.notificationCenter
         self.makeHotKey = makeHotKey ?? { HotKeyRegistration.standard() }
         self.neighbors = neighbors ?? LiveNotchNeighbors()
+        self.notifier = notifier ?? ReadyNotifier()
         interaction = NotchInteraction(scheduler: scheduler ?? MainQueueScheduler())
         interaction.onChange = { [weak self] phase, old in self?.apply(phase, from: old) }
-        presentation.onContentHeight = { [weak self] _ in self?.fitExpandedFrame() }
+        presentation.onContentHeight = { [weak self] height in self?.resize(to: height) }
     }
 
     /// Number of registered notification observers (leak checks in tests).
@@ -138,6 +180,13 @@ public final class NotchController {
             observers.append((workspaceCenter, workspaceCenter.addObserver(forName: name, object: nil, queue: .main,
                                                                            using: onDisplayChange)))
         }
+        // A menu opened from the island (⋯) takes the pointer outside it; the
+        // island stays open until the menu closes.
+        for (name, open) in [(NSMenu.didBeginTrackingNotification, true), (NSMenu.didEndTrackingNotification, false)] {
+            observers.append((center, center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.setMenuTracking(open) }
+            }))
+        }
         hotKey = makeHotKey()
         hotKey?.onPress = { [weak self] in self?.toggleFromKeyboard() }
         model.startBackgroundObservation()
@@ -153,6 +202,11 @@ public final class NotchController {
         hotKey?.unregister()
         hotKey = nil
         collapseWork?.cancel()
+        resizeWork?.cancel()
+        menuTracking = false
+        dialogOpen = false
+        blinkTask?.cancel()
+        blinkTask = nil
         interaction.setAvailable(false)   // cancels timers, orders the panel out
         panel?.tearDown()
         panel?.close()
@@ -167,31 +221,40 @@ public final class NotchController {
     /// scaling changes, wake from sleep, Space changes.
     public func relayout() {
         guard isRunning else { return }
-        let screen = DisplayChoice.pick(settings.display, from: screens.screens)
-        guard let screen, let newLayout = NotchLayout(screen: screen) else {
-            // No notch on the chosen display: the menu-bar item stays the way in.
+        let all = screens.screens
+        // The chosen notched display, else a floating island on the menu-bar display.
+        guard let screen = DisplayChoice.pick(settings.display, from: all) ?? all.first else {
             activeScreen = nil
             layout = nil
             interaction.setAvailable(false)
             return
         }
+        let newLayout = NotchLayout(screen: screen) ?? NotchLayout(floatingOn: screen)
+        defer { updateBlinking() }
         let moved = activeScreen?.displayID != screen.displayID || layout != newLayout
         activeScreen = screen
         layout = newLayout
         neighborNames = neighbors.running
         let yielding = settings.yieldToOtherNotchApps && !neighborNames.isEmpty
-        let yieldChanged = yielding != isYielding
+        let resting = !newLayout.isFloating && settings.notchEnabled && !yielding
+        let yieldChanged = yielding != isYielding || resting != hasRestingTarget
         isYielding = yielding
+        hasRestingTarget = resting
         presentation.notchSize = newLayout.notch.size
         presentation.islandWidth = newLayout.expandedIslandWidth
+        presentation.maxContentHeight = newLayout.maxContentHeight
+        presentation.isFloating = newLayout.isFloating
+        let mascotChanged = presentation.showsMascot != settings.mascotEnabled
+        presentation.showsMascot = settings.mascotEnabled
         presentation.reduceMotion = settings.reducesMotion(systemReduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         ensurePanel()
         if interaction.phase == .hidden {
             interaction.setAvailable(true)
-        } else if moved || yieldChanged {
+        } else if moved || yieldChanged || mascotChanged {
             interaction.close()
             placePanel(for: interaction.phase)
-        } else {
+        } else if interaction.phase.isExpanded || hasRestingTarget {
+            // Regression: this re-showed the resting panel with hover off.
             panel?.orderFrontRegardless()
         }
     }
@@ -199,21 +262,23 @@ public final class NotchController {
     private func ensurePanel() {
         guard panel == nil else { return }
         let panel = NotchPanel()
-        let root = NotchRootView(model: model, presentation: presentation, interaction: interaction, actions: actions)
+        let root = NotchRootView(model: model, presentation: presentation, interaction: interaction, actions: actions,
+                                 settings: settings, notifier: notifier)
         panel.install(root: root)
         panel.onPointer = { [weak self] inside in
             guard let self else { return }
-            if inside { self.interaction.pointerEntered() } else { self.interaction.pointerExited() }
+            if inside { self.interaction.pointerEntered() } else { self.interaction.pointerExited(); self.pointerLeft() }
         }
         panel.onResignKey = { [weak self] in self?.interaction.focusLost() }
-        panel.onCancel = { [weak self] in self?.interaction.close() }
+        panel.onCancel = { [weak self] in self?.cancel() }
         panel.onKey = { [weak self] key in self?.handleKey(key) ?? false }
+        panel.onMove = { [weak self] point in self?.look(at: point) }
         self.panel = panel
     }
 
     private func compactFrame() -> CGRect? {
         guard let layout else { return nil }
-        return presentation.showsIndicator ? layout.compact : layout.notch
+        return presentation.hasEars ? layout.compact : layout.notch
     }
 
     private func placePanel(for phase: NotchInteraction.Phase) {
@@ -223,24 +288,45 @@ public final class NotchController {
             panel.orderOut(nil)
         case .compact:
             if let frame = compactFrame() { panel.setFrame(frame, display: true) }
-            if isYielding { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
+            if hasRestingTarget { panel.orderFrontRegardless() } else { panel.orderOut(nil) }
         case .expanded:
-            panel.setFrame(layout.expandedFrame(contentHeight: presentation.contentHeight), display: true)
+            panel.setFrame(expandedFrame(layout), display: true)
             panel.orderFrontRegardless()
         }
     }
 
-    /// The expanded content changed height: keep the window exactly as tall
-    /// as the island (anchored at the top edge).
-    private func fitExpandedFrame() {
-        guard interaction.phase.isExpanded, let panel, let layout else { return }
-        let frame = layout.expandedFrame(contentHeight: presentation.contentHeight)
-        if panel.frame != frame { panel.setFrame(frame, display: true) }
+    private func expandedFrame(_ layout: NotchLayout) -> CGRect {
+        layout.expandedFrame(contentHeight: presentation.contentHeight)
+    }
+
+    /// The content changed height (another view, a list grew): the window
+    /// stays exactly as tall as the island, anchored at the top edge. Growing,
+    /// the window grows first and the island animates into it; shrinking,
+    /// the island animates first and the window follows.
+    private func resize(to height: CGFloat) {
+        resizeWork?.cancel()
+        guard interaction.phase.isExpanded, let panel, let layout else {
+            presentation.contentHeight = height
+            return
+        }
+        if height >= presentation.contentHeight {
+            panel.setFrame(layout.expandedFrame(contentHeight: height), display: true)
+            withAnimation(presentation.animation) { presentation.contentHeight = height }
+        } else {
+            withAnimation(presentation.animation) { presentation.contentHeight = height }
+            let work = DispatchWorkItem { [weak self] in
+                guard let self, self.interaction.phase.isExpanded, let layout = self.layout else { return }
+                self.panel?.setFrame(layout.expandedFrame(contentHeight: self.presentation.contentHeight), display: true)
+            }
+            resizeWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0.12 : 0.3), execute: work)
+        }
     }
 
     // MARK: Phases
 
     private func apply(_ phase: NotchInteraction.Phase, from old: NotchInteraction.Phase) {
+        defer { updateBlinking() }
         collapseWork?.cancel()
         switch phase {
         case .hidden:
@@ -264,6 +350,15 @@ public final class NotchController {
                 placePanel(for: .compact)
             }
         case .expanded(let focused):
+            if !old.isExpanded {
+                // Hover opens the peek; a click, the shortcut or the menu bar
+                // the expanded island, on Home unless a view was asked for.
+                presentation.surface = focused ? .expanded : .peek
+                model.route = pendingRoute ?? .home
+                pendingRoute = nil
+            } else if focused, presentation.surface == .peek {
+                withAnimation(presentation.animation) { presentation.surface = .expanded }
+            }
             placePanel(for: phase)
             if !old.isExpanded {
                 model.surfaceAppeared()
@@ -279,8 +374,33 @@ public final class NotchController {
         interaction.toggle()
     }
 
-    /// ← → move to older / newer answers, Return copies the shown one.
+    /// Opens the island on a view (the menu-bar item: Open, Settings…).
+    public func present(_ route: AppModel.IslandRoute = .home) {
+        if interaction.phase.isExpanded {
+            model.route = route
+            interaction.focus()
+        } else {
+            pendingRoute = route
+            interaction.toggle()
+            if !interaction.phase.isExpanded { pendingRoute = nil }
+        }
+    }
+
+    /// Esc: back from a view, close from Home.
+    func cancel() {
+        if presentation.surface == .expanded, model.route != .home {
+            model.goBack()
+        } else {
+            interaction.close()
+        }
+    }
+
+    func handleKeyForTesting(_ key: NotchPanel.Key) -> Bool { handleKey(key) }
+
+    /// ← → move to older / newer answers, Return copies the shown one. Only
+    /// on the answer; elsewhere the keys go to the lists.
     private func handleKey(_ key: NotchPanel.Key) -> Bool {
+        guard model.route == .home else { return false }
         switch key {
         case .older: NotchRootView.step(model, by: 1)
         case .newer: NotchRootView.step(model, by: -1)
@@ -302,7 +422,8 @@ public final class NotchController {
     private func track() {
         guard isRunning else { observingModel = false; return }
         let unseen = withObservationTracking {
-            (model.hasUnseenAnswer, model.pendingSensitiveContext != nil)
+            (model.hasUnseenAnswer, model.pendingSensitiveContext != nil, model.isPresentingSystemDialog,
+             model.copyFeedback, model.projects.error != nil && model.projects.value == nil)
         } onChange: { [weak self] in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.track() } }
         }
@@ -311,8 +432,85 @@ public final class NotchController {
             withAnimation(presentation.animation) { presentation.showsIndicator = showIndicator }
             if interaction.phase == .compact { placePanel(for: .compact) }
         }
-        interaction.isPinned = unseen.1
+        react(newAnswer: unseen.0, copy: unseen.3, coreDown: unseen.4)
+        sensitivePending = unseen.1
+        let dialogClosed = dialogOpen && !unseen.2
+        dialogOpen = unseen.2
+        updatePin()
+        // Back from the folder picker: the island takes the keyboard again.
+        if dialogClosed, interaction.phase.isExpanded { interaction.focus(); panel?.makeKey() }
     }
+
+    private func setMenuTracking(_ open: Bool) {
+        guard isRunning, interaction.phase.isExpanded || !open else { return }
+        menuTracking = open
+        updatePin()
+    }
+
+    /// Nothing closes the island while an alert or a menu from it is open.
+    private func updatePin() {
+        let pinned = sensitivePending || menuTracking || dialogOpen
+        if interaction.isPinned != pinned { interaction.isPinned = pinned }
+    }
+}
+
+// MARK: - Mascot
+
+extension NotchController {
+    /// Eyes follow the pointer, but only from pointer events inside the
+    /// island's own window: nothing is tracked outside it, nothing is stored.
+    func look(at point: CGPoint) {
+        guard presentation.showsMascot, !presentation.reduceMotion, let panel else { return }
+        // The mascot's center in window coordinates: the left ear at rest,
+        // the band's left side when open (window origin bottom-left).
+        let height = panel.frame.height
+        let center: CGPoint = presentation.isExpanded
+            ? CGPoint(x: (presentation.isFloating ? 4 : 14) + Island.inset + 9, y: height - presentation.notchSize.height / 2)
+            : CGPoint(x: NotchLayout.earWidth / 2, y: height / 2)
+        let dx = (point.x - center.x) / 120, dy = (center.y - point.y) / 80
+        let gaze = CGPoint(x: max(-1, min(1, dx)), y: max(-1, min(1, dy)))
+        if abs(gaze.x - presentation.mascot.gaze.x) > 0.04 || abs(gaze.y - presentation.mascot.gaze.y) > 0.04 {
+            presentation.mascot.gaze = gaze
+        }
+    }
+
+    func pointerLeft() { presentation.mascot.gaze = .zero }
+
+    /// Short reactions to facts: a captured answer, a copy, a failure.
+    func react(newAnswer: Bool, copy: AppModel.CopyFeedback, coreDown: Bool) {
+        let mascot = presentation.mascot
+        let mood: MascotState.Mood
+        switch copy {
+        case .copied: mood = .pleased
+        case .failed: mood = .concerned
+        default: mood = coreDown ? .concerned : (newAnswer ? .curious : .idle)
+        }
+        if mascot.mood != mood { mascot.mood = mood }
+    }
+
+    /// Occasional blinks, only while the mascot is on screen and motion is
+    /// allowed; nothing runs while it is hidden.
+    func updateBlinking() {
+        let visible = isRunning && presentation.showsMascot && !presentation.reduceMotion
+            && (interaction.phase.isExpanded || (interaction.phase == .compact && hasRestingTarget))
+        if visible, blinkTask == nil {
+            blinkTask = Task { @MainActor [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: UInt64.random(in: 3_500_000_000...7_000_000_000))
+                    guard let self, !Task.isCancelled else { return }
+                    self.presentation.mascot.isBlinking = true
+                    try? await Task.sleep(nanoseconds: 140_000_000)
+                    self.presentation.mascot.isBlinking = false
+                }
+            }
+        } else if !visible {
+            blinkTask?.cancel()
+            blinkTask = nil
+            presentation.mascot.isBlinking = false
+        }
+    }
+
+    public var isBlinkLoopRunning: Bool { blinkTask != nil }
 }
 
 // MARK: - Panel
@@ -327,6 +525,7 @@ final class NotchPanel: NSPanel {
     var onResignKey: (() -> Void)?
     var onCancel: (() -> Void)?
     var onKey: ((Key) -> Bool)?
+    var onMove: ((CGPoint) -> Void)?
     private var tracking: TrackingView?
 
     init() {
@@ -340,8 +539,10 @@ final class NotchPanel: NSPanel {
         isMovable = false
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
+        acceptsMouseMovedEvents = true
         animationBehavior = .none
-        setAccessibilityLabel("Prompt Relay notch")
+        appearance = NSAppearance(named: .darkAqua)   // black island: AppKit views inside draw light text
+        setAccessibilityLabel("Prompt Relay")
     }
 
     override var canBecomeKey: Bool { true }
@@ -355,6 +556,7 @@ final class NotchPanel: NSPanel {
         host.autoresizingMask = [.width, .height]
         let container = TrackingView()
         container.onPointer = { [weak self] in self?.onPointer?($0) }
+        container.onMove = { [weak self] in self?.onMove?($0) }
         container.addSubview(host)
         host.frame = container.bounds
         contentView = container
@@ -364,7 +566,8 @@ final class NotchPanel: NSPanel {
     func tearDown() {
         tracking?.removeTracking()
         tracking?.onPointer = nil
-        onPointer = nil; onResignKey = nil; onCancel = nil; onKey = nil
+        tracking?.onMove = nil
+        onPointer = nil; onResignKey = nil; onCancel = nil; onKey = nil; onMove = nil
         contentView = nil
     }
 
@@ -392,12 +595,14 @@ final class NotchPanel: NSPanel {
 /// Reports pointer enter/exit for its own bounds only.
 final class TrackingView: NSView {
     var onPointer: ((Bool) -> Void)?
+    /// Pointer moves inside this view only (the mascot's eyes).
+    var onMove: ((CGPoint) -> Void)?
     private var area: NSTrackingArea?
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         removeTracking()
-        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect],
                                   owner: self, userInfo: nil)
         addTrackingArea(area)
         self.area = area
@@ -412,12 +617,13 @@ final class TrackingView: NSView {
 
     override func mouseEntered(with event: NSEvent) { onPointer?(true) }
     override func mouseExited(with event: NSEvent) { onPointer?(false) }
+    override func mouseMoved(with event: NSEvent) { onMove?(convert(event.locationInWindow, from: nil)) }
 }
 
 #if DEBUG
 extension NotchController {
     /// Debug builds only: draws the real panel (on its real display, with real
-    /// data) into PNGs, compact then expanded, plus its frames. It renders the
+    /// data) into PNGs: resting, Quick Peek, each view of the island, plus frames. It renders the
     /// app's own window, so no Screen Recording permission is involved; it
     /// does not show the menu bar or the hardware notch around it.
     public func debugCapture(to directory: URL) async {
@@ -437,9 +643,16 @@ extension NotchController {
         // Held open for the capture: at launch the main window takes focus,
         // which would (correctly) fold a panel the pointer is not over.
         interaction.isPinned = true
-        interaction.toggle()
+        interaction.pointerEntered()                       // hover → Quick Peek
         try? await Task.sleep(nanoseconds: 1_200_000_000)
-        capture("notch-expanded")
+        capture("notch-peek")
+        interaction.focus()                                // click → expanded Home
+        for route in AppModel.IslandRoute.allCases {
+            model.route = route
+            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            capture("notch-\(route.rawValue)")
+        }
+        model.route = .home
         interaction.isPinned = false
         interaction.close()
         try? await Task.sleep(nanoseconds: 600_000_000)

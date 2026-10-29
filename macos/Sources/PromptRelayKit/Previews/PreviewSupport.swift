@@ -80,6 +80,10 @@ public final class PreviewCore: CoreProviding, @unchecked Sendable {
     public func doctor() async throws -> CoreResult<DoctorData> {
         throw CoreError.api(code: "internal_error", message: "Previews do not run doctor")
     }
+
+    public func setCapture(_ enabled: Bool, path: String) async throws -> String {
+        "capture \(enabled ? "enabled" : "disabled") for \(path) (preview)"
+    }
 }
 
 @MainActor
@@ -94,20 +98,29 @@ public enum PreviewFixtures {
 
     public static let actions = SurfaceActions(openWindow: {}, openStatus: {}, quit: {})
 
-    public static func notch(expanded: Bool, indicator: Bool = false) -> NotchPresentation {
+    public static func notch(expanded: Bool, indicator: Bool = false, peek: Bool = true) -> NotchPresentation {
         let p = NotchPresentation()
         p.notchSize = CGSize(width: 185, height: 32)
         p.isExpanded = expanded
         p.showsIndicator = indicator
-        p.contentHeight = 190
+        p.contentHeight = 200
+        p.surface = peek ? .peek : .expanded
         return p
     }
 }
 
-#Preview("Notch · expanded") {
+#Preview("Notch · Quick Peek") {
     NotchRootView(model: PreviewFixtures.model(), presentation: PreviewFixtures.notch(expanded: true),
                   interaction: NotchInteraction(scheduler: MainQueueScheduler()), actions: PreviewFixtures.actions)
-        .frame(width: 428, height: 260)
+        .frame(width: 440, height: 240)
+        .background(Color.gray.opacity(0.4))
+}
+
+#Preview("Notch · Expanded") {
+    NotchRootView(model: PreviewFixtures.model(), presentation: PreviewFixtures.notch(expanded: true, peek: false),
+                  interaction: NotchInteraction(scheduler: MainQueueScheduler()), actions: PreviewFixtures.actions,
+                  settings: NotchSettings(defaults: UserDefaults(suiteName: "PromptRelayPreview")!))
+        .frame(width: 440, height: 300)
         .background(Color.gray.opacity(0.4))
 }
 
@@ -116,13 +129,5 @@ public enum PreviewFixtures {
                   interaction: NotchInteraction(scheduler: MainQueueScheduler()), actions: PreviewFixtures.actions)
         .frame(width: 237, height: 32)
         .background(Color.gray.opacity(0.4))
-}
-
-#Preview("Menu-bar panel") {
-    MenuPanelView(model: PreviewFixtures.model(), actions: PreviewFixtures.actions)
-}
-
-#Preview("Main window") {
-    MainWindowView(model: PreviewFixtures.model(), actions: PreviewFixtures.actions)
 }
 #endif

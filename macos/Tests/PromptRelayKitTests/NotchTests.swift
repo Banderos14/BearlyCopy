@@ -153,8 +153,30 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(layout.expanded.maxY, screen.frame.maxY, "hangs from the top edge")
         XCTAssertEqual(layout.expanded.midX, layout.notch.midX, accuracy: 0.5)
         XCTAssertTrue(screen.frame.contains(layout.expanded))
-        XCTAssertEqual(layout.expandedIslandWidth, 400, "a compact card, not a window")
-        XCTAssertLessThanOrEqual(layout.expanded.height, 32 + 270 + NotchLayout.shadowInset)
+        XCTAssertEqual(layout.expandedIslandWidth, 460, "a compact card, not a window")
+        XCTAssertEqual(layout.expanded.height, NotchLayout.maxIslandHeight + NotchLayout.shadowInset)
+        XCTAssertEqual(layout.maxContentHeight, NotchLayout.maxIslandHeight - 32)
+        XCTAssertFalse(layout.isFloating)
+    }
+
+    func testShortDisplaysCapTheIslandAndFloatingHangsBelowTheMenuBar() throws {
+        let short = ScreenDescriptor(displayID: 3, name: "Short", isBuiltIn: true,
+                                     frame: CGRect(x: 0, y: 0, width: 1512, height: 500), safeAreaTop: 32,
+                                     auxiliaryTopLeft: CGRect(x: 0, y: 468, width: 663.5, height: 32),
+                                     auxiliaryTopRight: CGRect(x: 848.5, y: 468, width: 663.5, height: 32))
+        let small = try XCTUnwrap(NotchLayout(screen: short))
+        XCTAssertEqual(small.expanded.height, 360, "at most 72 % of the display height")
+        XCTAssertEqual(small.expandedFrame(contentHeight: 2000).height, 360, "longer content scrolls inside")
+
+        let external = externalScreen(origin: .zero)
+        XCTAssertNil(NotchLayout(screen: external))
+        let floating = NotchLayout(floatingOn: external)
+        XCTAssertTrue(floating.isFloating)
+        let frame = floating.expandedFrame(contentHeight: 200)
+        XCTAssertEqual(frame.maxY, 1080 - 24 - NotchLayout.floatingGap)
+        XCTAssertEqual(frame.midX, 960, accuracy: 0.5)
+        XCTAssertEqual(frame.height, 232)
+        XCTAssertTrue(external.frame.contains(frame))
     }
 
     func testExpandedFrameFollowsContentAndStaysAnchored() throws {
@@ -162,7 +184,7 @@ final class NotchGeometryTests: XCTestCase {
         let short = layout.expandedFrame(contentHeight: 40)
         let tall = layout.expandedFrame(contentHeight: 2000)
         XCTAssertEqual(short.height, 32 + NotchLayout.minContentHeight + NotchLayout.shadowInset)
-        XCTAssertEqual(tall.height, 32 + NotchLayout.maxContentHeight + NotchLayout.shadowInset)
+        XCTAssertEqual(tall.height, 32 + layout.maxContentHeight + NotchLayout.shadowInset)
         XCTAssertEqual(short.maxY, 982, "always hangs from the top edge")
         XCTAssertEqual(tall.maxY, 982)
         XCTAssertEqual(short.minX, tall.minX)
@@ -213,18 +235,18 @@ final class NotchSettingsTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let first = NotchSettings(defaults: defaults)
-        XCTAssertFalse(first.notchEnabled, "the notch is off until the user enables it")
+        XCTAssertTrue(first.notchEnabled, "the island opens on hover by default (Phase 3D: it is the interface)")
         XCTAssertFalse(first.notifyWhenReady)
         XCTAssertEqual(first.animation, .system)
         XCTAssertEqual(first.display, .automatic)
 
-        first.notchEnabled = true
+        first.notchEnabled = false
         first.notifyWhenReady = true
         first.animation = .reduced
         first.display = .display(42)
 
         let second = NotchSettings(defaults: defaults)
-        XCTAssertTrue(second.notchEnabled)
+        XCTAssertFalse(second.notchEnabled, "an explicit choice is kept")
         XCTAssertTrue(second.notifyWhenReady)
         XCTAssertEqual(second.animation, .reduced)
         XCTAssertEqual(second.display, .display(42))

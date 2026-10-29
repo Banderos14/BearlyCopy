@@ -11,6 +11,7 @@ final class FakeCore: CoreProviding, @unchecked Sendable {
     var contextResult: Result<CoreResult<ContextData>, CoreError> = .failure(.api(code: "not_found", message: "none"))
     private(set) var showCalls: [(String, Int)] = []
     private(set) var sessionsCalls = 0
+    private(set) var turnsCalls = 0
 
     init(projects: [ProjectInfo]) {
         projectsResult = .success(CoreResult(data: ProjectsData(projects: projects, settings: RetentionSettings(retentionDays: nil, automaticDeletion: false)), warnings: []))
@@ -25,6 +26,7 @@ final class FakeCore: CoreProviding, @unchecked Sendable {
         return CoreResult(data: SessionsData(projectFilter: project, sessions: list), warnings: [])
     }
     func turns(sessionKey: String) async throws -> CoreResult<TurnsData> {
+        turnsCalls += 1
         guard let turns = turnsBySession[sessionKey] else { throw CoreError.api(code: "not_found", message: "no session") }
         return CoreResult(data: TurnsData(session: try session(sessionKey), turns: turns), warnings: [])
     }
@@ -33,16 +35,36 @@ final class FakeCore: CoreProviding, @unchecked Sendable {
         return try showResult(sessionKey, turn).get()
     }
     func context(sessionKey: String, turn: Int) async throws -> CoreResult<ContextData> { try contextResult.get() }
-    func doctor() async throws -> CoreResult<DoctorData> { throw CoreError.api(code: "internal_error", message: "n/a") }
+    var doctorResult: Result<CoreResult<DoctorData>, CoreError> = .failure(.api(code: "internal_error", message: "n/a"))
+    func doctor() async throws -> CoreResult<DoctorData> { try doctorResult.get() }
+
+    private(set) var captureCalls: [(Bool, String)] = []
+    var captureError: CoreError?
+    func setCapture(_ enabled: Bool, path: String) async throws -> String {
+        captureCalls.append((enabled, path))
+        if let captureError { throw captureError }
+        if let i = projectsList.firstIndex(where: { $0.path == path }) {
+            projectsList[i] = project(path, sessions: projectsList[i].sessionCount, last: projectsList[i].lastEventAt, enabled: enabled)
+        } else if enabled {
+            projectsList.append(project(path, sessions: 0, last: nil, enabled: true))
+        }
+        return "capture \(enabled ? "enabled" : "disabled") for \(path)"
+    }
+
+    /// The projects the fake Core reports (kept in step with setCapture).
+    var projectsList: [ProjectInfo] {
+        get { (try? projectsResult.get().data.projects) ?? [] }
+        set { projectsResult = .success(CoreResult(data: ProjectsData(projects: newValue, settings: RetentionSettings(retentionDays: nil, automaticDeletion: false)), warnings: [])) }
+    }
 
     func session(_ key: String) throws -> SessionSummary {
         try XCTUnwrap(sessionsByProject.values.flatMap { $0 }.first { $0.sessionKey == key })
     }
 }
 
-func project(_ path: String, sessions: Int, last: String?) -> ProjectInfo {
+func project(_ path: String, sessions: Int, last: String?, enabled: Bool = true) -> ProjectInfo {
     try! JSONDecoder().decode(ProjectInfo.self, from: Data("""
-    {"path":"\(path)","name":"\((path as NSString).lastPathComponent)","capture_enabled":true,"explicitly_enabled":true,
+    {"path":"\(path)","name":"\((path as NSString).lastPathComponent)","capture_enabled":\(enabled),"explicitly_enabled":\(enabled),
      "session_count":\(sessions),"last_event_at":\(last.map { "\"\($0)\"" } ?? "null")}
     """.utf8))
 }
@@ -56,14 +78,18 @@ func sessionSummary(_ key: String, project: String, last: String, lastTurn: Int 
     """.utf8))
 }
 
-func turn(_ index: Int, status: String = "stop_received", preview: String? = "answer…", chars: Int = 7, text: String? = nil) -> Turn {
+func turn(_ index: Int, status: String = "stop_received", preview: String? = "answer…", chars: Int = 7, text: String? = nil,
+          request: String? = nil, link: String = "prompt_id") -> Turn {
+    let requestJSON = request.map { r in
+        "{\"preview\":\(String(data: try! JSONEncoder().encode(r), encoding: .utf8)!),\"truncated\":false,\"char_count\":\(r.count),\"utf8_bytes\":\(r.utf8.count),\"prompt_id\":\"p\(index)\",\"received_at\":\"2026-10-29T16:13:00.000000Z\"}"
+    } ?? "null"
     let response = preview.map { p in
         let textField = text.map { ",\"text\":" + String(data: try! JSONEncoder().encode($0), encoding: .utf8)! } ?? ""
         return "{\"preview\":\(String(data: try! JSONEncoder().encode(p), encoding: .utf8)!),\"truncated\":true,\"char_count\":\(chars),\"utf8_bytes\":\(chars),\"prompt_id\":\"p\(index)\",\"received_at\":\"2026-10-29T16:13:51.000000Z\"\(textField)}"
     } ?? "null"
     let error = status == "api_error" ? #"{"type":"rate_limit","details":null,"message":"API Error: Rate limit"}"# : "null"
     return try! JSONDecoder().decode(Turn.self, from: Data("""
-    {"index":\(index),"status":"\(status)","link":"prompt_id","request":null,"final_response":\(response),
+    {"index":\(index),"status":"\(status)","link":"\(link)","request":\(requestJSON),"final_response":\(response),
      "response_event_count":1,"background_tasks":null,"error":\(error),"candidate_request_turns":[]}
     """.utf8))
 }
@@ -106,7 +132,8 @@ final class AppModelTests: XCTestCase {
         let core = FakeCore(projects: [project("/old", sessions: 1, last: "2026-01-01T00:00:00.000000Z"),
                                        project("/new", sessions: 1, last: "2026-10-29T00:00:00.000000Z"),
                                        project("/empty", sessions: 0, last: nil)])
-        core.sessionsByProject["/new"] = [sessionSummary("s-new", project: "/new", last: "2026-10-29T00:00:00.000000Z")]
+        core.sessionsByProject["/new"] = [sessionSummary("s-new", project: "/new", last: "2026-10-29T00:00:00.000000Z",
+                                                         lastTurn: 3, status: "awaiting_response")]
         core.turnsBySession["s-new"] = [turn(1), turn(2), turn(3, status: "awaiting_response", preview: nil)]
         core.showResult = { key, index in
             .success(CoreResult(data: ShowData(session: try! core.session(key), turn: turn(index, text: "full answer \(index)")), warnings: []))

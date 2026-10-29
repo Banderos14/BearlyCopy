@@ -1,9 +1,8 @@
 import AppKit
 import Observation
 
-/// Applies the settings at run time: starts or stops the notch, re-lays it
-/// out when the display or motion preference changes, and turns ready-answer
-/// tracking on only while something uses it.
+/// Applies the settings at run time: starts the island, and re-lays it out
+/// when the hover, display or motion preference changes.
 @MainActor
 public final class NotchCoordinator {
     public let settings: NotchSettings
@@ -28,23 +27,21 @@ public final class NotchCoordinator {
     private func observe() {
         let snapshot = withObservationTracking {
             (settings.notchEnabled, settings.notifyWhenReady, settings.display, settings.animation,
-             settings.yieldToOtherNotchApps)
+             settings.yieldToOtherNotchApps, settings.mascotEnabled)
         } onChange: { [weak self] in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.observe() } }
         }
         apply(notch: snapshot.0, notify: snapshot.1)
     }
 
+    /// The island is the app's interface, so its controller always runs; the
+    /// "open on hover" setting only decides whether the notch has a resting
+    /// hover target (the controller reads it on relayout).
     private func apply(notch: Bool, notify: Bool) {
-        model.tracksReadyAnswers = notch || notify
+        model.tracksReadyAnswers = true
         if notify { model.startBackgroundObservation() }
-        if notch {
-            if controller == nil { controller = makeController() }
-            controller?.start()
-            controller?.relayout()  // display or motion preference may have changed
-        } else {
-            controller?.stop()
-            controller = nil
-        }
+        if controller == nil { controller = makeController() }
+        controller?.start()
+        controller?.relayout()  // hover setting, display or motion preference may have changed
     }
 }

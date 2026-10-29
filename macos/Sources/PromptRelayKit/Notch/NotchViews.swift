@@ -29,29 +29,36 @@ struct NotchShape: Shape {
     }
 }
 
-/// The notch surface: a Dynamic-Island-style card drawn from the shared
-/// AppModel. It is its own compact composition (not the window's columns):
-/// project and status beside the camera housing, the shown answer, small
-/// ‹ › steps through earlier answers, and one primary action.
+/// The island over the shared AppModel, in three states: resting (hidden
+/// behind the camera housing, or two small "new answer" ears), Quick Peek on
+/// hover (the newest answer and the copy actions) and Expanded on click,
+/// ⌃⌥⌘P or the menu-bar item: the one interface, whose views (projects,
+/// recent, all responses, settings, full response) open inside it.
 ///
 /// The island is black in both appearances so it merges with the hardware
-/// notch; its text uses the dark appearance for contrast.
+/// notch; its text uses the dark appearance for contrast. On a display
+/// without a notch the same content floats below the menu bar.
 public struct NotchRootView: View {
     let model: AppModel
     let presentation: NotchPresentation
     let interaction: NotchInteraction
     let actions: SurfaceActions
+    let settings: NotchSettings?
+    let notifier: ReadyNotifier?
 
-    public init(model: AppModel, presentation: NotchPresentation, interaction: NotchInteraction, actions: SurfaceActions) {
+    public init(model: AppModel, presentation: NotchPresentation, interaction: NotchInteraction, actions: SurfaceActions,
+                settings: NotchSettings? = nil, notifier: ReadyNotifier? = nil) {
         self.model = model
         self.presentation = presentation
         self.interaction = interaction
         self.actions = actions
+        self.settings = settings
+        self.notifier = notifier
     }
 
-    /// Lines of the answer shown in the island; the full text is in the
-    /// window and is what Copy Response copies.
-    static let previewLines = 6
+    /// Lines of the answer in Quick Peek; Home shows more, the reader all of
+    /// it, and Copy Response always copies the full text.
+    static let previewLines = 4
     private var ear: CGFloat { NotchLayout.earWidth }
     private var expanded: Bool { presentation.isExpanded }
     private var topRadius: CGFloat { expanded ? 14 : 6 }
@@ -59,7 +66,7 @@ public struct NotchRootView: View {
     private var islandSize: CGSize {
         let notch = presentation.notchSize
         if expanded { return CGSize(width: presentation.islandWidth, height: notch.height + presentation.contentHeight) }
-        if presentation.showsIndicator { return CGSize(width: notch.width + ear * 2, height: notch.height) }
+        if presentation.hasEars { return CGSize(width: notch.width + ear * 2, height: notch.height) }
         // Resting: a little smaller than the camera housing and more rounded,
         // so it always stays hidden behind it (no black edge can peek out).
         return CGSize(width: notch.width - 2, height: notch.height - 1)
@@ -67,17 +74,22 @@ public struct NotchRootView: View {
 
     /// Bottom corner radius: generous at rest (inside the hardware curve).
     private var bottomRadius: CGFloat {
-        if expanded { return 24 }
-        return presentation.showsIndicator ? 10 : presentation.notchSize.height / 2
+        if expanded { return 26 }
+        return presentation.hasEars ? 10 : presentation.notchSize.height / 2
+    }
+
+    private var shape: AnyShape {
+        presentation.isFloating
+            ? AnyShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            : AnyShape(NotchShape(bottomRadius: bottomRadius, topRadius: topRadius))
     }
 
     public var body: some View {
         ZStack(alignment: .top) {
             // No shadow: the island must not show a grey halo on light desktops.
-            NotchShape(bottomRadius: bottomRadius, topRadius: topRadius)
-                .fill(Color.black)
+            shape.fill(Color.black)
             if expanded {
-                expandedContent
+                openContent
                     .transition(presentation.reduceMotion
                                 ? .opacity
                                 : .opacity.combined(with: .offset(y: -6)).animation(.easeOut(duration: 0.18).delay(0.05)))
@@ -87,6 +99,7 @@ public struct NotchRootView: View {
             }
         }
         .frame(width: islandSize.width, height: islandSize.height, alignment: .top)
+        .clipShape(shape)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .environment(\.colorScheme, .dark)
         .sensitiveContextAlert(model)
@@ -94,9 +107,15 @@ public struct NotchRootView: View {
 
     // MARK: Compact
 
+    /// Left ear: Relay the bear (or a bubble for a new answer when the
+    /// mascot is off); right ear: the "new answer" dot.
     private var compactContent: some View {
         HStack(spacing: 0) {
-            if presentation.showsIndicator {
+            if presentation.showsMascot {
+                MascotView(state: presentation.mascot, size: 17, reduceMotion: presentation.reduceMotion)
+                    .frame(width: ear)
+                    .padding(.leading, 3)
+            } else if presentation.showsIndicator {
                 Image(systemName: "text.bubble.fill")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
@@ -105,7 +124,7 @@ public struct NotchRootView: View {
             }
             Spacer(minLength: 0)
             if presentation.showsIndicator {
-                Circle().fill(Color.green).frame(width: 6, height: 6)
+                Circle().fill(Island.accent).frame(width: 6, height: 6)
                     .frame(width: ear)
                     .padding(.trailing, 4)
             }
@@ -119,216 +138,35 @@ public struct NotchRootView: View {
         .accessibilityAction { interaction.toggle() }
     }
 
-    // MARK: Expanded
+    // MARK: Open (Quick Peek or Expanded)
 
-    private var expandedContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            band
-            body(for: model.selectedTurn)
-                .padding(.horizontal, 18 + topRadius)
-                .padding(.top, 8)
-                .padding(.bottom, 16)
-                .background(GeometryReader { proxy in
-                    Color.clear
-                        .onAppear { presentation.reportContentHeight(proxy.size.height) }
-                        .onChange(of: proxy.size.height) { _, h in presentation.reportContentHeight(h) }
-                })
+    /// Sized to its content: the island and its window follow the measured
+    /// height, so no state has empty space below it.
+    private var openContent: some View {
+        Group {
+            if presentation.surface == .expanded {
+                IslandContent(model: model, presentation: presentation, interaction: interaction, actions: actions,
+                              settings: settings, notifier: notifier)
+            } else {
+                PeekContent(model: model, presentation: presentation, interaction: interaction)
+            }
         }
         .frame(width: presentation.islandWidth, alignment: .top)
         .fixedSize(horizontal: false, vertical: true)
+        .background(GeometryReader { proxy in
+            Color.clear
+                .onAppear { presentation.reportContentHeight(proxy.size.height - presentation.notchSize.height) }
+                .onChange(of: proxy.size.height) { _, h in presentation.reportContentHeight(h - presentation.notchSize.height) }
+        })
         .foregroundStyle(.white)
     }
 
-    /// The row level with the camera housing: project left, status right.
-    private var band: some View {
-        let side = max(0, (presentation.islandWidth - presentation.notchSize.width) / 2 - topRadius - 10)
-        return HStack(spacing: 0) {
-            Text(model.selectedProject.map(Wording.projectName) ?? "Prompt Relay")
-                .font(.system(size: 12, weight: .semibold))
-                .lineLimit(1).truncationMode(.middle)
-                .frame(width: side, alignment: .leading)
-            Spacer(minLength: presentation.notchSize.width)
-            statusLabel
-                .frame(width: side, alignment: .trailing)
-        }
-        .padding(.horizontal, topRadius + 8)
-        .frame(height: presentation.notchSize.height)
-    }
-
-    private var statusLabel: some View {
-        HStack(spacing: 5) {
-            Circle().fill(statusColor).frame(width: 6, height: 6)
-            Text(statusText).font(.system(size: 11)).foregroundStyle(.white.opacity(0.65)).lineLimit(1)
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private var statusColor: Color {
-        if model.projects.error != nil, model.projects.value == nil { return .red }
-        guard let turn = model.selectedTurn else { return .gray }
-        return StatusBadge(turn.status).color
-    }
-
-    /// Only facts: when Claude stopped. Never "done" or "tests passed".
-    private var statusText: String {
-        if model.projects.error != nil, model.projects.value == nil { return "Core unavailable" }
-        guard let turn = model.selectedTurn else { return "No answer yet" }
-        let when = Wording.short(turn.finalResponse?.receivedAt ?? turn.request?.receivedAt)
-        switch turn.status {
-        case .stopReceived: return "Stopped \(when)"
-        case .stopReceivedBackgroundTasksPending: return "Tasks running"
-        default: return Wording.status(turn.status)
-        }
-    }
-
-    @ViewBuilder
-    private func body(for turn: Turn?) -> some View {
-        if let error = model.projects.error, model.projects.value == nil {
-            message(error.title, detail: error.detail, symbol: "exclamationmark.triangle")
-        } else if model.projects.value?.isEmpty == true {
-            message("No answers yet", detail: "Enable a project with prompt-relay enable, then send a prompt in Claude Code.",
-                    symbol: "tray")
-        } else if let turn {
-            VStack(alignment: .leading, spacing: 10) {
-                answer(turn)
-                meta(turn)
-                actionRow(turn)
-            }
-        } else {
-            message("No answer yet", detail: "Answers from Claude Code appear here when it stops.", symbol: "text.bubble")
-        }
-    }
-
-    private func message(_ title: String, detail: String, symbol: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: symbol).font(.system(size: 15)).foregroundStyle(.white.opacity(0.6))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 13, weight: .semibold))
-                Text(detail).font(.system(size: 12)).foregroundStyle(.white.opacity(0.6)).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-            openWindowButton
-        }
-    }
-
-    @ViewBuilder
-    private func answer(_ turn: Turn) -> some View {
-        if let blocker = AppModel.copyBlocker(for: turn) {
-            Text(turn.error?.message ?? blocker)
-                .font(.system(size: 13))
-                .foregroundStyle(turn.status == .apiError ? Color.red.opacity(0.9) : .white.opacity(0.6))
-                .lineLimit(3)
-        } else {
-            // Shown text only; the copy always uses the Core's full text.
-            Text(Self.excerpt(model.selectedResponseText ?? turn.finalResponse?.preview ?? ""))
-                .font(.system(size: 13))
-                .lineSpacing(2)
-                .foregroundStyle(.white.opacity(0.92))
-                .lineLimit(Self.previewLines)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityLabel("Answer preview")
-        }
-    }
-
     /// The first characters of the answer for display: long blank runs are
-    /// shortened so six lines show content. Never used for copying.
-    static func excerpt(_ text: String) -> String {
-        var out = String(text.prefix(800))
+    /// shortened so the preview shows content. Never used for copying.
+    static func excerpt(_ text: String, limit: Int = 800) -> String {
+        var out = String(text.prefix(limit))
         while out.contains("\n\n\n") { out = out.replacingOccurrences(of: "\n\n\n", with: "\n\n") }
         return out.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func meta(_ turn: Turn) -> some View {
-        let answers = Self.answerTurns(model)
-        let position = answers.firstIndex(of: turn.index).map { $0 + 1 }
-        return HStack(spacing: 6) {
-            if let response = turn.finalResponse, response.charCount > 0 {
-                Text(Wording.size(response))
-            }
-            if let note = Wording.link(turn.link) { Text("· " + note) }
-            Spacer(minLength: 4)
-            if answers.count > 1, let position {
-                stepButton("chevron.left", label: "Older answer", enabled: position < answers.count) { Self.step(model, by: 1) }
-                Text("\(position) of \(answers.count)").monospacedDigit()
-                stepButton("chevron.right", label: "Newer answer", enabled: position > 1) { Self.step(model, by: -1) }
-            }
-        }
-        .font(.system(size: 11))
-        .foregroundStyle(.white.opacity(0.5))
-    }
-
-    private func stepButton(_ symbol: String, label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 10, weight: .semibold)).frame(width: 18, height: 18)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.white.opacity(enabled ? 0.8 : 0.25))
-        .disabled(!enabled)
-        .accessibilityLabel(label)
-    }
-
-    private func actionRow(_ turn: Turn) -> some View {
-        let canCopy = AppModel.copyBlocker(for: turn) == nil
-        return HStack(spacing: 8) {
-            Button {
-                Task { await model.copySelectedResponse() }
-            } label: {
-                Label(responseCopied ? "Copied" : "Copy Response",
-                      systemImage: responseCopied ? "checkmark" : "doc.on.doc")
-                    .font(.system(size: 13, weight: .semibold))
-                    .padding(.horizontal, 14).frame(height: 28)
-                    .background(Capsule().fill(Color.white.opacity(canCopy ? 1 : 0.3)))
-                    .foregroundStyle(.black)
-                    .contentTransition(.opacity)
-            }
-            .buttonStyle(.plain)
-            .disabled(!canCopy)
-            .keyboardShortcut("c", modifiers: [.command, .shift])
-            .accessibilityLabel("Copy Response")
-            .accessibilityHint("Copies Claude's full final answer")
-
-            Button {
-                Task { await model.copySelectedContext() }
-            } label: {
-                Text(contextCopied ? "Copied" : "Context")
-                    .font(.system(size: 13, weight: .medium))
-                    .padding(.horizontal, 12).frame(height: 28)
-                    .background(Capsule().fill(Color.white.opacity(0.14)))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Copy Context")
-            .help("Copy a Markdown packet: request, response, provenance and git state")
-
-            if case .failed(let reason) = model.copyFeedback {
-                Text(reason).font(.system(size: 11)).foregroundStyle(.red).lineLimit(2)
-            }
-            Spacer(minLength: 4)
-            openWindowButton
-        }
-        .animation(.easeOut(duration: 0.15), value: model.copyFeedback)
-    }
-
-    private var openWindowButton: some View {
-        Button { interaction.close(); actions.openWindow() } label: {
-            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                .font(.system(size: 11, weight: .semibold))
-                .frame(width: 28, height: 28)
-                .background(Circle().fill(Color.white.opacity(0.14)))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open Full Window")
-        .help("Open the full answer in the Prompt Relay window")
-    }
-
-    private var responseCopied: Bool {
-        if case .copied(.response, _) = model.copyFeedback { return true }
-        return false
-    }
-
-    private var contextCopied: Bool {
-        if case .copied(.context, _) = model.copyFeedback { return true }
-        return false
     }
 
     // MARK: Navigation (shared with the keyboard handler)

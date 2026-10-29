@@ -1,8 +1,7 @@
 import Foundation
 import Observation
 
-/// Interface preferences, persisted in UserDefaults. The notch is off until
-/// the user turns it on.
+/// Interface preferences, persisted in UserDefaults.
 @MainActor
 @Observable
 public final class NotchSettings {
@@ -15,7 +14,7 @@ public final class NotchSettings {
         public var id: String { rawValue }
         public var title: String {
             switch self {
-            case .system: return "Follow system (Reduce Motion)"
+            case .system: return "Follow System"
             case .full: return "Smooth"
             case .reduced: return "Reduced"
             }
@@ -28,16 +27,22 @@ public final class NotchSettings {
         static let animation = "notch.animation"
         static let display = "notch.displayID"
         static let yield = "notch.yieldToOtherNotchApps"
+        static let mascot = "mascot.enabled"
     }
 
     private let defaults: UserDefaults
 
+    /// The resting island at the notch opens on hover. Off: Prompt Relay
+    /// opens only from the menu-bar item or the hotkey. On by default since
+    /// Phase 3D: the island is the app's interface.
     public var notchEnabled: Bool { didSet { defaults.set(notchEnabled, forKey: Key.notchEnabled) } }
     public var notifyWhenReady: Bool { didSet { defaults.set(notifyWhenReady, forKey: Key.notifyWhenReady) } }
     public var animation: Animation { didSet { defaults.set(animation.rawValue, forKey: Key.animation) } }
     /// When another notch app (Coucou) is running, do not compete for the
     /// notch: no hover target there; ⌃⌥⌘P and the menu-bar item still open it.
     public var yieldToOtherNotchApps: Bool { didSet { defaults.set(yieldToOtherNotchApps, forKey: Key.yield) } }
+    /// Relay the bear beside the notch (on by default; Settings → Appearance).
+    public var mascotEnabled: Bool { didSet { defaults.set(mascotEnabled, forKey: Key.mascot) } }
     public var display: DisplayChoice {
         didSet {
             switch display {
@@ -49,10 +54,11 @@ public final class NotchSettings {
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        notchEnabled = defaults.bool(forKey: Key.notchEnabled)          // default: off
+        notchEnabled = defaults.object(forKey: Key.notchEnabled) as? Bool ?? true   // default: on
         notifyWhenReady = defaults.bool(forKey: Key.notifyWhenReady)    // default: off
         animation = defaults.string(forKey: Key.animation).flatMap(Animation.init(rawValue:)) ?? .system
         yieldToOtherNotchApps = defaults.object(forKey: Key.yield) as? Bool ?? true   // default: yield
+        mascotEnabled = defaults.object(forKey: Key.mascot) as? Bool ?? true
         if let id = defaults.object(forKey: Key.display) as? Int, id > 0 {
             display = .display(UInt32(id))
         } else {

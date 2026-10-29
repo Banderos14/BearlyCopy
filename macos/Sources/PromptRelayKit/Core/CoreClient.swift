@@ -74,6 +74,9 @@ public protocol CoreProviding: Sendable {
     func show(sessionKey: String, turn: Int) async throws -> CoreResult<ShowData>
     func context(sessionKey: String, turn: Int) async throws -> CoreResult<ContextData>
     func doctor() async throws -> CoreResult<DoctorData>
+    /// `prompt-relay enable|disable <dir>` (text commands): returns the Core's
+    /// one-line confirmation. The folder's contents are never read.
+    func setCapture(_ enabled: Bool, path: String) async throws -> String
 }
 
 /// Adapter over the CLI JSON API v1. It never reads the JSONL store and never
@@ -120,7 +123,27 @@ public struct CoreClient: CoreProviding {
         try await call(["doctor", "--no-project"])
     }
 
+    public func setCapture(_ enabled: Bool, path: String) async throws -> String {
+        let output = try await run([enabled ? "enable" : "disable", path])
+        let say = { (data: Data) in
+            String(decoding: data, as: UTF8.self)
+                .split(separator: "\n").map { $0.replacingOccurrences(of: "prompt-relay: ", with: "") }
+                .first { !$0.hasPrefix("warning:") && !$0.isEmpty } ?? ""
+        }
+        guard output.exitCode == 0 else {
+            let reason = say(output.stderr)
+            throw CoreError.api(code: "capture_change_failed",
+                                message: reason.isEmpty ? "exit code \(output.exitCode)" : reason)
+        }
+        return say(output.stdout)
+    }
+
     func call<P: Decodable & Sendable>(_ args: [String]) async throws -> CoreResult<P> {
+        try Self.decode(try await run(args + ["--json"]))
+    }
+
+    /// Runs the CLI with the isolated interpreter and a minimal environment.
+    func run(_ args: [String]) async throws -> CommandOutput {
         let location: CoreLocation
         do {
             location = try resolve()
@@ -141,11 +164,10 @@ public struct CoreClient: CoreProviding {
             "LC_ALL": "en_US.UTF-8",
         ]
         env.merge(location.environment) { _, new in new }
-        let output: CommandOutput
         do {
-            output = try await runner.run(executable: location.python,
-                                          arguments: ["-I", "-S", "-B", location.cli] + args + ["--json"],
-                                          environment: env, timeout: timeout)
+            return try await runner.run(executable: location.python,
+                                        arguments: ["-I", "-S", "-B", location.cli] + args,
+                                        environment: env, timeout: timeout)
         } catch let error as RunnerError {
             switch error {
             case .launchFailed(let reason): throw CoreError.launchFailed(reason)
@@ -153,7 +175,6 @@ public struct CoreClient: CoreProviding {
             case .outputTooLarge: throw CoreError.outputTooLarge
             }
         }
-        return try Self.decode(output)
     }
 
     /// Envelope checks in the order JSON_API.md prescribes: parse, version,
