@@ -1,15 +1,21 @@
 # Architecture
 
-Status: Phase 1 proof of concept. Components marked *planned* do not exist yet.
+Status: Phase 2B (Core + Claude Code plugin). Components marked *planned* do not exist yet.
+Source layout: the Core package is `plugin/prompt_relay/`, inside the Claude
+Code plugin root (`plugin/`), and the CLI is `bin/prompt-relay`. See
+`docs/PLUGIN.md`.
 
 ## 1. Overview
 
 ```
- Claude Code (CLI / Desktop local session)
+ Claude Code (CLI / Desktop local session), plugin "prompt-relay" enabled
    │  hook events: UserPromptSubmit, Stop, StopFailure   (JSON on stdin)
+   │  /bin/sh ${CLAUDE_PLUGIN_ROOT}/hooks/run-hook  → finds Python 3.9+
+   │  → python -I -S hooks/prompt_relay_hook.py
    ▼
  ┌──────────────────────────── Prompt Relay Core (platform-independent) ──┐
- │ bin/prompt-relay hook ──► hook.py ──► config.py (project allowlist)    │
+ │ (or bin/prompt-relay hook for settings-based checks)                   │
+ │ hook.main ──► hook.py ──► config.py (project allowlist)                │
  │                              │                                          │
  │                              ▼                                          │
  │                           store.py  ──►  <data dir>/events/<sid>.jsonl  │
@@ -45,6 +51,9 @@ Status: Phase 1 proof of concept. Components marked *planned* do not exist yet.
 | `clipboard.py` | `pbcopy` (macOS) or file MOCK | use a shell; guess an encoding (it forces a UTF-8 locale) |
 | `api.py` | JSON API v1: envelope and serializers over the read model (ADR-006) | write anything to stderr in `--json` mode; expose text outside `show`/`context` |
 | `retention.py` | plan, preview and execute deletion of whole session files (ADR-007) | delete without `--yes`, delete anything but plain session files in `events/`, delete active sessions unforced, run automatically |
+| `runtime.py` | the pinned hook interpreter (`<data dir>/python-path`) | run in the hook path |
+| `integration.py` | read-only diagnostics of the plugin and settings registrations, plus observed events (`doctor`) | write anything, run Claude Code, print other tools' hook commands |
+| `plugin/hooks/run-hook` | POSIX launcher: find Python 3.9+, `exec python -I -S` | write stdout, exit non-zero, rely on `PATH`, run `/usr/bin/python3` without the CLT |
 | `cli.py` | user commands, exit codes, `--json` dispatch | install hooks or edit Claude settings |
 
 Only `clipboard.PbcopyBackend` and the default data path are macOS-specific.
@@ -52,17 +61,21 @@ Everything else runs and is tested on Linux.
 
 ## 3. Data flow
 
-1. Claude Code runs `bin/prompt-relay hook` (exec form, `timeout: 10`) and
-   pipes one JSON object to it.
-2. `bin/prompt-relay` takes a fast path straight into `hook.main`, skipping
-   argparse and the export modules.
+1. Claude Code runs the plugin hook `/bin/sh ${CLAUDE_PLUGIN_ROOT}/hooks/run-hook`
+   (exec form, `timeout: 10`) and pipes one JSON object to it. In validation
+   setups, a settings hook runs `bin/prompt-relay hook` instead.
+2. `run-hook` picks a Python 3.9+ (the pinned one, then known locations) and
+   execs `python -I -S hooks/prompt_relay_hook.py`, which imports
+   `hook.main` from the plugin root. Argparse and the export modules are
+   never loaded.
 3. The handler drops anything that is not UserPromptSubmit, Stop or
    StopFailure, or whose project (`$CLAUDE_PROJECT_DIR`, else `cwd`) is not
    enabled.
 4. It wraps the **unchanged payload** in an envelope (record id, receive time,
    fingerprint, env context) and appends it to `events/<session>.jsonl` under
    an exclusive `flock`, followed by `fsync`.
-5. It logs `timestamp event outcome` to `handler.log` and exits 0.
+5. It logs `timestamp event via=<plugin|direct> outcome` to `handler.log`
+   and exits 0.
 6. Later, the user runs `prompt-relay copy` (or the future app does the same).
    The store is read, events are normalized and grouped into turns, a turn is
    chosen, and the text goes to the clipboard.
@@ -174,7 +187,26 @@ SwiftUI app ──exec──► <python> bin/prompt-relay <command> --json ─�
 - A hook that was waiting for that lock sees `st_nlink == 0` after the
   unlink and reopens the path, so a concurrent event is never lost.
 
-## 10. Boundaries with the future macOS app (ADR-004, ADR-006)
+## 10. Claude Code integration: plugin first (ADR-008)
+
+- The repository is a marketplace (`.claude-plugin/marketplace.json`) with one
+  plugin, `./plugin`. Claude Code owns install, enable, disable, update and
+  uninstall. Prompt Relay never edits settings files.
+- The plugin root changes with every version (`cache/…/<version>/`). It
+  holds only code. History and `python-path` live in the data dir, which an
+  update or uninstall never touches. `${CLAUDE_PLUGIN_DATA}` is not used,
+  because uninstall deletes it.
+- A local-path marketplace loads the plugin in place, so the root is the
+  checkout's `plugin/`.
+- Double registration (the plugin plus a settings hook) is harmless for the
+  data: the second handler run finds the same fingerprint and logs
+  `duplicate`. `doctor` reports it from configuration and from `via=` in
+  the log.
+- Coexistence: hooks from all sources run in parallel. Ours never writes
+  stdout or decides anything, so other tools' hooks (NotchBuddy) behave as
+  before.
+
+## 11. Boundaries with the future macOS app (ADR-004, ADR-006)
 
 - The Core owns the data format, correlation and export semantics. The app
   reads them through the JSON API (ADR-006) and must not parse the JSONL

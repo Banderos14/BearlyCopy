@@ -28,14 +28,25 @@ Local-first · privacy-first · no AI APIs · no network · opt-in per project �
 verbatim capture · never blocks or steers Claude Code.
 
 ## Status
-**Proof of concept (Phase 2A). Not a product release.**
+**Proof of concept (Phase 2B). Not a product release.**
 - Done and tested in the cloud (Linux): the hook handler, storage, session
   correlation, Copy Response / Copy Context, the JSON API for the future app,
-  history management, and 105 automated tests.
+  history management, the Claude Code plugin package, and 137 automated tests.
 - Verified on a real Mac (Phase 1.5): Claude Desktop → Stop hook → Prompt
   Relay → system clipboard, byte-exact. Further Mac checks are open
   (`docs/STATUS.md`).
-- Not started: the macOS app, notch UI and hook installer.
+- Not started: the macOS app and the notch UI. The plugin has not yet been
+  installed on a real Mac (`docs/LOCAL_MAC_VALIDATION.md` §11).
+
+## Install as a Claude Code plugin
+```bash
+bin/prompt-relay enable ~/code/my-project          # capture is opt-in per project
+claude plugin marketplace add ~/code/prompt-relay  # this checkout is the marketplace
+claude plugin install prompt-relay@prompt-relay
+```
+Restart Claude Desktop, or run `/reload-plugins` in a session. Then
+`bin/prompt-relay doctor`. Details, disabling and uninstalling are covered in
+[docs/PLUGIN.md](docs/PLUGIN.md). Uninstalling never deletes your history.
 
 See `docs/STATUS.md` for the exact state.
 
@@ -57,10 +68,10 @@ bin/prompt-relay copy-context                 # Copy Context → clipboard (secr
 bin/prompt-relay sessions --json              # machine API for the app (docs/JSON_API.md)
 bin/prompt-relay prune --older-than-days 30   # preview deletion of old sessions; add --yes to delete
 bin/prompt-relay delete --session ID          # preview; add --yes (and --force-active for a live session)
-bin/prompt-relay hook-config                  # print hook JSON for `claude --settings`; pins this Python; writes nothing
+bin/prompt-relay doctor [--json]               # Python, storage, capture, plugin/settings registration (read-only)
+bin/prompt-relay pin-python [--show]           # the Python the plugin hook uses (enable pins one automatically)
+bin/prompt-relay hook-config                  # settings-hook JSON for isolated checks (`claude --settings`); writes nothing
 ```
-Hooks are **not** installed automatically. For a safe, isolated trial, follow
-`docs/LOCAL_MAC_VALIDATION.md`.
 
 Requirements: macOS on Apple Silicon and any Python 3.9+. That can be
 `/usr/bin/python3` from the Xcode Command Line Tools, Homebrew or python.org.
@@ -72,7 +83,8 @@ Requirements: macOS on Apple Silicon and any Python 3.9+. That can be
 | [PRODUCT_SPEC](docs/PRODUCT_SPEC.md) | vision, users, stories, scope, non-goals |
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | components, data flow, hook contract, correlation |
 | [DATA_MODEL](docs/DATA_MODEL.md) | on-disk format (contract for the future app) |
-| [DECISIONS](docs/DECISIONS.md) | ADR-001…007 |
+| [PLUGIN](docs/PLUGIN.md) | install, enable, disable, uninstall, diagnostics, coexistence |
+| [DECISIONS](docs/DECISIONS.md) | ADR-001…008 |
 | [JSON_API](docs/JSON_API.md) | machine-readable CLI API v1, versioning rules ([schema](docs/api/api-v1.schema.json)) |
 | [HOOKS_RESEARCH](docs/HOOKS_RESEARCH.md) | hook schemas, install options, open questions |
 | [SECURITY](docs/SECURITY.md) | threat model, privacy, installation safety |

@@ -32,6 +32,13 @@ is approved.
    payloads without redaction.
 8. Standard library only for the Core (Python 3.9 compatible) unless an ADR
    says otherwise.
+9. Integration is plugin-first (ADR-008). Prompt Relay code never writes
+   Claude Code settings files, and never changes or prints other tools'
+   hooks; read-only diagnostics may only count them. Real plugin installs happen only on
+   the owner's Mac, through `claude plugin` commands, with consent.
+10. Nothing stateful lives in the plugin root (it changes per version) or in
+    `${CLAUDE_PLUGIN_DATA}` (deleted on uninstall). History stays in the app
+    data dir. The plugin root must not contain `bin/`.
 
 ## Working practice
 - Read the existing code and docs before changing them; match their style.

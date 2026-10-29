@@ -8,7 +8,7 @@ reads one JSON document from stdout.
   Schema 2020-12)
 - Golden examples: `tests/golden/expected/*.json`, produced from
   `tests/golden/cases/*.json`
-- Implementation: `prompt_relay/api.py`, `prompt_relay/cli.py`
+- Implementation: `plugin/prompt_relay/api.py`, `plugin/prompt_relay/cli.py`
 
 ## 1. Invocation and transport
 
@@ -27,9 +27,9 @@ prompt-relay <command> [options] --json
 | not covered | `--help` and `--version` print plain text |
 
 Commands with `--json`: `projects`, `sessions`, `turns`, `show`, `context`,
-`delete`, `prune`, `retention`. The other commands (`hook`, `enable`,
-`disable`, `copy`, `copy-context`, `hook-config`, `doctor`) are unchanged
-text commands. The app writes the clipboard itself (NSPasteboard) using the
+`delete`, `prune`, `retention`, `doctor`. The other commands (`hook`,
+`enable`, `disable`, `copy`, `copy-context`, `hook-config`, `pin-python`)
+are text commands. The app writes the clipboard itself (NSPasteboard) using the
 text from `show --json` or `context --json`.
 
 ## 2. Envelope
@@ -68,6 +68,7 @@ fractional digits and a `Z` suffix: `2026-10-29T14:04:18.117766Z`.
 | `delete` | `--session ID\|KEY` or `--all`; `--dry-run`, `--yes`, `--force-active` | `plan_data` |
 | `prune` | `--older-than-days N` (default: the retention setting), `--yes` | `plan_data` |
 | `retention` | `--days N` or `--off` | `retention_data` |
+| `doctor` | `--project DIR` (default: the current directory), `--no-project` | `doctor_data`: `core` (Python, pinned hook interpreter), `storage`, `capture`, `configuration` (plugin install records, settings files: Prompt Relay hooks, **counts** of other hooks, `enabledPlugins` for prompt-relay), `observed` (handler.log by `via` and outcome), `findings[]` (`level`, `code`, `message`), `unverified[]`. Every finding is also in `warnings`. Added in Phase 2B; a compatible addition |
 
 ### Session summary
 `session_id` (`null` for events captured without one), `session_key` (the

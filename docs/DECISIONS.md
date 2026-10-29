@@ -234,3 +234,56 @@ grace period is a heuristic. A session deleted after 30 min idle and resumed
 later continues in a new file under the same key; its earlier turns are gone.
 
 **Status.** Accepted (Phase 2A).
+
+---
+
+## ADR-008: Plugin-first integration with Claude Code
+
+**Context.** Users need a reproducible, low-effort way to connect Prompt
+Relay to Claude Code (CLI and Desktop local sessions), without editing
+`~/.claude/settings.json`, where other tools such as NotchBuddy keep their
+global hooks. Phase 1.5 showed that Desktop starts hooks without the shell
+environment and with a minimal `PATH`.
+
+**Decision.**
+- Ship Prompt Relay as an official Claude Code plugin. The repository root
+  is a marketplace with one relative-path plugin, `./plugin`. Its
+  `hooks/hooks.json` registers UserPromptSubmit, Stop and StopFailure in exec
+  form: `/bin/sh ${CLAUDE_PLUGIN_ROOT}/hooks/run-hook`.
+- The Core package lives inside the plugin root (`plugin/prompt_relay`)
+  because installs copy only the plugin directory. There is one copy of the
+  code, with no vendoring and no symlinks.
+- The plugin root has no `bin/` (that would land on Claude's Bash `PATH`).
+- The launcher finds Python without relying on `PATH`: a pinned interpreter
+  written by the CLI, then known locations, then `/usr/bin/python3` only
+  with the CLT, each version-checked. It runs the handler with `-I -S`.
+- History stays in the app data dir, never in the plugin root or
+  `${CLAUDE_PLUGIN_DATA}`.
+- Capture remains opt-in per project. Installing the plugin captures
+  nothing by itself.
+- No settings-merge installer is built; `hook-config` stays for isolated
+  validation only.
+
+**Alternatives.** (a) A settings-merge installer: more code, and it writes
+to a file shared with other tools. That is the risk the plugin avoids, and
+it would need backup, merge and uninstall logic (SECURITY §5). (b) Plugin
+root = repository root: exposes `bin/` on the Bash `PATH`, loads `CLAUDE.md`
+warnings, and copies tests and docs into every install. (c) Vendoring a copy
+of the package into `plugin/`: two copies that can drift. (d) A plugin hook
+`python3 …` relying on `PATH`: breaks in Desktop, and can trigger the
+`/usr/bin/python3` install stub.
+
+**Consequences.**
++ Install, update and uninstall are Claude Code operations.
++ Other hooks are untouched.
++ Updates cannot lose history.
++ The real `claude plugin validate` and `plugin details` check the package.
+− The repository layout changed: the package moved to `plugin/prompt_relay`.
+− The launcher adds about 6 ms (sh plus a version check), measured 85–88 ms
+  median vs 73–79 ms in the cloud.
+− Whether a running Desktop session loaded the plugin can be proven only by
+  observed `via=plugin` events.
+− The private-repository GitHub marketplace needs local git credentials; the
+  local-path marketplace does not.
+
+**Status.** Accepted (Phase 2B). Mac validation pending (LOCAL_MAC_VALIDATION §11).

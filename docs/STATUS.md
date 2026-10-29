@@ -1,8 +1,8 @@
 # Status
 
-Last updated: 2026-10-29, cloud session (Phase 2A), branch
-`claude/loving-mccarthy-ossw3q`. The previous update was made in the local
-Mac session (Phase 1.5).
+Last updated: 2026-10-29, cloud session (Phase 2B), branch
+`claude/loving-mccarthy-ossw3q`. Phase 1.5 results come from the local Mac
+session.
 
 ## Completed
 - **Phase 0 — research & architecture**: docs, ADR-001…005, hook schema
@@ -23,6 +23,14 @@ Mac session (Phase 1.5).
   hardening. Two defects fixed with regression tests: the unlink race
   (a hook waiting on the lock of a deleted file lost its event) and a
   damaged duplicate line crashing an append. 105 tests.
+- **Phase 2B — Claude Code plugin** (cloud; Mac check pending): plugin
+  package `plugin/` plus a marketplace at the repo root (ADR-008,
+  `docs/PLUGIN.md`), a POSIX launcher with interpreter pinning
+  (`pin-python`, auto-pinned by `enable`), read-only `doctor --json`
+  diagnostics (plugin records, settings hooks, double registration, observed
+  `via=`), and the Core moved to `plugin/prompt_relay`. One defect found by
+  the new tests and fixed: the launcher could not resolve its own directory
+  with a minimal `PATH`. 137 tests.
 
 ## Verification matrix
 ### Verified in Cloud (real code, real processes, Linux)
@@ -49,12 +57,17 @@ Mac session (Phase 1.5).
 | History management: preview by default, `--yes`, retention never automatic, active protection, changed-since-plan kept | `test_api.HistoryManagementTests` |
 | Path safety: symlinked files/`events/` refused, foreign names ignored, nothing outside `events/` deletable | `test_api.PathSafetyTests` |
 | Concurrent hooks + deletes: no lost event, no corruption | `test_concurrent_hooks_and_deletes_never_corrupt`, `test_hook_waiting_for_lock_survives_concurrent_delete` |
-| GitHub Actions (Linux, Python 3.9 + 3.13) | runs 1–3 green up to `d653a45`; Phase 2A run: see the final report |
+| GitHub Actions (Linux, Python 3.9 + 3.13) | green up to `7ef3368` (Phase 2A); Phase 2B run: see the final report |
+| Plugin package accepted by the **real Claude Code 2.1.312 parser** | `claude plugin validate plugin --strict --json` (no errors, no warnings), marketplace validates, `claude --plugin-dir plugin plugin details` → "Hooks (3) UserPromptSubmit, Stop, StopFailure", ~0 tokens. Isolated HOME, no install, no API call (`ClaudeCliValidationTests`) |
+| Plugin launcher: verbatim capture from a root with spaces/Unicode, cwd-independent, pin fallback, no-Python exit 0, missing package exit 0, `PYTHONPATH` injection ignored, root change after update keeps history | `test_plugin.LauncherTests` (launcher run as `/bin/sh <root>/hooks/run-hook`, like Claude Code) |
+| Plugin + settings hook at the same time → event stored once | `test_double_registration_stores_each_event_once` |
+| Foreign (NotchBuddy-like) hooks: counted, never printed, settings bytes unchanged | `test_plugin.CoexistenceAndDiagnosticsTests` |
 
-Test run, Phase 2A (2026-10-29, cloud): Python 3.13.17 — 105 run, OK,
-1 skipped (root-only permission test); Python 3.9.25 — 105 run, OK,
-1 skipped; as user `nobody` — 105 run, OK, 0 skipped. Failures: 0.
-Hook latency median 74.2 ms, p95 93.8 ms.
+Test run, Phase 2B (2026-10-29, cloud): Python 3.13.17 — 137 run, OK,
+1 skipped (root-only permission test); Python 3.9.25 — 137 run, OK,
+1 skipped; as user `nobody` — 137 run, OK, 0 skipped. Failures: 0.
+Hook latency: `bin/prompt-relay hook` median 72.5 ms, plugin launcher median
+88.0 ms, p95 106 ms.
 
 ### Verified on macOS (2026-10-29, real Mac, real Claude Desktop)
 | Item | Evidence |
@@ -97,10 +110,13 @@ Real payloads (redacted) are fixtures: `tests/fixtures/real_*.json`.
 
 | Phase 2A suite on macOS (APFS `flock`, `O_NOFOLLOW`, `st_nlink` after unlink, scandir) | `PYTHONS=… scripts/check.sh` on the Mac; nothing in 2A is macOS-specific, but it has not run there yet |
 | JSON API consumed by a Swift client (`JSONDecoder`, surrogate pairs) | Phase 3 |
+| Plugin installed from the local marketplace; Desktop and CLI hooks fire **via the plugin** (`via=plugin`); NotchBuddy unaffected; `hooks`/`permissions` unchanged; update, disable and uninstall keep history | LOCAL_MAC_VALIDATION §11 (M10–M15) |
+| Launcher interpreter discovery on macOS (pin, Homebrew, CLT check) | M11/M12 |
+| Phase 2A + 2B suite on macOS, incl. `ClaudeCliValidationTests` against the Mac's Claude Code | M10 |
 
 ### Not Implemented (by design in this phase)
-SwiftUI/AppKit app, notch UI, hook installer (plugin or settings merge),
-ChatGPT integration, clipboard import, encryption at rest,
+SwiftUI/AppKit app, notch UI, settings-merge installer (not needed: plugin
+first, ADR-008), ChatGPT integration, clipboard import, encryption at rest,
 SessionStart/SessionEnd/Notification handling, automatic pruning (deliberately
 never automatic), per-record expiry inside a session.
 
@@ -159,8 +175,22 @@ never automatic), per-record expiry inside a session.
   `delete_all` were removed in favour of `retention`.
 - config.json: optional `retention_days` (old readers ignore it).
 
+## Phase 2B changes
+- Layout: `prompt_relay/` → `plugin/prompt_relay/` (git mv). `bin/prompt-relay`
+  and the tests import from `plugin/`. `hook-config` defaults to the
+  checkout's `bin/prompt-relay`.
+- New: `plugin/.claude-plugin/plugin.json`, `plugin/hooks/hooks.json`,
+  `plugin/hooks/run-hook`, `plugin/hooks/prompt_relay_hook.py`,
+  `.claude-plugin/marketplace.json`, `runtime.py`, `integration.py`,
+  `docs/PLUGIN.md`, `tests/test_plugin.py`, ADR-008.
+- CLI: `doctor --json --project/--no-project` (new `doctor_data` in schema
+  v1, a compatible addition), `pin-python`. `enable` pins the running
+  interpreter if no valid pin exists.
+- `handler.log` lines gain `via=plugin|direct` before the outcome.
+- Version 0.2.0 (package and plugin manifest).
+
 ## Next agreed stage
-Phase 2A is finished and pushed; it is waiting for the owner's review.
-Proposed next: **Phase 2B — hook installation and management** (ROADMAP),
-which needs approval before any work. The unchecked macOS items above stay
-open for a later Mac session, along with one run of the 2A suite on the Mac.
+Phase 2B is finished in the cloud and pushed; it is waiting for the owner's
+review. Next, on the Mac: LOCAL_MAC_VALIDATION §11 (plugin install and real
+capture), then the still-open Phase 1.5 items. Proposed afterwards: Phase 3,
+the macOS app foundation (ROADMAP). It needs approval.

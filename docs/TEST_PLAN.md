@@ -25,6 +25,11 @@ clipboard.
 | Golden (`test_api.py::GoldenTests`) | 13 cases: single real Desktop turn, several turns, two projects, missing prompt_id, ambiguous, API error, empty response, duplicates, Unicode + Markdown, background tasks, real CLI prompt only, no session_id, empty store. Expected files are compared exactly and schema-validated |
 | History management | prune is a dry run by default; `prune --yes` deletes only old sessions and nothing else (config, log, foreign files stay); retention setting drives prune and is never automatic; an invalid retention value never disables capture; delete preview, confirmation and active protection; a file written after planning is kept; a hook waiting on the lock survives a concurrent delete; 16 hooks + 3 deleters concurrently: no lost event, no corruption |
 | Path safety | symlinked session file never read, written or deleted; symlinked `events/` refused; `safe_unlink` refuses paths outside `events/`; foreign names ignored; a damaged duplicate line cannot crash an append |
+| Plugin package (`test_plugin.py`) | manifest fields and version, plugin root contents (no `bin/`, no `CLAUDE.md`, no symlinks), `hooks.json` shape (wrapper, 3 events, exec form `/bin/sh ${CLAUDE_PLUGIN_ROOT}/hooks/run-hook`), launcher POSIX/syntax/no stdout, marketplace entry, no data files in the plugin |
+| Real Claude Code parser | `claude plugin validate plugin --strict --json`, `claude plugin validate .` (marketplace), `claude --plugin-dir plugin plugin list --json` and `plugin details` ("Hooks (3) UserPromptSubmit, Stop, StopFailure", ~0 tokens), a root with spaces and Unicode. Isolated HOME; no install, session or API call; skipped where `claude` is missing (for example the Linux CI) |
+| Launcher | verbatim Stop from a root with spaces and Unicode, `via=plugin` in the log, cwd independence, discovery without a pin, stale or wrong pins fall back, no usable Python → exit 0 + `no_python_3_9` (Linux), missing package or entry → exit 0, `PYTHONPATH`/`PYTHONSTARTUP` injection ignored, capture off and failures never block, plugin root change after update keeps history, uninstall/disable keep history, plugin + settings hook concurrently → stored once |
+| Coexistence and diagnostics | NotchBuddy-like foreign hooks counted, never printed, settings bytes unchanged; plugin + foreign hooks is not double registration; plugin + our settings hook is; settings in two files; incomplete install record; broken/huge settings reported and untouched; doctor never prints message text, never creates the data dir, schema-valid JSON |
+| `pin-python` | `enable` pins once and never overwrites a valid pin; bad interpreters rejected; `--show`, `--clear`; file mode 0600 |
 | Source safety | no network modules, `shell=True`, `eval`/`exec`, `os.system` in sources; the hook module never prints; `.gitignore` entries |
 
 ## 2. Required scenarios (`tests/test_scenarios.py`, real executable in subprocesses)
@@ -55,7 +60,9 @@ large text) · M3 isolated CLI session via `claude --settings` · M4 Claude
 Desktop local session in a sandbox project with `settings.local.json` ·
 M5 two parallel Desktop sessions · M6 interrupt (Esc) → no Stop · M7 a turn
 with background task · M8 performance and no visible delay · M9 cleanup
-leaves `~/.claude` unchanged (checksum compare).
+leaves `~/.claude` unchanged (checksum compare) · M10–M15 plugin install,
+real Desktop capture via the plugin, coexistence with NotchBuddy, double
+registration, update, disable/uninstall (LOCAL_MAC_VALIDATION §11).
 
 ## 4. Regression scenarios (add a test for each bug fixed)
 - Hook output ever appearing in Claude's context, which means stdout was

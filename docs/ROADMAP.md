@@ -50,8 +50,20 @@ Done when: the JSON API is documented and tested; the conformance suite
 exists; the installer passes tests on fixture settings, including existing
 hooks, invalid JSON, duplicates and uninstall.
 
-## Phase 2B — Hook installation and management (proposed, C + M check)
-Not started. Needs the owner's approval. Proposed scope:
+## Phase 2B — Plugin integration ✅ in cloud · ⏳ Mac check (2026-10-29)
+Done in the cloud (ADR-008, `docs/PLUGIN.md`):
+- a plugin package (`plugin/`) plus a marketplace at the repo root;
+- a POSIX launcher with interpreter pinning;
+- `doctor --json` diagnostics: registrations, double registration, observed
+  events;
+- tests including the real `claude plugin validate` and `--plugin-dir`
+  listing.
+
+The settings-merge installer (item 2 below) was **not** built: the plugin
+covers the scenario (PLUGIN.md §9). Open: the Mac check (LOCAL_MAC_VALIDATION
+§11).
+
+Original proposal, for reference:
 1. Plugin packaging: `.claude-plugin/plugin.json` and `hooks/hooks.json`
    using `${CLAUDE_PLUGIN_ROOT}`; Claude Code owns install and uninstall.
 2. Settings merge tool as the fallback for `~/.claude/settings.json` and

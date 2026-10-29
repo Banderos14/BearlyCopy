@@ -248,3 +248,103 @@ nothing below is inferred from mocks.
 | M7 | Hook latency | **Passed** | median 37.1 ms, p95 39.3 ms (target < 150 ms) |
 | M8 | StopFailure | **Not checked** | see M3: an auth failure did not fire it |
 | M9 | `~/.claude` unchanged | **Passed** | `~/.claude/settings.json` SHA-256 unchanged; existing global hooks (another tool) untouched. The validation workspace `$PR_VAL` is **kept** for the remaining checks; the default data dir was never created |
+
+## 11. Phase 2B — plugin on the Mac (normal product flow)
+No sandbox setup is needed here. This is the way the product is used. It
+uses the **default** data dir (`~/Library/Application Support/PromptRelay`)
+and one project you choose to enable, `$PR_PROJECT`.
+
+```bash
+export PR_REPO="$HOME/code/prompt-relay" PR_PYTHON=/usr/bin/python3   # any Python 3.9+
+export PR_PROJECT="$HOME/code/some-project"                          # a project you want captured
+unset PROMPT_RELAY_HOME
+P() { "$PR_PYTHON" "$PR_REPO/bin/prompt-relay" "$@"; }
+```
+
+### M10 — Before: leftovers and other tools' hooks
+```bash
+git -C "$PR_REPO" pull && git -C "$PR_REPO" log --oneline -3
+PYTHONS="$PR_PYTHON" "$PR_REPO/scripts/check.sh"      # all tests, incl. the real `claude plugin validate`
+P doctor --project "$PR_VAL/sandbox-a" 2>/dev/null | grep -E "settings|WARNING"   # Phase 1.5 sandbox hooks still there?
+"$PR_PYTHON" - <<'PY' > /tmp/pr-hooks-before.json
+import json, os
+s = json.load(open(os.path.expanduser("~/.claude/settings.json")))
+print(json.dumps({"hooks": s.get("hooks"), "permissions": s.get("permissions")}, sort_keys=True))
+PY
+```
+If the Phase 1.5 sandbox still has a Prompt Relay `settings.local.json`,
+run §9 cleanup or delete that one file. Otherwise `doctor` reports
+`double_registration` in that folder.
+
+### M11 — Install the plugin from the local checkout
+```bash
+claude plugin validate "$PR_REPO/plugin" --strict
+P enable "$PR_PROJECT"                       # capture on; pins $PR_PYTHON for the hook
+claude plugin marketplace add "$PR_REPO"
+claude plugin install prompt-relay@prompt-relay
+claude plugin list --json | "$PR_PYTHON" -c 'import json,sys; print([p for p in json.load(sys.stdin) if p["id"].startswith("prompt-relay@")])'
+claude plugin details prompt-relay           # expect: Hooks (3)  UserPromptSubmit, Stop, StopFailure
+P doctor --project "$PR_PROJECT"
+```
+Expected:
+- `list` shows `prompt-relay@prompt-relay`, `enabled: true`, with
+  `readFromFolder` pointing at `$PR_REPO/plugin` (loaded in place);
+- `doctor` shows `hook python ok`, `this project capture ON`, one install
+  record with `files=ok`, and no `double_registration`.
+
+### M12 — Real capture in Claude Desktop (and the CLI, if logged in)
+Quit and reopen Claude Desktop. In the Code tab, set environment **This
+Computer** and folder `$PR_PROJECT`, and send `Reply with exactly: Привет из плагина 🚀`.
+```bash
+P doctor --project "$PR_PROJECT" | grep observed     # expect plugin: 2 (UserPromptSubmit + Stop)
+P turns --project "$PR_PROJECT"                      # link=prompt_id, stop_received
+P show --project "$PR_PROJECT"                       # the exact text
+P copy --project "$PR_PROJECT" --verify
+```
+If you are logged in to the CLI, repeat with `cd "$PR_PROJECT" && claude`.
+This closes the open "CLI Stop" item from Phase 1.5. While doing this, check
+that **NotchBuddy still shows Claude's status as before**.
+
+### M13 — Other tools' hooks unchanged
+```bash
+"$PR_PYTHON" - <<'PY' | diff /tmp/pr-hooks-before.json - && echo "hooks and permissions unchanged"
+import json, os
+s = json.load(open(os.path.expanduser("~/.claude/settings.json")))
+print(json.dumps({"hooks": s.get("hooks"), "permissions": s.get("permissions")}, sort_keys=True))
+PY
+```
+`claude plugin install` adds `enabledPlugins` and `extraKnownMarketplaces`
+to `~/.claude/settings.json`; that is Claude Code's own mechanism. The
+`hooks` and `permissions` sections, including NotchBuddy's hooks, must be
+identical.
+
+### M14 — Update
+```bash
+git -C "$PR_REPO" pull        # or edit nothing; the point is the reload
+```
+In Desktop, start a new session (or run `/reload-plugins` in a CLI session)
+and send one more prompt. `P doctor` should count 2 more `via=plugin` events,
+and the earlier history should still be listed.
+
+### M15 — Disable, re-enable, uninstall: history stays
+```bash
+claude plugin disable prompt-relay@prompt-relay     # new Desktop session, send a prompt → no new events
+P doctor --project "$PR_PROJECT" | grep observed      # count unchanged
+P sessions --project "$PR_PROJECT"                    # history still listed
+claude plugin enable prompt-relay@prompt-relay
+P disable "$PR_PROJECT"                               # per-project off: prompt → project_not_enabled in handler.log, nothing stored
+P enable "$PR_PROJECT"
+# Only if you want to remove it (optional):
+claude plugin uninstall prompt-relay@prompt-relay
+P sessions --project "$PR_PROJECT"                    # history still there
+```
+
+### Results (fill in)
+| ID | Check | Result | Notes |
+|---|---|---|---|
+| M10 | Suite incl. `claude plugin validate`; no leftovers | | |
+| M11 | Install from local marketplace; `details` shows 3 hooks; doctor clean | | |
+| M12 | Desktop capture via plugin (`via=plugin`), exact text, `copy --verify`; NotchBuddy unaffected; CLI Stop | | |
+| M13 | `hooks`/`permissions` in `~/.claude/settings.json` unchanged | | |
+| M14 | Capture after update/reload; history kept | | |
+| M15 | Disable stops capture; history kept; uninstall keeps history | | |

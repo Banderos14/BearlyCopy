@@ -174,3 +174,34 @@ marked as not verified.
   the last 30 min (exit 6) unless `--force-active` is given.
 - Proposed next stage: Phase 2B, hook installation and management (ROADMAP).
   It needs the owner's approval first.
+
+## 12. State after Phase 2B (cloud, 2026-10-29)
+- Branch `claude/loving-mccarthy-ossw3q`, not merged into `main`. The Phase 2B
+  commits follow `7ef3368`; the tip is shown by `git log --oneline -3`.
+- Prompt Relay is a Claude Code plugin (ADR-008, `docs/PLUGIN.md`). The Core
+  moved to `plugin/prompt_relay/`, and `bin/prompt-relay` is still the CLI.
+  137 tests are green in the cloud on Python 3.9 and 3.13. The real Claude
+  Code 2.1.312 parser accepts the plugin and sees its three hooks. Nothing
+  was installed, and no hook ran inside a real Claude session.
+- Next Mac session: run LOCAL_MAC_VALIDATION §11, which uses the normal
+  product flow with no sandboxes: install from the local checkout's
+  marketplace, then a real Desktop capture with `via=plugin`, NotchBuddy
+  coexistence, update, disable and uninstall. Remove the Phase 1.5 sandbox
+  `settings.local.json` first, or `doctor` will report double registration
+  for that folder.
+- Behavior to know: `claude plugin install` adds `enabledPlugins` and
+  `extraKnownMarketplaces` to `~/.claude/settings.json`; that is Claude Code's
+  own mechanism. Verify that the `hooks` and `permissions` sections stay
+  identical (M13).
+
+Starter prompt for the local session:
+```
+Continue Prompt Relay locally on branch claude/loving-mccarthy-ossw3q.
+Read CLAUDE.md, docs/STATUS.md, docs/PLUGIN.md and docs/LOCAL_MAC_VALIDATION.md §11.
+Confirm the tip and a clean tree, then run §11 step by step: run the
+commands you can run yourself, and ask me to do the Claude Desktop steps.
+Never edit ~/.claude/settings.json by hand or touch NotchBuddy's hooks;
+only `claude plugin` commands may change it. Record the results in §11 and
+docs/STATUS.md, fix only defects that real runs prove (each with a
+regression test), commit on the branch, do not merge into main, and stop.
+```

@@ -14,7 +14,10 @@ as the SwiftUI app. Change it only together with `store.SCHEMA_VERSION`.
 <root>/                      0700
   config.json                0600  replaced atomically (unique tmp + rename)
   config.lock                0600  serializes CLI enable/disable; the hook never takes it
-  handler.log, handler.log.1 0600  rotated at 256 KiB; metadata only
+  python-path                0600  one line: absolute interpreter for the plugin launcher (Phase 2B)
+  handler.log, handler.log.1 0600  rotated at 256 KiB; metadata only:
+                                   "<utc> <event> via=<plugin|direct> <outcome>" (outcome is the last token;
+                                   lines before Phase 2B have no via= field)
   events/                    0700
     <session-key>.jsonl      0600
 ```
