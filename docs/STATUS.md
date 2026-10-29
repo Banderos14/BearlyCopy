@@ -206,6 +206,35 @@ never automatic), per-record expiry inside a session.
 - The plugin stays installed (user scope) with capture on for the sandbox
   only.
 
+## CI fix after Phase 2B (cloud, 2026-10-29)
+GitHub Actions run 40910039983 (`ab57b74`) failed on Linux / Python 3.13:
+`test_context_git_section_and_read_only` saw `.git/objects` mtime change.
+
+- **Cause:** a race in the test setup, not a write by `gitinfo.collect()`.
+  The test's own `git commit` starts `git maintenance run --auto`, which on
+  git ≥ 2.47 (the runner has 2.56.0) detaches. It holds
+  `.git/objects/maintenance.lock` after `commit` returns and removes it
+  later. This was confirmed in git 2.56 sources: `run-command.c`
+  `prepare_auto_maintenance` and `builtin/gc.c` `maintenance_run_tasks`.
+  Locally (git 2.43) maintenance runs in the foreground, so the failure
+  could not show there.
+- **Fix:**
+  - Fixture repos are created with `maintenance.auto=false`/`gc.auto=0`.
+  - The `.git` snapshot got stricter: SHA-256 and size per file, in
+    addition to all mtimes.
+  - Hardening: `gitinfo` passes the same two settings, so no future git
+    version can start maintenance from the read-only collection.
+- **Regression tests:**
+  - `test_git_fixture_starts_no_maintenance`;
+  - `test_git_collection_never_starts_maintenance` (trace2, repo with
+    auto-maintenance on);
+  - `test_git_dir_snapshot_detects_transient_writes`.
+
+  Both fixes were checked by mutation: with either one removed, the
+  matching test fails.
+- **Not reproduced:** the exact detached race on git 2.56 in the cloud.
+  Building git 2.56 here was not permitted, so CI on git 2.56 is the check.
+
 ## Next agreed stage
 Phase 2B is validated on the Mac for its main path. Still open on the Mac:
 M14/M15, CLI Stop, ⌘V paste and the Phase 1.5 items above. Proposed next:

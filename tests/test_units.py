@@ -290,20 +290,63 @@ class ExportTests(IsolatedTestCase):
         # Copy Response is the user's explicit verbatim copy and is not blocked
         self.assertEqual(self.cli("copy").returncode, 0)
 
+    # Fixture repos are created with auto-maintenance off. `git commit` starts
+    # `git maintenance run --auto`, and since git 2.47 it detaches: it holds
+    # .git/objects/maintenance.lock after commit returns and removes it later,
+    # changing .git/objects' mtime between the snapshots below. That made CI
+    # (git 2.56) fail although gitinfo.collect wrote nothing.
+    NO_MAINTENANCE = ("-c", "maintenance.auto=false", "-c", "gc.auto=0")
+
+    def git_fixture(self, repo, *, commit=True):
+        run = lambda *a: subprocess.run(["git", *self.NO_MAINTENANCE, "-C", repo, *a], check=True,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        run("init", "-q", "-b", "main")
+        if commit:
+            run("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init")
+        return run
+
+    @staticmethod
+    def git_dir_state(repo):
+        """Every entry under .git: kind, mtime (dirs too, so transient lock files
+        are caught), and for files size and SHA-256 (content rewrites with a
+        preserved mtime are caught)."""
+        import hashlib
+        state = []
+        for p in sorted(Path(repo, ".git").rglob("*")):
+            st = p.lstat()
+            if p.is_file() and not p.is_symlink():
+                digest = hashlib.sha256(p.read_bytes()).hexdigest()
+                state.append((str(p.relative_to(repo)), "file", st.st_size, digest, st.st_mtime_ns))
+            else:
+                state.append((str(p.relative_to(repo)), "dir" if p.is_dir() else "other", None, None, st.st_mtime_ns))
+        return state
+
+    @staticmethod
+    def maintenance_children(trace_file):
+        """git processes trace2 saw starting maintenance or gc."""
+        found = []
+        if not Path(trace_file).exists():
+            return found
+        for line in Path(trace_file).read_text().splitlines():
+            ev = json.loads(line)
+            argv = ev.get("argv") or []
+            if ev.get("event") in ("child_start", "start") and len(argv) > 1 and argv[1] in ("maintenance", "gc"):
+                found.append(argv)
+        return found
+
     def test_context_git_section_and_read_only(self):
         repo = self.project
-        run = lambda *a: subprocess.run(["git", "-C", repo, *a], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        run("init", "-q", "-b", "main")
-        run("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init")
+        self.git_fixture(repo)
         Path(repo, "new.txt").write_text("x")
-        git_dir_before = sorted((p.relative_to(repo), p.stat().st_mtime_ns) for p in Path(repo, ".git").rglob("*"))
+        git_dir_before = self.git_dir_state(repo)
         info = gitinfo.collect(repo)
         self.assertTrue(info.available)
         self.assertEqual(info.branch, "main")
         self.assertEqual(len(info.head or ""), 40)
         self.assertEqual(info.changed_files, ["?? new.txt"])
-        git_dir_after = sorted((p.relative_to(repo), p.stat().st_mtime_ns) for p in Path(repo, ".git").rglob("*"))
+        git_dir_after = self.git_dir_state(repo)
         self.assertEqual(git_dir_before, git_dir_after, "git metadata collection must not write to .git")
+        self.assertFalse(list(Path(repo, ".git").rglob("*.lock")), "no lock file left behind")
         self.assertHookOk(self.hook(self.fx("prompt_basic.json")))
         self.assertHookOk(self.hook(self.fx("stop_basic.json")))
         ctx = self.cli("context").stdout.decode()
@@ -312,6 +355,55 @@ class ExportTests(IsolatedTestCase):
         self.assertIn("[Not verified]", ctx)
         self.assertIn("All tests pass (reported).", ctx)
 
+    # Regression (CI run 40910039983): the fixture must not leave a detached
+    # auto-maintenance process behind, on any git version.
+    def test_git_fixture_starts_no_maintenance(self):
+        trace = self.tmp / "trace-fixture.json"
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"GIT_TRACE2_EVENT": str(trace)}):
+            self.git_fixture(self.project)
+        self.assertTrue(trace.exists(), "trace2 must be recording")
+        self.assertEqual(self.maintenance_children(trace), [])
+
+    # Regression (hardening): collect() never starts maintenance or gc, even in a
+    # repository whose own config leaves auto-maintenance on (the default).
+    def test_git_collection_never_starts_maintenance(self):
+        repo = self.project
+        self.git_fixture(repo)
+        subprocess.run(["git", "-C", repo, "config", "maintenance.auto", "true"], check=True)
+        subprocess.run(["git", "-C", repo, "config", "gc.auto", "1"], check=True)
+        for i in range(3):
+            Path(repo, f"f{i}.txt").write_text(str(i))
+        trace = self.tmp / "trace-collect.json"
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"GIT_TRACE2_EVENT": str(trace)}):
+            info = gitinfo.collect(repo)
+        self.assertTrue(info.available)
+        self.assertTrue(trace.exists())
+        self.assertEqual(self.maintenance_children(trace), [])
+        argv = [json.loads(l).get("argv") for l in trace.read_text().splitlines() if '"event":"start"' in l]
+        self.assertTrue(argv and all("maintenance.auto=false" in " ".join(a) for a in argv if a))
+
+    # The snapshot stays strict: a transient lock (created and removed between
+    # snapshots, as detached maintenance does) is detected, so a real write by
+    # collect() could not hide.
+    def test_git_dir_snapshot_detects_transient_writes(self):
+        import time
+        repo = self.project
+        self.git_fixture(repo)
+        before = self.git_dir_state(repo)
+        time.sleep(0.01)
+        lock = Path(repo, ".git", "objects", "maintenance.lock")
+        lock.write_text("")
+        lock.unlink()
+        self.assertNotEqual(before, self.git_dir_state(repo))
+        before = self.git_dir_state(repo)
+        head = Path(repo, ".git", "HEAD")
+        st = head.stat()
+        head.write_text(head.read_text().replace("main", "mai2"))
+        os.utime(str(head), ns=(st.st_atime_ns, st.st_mtime_ns))  # content changed, mtime restored
+        self.assertNotEqual(before, self.git_dir_state(repo))
+
     # Audit E2: the fsmonitor mitigation claimed in SECURITY.md T9 really works.
     def test_repo_configured_fsmonitor_is_not_executed(self):
         repo = self.project
@@ -319,8 +411,7 @@ class ExportTests(IsolatedTestCase):
         hook_script = Path(self.tmp, "fsmonitor.sh")
         hook_script.write_text(f"#!/bin/sh\ntouch '{marker}'\n")
         hook_script.chmod(0o755)
-        run = lambda *a: subprocess.run(["git", "-C", repo, *a], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        run("init", "-q")
+        run = self.git_fixture(repo, commit=False)
         run("config", "core.fsmonitor", str(hook_script))
         self.assertTrue(gitinfo.collect(repo).available)
         self.assertFalse(marker.exists(), "repo-configured core.fsmonitor ran during metadata collection")

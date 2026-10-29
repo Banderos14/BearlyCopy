@@ -4,6 +4,10 @@ Collected at export time, never inside the hook. Hardening against side
 effects and repository-controlled command execution:
 - GIT_OPTIONAL_LOCKS=0: ``git status`` does not refresh/write the index;
 - core.fsmonitor=false: a repo-configured fsmonitor command is not run;
+- maintenance.auto=false, gc.auto=0: no auto-maintenance child can start.
+  Today only write commands (commit, fetch, merge, am, rebase) trigger it,
+  and since git 2.47 it detaches and keeps writing .git/objects in the
+  background; this pins the read-only guarantee for future git versions;
 - no pager, no terminal prompts, fixed timeout, no shell.
 """
 
@@ -31,7 +35,8 @@ class GitInfo:
 def _git(path: str, *args: str) -> Optional[str]:
     env = dict(os.environ)
     env.update({"GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0", "GIT_PAGER": "cat", "LC_ALL": "C"})
-    cmd = ["git", "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-C", path, *args]
+    cmd = ["git", "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
+           "-c", "maintenance.auto=false", "-c", "gc.auto=0", "-C", path, *args]
     try:
         proc = subprocess.run(cmd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                               stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_S, check=False)
