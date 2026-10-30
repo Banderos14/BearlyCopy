@@ -1,4 +1,14 @@
-# Product UX Specification (Phase 4)
+# Product UX Specification (Phase 4, updated for Phase 5)
+
+> **Phase 5 (2026-10-30)** changed the island as specified in
+> `PHASE5_PROPOSAL.md` §7–§8 (approved rev 3.1): Home became **Details**
+> (two columns: Task + Response | In Copy for ChatGPT + Attachments), Quick
+> Peek shows project · session · status, the task, the first line of the
+> answer, observed chips and a materials line; Review Pack became **Copy for
+> ChatGPT** with a two-step hand-off; Projects became the **Project and
+> Session** switcher and the capture switches moved to Settings → Capture;
+> Relay at rest moves its head within computed bounds and breathes. Where
+> this document and the proposal differ, the proposal is current.
 
 Prompt Relay exists for one loop:
 

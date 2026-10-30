@@ -30,6 +30,17 @@ prompt-relay/                      ← marketplace root
   not in the plugin root, which changes with every version, and not in
   `${CLAUDE_PLUGIN_DATA}`, which Claude Code deletes on uninstall.
 
+## 1a. Version 0.3.0: observed tool results (ADR-013)
+`hooks/hooks.json` adds `PostToolUse` (matcher `Bash|Write|Edit|MultiEdit|NotebookEdit|SendUserFile|Artifact`)
+and `PostToolUseFailure` (`Bash|Write|Edit|MultiEdit|NotebookEdit`), both `async: true`, so they never delay
+Claude. The handler stores only a reduced record (ids, tool, duration, outcome, Bash command if short and
+secret-free, exit code from `Exit code N`, a test/build/git kind, edited paths, what the Artifact tool
+returned, and for a failed test or build its last 12 lines after a secret scan). Never stored: file
+contents, `old_string`/`new_string`, output of successful commands, artifact HTML. Payload shapes:
+HOOKS_RESEARCH §3 (observed 2026-10-30). Updating an installed 0.2.0: `claude plugin marketplace update`
+then `claude plugin install prompt-relay@<marketplace>` (or update) on your Mac; check with
+`claude plugin details prompt-relay` → "Hooks (5)".
+
 ## 2. Install (recommended: from your local checkout)
 
 The commands below run in your shell. Use your Python 3.9+ for the CLI;

@@ -503,12 +503,61 @@ GitHub Actions run 40910039983 (`ab57b74`) failed on Linux / Python 3.13:
 - **Owner check (2026-10-30):** the owner checked both polish rounds on the
   real Mac and reported "All good"; committed on the branch, not pushed.
 
+## Phase 5 implementation (2026-10-30; committed on the branch, not pushed)
+Plan: `docs/PHASE5_PROPOSAL.md` rev 3.1 (R1–R11), ADR-013…016. Commits:
+`7312d1c` (plan, ADRs), `7182436` (Core), `859c044` and `8679c76` (app),
+plus this documentation commit. Backup refs `refs/backup/phase5-*`.
+
+**Stages:** 5.0 done · 5.1 done in a Claude Desktop sandbox (the CLI is
+logged out; V1 latency at scale and V5d `-p` teardown not observed) · 5.2,
+5.3, 5.4, 5.5, 5.6, 5.7, 5.8 (step 2 hand-off; the ChatGPT paste matrix V8
+is the owner's), 5.9 implemented · 5.10 (local rendering of mockup states)
+not started: it waits for a separate security approval · 5.11 partly (see
+below).
+
+**Defects found in real payloads and fixed (regression tests):**
+1. Background-task notifications and subagent hand-backs arrive as
+   UserPromptSubmit with the turn's `prompt_id`; the Core made each a new
+   turn "awaiting response" after Claude had stopped.
+2. Publishing an Artifact arms a `monitor` background task that keeps
+   running; every later Stop was "background tasks pending", shown as
+   "tasks still running" (5 of 12 real Stops on this Mac). Monitors are now
+   reported as watchers, not work in flight.
+3. Opening the island revealed the newest answer of any session and
+   replaced the session the user was reading (`revealReadyAnswer`).
+4. `ClipboardImageHistory.poll()` worked while the mode was off (guarded).
+5. Truncated labels and a duplicated time found in renders of the real
+   history.
+Also: the island's preference keys (`IslandFramesKey`, `BoundedScrollHeight`)
+replaced by geometry callbacks; the scroller no longer depends on the
+measured height; the window no longer forces a display inside SwiftUI's
+layout pass. The Xcode warnings themselves were **not reproduced** here
+(they are not in the system log of the test process): the owner's Xcode
+console is the check.
+
+| Item | Status |
+|---|---|
+| Python suite (3.11+ and Xcode's 3.9.6), `scripts/check.sh` | **Automated: 155 tests OK** (1 skipped by design); hook latency median ≈ 40 ms |
+| Real plugin validation | `claude plugin validate plugin --strict`: no errors (CLI 2.1.268, no install) |
+| Tool events in a real Desktop session (sandbox, capture-only hooks) | **Verified on this Mac** (22 events, redacted fixture) |
+| Plugin 0.3.0 with the tool hooks installed for real | **Not done**: the owner installs it (`claude plugin` commands) |
+| Swift `swift test` | **Automated: 161 tests, 0 failures** (6 opt-in skipped) |
+| Xcode Debug and Release builds | **BUILD SUCCEEDED** both |
+| Session switching, pinning across launches, "New in …" | Automated (fake Core); real history rendered: the two real `prompt-relay` sessions are separate and titled |
+| Copy for ChatGPT on a real turn of this session | Verified with the real Core: response once, byte-exact, no absolute paths, "Watchers at Stop: 1" |
+| Typed attachments, mockup states, hand-off names and order, suggestions | Automated (real files, real ImageIO/PDF, temp store) |
+| Clipboard image history | Automated with a private pasteboard; **not verified** against macOS 27's paste-privacy prompt (V6) |
+| Relay at rest: bounds, no camera overlap, no clipping | Automated: math for every pose and the **rendered** SwiftUI view at 4× (9 gazes × moods) |
+| Relay motion feel, breathing, copy joy on the real screen | **Not verified**: needs the owner's eyes |
+| Relay CPU (Debug test harness, pointer at 120 Hz) | idle ≈ 0 % over the loop; moving ≈ +6–8 points over the loop (Phase 4 code, same harness: +3.4). Release app not measured |
+| Paste of text and files into ChatGPT Desktop / Safari / Chrome (V8) | **Not verified**: the owner's matrix |
+| Local rendering of mockup states (5.10) | **Not implemented** (needs approval) |
+
 ## Next agreed stage
 Push the branch when the owner asks. ADR-012 waits for approval.
 
-Phase 5 is **approved** (`docs/PHASE5_PROPOSAL.md`, revision 3.1, R1–R11;
-ADR-013…016). Work follows the stages in its §9, starting with 5.0 (docs)
-and 5.1 (real PostToolUse/PostToolUseFailure payloads in a sandbox; the
-plugin is not changed before the results are approved). R8 (Relay at rest:
-eyes and head follow the pointer within computed bounds, breathing, copy
-joy) is implemented in stage 5.4. Backup refs: `refs/backup/phase5-*`.
+The owner's steps for Phase 5 are in the final report of the session:
+install plugin 0.3.0, open the Debug build, check the island on the real
+screen (Quick Peek, Details, sessions, Relay, attachments), run the V8 paste
+matrix, try the clipboard mode once (V6). Stage 5.10 needs a separate
+approval.

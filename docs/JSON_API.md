@@ -77,6 +77,16 @@ stable file key; pass it to `--session` to address any session),
 `turn_count`, `cwds[]`, `last_turn{index,status}`,
 `integrity{corrupt_lines,unsupported_lines,foreign_lines}`.
 
+### Phase 5 additions (compatible, 0.3.0)
+- Session summary: `title` (first captured request, one line, ≤ 80 chars, display only), `claude_code_title`
+  (`session_title` sent by Claude Code), `answered_count`, `running` (a request without a Stop, active in
+  the last 30 minutes; background tasks at a Stop do not count).
+- Turn: `notification_count` (task notifications / subagent hand-backs delivered with the turn's
+  `prompt_id`; not turns), `observed` (counts of tool events: `runs_exit_zero`, `runs_nonzero`, …),
+  `background_tasks.watchers` (monitors, not work). `show` adds `observed_detail` (commands with time,
+  exit code, duration, kind, compound/background/after-Stop flags, a failed run's tail; files changed;
+  files shown; artifacts).
+
 ### Turn
 | Field | Meaning |
 |---|---|

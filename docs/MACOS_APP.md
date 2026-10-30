@@ -56,13 +56,28 @@ leaves `~/Library/Application Support/PromptRelay` untouched.
 
 | Surface | Role |
 |---|---|
-| Island (notch, or floating) | the interface: resting, Quick Peek on hover, Expanded on click / ⌃⌥⌘P, with Projects, Recent Copies, History, Import, Settings and Full Report inside it |
+| Island (notch, or floating) | the interface: resting, Quick Peek on hover (520/560 pt), Details on click / ⌃⌥⌘P (640/680 pt, ≤ 38 % of the display), with Project and Session, Observed Work, Mockup States, Clipboard Images, Recent Copies, History, Import, Settings (Capture inside) and Full Report |
 | Menu-bar item | a small fallback menu: Open Prompt Relay, Recent Copies, History, Import Cloud Report…, Settings…, Quit; each opens the island on that view |
 
 There are no regular windows any more. The Phase 3A main window, menu-bar
 panel and status window and the Phase 3C settings window were removed in
 Phase 4 after everything they did moved into the island (their code is in
 git history and in `refs/backup/phase4-start`).
+
+### Phase 5 (2026-10-30)
+- `Notch/DetailsViews.swift`: Details (two columns), the session switcher,
+  Observed Work, attachments with suggestions, mockup states, clipboard
+  images, step 2 of the hand-off (Copy N Files, Drag All, Show in Finder).
+- `Presentation/AppModel+Handoff.swift`: materials (links, mockups),
+  suggestions from the turn's observed tool events, hand-off names and order.
+- `Services/ReportStore.swift`: typed snapshots (document, PDF, image),
+  `materials.json` for links and mockups, state images.
+- `Services/ClipboardImageHistory.swift`: optional, off by default (ADR-014).
+- `Notch/Mascot.swift`: `RestingPose` (bounded head at rest), `Breathing`
+  (Core Animation on the render server). See PHASE5_PROPOSAL §7.1.
+- Session pinning: a chosen session (`selection.pinned` in the app's
+  defaults) is kept across launches; Settings → Capture → "Stay on the
+  session I choose" turns following the newest answer back on.
 
 ## 3. Architecture
 
