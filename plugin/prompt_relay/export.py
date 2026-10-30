@@ -23,7 +23,7 @@ from typing import List, Optional
 
 from prompt_relay import correlation as c
 from prompt_relay.gitinfo import GitInfo
-from prompt_relay import tools
+from prompt_relay import origin, tools
 from prompt_relay.history import Session
 from prompt_relay.sensitive import Finding, scan
 
@@ -100,11 +100,24 @@ def request_text(turn: c.Turn) -> Optional[str]:
     return None
 
 
-def sensitive_findings(turn: c.Turn, request: bool = True) -> List[Finding]:
+def earlier_user_request(session: Optional[Session], turn: c.Turn) -> Optional[tuple]:
+    """For a turn started by an automated message: (turn index, text) of the
+    latest earlier request from the user in the same session."""
+    req = request_text(turn)
+    if session is None or req is None or origin.classify(req) != origin.AUTOMATED:
+        return None
+    found = origin.earlier_user_prompt(session.turns, turn.index)
+    return None if found is None else (found[0], found[1].text)
+
+
+def sensitive_findings(turn: c.Turn, request: bool = True, session: Optional[Session] = None) -> List[Finding]:
     findings: List[Finding] = []
     req = request_text(turn) if request else None
     if req:
         findings += scan(req, "request")
+    earlier = earlier_user_request(session, turn) if request else None
+    if earlier and earlier[1]:
+        findings += scan(earlier[1], "request")
     final = turn.final_response
     if final and final.text:
         findings += scan(final.text, "response")
@@ -204,6 +217,52 @@ def _observed_section(add, session: Session, turn: c.Turn) -> None:
     add("")
 
 
+def _request_section(add, session: Session, turn: c.Turn) -> None:
+    """The request, labelled by its origin (origin.py). A turn Claude Code
+    started itself is never presented as the user's request."""
+    req = request_text(turn)
+    if req is None:
+        add("## Original user request")
+        add(f"[{UNAVAILABLE}] The request could not be determined unambiguously, so it is not included.")
+        add("")
+        return
+    tag = CONFIRMED if turn.link == c.LINK_PROMPT_ID else f"{CONFIRMED}; link inferred"
+    kind = origin.classify(req)
+    if origin.is_user(kind):
+        add("## Original user request")
+        pasted = " It was pasted (Claude Code marked it as pasted text)." if kind == origin.USER_PASTED else ""
+        add(f"[{tag}] Request as captured; it holds no automated message blocks.{pasted}")
+        add("")
+        add(_block(req))
+        add("")
+        return
+    if kind == origin.UNKNOWN:
+        add("## Request (source not established)")
+        add(f"[{tag}] Request source not established: the text mixes automated message blocks (such as "
+            "system reminders) with other text, so Prompt Relay cannot tell whether the user wrote it.")
+        add("")
+        add(_block(req))
+        add("")
+        return
+    add("## Original user request")
+    earlier = earlier_user_request(session, turn)
+    if earlier is not None:
+        add(f"[{CONFIRMED}; from turn {earlier[0]} of this session] This turn was not started by the user. "
+            "The latest earlier request from the user in this session:")
+        add("")
+        add(_block(earlier[1] or ""))
+    else:
+        add(f"[{UNAVAILABLE}] This turn was not started by the user, and no earlier request from the user "
+            "was captured in this session.")
+    add("")
+    add("### Automated message that started this turn")
+    add(f"[{CONFIRMED}] Not written by the user: Claude Code started this turn itself (for example when a "
+        "background session reported back). Verbatim:")
+    add("")
+    add(_block(req))
+    add("")
+
+
 def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: str) -> str:
     final = turn.final_response
     lines: List[str] = []
@@ -234,16 +293,7 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
     add(f"- Request ↔ response link: {LINK_TEXT.get(turn.link, turn.link)}")
     add("")
 
-    add("## Original user request")
-    req = request_text(turn)
-    if req is not None:
-        tag = CONFIRMED if turn.link == c.LINK_PROMPT_ID else f"{CONFIRMED}; link inferred"
-        add(f"[{tag}]")
-        add("")
-        add(_block(req))
-    else:
-        add(f"[{UNAVAILABLE}] The request could not be determined unambiguously, so it is not included.")
-    add("")
+    _request_section(add, session, turn)
 
     add("## Claude final response")
     if final is not None and final.text is not None:

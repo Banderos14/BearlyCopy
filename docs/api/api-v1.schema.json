@@ -485,6 +485,33 @@
         },
         "observed": {
           "$ref": "#/$defs/observed_counts"
+        },
+        "request_origin": {
+          "description": "Where the request came from (Phase 5.11): user, user_pasted, automated (a turn Claude Code started itself) or unknown. Read from the text's structure; null without a request.",
+          "anyOf": [
+            {
+              "enum": [
+                "user",
+                "user_pasted",
+                "automated",
+                "unknown"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "earlier_user_request": {
+          "description": "For an automated turn: the latest earlier request from the user in the same session; else null.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/earlier_text_summary"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -623,6 +650,33 @@
         },
         "observed_detail": {
           "$ref": "#/$defs/observed_detail"
+        },
+        "request_origin": {
+          "description": "Where the request came from (Phase 5.11): user, user_pasted, automated (a turn Claude Code started itself) or unknown. Read from the text's structure; null without a request.",
+          "anyOf": [
+            {
+              "enum": [
+                "user",
+                "user_pasted",
+                "automated",
+                "unknown"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "earlier_user_request": {
+          "description": "For an automated turn: the latest earlier request from the user in the same session; else null.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/earlier_text_full"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -1552,6 +1606,96 @@
           "minimum": 0
         }
       }
+    },
+    "earlier_text_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "char_count",
+        "preview",
+        "prompt_id",
+        "received_at",
+        "truncated",
+        "utf8_bytes",
+        "turn"
+      ],
+      "properties": {
+        "preview": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "char_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "description": "A request from an earlier turn of the same session, with that turn's number."
+    },
+    "earlier_text_full": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "char_count",
+        "preview",
+        "prompt_id",
+        "received_at",
+        "text",
+        "truncated",
+        "utf8_bytes",
+        "turn"
+      ],
+      "properties": {
+        "preview": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "char_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "text": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "description": "A request from an earlier turn of the same session, with that turn's number."
     }
   }
 }

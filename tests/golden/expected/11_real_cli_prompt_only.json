@@ -103,6 +103,7 @@
           {
             "background_tasks": null,
             "candidate_request_turns": [],
+            "earlier_user_request": null,
             "error": null,
             "final_response": null,
             "index": 1,
@@ -124,6 +125,7 @@
               "truncated": false,
               "utf8_bytes": 117
             },
+            "request_origin": "user",
             "response_event_count": 0,
             "status": "awaiting_response"
           }

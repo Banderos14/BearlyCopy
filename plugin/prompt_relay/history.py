@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 from prompt_relay.correlation import Turn, build_turns
+from prompt_relay import origin
 from prompt_relay.events import Event, from_record
 from prompt_relay.store import NO_SESSION_KEY, SessionFile, Store, session_key
 
@@ -179,6 +180,6 @@ def display_title(text: str) -> Optional[str]:
 
 def session_title(s: Session) -> Optional[str]:
     for t in s.turns:
-        if t.prompt is not None and t.prompt.text:
+        if t.prompt is not None and t.prompt.text and origin.classify(t.prompt.text) != origin.AUTOMATED:
             return display_title(t.prompt.text)
     return None

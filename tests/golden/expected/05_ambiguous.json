@@ -46,6 +46,7 @@
             1,
             2
           ],
+          "earlier_user_request": null,
           "error": null,
           "final_response": {
             "char_count": 10,
@@ -75,6 +76,7 @@
             "shown_files": []
           },
           "request": null,
+          "request_origin": null,
           "response_event_count": 1,
           "status": "stop_received"
         }
@@ -125,6 +127,7 @@
           {
             "background_tasks": null,
             "candidate_request_turns": [],
+            "earlier_user_request": null,
             "error": null,
             "final_response": null,
             "index": 1,
@@ -146,12 +149,14 @@
               "truncated": false,
               "utf8_bytes": 5
             },
+            "request_origin": "user",
             "response_event_count": 0,
             "status": "no_matched_response"
           },
           {
             "background_tasks": null,
             "candidate_request_turns": [],
+            "earlier_user_request": null,
             "error": null,
             "final_response": null,
             "index": 2,
@@ -173,6 +178,7 @@
               "truncated": false,
               "utf8_bytes": 6
             },
+            "request_origin": "user",
             "response_event_count": 0,
             "status": "no_matched_response"
           },
@@ -186,6 +192,7 @@
               1,
               2
             ],
+            "earlier_user_request": null,
             "error": null,
             "final_response": {
               "char_count": 10,
@@ -207,6 +214,7 @@
               "tool_events": 0
             },
             "request": null,
+            "request_origin": null,
             "response_event_count": 1,
             "status": "stop_received"
           }

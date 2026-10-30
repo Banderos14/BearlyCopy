@@ -268,7 +268,13 @@ struct ReportFacts {
         return turn.finalResponse?.receivedAt ?? turn.request?.receivedAt
     }
 
-    enum TaskText { case linked(String), inferred(String), supplied(String), unavailable(String) }
+    enum TaskText {
+        case linked(String), inferred(String), supplied(String), unavailable(String)
+        /// Claude Code started the turn itself; the user's earlier request, if any.
+        case automated(earlier: String?, turn: Int?)
+        /// Automated blocks mixed with other text: who wrote it is not known.
+        case unknownSource(String)
+    }
 
     /// The request was pasted into Claude Code (shown without its wrapper).
     var taskWasPasted: Bool {
@@ -281,6 +287,14 @@ struct ReportFacts {
             return report.task.map(TaskText.supplied) ?? .unavailable("not supplied when importing")
         }
         guard let turn = model.selectedTurn else { return .unavailable("") }
+        switch turn.requestOrigin {
+        case .automated?:
+            return .automated(earlier: turn.earlierUserRequest.map { Wording.requestForDisplay($0.preview).text },
+                              turn: turn.earlierUserRequest?.turn)
+        case .unknown? where turn.request != nil:
+            return .unknownSource(Wording.requestForDisplay(turn.request!.preview).text)
+        default: break
+        }
         switch (turn.link, turn.request) {
         case (.promptID, let request?): return .linked(Wording.requestForDisplay(request.preview).text)
         case (_, let request?): return .inferred(Wording.requestForDisplay(request.preview).text)
@@ -404,6 +418,8 @@ struct TaskCard: View {
                 switch facts.task {
                 case .inferred: Tag("inferred from order", tint: Island.warning)
                 case .supplied: Tag("entered by you", tint: Island.secondary)
+                case .automated: Tag("started automatically", tint: Island.warning)
+                case .unknownSource: Tag("source not established", tint: Island.warning)
                 default: EmptyView()
                 }
                 if facts.taskWasPasted { Tag("pasted text", tint: Island.secondary) }
@@ -419,7 +435,18 @@ struct TaskCard: View {
                 }
             }
             switch facts.task {
-            case .linked(let text), .inferred(let text), .supplied(let text):
+            case .automated(let earlier, let turn):
+                Text("Claude Code started this turn itself; you did not write its message.")
+                    .font(.system(size: 12)).foregroundStyle(Island.tertiary)
+                if let earlier {
+                    Text("Your request before it (turn \(turn ?? 0)): \(earlier.trimmingCharacters(in: .whitespacesAndNewlines))")
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(Island.secondary)
+                        .lineLimit(expanded ? 12 : lines)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+            case .linked(let text), .inferred(let text), .supplied(let text), .unknownSource(let text):
                 Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 12.5))
                     .foregroundStyle(Island.secondary)
@@ -438,8 +465,9 @@ struct TaskCard: View {
 
     private var canExpand: Bool {
         switch facts.task {
-        case .linked(let t), .inferred(let t), .supplied(let t): return t.count > 110 || t.contains("\n")
-        case .unavailable: return false
+        case .linked(let t), .inferred(let t), .supplied(let t), .unknownSource(let t): return t.count > 110 || t.contains("\n")
+        case .automated(let t?, _): return t.count > 80 || t.contains("\n")
+        case .automated, .unavailable: return false
         }
     }
 }
@@ -729,6 +757,13 @@ struct PeekContent: View {
                     switch facts.task {
                     case .linked(let task), .inferred(let task), .supplied(let task):
                         Text(task.trimmingCharacters(in: .whitespacesAndNewlines))
+                            .font(.system(size: 12)).foregroundStyle(Island.primary).lineLimit(1)
+                    case .unknownSource(let task):
+                        Text("Source not established · " + task.trimmingCharacters(in: .whitespacesAndNewlines))
+                            .font(.system(size: 12)).foregroundStyle(Island.primary).lineLimit(1)
+                    case .automated(let earlier, _):
+                        Text(earlier.map { "Started automatically · after: " + $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                             ?? "Started automatically by Claude Code")
                             .font(.system(size: 12)).foregroundStyle(Island.primary).lineLimit(1)
                     case .unavailable: EmptyView()
                     }
@@ -1455,7 +1490,7 @@ struct HistoryView: View {
         } else if let key = model.selectedSessionKey {
             ForEach(turns) { turn in
                 HistoryRow(model: model, ref: .local(sessionKey: key, turn: turn.index), source: .localClaudeCode,
-                           title: AppModel.oneLine(turn.request?.preview ?? turn.finalResponse?.preview ?? turn.error?.message ?? ""),
+                           title: AppModel.oneLine(turn.userRequestPreview ?? turn.finalResponse?.preview ?? turn.error?.message ?? ""),
                            detail: "#\(turn.index) · \(Wording.relative(turn.finalResponse?.receivedAt ?? turn.request?.receivedAt))",
                            failed: turn.status == .apiError)
                     .padding(.leading, 18)

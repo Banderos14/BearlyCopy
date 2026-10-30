@@ -46,7 +46,7 @@
           "title": "Напиши ровно: Привет, мир! 🚀",
           "turn_count": 1
         },
-        "text": "# Copy for ChatGPT: Claude Code result for independent review\nExported by Prompt Relay at 2000-01-01T00:00:00.000000Z. No AI service was used.\n\nProvenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; [Reported by Claude] = Claude's own words, not checked; [Not verified] = no independent source; [Unavailable] = could not be determined.\n\n## Session\n- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]\n- Project: project-a [Confirmed locally]\n- Session ID: 1ed3d2bb-3765-455d-8ce4-eab713c46706 [Confirmed locally]\n- Turn: 1 of 1\n- Response captured at: 2026-01-01T00:00:01.000000Z [Confirmed locally]\n- Response status: Stop event received. Claude finished responding; this does NOT mean the task succeeded. [Confirmed locally]\n- Request ↔ response link: request and response share the same prompt_id\n\n## Original user request\n[Confirmed locally]\n\n```text\nНапиши ровно: Привет, мир! 🚀\n```\n\n## Claude final response\n[Reported by Claude] Verbatim text of Claude's last message for this turn.\n\n```markdown\nПривет, мир! 🚀\n```\n\n## Observed during this turn [Confirmed locally]\n[Unavailable] No tool events were captured for this turn. They need the Prompt Relay plugin 0.3.0 or later (PostToolUse / PostToolUseFailure hooks) with capture on for this project.\n\n## Git state (read-only, collected at export time 2000-01-01T00:00:00.000000Z)\n- [Unavailable] not a Git work tree (or git is not installed)\n\n## Not checked\n- Claude's claims of success, passing tests or completed work: [Not verified]. Compare them with the observed commands above; Prompt Relay does not interpret Claude's text.\n- CI: no source is connected [Unavailable]\n- Completion signal: Claude Code Stop hook event, which only means Claude stopped responding [Confirmed locally]\n\n## Request for review\nPlease review this result independently. Check whether the response actually fulfils the original request, compare Claude's claims with the observed commands, point out unsupported claims, risks and missing verification, and propose the next concrete step or follow-up prompt for Claude Code.\n",
+        "text": "# Copy for ChatGPT: Claude Code result for independent review\nExported by Prompt Relay at 2000-01-01T00:00:00.000000Z. No AI service was used.\n\nProvenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; [Reported by Claude] = Claude's own words, not checked; [Not verified] = no independent source; [Unavailable] = could not be determined.\n\n## Session\n- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]\n- Project: project-a [Confirmed locally]\n- Session ID: 1ed3d2bb-3765-455d-8ce4-eab713c46706 [Confirmed locally]\n- Turn: 1 of 1\n- Response captured at: 2026-01-01T00:00:01.000000Z [Confirmed locally]\n- Response status: Stop event received. Claude finished responding; this does NOT mean the task succeeded. [Confirmed locally]\n- Request ↔ response link: request and response share the same prompt_id\n\n## Original user request\n[Confirmed locally] Request as captured; it holds no automated message blocks.\n\n```text\nНапиши ровно: Привет, мир! 🚀\n```\n\n## Claude final response\n[Reported by Claude] Verbatim text of Claude's last message for this turn.\n\n```markdown\nПривет, мир! 🚀\n```\n\n## Observed during this turn [Confirmed locally]\n[Unavailable] No tool events were captured for this turn. They need the Prompt Relay plugin 0.3.0 or later (PostToolUse / PostToolUseFailure hooks) with capture on for this project.\n\n## Git state (read-only, collected at export time 2000-01-01T00:00:00.000000Z)\n- [Unavailable] not a Git work tree (or git is not installed)\n\n## Not checked\n- Claude's claims of success, passing tests or completed work: [Not verified]. Compare them with the observed commands above; Prompt Relay does not interpret Claude's text.\n- CI: no source is connected [Unavailable]\n- Completion signal: Claude Code Stop hook event, which only means Claude stopped responding [Confirmed locally]\n\n## Request for review\nPlease review this result independently. Check whether the response actually fulfils the original request, compare Claude's claims with the observed commands, point out unsupported claims, risks and missing verification, and propose the next concrete step or follow-up prompt for Claude Code.\n",
         "turn": {
           "background_tasks": {
             "count": 0,
@@ -54,6 +54,7 @@
             "watchers": 0
           },
           "candidate_request_turns": [],
+          "earlier_user_request": null,
           "error": null,
           "final_response": {
             "char_count": 14,
@@ -82,6 +83,7 @@
             "truncated": false,
             "utf8_bytes": 51
           },
+          "request_origin": "user",
           "response_event_count": 1,
           "status": "stop_received"
         }
@@ -218,6 +220,7 @@
             "watchers": 0
           },
           "candidate_request_turns": [],
+          "earlier_user_request": null,
           "error": null,
           "final_response": {
             "char_count": 14,
@@ -255,6 +258,7 @@
             "truncated": false,
             "utf8_bytes": 51
           },
+          "request_origin": "user",
           "response_event_count": 1,
           "status": "stop_received"
         }
@@ -309,6 +313,7 @@
               "watchers": 0
             },
             "candidate_request_turns": [],
+            "earlier_user_request": null,
             "error": null,
             "final_response": {
               "char_count": 14,
@@ -337,6 +342,7 @@
               "truncated": false,
               "utf8_bytes": 51
             },
+            "request_origin": "user",
             "response_event_count": 1,
             "status": "stop_received"
           }

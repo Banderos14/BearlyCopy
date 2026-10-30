@@ -253,14 +253,46 @@ public struct Turn: Decodable, Equatable, Hashable, Identifiable, Sendable {
     public let observed: ObservedCounts?
     /// Only in `show`.
     public let observedDetail: ObservedDetail?
+    /// Who wrote the request, read from its structure (Core 0.3, Phase 5.11).
+    public let requestOrigin: RequestOrigin?
+    /// For a turn Claude Code started itself: the user's latest earlier request.
+    public let earlierUserRequest: EarlierRequest?
 
     public var id: Int { index }
+
+    /// The request to show as the user's: never an automated message.
+    public var userRequestPreview: String? {
+        requestOrigin == .automated ? earlierUserRequest?.preview : request?.preview
+    }
 
     enum CodingKeys: String, CodingKey {
         case index, status, link, request, error, observed
         case finalResponse = "final_response", responseEventCount = "response_event_count"
         case backgroundTasks = "background_tasks", candidateRequestTurns = "candidate_request_turns"
         case notificationCount = "notification_count", observedDetail = "observed_detail"
+        case requestOrigin = "request_origin", earlierUserRequest = "earlier_user_request"
+    }
+}
+
+/// `user` and `user_pasted`: no automated blocks; `automated`: only blocks
+/// Claude Code injects (a side session reporting back); `unknown`: mixed or
+/// unreadable. Values a newer Core adds read as `unknown`.
+public enum RequestOrigin: String, Decodable, Equatable, Hashable, Sendable {
+    case user, userPasted = "user_pasted", automated, unknown
+
+    public init(from decoder: Decoder) throws {
+        self = RequestOrigin(rawValue: try decoder.singleValueContainer().decode(String.self)) ?? .unknown
+    }
+}
+
+public struct EarlierRequest: Decodable, Equatable, Hashable, Sendable {
+    public let turn: Int
+    public let preview: String
+    public let receivedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case turn, preview
+        case receivedAt = "received_at"
     }
 }
 

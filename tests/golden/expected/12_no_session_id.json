@@ -86,6 +86,7 @@
           {
             "background_tasks": null,
             "candidate_request_turns": [],
+            "earlier_user_request": null,
             "error": null,
             "final_response": null,
             "index": 1,
@@ -107,6 +108,7 @@
               "truncated": false,
               "utf8_bytes": 15
             },
+            "request_origin": "user",
             "response_event_count": 0,
             "status": "no_matched_response"
           },
@@ -117,6 +119,7 @@
               "watchers": null
             },
             "candidate_request_turns": [],
+            "earlier_user_request": null,
             "error": null,
             "final_response": {
               "char_count": 13,
@@ -138,6 +141,7 @@
               "tool_events": 0
             },
             "request": null,
+            "request_origin": null,
             "response_event_count": 1,
             "status": "stop_received"
           }

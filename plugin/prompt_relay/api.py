@@ -24,7 +24,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from prompt_relay import correlation as c
-from prompt_relay import export, tools
+from prompt_relay import export, origin, tools
 from prompt_relay.events import Event
 from prompt_relay.history import Session, display_title, session_title  # noqa: F401 (display_title re-exported)
 from prompt_relay.retention import ACTIVE_GRACE_S
@@ -137,7 +137,9 @@ def _text_ref(ev: Event, full: bool) -> Dict[str, Any]:
     return ref
 
 
-def turn_object(t: c.Turn, full: bool = False) -> Dict[str, Any]:
+def turn_object(t: c.Turn, full: bool = False, turns: Optional[List[c.Turn]] = None) -> Dict[str, Any]:
+    """``turns``: the session's turns, needed to point an automated turn at
+    the latest earlier request from the user (Phase 5.11)."""
     final = t.final_response
     last = t.responses[-1] if t.responses else None
     last_stop = t.last_stop
@@ -157,6 +159,9 @@ def turn_object(t: c.Turn, full: bool = False) -> Dict[str, Any]:
         # prompt's turn; how firmly the response belongs to it is ``link``.
         # Ambiguous responses get a turn without a prompt (candidates counted).
         "request": _text_ref(t.prompt, full) if t.prompt is not None else None,
+        # user | user_pasted | automated | unknown (origin.py); null without a request.
+        "request_origin": origin.classify(t.prompt.text) if t.prompt is not None else None,
+        "earlier_user_request": _earlier(t, turns, full),
         "final_response": _text_ref(final, full) if final is not None else None,
         "response_event_count": len(t.responses),
         "candidate_request_turns": list(t.candidate_turns),
@@ -166,6 +171,13 @@ def turn_object(t: c.Turn, full: bool = False) -> Dict[str, Any]:
         "observed": tools.observed_counts(t),
         **({"observed_detail": tools.observed_detail(t)} if full else {}),
     }
+
+
+def _earlier(t: c.Turn, turns: Optional[List[c.Turn]], full: bool) -> Optional[Dict[str, Any]]:
+    if turns is None or t.prompt is None or origin.classify(t.prompt.text) != origin.AUTOMATED:
+        return None
+    found = origin.earlier_user_prompt(turns, t.index)
+    return None if found is None else {"turn": found[0], **_text_ref(found[1], full)}
 
 
 def turn_warnings(sess: Session, t: c.Turn, selection_warnings: List[str]) -> List[Dict[str, str]]:

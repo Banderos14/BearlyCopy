@@ -43,6 +43,7 @@
             "watchers": null
           },
           "candidate_request_turns": [],
+          "earlier_user_request": null,
           "error": null,
           "final_response": {
             "char_count": 5,
@@ -80,6 +81,7 @@
             "truncated": false,
             "utf8_bytes": 6
           },
+          "request_origin": "user",
           "response_event_count": 1,
           "status": "stop_received"
         }
@@ -137,6 +139,7 @@
             "watchers": 0
           },
           "candidate_request_turns": [],
+          "earlier_user_request": null,
           "error": null,
           "final_response": {
             "char_count": 51,
@@ -174,6 +177,7 @@
             "truncated": false,
             "utf8_bytes": 55
           },
+          "request_origin": "user",
           "response_event_count": 1,
           "status": "stop_received_background_tasks_pending"
         }
@@ -233,6 +237,7 @@
               "watchers": 0
             },
             "candidate_request_turns": [],
+            "earlier_user_request": null,
             "error": null,
             "final_response": {
               "char_count": 51,
@@ -261,6 +266,7 @@
               "truncated": false,
               "utf8_bytes": 55
             },
+            "request_origin": "user",
             "response_event_count": 1,
             "status": "stop_received_background_tasks_pending"
           },
@@ -271,6 +277,7 @@
               "watchers": null
             },
             "candidate_request_turns": [],
+            "earlier_user_request": null,
             "error": null,
             "final_response": {
               "char_count": 5,
@@ -299,6 +306,7 @@
               "truncated": false,
               "utf8_bytes": 6
             },
+            "request_origin": "user",
             "response_event_count": 1,
             "status": "stop_received"
           }

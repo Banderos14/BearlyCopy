@@ -406,3 +406,41 @@ final class ClipboardImageHistoryTests: XCTestCase {
         history.setEnabled(false)
     }
 }
+
+/// Phase 5.11: a turn Claude Code started itself is never shown as the user's request.
+final class RequestOriginTests: XCTestCase {
+    func turn(_ extra: [String: Any]) throws -> Turn {
+        var json: [String: Any] = [
+            "index": 2, "status": "stop_received", "link": "prompt_id",
+            "request": ["preview": "<system-reminder>A session finished</system-reminder>", "truncated": false,
+                        "char_count": 52, "utf8_bytes": 52, "prompt_id": "p2", "received_at": "2026-10-30T14:07:24Z"],
+            "final_response": NSNull(), "response_event_count": 1, "candidate_request_turns": [],
+            "background_tasks": NSNull(), "error": NSNull(),
+        ]
+        json.merge(extra) { $1 }
+        return try JSONDecoder().decode(Turn.self, from: JSONSerialization.data(withJSONObject: json))
+    }
+
+    func testAutomatedTurnShowsTheEarlierUserRequest() throws {
+        let t = try turn(["request_origin": "automated",
+                          "earlier_user_request": ["turn": 1, "preview": "Implement Phase 5", "truncated": false,
+                                                   "char_count": 17, "utf8_bytes": 17, "prompt_id": "p1",
+                                                   "received_at": "2026-10-30T14:05:51Z"]])
+        XCTAssertEqual(t.requestOrigin, .automated)
+        XCTAssertEqual(t.userRequestPreview, "Implement Phase 5")
+        XCTAssertEqual(t.earlierUserRequest?.turn, 1)
+    }
+
+    func testAutomatedTurnWithoutEarlierRequestShowsNone() throws {
+        let t = try turn(["request_origin": "automated", "earlier_user_request": NSNull()])
+        XCTAssertNil(t.userRequestPreview)
+    }
+
+    func testUserAndOlderCoreKeepTheRequest() throws {
+        XCTAssertEqual(try turn(["request_origin": "user_pasted"]).requestOrigin, .userPasted)
+        let old = try turn([:])
+        XCTAssertNil(old.requestOrigin)
+        XCTAssertEqual(old.userRequestPreview, "<system-reminder>A session finished</system-reminder>")
+        XCTAssertEqual(try turn(["request_origin": "from_the_future"]).requestOrigin, .unknown)
+    }
+}

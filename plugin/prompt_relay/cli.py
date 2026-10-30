@@ -238,7 +238,7 @@ def cmd_turns(args: argparse.Namespace) -> int:
         raise CommandError(EXIT_NOTHING, api.NOT_FOUND, "no captured sessions match the selection")
     sess = sessions[0]
     if _json(args):
-        data = {"session": api.session_summary(sess), "turns": [api.turn_object(t) for t in sess.turns]}
+        data = {"session": api.session_summary(sess), "turns": [api.turn_object(t, turns=sess.turns) for t in sess.turns]}
         return _emit(args, data, api.integrity_warnings(sess))
     print(f"session {sess.session_id or sess.key}  project {sess.project_dir or '-'}")
     for t in sess.turns:
@@ -253,10 +253,10 @@ def cmd_show(args: argparse.Namespace) -> int:
     try:
         text = export.response_text(turn)
     except export.ExportError as exc:
-        data = {"session": api.session_summary(sess), "turn": api.turn_object(turn, full=True)}
+        data = {"session": api.session_summary(sess), "turn": api.turn_object(turn, full=True, turns=sess.turns)}
         raise CommandError(EXIT_NOTHING, api.NO_FINAL_RESPONSE, str(exc), data)
     if _json(args):
-        return _emit(args, {"session": api.session_summary(sess), "turn": api.turn_object(turn, full=True)}, warnings)
+        return _emit(args, {"session": api.session_summary(sess), "turn": api.turn_object(turn, full=True, turns=sess.turns)}, warnings)
     _write_stdout(text)
     return 0
 
@@ -306,13 +306,13 @@ def _context(args: argparse.Namespace):
 
 def cmd_context(args: argparse.Namespace) -> int:
     sess, turn, warnings, git, exported_at, text = _context(args)
-    findings = export.sensitive_findings(turn)
+    findings = export.sensitive_findings(turn, session=sess)
     if _json(args):
         if findings:
             warnings.append(api.warning("sensitive_content", f"{len(findings)} line(s) look like secrets or credentials"))
         data = {
             "session": api.session_summary(sess),
-            "turn": api.turn_object(turn),
+            "turn": api.turn_object(turn, turns=sess.turns),
             "exported_at": exported_at,
             "text": text,
             "sensitive_findings": api.findings(findings),
@@ -341,7 +341,7 @@ def _report_findings(findings) -> None:
 
 def cmd_copy_context(args: argparse.Namespace) -> int:
     sess, turn, _, _, _, text = _context(args)
-    findings = export.sensitive_findings(turn)
+    findings = export.sensitive_findings(turn, session=sess)
     if findings and not args.allow_sensitive:
         _report_findings(findings)
         _err("not copied. Review with 'prompt-relay context', then re-run with --allow-sensitive if intended.")

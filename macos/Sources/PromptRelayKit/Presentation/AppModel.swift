@@ -860,7 +860,7 @@ public final class AppModel {
             for turn in await cachedTurns(session) where turn.finalResponse != nil {
                 guard sessionMatches || has(turn.request?.preview) || has(turn.finalResponse?.preview) else { continue }
                 hits.append(HistoryHit(ref: .local(sessionKey: session.sessionKey, turn: turn.index), source: .localClaudeCode,
-                                       projectName: name, title: Self.oneLine(turn.request?.preview ?? turn.finalResponse?.preview ?? ""),
+                                       projectName: name, title: Self.oneLine(turn.userRequestPreview ?? turn.finalResponse?.preview ?? ""),
                                        at: turn.finalResponse?.receivedAt))
             }
         }
