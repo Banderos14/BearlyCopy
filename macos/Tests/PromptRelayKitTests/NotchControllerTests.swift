@@ -441,8 +441,9 @@ final class ReadyAnswerTests: XCTestCase {
                                        project("/b", sessions: 1, last: "2026-10-29T09:00:00.000000Z")])
         core.sessionsByProject["/a"] = [sessionSummary("a1", project: "/a", last: "2026-10-29T10:00:00.000000Z")]
         core.sessionsByProject["/b"] = [sessionSummary("b1", project: "/b", last: "2026-10-29T09:00:00.000000Z")]
-        core.turnsBySession["a1"] = [turn(1)]
-        core.turnsBySession["b1"] = [turn(1), turn(2)]
+        // Answer times consistent with the sessions' last events.
+        core.turnsBySession["a1"] = [turn(1, at: "2026-10-29T10:00:00.000000Z"), turn(2, status: "awaiting_response", preview: nil)]
+        core.turnsBySession["b1"] = [turn(1, at: "2026-10-29T09:00:00.000000Z"), turn(2, at: "2026-10-29T11:00:00.000000Z")]
 
         let model = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
         var announced: [String] = []
@@ -452,7 +453,8 @@ final class ReadyAnswerTests: XCTestCase {
         XCTAssertEqual(model.readyAnswer?.sessionKey, "a1")
         XCTAssertFalse(model.hasUnseenAnswer, "answers that existed at first launch are not 'new'")
 
-        // A Stop arrives in project b; a prompt still waiting in a does not count.
+        // A Stop arrives in project b; a's new prompt (still waiting) does not
+        // count as an answer, and a's previous answer (10:00) is older.
         core.sessionsByProject["/b"] = [sessionSummary("b1", project: "/b", last: "2026-10-29T11:00:00.000000Z", lastTurn: 2)]
         core.sessionsByProject["/a"] = [sessionSummary("a1", project: "/a", last: "2026-10-29T12:00:00.000000Z", lastTurn: 2,
                                                        status: "awaiting_response")]

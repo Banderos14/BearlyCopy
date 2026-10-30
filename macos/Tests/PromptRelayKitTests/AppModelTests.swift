@@ -79,13 +79,13 @@ func sessionSummary(_ key: String, project: String, last: String, lastTurn: Int 
 }
 
 func turn(_ index: Int, status: String = "stop_received", preview: String? = "answer…", chars: Int = 7, text: String? = nil,
-          request: String? = nil, link: String = "prompt_id") -> Turn {
+          request: String? = nil, link: String = "prompt_id", at: String = "2026-10-29T16:13:51.000000Z") -> Turn {
     let requestJSON = request.map { r in
         "{\"preview\":\(String(data: try! JSONEncoder().encode(r), encoding: .utf8)!),\"truncated\":false,\"char_count\":\(r.count),\"utf8_bytes\":\(r.utf8.count),\"prompt_id\":\"p\(index)\",\"received_at\":\"2026-10-29T16:13:00.000000Z\"}"
     } ?? "null"
     let response = preview.map { p in
         let textField = text.map { ",\"text\":" + String(data: try! JSONEncoder().encode($0), encoding: .utf8)! } ?? ""
-        return "{\"preview\":\(String(data: try! JSONEncoder().encode(p), encoding: .utf8)!),\"truncated\":true,\"char_count\":\(chars),\"utf8_bytes\":\(chars),\"prompt_id\":\"p\(index)\",\"received_at\":\"2026-10-29T16:13:51.000000Z\"\(textField)}"
+        return "{\"preview\":\(String(data: try! JSONEncoder().encode(p), encoding: .utf8)!),\"truncated\":true,\"char_count\":\(chars),\"utf8_bytes\":\(chars),\"prompt_id\":\"p\(index)\",\"received_at\":\"\(at)\"\(textField)}"
     } ?? "null"
     let error = status == "api_error" ? #"{"type":"rate_limit","details":null,"message":"API Error: Rate limit"}"# : "null"
     return try! JSONDecoder().decode(Turn.self, from: Data("""

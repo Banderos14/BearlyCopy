@@ -415,3 +415,65 @@ final class ReportWorkflowTests: XCTestCase {
         XCTAssertNotNil(board.pasteboardItems?.last?.data(forType: .png))
     }
 }
+
+// MARK: - Defects found in the real-session audit (2026-10-30)
+
+@MainActor
+final class AuditRegressionTests: XCTestCase {
+    var board: NSPasteboard!
+
+    override func setUp() async throws {
+        board = NSPasteboard(name: NSPasteboard.Name("PromptRelayAuditReg-\(UUID().uuidString)"))
+    }
+
+    override func tearDown() async throws { board.releaseGlobally() }
+
+    /// Real case: after Claude answered in prompt-relay and the user sent the
+    /// next prompt, the session's last turn was "awaiting response", so the
+    /// newest answer fell back to an older session in another project, and
+    /// the island would have switched to it.
+    func testANewPendingPromptDoesNotHideThePreviousAnswer() async throws {
+        let core = FakeCore(projects: [project("/old", sessions: 1, last: "2026-10-29T16:00:00.000000Z"),
+                                       project("/work", sessions: 1, last: "2026-10-30T08:00:10.000000Z")])
+        core.sessionsByProject["/old"] = [sessionSummary("old", project: "/old", last: "2026-10-29T16:00:00.000000Z")]
+        core.sessionsByProject["/work"] = [sessionSummary("work", project: "/work", last: "2026-10-30T08:00:10.000000Z",
+                                                          lastTurn: 2, status: "awaiting_response")]
+        core.turnsBySession["old"] = [turn(1, preview: "old answer", chars: 10)]
+        let answered = turn(1, preview: "the answer", chars: 10, at: "2026-10-29T21:30:00.000000Z")
+        core.turnsBySession["work"] = [answered, turn(2, status: "awaiting_response", preview: nil)]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil)
+        m.tracksReadyAnswers = true
+        await m.refreshNow()
+        XCTAssertEqual(m.readyAnswer?.sessionKey, "work", "the previous answer of the active session")
+        XCTAssertEqual(m.readyAnswer?.turnIndex, 1)
+        XCTAssertEqual(m.selectedProjectPath, "/work", "the island stays on it while the next prompt runs")
+        XCTAssertEqual(m.selectedTurnIndex, 1)
+    }
+
+    /// Recent Copies named the folder Claude ran in (a subfolder), not the project.
+    func testRecentCopiesNameTheEnabledProject() async throws {
+        let core = FakeCore(projects: [project("/Users/me/code/app", sessions: 1, last: "2026-10-29T16:13:51.000000Z")])
+        core.sessionsByProject["/Users/me/code/app"] = [sessionSummary("s", project: "/Users/me/code/app/Sources/Feature",
+                                                                       last: "2026-10-29T16:13:51.000000Z")]
+        core.turnsBySession["s"] = [turn(1, preview: "x", chars: 1)]
+        core.showResult = { [core] key, i in .success(CoreResult(data: ShowData(session: try! core.session(key), turn: turn(i, text: "x")), warnings: [])) }
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil)
+        await m.refreshNow()
+        await m.copyResponse(sessionKey: "s", turn: 1)
+        XCTAssertEqual(m.copyHistory.first?.projectName, "app")
+        XCTAssertEqual(m.copyHistory.first?.label, "Session s · #1")
+    }
+
+    /// A code block inside a list item kept the list's indent on every line.
+    func testCodeInsideAListItemLosesOnlyTheListIndent() {
+        let source = "- Disable it:\n  ```bash\n  prompt-relay disable /x\n    nested indent stays\n  ```\n"
+        let code = Markdown.parse(source).compactMap { if case .code(_, let t) = $0 { return t } else { return nil } }
+        XCTAssertEqual(code, ["prompt-relay disable /x\n  nested indent stays"])
+        XCTAssertTrue(MarkdownCoverage.missingLines(source).isEmpty)
+    }
+
+    /// Every line of a long report shows in the Formatted reader.
+    func testFormattedReaderDropsNoLineOfALongReport() {
+        XCTAssertEqual(MarkdownCoverage.missingLines(ReportFixture.report(sections: 60)), [])
+    }
+}

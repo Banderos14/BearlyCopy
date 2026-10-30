@@ -32,12 +32,16 @@ public enum Markdown {
             if let fence = fenceMarker(trimmed) {
                 flush()
                 let language = String(trimmed.dropFirst(fence.count)).trimmingCharacters(in: .whitespaces)
+                // A fence indented inside a list item: its lines carry the same
+                // indent, which is layout, not code (as in CommonMark).
+                let indent = line.prefix { $0 == " " }.count
                 var body: [String] = []
                 i += 1
                 while i < lines.count {
                     let t = lines[i].trimmingCharacters(in: .whitespaces)
                     if t.hasPrefix(fence), t.allSatisfy({ $0 == fence.first }) { break }
-                    body.append(lines[i]); i += 1
+                    let lead = min(indent, lines[i].prefix { $0 == " " }.count)
+                    body.append(String(lines[i].dropFirst(lead))); i += 1
                 }
                 blocks.append(.code(language: language, text: body.joined(separator: "\n")))
                 i += 1

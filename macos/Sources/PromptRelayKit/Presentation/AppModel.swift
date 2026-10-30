@@ -374,19 +374,11 @@ public final class AppModel {
         allSessions = result.data.sessions.sorted {
             (Wording.date($0.lastEventAt) ?? .distantPast) > (Wording.date($1.lastEventAt) ?? .distantPast)
         }
-        let ready = result.data.sessions
-            .filter { session in
-                guard let status = session.lastTurn?.status else { return false }
-                return status == .stopReceived || status == .stopReceivedBackgroundTasksPending
-            }
-            .max { (Wording.date($0.lastEventAt) ?? .distantPast) < (Wording.date($1.lastEventAt) ?? .distantPast) }
-        guard let session = ready, let last = session.lastTurn, let at = session.lastEventAt else {
+        guard let answer = await newestFinishedAnswer(in: allSessions) else {
             readyAnswer = nil
             return
         }
-        let answer = ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
-                                 projectName: Wording.projectName(session.project), turnIndex: last.index,
-                                 status: last.status, at: at)
+        let at = answer.at
         readyAnswer = answer
         // At launch and for each newer answer: select it, unless the user is
         // looking at something else right now.
@@ -406,6 +398,35 @@ public final class AppModel {
                 onNewAnswer?(answer)
             }
         }
+    }
+
+    /// The newest answer Claude finished, across sessions (newest first).
+    /// A session whose last turn is a new prompt still waiting for Claude
+    /// keeps its previous answer: sending the next prompt must not make the
+    /// island jump to an older answer from another project. Only such a
+    /// session costs one `turns` call (cached while it is unchanged).
+    private func newestFinishedAnswer(in sessions: [SessionSummary]) async -> ReadyAnswer? {
+        func finished(_ status: TurnStatus) -> Bool { status == .stopReceived || status == .stopReceivedBackgroundTasksPending }
+        var best: ReadyAnswer?
+        for session in sessions {
+            guard let last = session.lastTurn, let lastAt = session.lastEventAt else { continue }
+            // Sorted newest first: nothing in this or later sessions can be newer.
+            if let best, !Self.isNewer(lastAt, than: best.at) { break }
+            var candidate: ReadyAnswer?
+            if finished(last.status) {
+                candidate = ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
+                                        projectName: Wording.projectName(session.project), turnIndex: last.index,
+                                        status: last.status, at: lastAt)
+            } else if last.index > 1,
+                      let turn = await cachedTurns(session).last(where: { finished($0.status) && $0.finalResponse != nil }),
+                      let at = turn.finalResponse?.receivedAt {
+                candidate = ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
+                                        projectName: Wording.projectName(session.project), turnIndex: turn.index,
+                                        status: turn.status, at: at)
+            }
+            if let candidate, best.map({ Self.isNewer(candidate.at, than: $0.at) }) ?? true { best = candidate }
+        }
+        return best
     }
 
     static func isNewer(_ a: String, than b: String) -> Bool {
@@ -847,7 +868,10 @@ public final class AppModel {
             return (report?.projectName ?? "Cloud import", "Cloud import · " + Wording.absolute(report?.importedAt))
         case .local(let key, let turn):
             let session = allSessions.first { $0.sessionKey == key } ?? sessions.value?.first { $0.sessionKey == key }
-            let project = session.map { Wording.projectName($0.project) } ?? selectedProject.map(Wording.projectName) ?? "Claude Code"
+            // The enabled project's name, not the folder Claude ran in (a subfolder).
+            let root = session.flatMap { projectPath(containing: $0.project.path) }
+            let project = root.flatMap { r in projectRows.first { $0.path == r }?.name }
+                ?? session.map { Wording.projectName($0.project) } ?? selectedProject.map(Wording.projectName) ?? "Claude Code"
             let title = session.map(Wording.sessionTitle) ?? "Session"
             return (project, "\(title) · #\(turn)")
         }

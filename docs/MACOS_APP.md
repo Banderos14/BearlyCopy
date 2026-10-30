@@ -225,6 +225,16 @@ Phase 4, on this Mac:
 - Idle: 0 % CPU over 30 s, no Python child processes, ≈164 MB RSS (Debug;
   ≈137 MB before Phase 4: Markdown, images and the mascot).
 
+Real-session audit (2026-10-30): a real answer of this Claude Code session,
+captured by the installed plugin, is byte-identical to the transcript, to
+Copy Response and inside the Review Pack (`RealSessionAuditTests`, opt-in:
+`PROMPT_RELAY_AUDIT_SESSION`, `_TURN`, `_EXPECTED`). Release idle ≈91 MB.
+
+Manual image-paste check (`PasteInteropKit`, opt-in): it overwrites the
+general clipboard with a test text and image, then you paste into ChatGPT:
+`PROMPT_RELAY_PASTE_TEST=text-image swift test --package-path macos --filter PasteInteropKit`
+(also `image` or `text`).
+
 Earlier phases (3A–3D.1): the owner confirmed Copy Response → ⌘V without
 loss and the island geometry on the real screen; details in STATUS.
 

@@ -375,6 +375,38 @@ GitHub Actions run 40910039983 (`ab57b74`) failed on Linux / Python 3.13:
   through the new UI; the floating island on an external display; real
   pointer hover/focus after the redesign.
 
+## Phase 4 real-session audit (2026-10-30)
+- Found: the prompt-relay repository itself was not captured (only the two
+  sandboxes were enabled). Capture was enabled for it with `prompt-relay
+  enable` (the previous `config.json` is kept in the session scratchpad).
+- **Real capture, byte-level:** the final answer of this Claude Code session
+  (Desktop, installed plugin 0.2.0) was stored by the hook: 4040 UTF-8 bytes,
+  SHA-256 `b047601d…`, byte-identical to the same message in the session
+  transcript. Its request is labeled unavailable (the prompt came before
+  capture was on).
+- Through the app's own code on the real store (read-only, private
+  pasteboard; opt-in `RealSessionAuditTests`): Full Report text, Copy
+  Response bytes and the Review Pack (the report exactly once) equal the
+  transcript bytes; the Formatted reader drops no line.
+- Defects found and fixed, each with a regression test:
+  1. Sending the next prompt hid the previous answer: the session's last
+     turn was "awaiting response", so the newest answer fell back to an
+     older session in another project and the island would switch to it.
+     The newest finished answer of such a session is now kept (one cached
+     `turns` call). Seen on the real store: "Last capture" showed
+     sandbox-a; it now shows this session.
+  2. Recent Copies named the folder Claude ran in (possibly a subfolder),
+     not the enabled project.
+  3. A code block inside a list item kept the list's indent on every line.
+- Manual paste kit for ChatGPT: `PasteInteropKit` (opt-in) writes a known
+  text and a generated test image to the general pasteboard with the app's
+  own clipboard code. Not run by the agent (it would overwrite the owner's
+  clipboard); the result is pending.
+- Memory: Release build idle ≈91 MB; Debug with the real data and the
+  island open in every view ≈149 MB; 0 % CPU idle.
+- Not verifiable by the agent: real pointer hover and the mascot's eye
+  movement, image paste into ChatGPT, a real cloud import.
+
 ## Next agreed stage
 Phase 4 waits for the owner's validation on the real Mac (the checks
 above). After it: push the branch. No next phase is approved.
