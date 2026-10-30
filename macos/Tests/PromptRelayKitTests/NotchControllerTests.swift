@@ -458,6 +458,30 @@ final class NotchControllerTests: XCTestCase {
         controller.stop()
     }
 
+    /// Phase 5.11: Relay is redrawn only for changes that can be seen
+    /// (≥ MascotState.step ≈ 0.07 pt); the exact target is still reached.
+    func testInvisibleGazeChangesDoNotRedrawRelay() async throws {
+        settings.mascotEnabled = true
+        settings.animation = .full
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        let mascot = controller.presentation.mascot
+        controller.setGaze(CGPoint(x: 0.6, y: 0.2))
+        clock.run(1)
+        XCTAssertEqual(mascot.gaze, CGPoint(x: 0.6, y: 0.2), "arrives exactly")
+        XCTAssertEqual(mascot.head, CGPoint(x: 0.6, y: 0.2))
+        let before = mascot.framesPublished
+        controller.setGaze(CGPoint(x: 0.63, y: 0.21))    // ≈ 0.05 pt for the eyes: invisible steps
+        clock.run(1)
+        XCTAssertLessThanOrEqual(mascot.framesPublished - before, 2,
+                                 "only the arrivals of the eyes and the head are drawn, not the steps in between")
+        XCTAssertEqual(mascot.gaze, CGPoint(x: 0.63, y: 0.21), "but the final position is published exactly")
+        XCTAssertEqual(mascot.head, CGPoint(x: 0.63, y: 0.21))
+        XCTAssertEqual(clock.liveTimers(matching: 1.0 / 30), 0)
+        controller.stop()
+    }
+
     func testRelayFollowsThePointerAnywhereOnlyWhileVisible() async throws {
         settings.mascotEnabled = true
         settings.animation = .full

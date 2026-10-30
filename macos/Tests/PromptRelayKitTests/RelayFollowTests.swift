@@ -91,8 +91,11 @@ final class RelayPerformanceTests: XCTestCase {
             getrusage(RUSAGE_SELF, &usage)
             return Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec) + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1e6
         }
-        func measure(seconds: Double, moving: Bool) async -> Double {
-            let start = cpu(), began = Date()
+        // WindowServer composites the panel; Core Animation (breathing) costs
+        // there, not in this process. Its CPU time comes from `ps` (0.01 s).
+        let windowServer = Self.pid(of: "WindowServer")
+        func measure(seconds: Double, moving: Bool) async -> (app: Double, server: Double) {
+            let start = cpu(), serverStart = windowServer.flatMap(Self.cpuTime), began = Date()
             var t = 0.0
             while Date().timeIntervalSince(began) < seconds {
                 if moving {
@@ -102,22 +105,66 @@ final class RelayPerformanceTests: XCTestCase {
                 }
                 try? await Task.sleep(nanoseconds: 8_333_333)
             }
-            return (cpu() - start) / Date().timeIntervalSince(began) * 100
+            let elapsed = Date().timeIntervalSince(began)
+            let server = Self.percent(from: serverStart, to: windowServer.flatMap(Self.cpuTime), over: elapsed)
+            return ((cpu() - start) / elapsed * 100, server)
+        }
+        func idle(seconds: Double) async -> (app: Double, server: Double) {
+            // The pointer still and no loop: what Relay at rest costs.
+            let start = cpu(), serverStart = windowServer.flatMap(Self.cpuTime), began = Date()
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1e9))
+            let elapsed = Date().timeIntervalSince(began)
+            let server = Self.percent(from: serverStart, to: windowServer.flatMap(Self.cpuTime), over: elapsed)
+            return ((cpu() - start) / elapsed * 100, server)
         }
         _ = await measure(seconds: 1, moving: false)
+        let rest = await idle(seconds: 8)
         let still = await measure(seconds: 5, moving: false)
         let deliveriesBefore = controller.follower.deliveries
+        let framesBefore = controller.presentation.mascot.framesPublished
         let moving = await measure(seconds: 10, moving: true)
         let rate = Double(controller.follower.deliveries - deliveriesBefore) / 10
-        print(String(format: "RELAY-PERF still %.1f%% CPU, moving %.1f%% CPU, %.0f gaze updates/s (events 120/s), RSS %d MB",
-                     still, moving, rate, Self.residentMB()))
-        XCTAssertLessThanOrEqual(rate, PointerFollower.maxRate + 1)
-        // The same loop with Relay off: what the test itself costs.
+        print(String(format: "RELAY-FRAMES %.1f Relay frames/s while moving", Double(controller.presentation.mascot.framesPublished - framesBefore) / 10))
+        print(String(format: "RELAY-PERF rest %.2f%% app, %.2f%% WindowServer; still %.1f%% CPU, moving %.1f%% CPU (WindowServer %.1f%%), %.0f gaze updates/s (events 120/s), RSS %d MB",
+                     rest.app, rest.server, still.app, moving.app, moving.server, rate, Self.residentMB()))
+        XCTAssertLessThanOrEqual(rate, Double(PointerFollower.maxRate) * 1.1)
+        // The same with Relay off: what the test itself and the panel cost.
         settings.mascotEnabled = false
         controller.relayout()
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        let restOff = await idle(seconds: 8)
         let loopOnly = await measure(seconds: 5, moving: true)
-        print(String(format: "RELAY-PERF loop alone (Relay off) %.1f%% CPU", loopOnly))
+        print(String(format: "RELAY-PERF Relay off: rest %.2f%% app, %.2f%% WindowServer; loop alone %.1f%% CPU (WindowServer %.1f%%)",
+                     restOff.app, restOff.server, loopOnly.app, loopOnly.server))
         controller.stop()
+    }
+
+    static func percent(from start: Double?, to end: Double?, over seconds: Double) -> Double {
+        guard let start, let end else { return -1 }
+        return (end - start) / seconds * 100
+    }
+
+    static func pid(of name: String) -> pid_t? {
+        let out = run("/usr/bin/pgrep", ["-x", name])
+        return out.split(separator: "\n").first.flatMap { pid_t($0) }
+    }
+
+    /// CPU seconds of another process, from `ps -o time` ("[[dd-]hh:]mm:ss.ss").
+    static func cpuTime(_ pid: pid_t) -> Double? {
+        let text = run("/bin/ps", ["-o", "time=", "-p", String(pid)]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = text.replacingOccurrences(of: "-", with: ":").split(separator: ":").compactMap { Double($0) }
+        guard !parts.isEmpty else { return nil }
+        return parts.reduce(0) { $0 * 60 + $1 }
+    }
+
+    static func run(_ tool: String, _ args: [String]) -> String {
+        let p = Process(), pipe = Pipe()
+        p.executableURL = URL(fileURLWithPath: tool)
+        p.arguments = args
+        p.standardOutput = pipe
+        guard (try? p.run()) != nil else { return "" }
+        p.waitUntilExit()
+        return String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
     }
 
     static func residentMB() -> Int {

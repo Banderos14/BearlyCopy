@@ -33,10 +33,18 @@ public final class MascotState {
     /// follower of `headTarget`, so the head trails the eyes (inertia).
     public internal(set) var head: CGPoint = .zero
     public internal(set) var headTarget: CGPoint = .zero
-    /// The spring's exact state; `head` is published only when it moves
-    /// visibly (≥ 0.01, about 0.014 pt), so views redraw less often.
+    /// The followers' exact state. `gaze` and `head` are published only when
+    /// they move by `MascotState.step` (≈ 0.07 pt, a seventh of a Retina
+    /// pixel) or arrive, so Relay is not redrawn for invisible changes.
+    @ObservationIgnored var gazeExact: CGPoint = .zero
     @ObservationIgnored var headExact: CGPoint = .zero
     @ObservationIgnored var headVelocity: CGPoint = .zero
+    /// One unit moves the eyes ≈ 1.5 pt and the head ≈ 1.4 pt (28 pt Relay).
+    static let step: CGFloat = 0.05
+    #if DEBUG
+    /// Frames published by the gaze followers (for the performance test).
+    @ObservationIgnored var framesPublished = 0
+    #endif
     /// Counts successful copies: each one plays the short happy reaction
     /// (a hop with the eyes closed).
     public internal(set) var cheers = 0
@@ -391,7 +399,10 @@ final class BreathingHost<Content: View>: NSView {
 
     required init?(coder: NSCoder) { nil }
 
-    override var intrinsicContentSize: NSSize { hosting.fittingSize }
+    /// No size of its own: the caller gives it a fixed frame. Asking the
+    /// hosted view for its fitting size ran a SwiftUI layout pass on every
+    /// update while the pointer moved (Phase 5.11 profile).
+    override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric) }
 
     override func layout() {
         super.layout()

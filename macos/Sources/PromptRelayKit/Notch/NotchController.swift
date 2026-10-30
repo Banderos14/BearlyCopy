@@ -557,12 +557,21 @@ extension NotchController {
     private func stepGaze() {
         let mascot = presentation.mascot
         let dt: CGFloat = 1.0 / 30
-        let ex = mascot.gazeTarget.x - mascot.gaze.x, ey = mascot.gazeTarget.y - mascot.gaze.y
+        #if DEBUG
+        let publishedBefore = (mascot.gaze, mascot.head)
+        #endif
+        let step = MascotState.step
+        func moved(_ a: CGPoint, _ b: CGPoint) -> Bool { abs(a.x - b.x) >= step || abs(a.y - b.y) >= step }
+        var e = mascot.gazeExact
+        let ex = mascot.gazeTarget.x - e.x, ey = mascot.gazeTarget.y - e.y
         let eyesDone = abs(ex) < 0.01 && abs(ey) < 0.01
         if eyesDone {
+            mascot.gazeExact = mascot.gazeTarget
             if mascot.gaze != mascot.gazeTarget { mascot.gaze = mascot.gazeTarget }
         } else {
-            mascot.gaze = CGPoint(x: mascot.gaze.x + ex * 0.45, y: mascot.gaze.y + ey * 0.45)
+            e = CGPoint(x: e.x + ex * 0.45, y: e.y + ey * 0.45)
+            mascot.gazeExact = e
+            if moved(e, mascot.gaze) { mascot.gaze = e }
         }
         let omega: CGFloat = 14, zeta: CGFloat = 0.75
         var v = mascot.headVelocity, h = mascot.headExact
@@ -579,8 +588,11 @@ extension NotchController {
         } else {
             mascot.headVelocity = v
             mascot.headExact = h
-            if abs(h.x - mascot.head.x) >= 0.01 || abs(h.y - mascot.head.y) >= 0.01 { mascot.head = h }
+            if moved(h, mascot.head) { mascot.head = h }
         }
+        #if DEBUG
+        if mascot.gaze != publishedBefore.0 || mascot.head != publishedBefore.1 { mascot.framesPublished += 1 }
+        #endif
         if eyesDone && headDone { gazeTick = nil; return }
         gazeTick = scheduler.schedule(after: 1.0 / 30) { [weak self] in
             self?.gazeTick = nil
@@ -608,6 +620,7 @@ extension NotchController {
             gazeTick?.cancel(); gazeTick = nil
             eyesReturn?.cancel(); eyesReturn = nil
             mascot.gazeTarget = .zero; mascot.headTarget = .zero; mascot.headVelocity = .zero; mascot.headExact = .zero
+            mascot.gazeExact = .zero
             if mascot.gaze != .zero { mascot.gaze = .zero }
             if mascot.head != .zero { mascot.head = .zero }
             return
