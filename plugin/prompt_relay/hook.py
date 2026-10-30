@@ -23,6 +23,7 @@ from prompt_relay import config as _config
 from prompt_relay.events import KIND_BY_EVENT
 from prompt_relay.paths import data_dir
 from prompt_relay.store import SCHEMA_VERSION, Store, StoreError, fingerprint
+from prompt_relay.tools import TOOL_EVENTS, reduce as reduce_tool_event
 
 MAX_STDIN_BYTES = 64 * 1024 * 1024
 LOG_MAX_BYTES = 256 * 1024
@@ -90,6 +91,10 @@ def process(raw: bytes, env: Mapping[str, str], now: Optional[float] = None, roo
     if not isinstance(project_dir, str) or not _config.is_enabled(cfg, project_dir):
         return label, "project_not_enabled"
 
+    if payload.get("hook_event_name") in TOOL_EVENTS:
+        # Only the reduced form is stored: no file contents, no command output
+        # except a short, secret-scanned tail of a failed test or build.
+        payload = reduce_tool_event(payload)
     record = build_record(payload, env, time.time() if now is None else now)
     try:
         return label, Store(root).append(record)

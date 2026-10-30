@@ -1,0 +1,588 @@
+{
+ "source": "Claude Desktop Code tab, sandbox, capture-only hooks, 2026-10-30 (stage 5.1)",
+ "events": [
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "hook_event_name": "UserPromptSubmit",
+   "prompt": "Background (from the session that started this one):\nThis fo…[redacted]"
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Bash",
+   "tool_input": {
+    "command": "python3 -c \"print('ok')\"",
+    "description": "Print ok via Python"
+   },
+   "tool_response": {
+    "stdout": "ok",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false
+   },
+   "tool_use_id": "toolu_0002",
+   "duration_ms": 758
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUseFailure",
+   "tool_name": "Bash",
+   "tool_input": {
+    "command": "python3 -c \"import sys; print('boom', file=sys.stderr); sys.exit(3)\"",
+    "description": "Run Python that exits with code 3"
+   },
+   "tool_use_id": "toolu_0003",
+   "error": "Exit code 3\nboom",
+   "is_interrupt": false,
+   "duration_ms": 80
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Bash",
+   "tool_input": {
+    "command": "python3 -c \"import sys; sys.exit(2)\" | cat",
+    "description": "Run failing Python piped through cat"
+   },
+   "tool_response": {
+    "stdout": "",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false
+   },
+   "tool_use_id": "toolu_0004",
+   "duration_ms": 107
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Bash",
+   "tool_input": {
+    "command": "echo b",
+    "description": "Echo b"
+   },
+   "tool_response": {
+    "stdout": "b",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false
+   },
+   "tool_use_id": "toolu_0005",
+   "duration_ms": 32
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Bash",
+   "tool_input": {
+    "command": "echo a",
+    "description": "Echo a"
+   },
+   "tool_response": {
+    "stdout": "a",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false
+   },
+   "tool_use_id": "toolu_0006",
+   "duration_ms": 45
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Bash",
+   "tool_input": {
+    "command": "echo c",
+    "description": "Echo c"
+   },
+   "tool_response": {
+    "stdout": "c",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false
+   },
+   "tool_use_id": "toolu_0007",
+   "duration_ms": 45
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Bash",
+   "tool_input": {
+    "command": "sleep 3 && echo bg-finished",
+    "description": "Sleep then echo in background",
+    "run_in_background": true
+   },
+   "tool_response": {
+    "stdout": "",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false,
+    "backgroundTaskId": "id_0008"
+   },
+   "tool_use_id": "toolu_0009",
+   "duration_ms": 14
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Write",
+   "tool_input": {
+    "file_path": "/Users/USER/sandbox/proj/notes.md",
+    "content": "hello"
+   },
+   "tool_response": {
+    "type": "create",
+    "filePath": "/Users/USER/sandbox/proj/notes.md",
+    "content": "hello",
+    "structuredPatch": [],
+    "originalFile": null,
+    "userModified": false
+   },
+   "tool_use_id": "toolu_0010",
+   "duration_ms": 2
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Edit",
+   "tool_input": {
+    "file_path": "/Users/USER/sandbox/proj/notes.md",
+    "old_string": "hello",
+    "new_string": "hello world",
+    "replace_all": false
+   },
+   "tool_response": {
+    "filePath": "/Users/USER/sandbox/proj/notes.md",
+    "oldString": "hello",
+    "newString": "hello world",
+    "originalFile": "hello",
+    "structuredPatch": [
+     {
+      "oldStart": 1,
+      "oldLines": 1,
+      "newStart": 1,
+      "newLines": 1,
+      "lines": [
+       "-hello",
+       "\\ No newline at end of file",
+       "+hello world",
+       "\\ No newline at end of file"
+      ]
+     }
+    ],
+    "userModified": false,
+    "replaceAll": false
+   },
+   "tool_use_id": "toolu_0011",
+   "duration_ms": 3
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "hook_event_name": "UserPromptSubmit",
+   "prompt": "<task-notification>\n<task-id>b8pb2cvr1</task-id>\n<tool-use-i…[redacted]",
+   "session_title": "Prompt Relay 5.1 hook payload test"
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Read",
+   "tool_input": {
+    "file_path": "/Users/USER/sandbox/proj/red.png"
+   },
+   "tool_response": {
+    "type": "image",
+    "file": {
+     "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGP4z8AARwzEcQCukw/x0F8jngAAAABJRU5ErkJggg==",
+     "type": "image/png",
+     "originalSize": 73,
+     "dimensions": {
+      "originalWidth": 4,
+      "originalHeight": 4,
+      "displayWidth": 4,
+      "displayHeight": 4
+     }
+    }
+   },
+   "tool_use_id": "toolu_0012",
+   "duration_ms": 1
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Read",
+   "tool_input": {
+    "file_path": "/Users/USER/sandbox/proj/red.png"
+   },
+   "tool_response": {
+    "type": "image",
+    "file": {
+     "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGP4z8AARwzEcQCukw/x0F8jngAAAABJRU5ErkJggg==",
+     "type": "image/png",
+     "originalSize": 73,
+     "dimensions": {
+      "originalWidth": 4,
+      "originalHeight": 4,
+      "displayWidth": 4,
+      "displayHeight": 4
+     }
+    }
+   },
+   "tool_use_id": "toolu_0012",
+   "duration_ms": 1
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Read",
+   "tool_input": {
+    "file_path": "/Users/USER/sandbox/proj/notes.md"
+   },
+   "tool_response": {
+    "type": "text",
+    "file": {
+     "filePath": "/Users/USER/sandbox/proj/notes.md",
+     "content": "hello world",
+     "numLines": 1,
+     "startLine": 1,
+     "totalLines": 1
+    }
+   },
+   "tool_use_id": "toolu_0013",
+   "duration_ms": 1
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Agent",
+   "tool_input": {
+    "description": "Run echo from subagent",
+    "prompt": "Run exactly this one Bash command and report its output, not…[redacted]",
+    "subagent_type": "general-purpose"
+   },
+   "tool_response": {
+    "isAsync": true,
+    "status": "async_launched",
+    "agentId": "id_0014",
+    "description": "Run echo from subagent",
+    "resolvedModel": "claude-opus-5-5",
+    "prompt": "Run exactly this one Bash command and report its output, not…[redacted]",
+    "outputFile": "/tmp/REDACTED",
+    "canReadOutputFile": true,
+    "canContinueAgent": true
+   },
+   "tool_use_id": "toolu_0015",
+   "duration_ms": 17
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "SendUserFile",
+   "tool_input": {
+    "files": [
+     "/Users/USER/sandbox/proj/red.png"
+    ],
+    "status": "normal"
+   },
+   "tool_response": {
+    "attachments": [
+     {
+      "path": "/Users/USER/sandbox/proj/red.png",
+      "size": 73,
+      "isImage": true,
+      "media_type": "image/png",
+      "pathValidated": true
+     }
+    ]
+   },
+   "tool_use_id": "toolu_0016",
+   "duration_ms": 1
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "agent_id": "id_0014",
+   "agent_type": "general-purpose",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Bash",
+   "tool_input": {
+    "command": "echo from-subagent",
+    "description": "Print test string"
+   },
+   "tool_response": {
+    "stdout": "from-subagent",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false
+   },
+   "tool_use_id": "toolu_0017",
+   "duration_ms": 37
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Write",
+   "tool_input": {
+    "file_path": "/Users/USER/sandbox/proj/hooktest.html",
+    "content": "<title>Hook Test</title><p>hook test</p>"
+   },
+   "tool_response": {
+    "type": "create",
+    "filePath": "/Users/USER/sandbox/proj/hooktest.html",
+    "content": "<title>Hook Test</title><p>hook test</p>",
+    "structuredPatch": [],
+    "originalFile": null,
+    "userModified": false
+   },
+   "tool_use_id": "toolu_0018",
+   "duration_ms": 1
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "agent_id": "id_0014",
+   "agent_type": "general-purpose",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "SubagentHandback",
+   "tool_input": {
+    "message": "I ran `echo from-subagent` and it printed:\n\nfrom-subagent"
+   },
+   "tool_response": {
+    "success": true,
+    "message": "Report delivered to your caller."
+   },
+   "tool_use_id": "toolu_0019",
+   "duration_ms": 31
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "PostToolUse",
+   "tool_name": "Artifact",
+   "tool_input": {
+    "file_path": "/Users/USER/sandbox/proj/hooktest.html",
+    "icon": "code",
+    "description": "Minimal page used to capture Artifact hook payloads.",
+    "__artifactPlanConsentAsk": false,
+    "__artifactPublishTarget": null,
+    "__artifactRoomJoinDisclosed": false,
+    "__artifactPublishSourcePin": {
+     "path": "/Users/USER/sandbox/proj/hooktest.html",
+     "kind": "file",
+     "redirected": false,
+     "sha256": "0e338a64994261936b8d4b24317dab2272f9d629f442e2fea74be488857e4e89",
+     "minted": "c600b930-32ad-4208-ae90-82b85df97f20",
+     "type": false
+    }
+   },
+   "tool_response": {
+    "url": "https://claude.ai/artifact/REDACTED",
+    "path": "/Users/USER/sandbox/proj/hooktest.html",
+    "artifact_id": "id_0020",
+    "title": "Hook Test",
+    "updated": false,
+    "owned": true,
+    "icon": "code",
+    "audience": "owner",
+    "seq": 1,
+    "version": "1793369235-ff74",
+    "contract": "0.0.0",
+    "liveSubscription": "arming"
+   },
+   "tool_use_id": "toolu_0021",
+   "duration_ms": 1164
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "hook_event_name": "UserPromptSubmit",
+   "prompt": "<agent-message from=\"a32201f288d413e64\">\n[Subagent hand-back…[redacted]",
+   "session_title": "Prompt Relay 5.1 hook payload test"
+  },
+  {
+   "session_id": "00000000-0000-0000-0000-000000000001",
+   "transcript_path": "/Users/USER/.claude/projects/REDACTED/020f2d94-ab05-41f8-b8c1-3497b992db9e.jsonl",
+   "cwd": "/Users/USER/sandbox/proj",
+   "scratchpad_dir": "/tmp/REDACTED",
+   "prompt_id": "00000000-0000-0000-0000-000000000002",
+   "permission_mode": "auto",
+   "effort": {
+    "level": "medium"
+   },
+   "hook_event_name": "Stop",
+   "stop_hook_active": false,
+   "last_assistant_message": "done\n\nAll 12 steps ran in this sandbox:\n- **Steps 1–5 (shell commands):** Step 2 exited with code 3 and printed `boom`. Step 3 reported success, because `| cat` replaced Python's exit code 2. The background job finished and printed `bg-finished`.\n- **Steps 6–9 (file reads and writes):** Wrote `notes.md` as `hello`, edited it to `hello world`, and read both `red.png` and `notes.md`.\n- **Step 10 (subagent):** It printed `from-subagent`.\n- **Step 11:** `red.png` was sent to the user.\n- **Step 12:** `hooktest.html` is published privately at https://claude.ai/artifact/REDACTED.\n\nThese steps were the only tool calls; I skipped the task-list and wrap-up calls so they wouldn't add extra hook payloads. `notes.md` and `hooktest.html` are uncommitted.",
+   "background_tasks": [
+    {
+     "id": "snq5b3mhv",
+     "type": "monitor",
+     "status": "running",
+     "description": "live updates for artifact https://claude.ai/artifact/REDACTED (auto-armed on publish)"
+    }
+   ],
+   "session_crons": []
+  }
+ ]
+}

@@ -54,6 +54,12 @@ class Turn:
     candidate_turns: List[int] = field(default_factory=list)  # indexes of the candidate prompts' turns
     continued_by_sequence: bool = False
     trailing: bool = False  # no response event was received after this turn's prompt
+    # Inputs Claude Code delivered inside this turn with the turn's own
+    # prompt_id: background-task notifications and subagent hand-backs
+    # (observed 2026-10-30, HOOKS_RESEARCH §3). They are not user requests.
+    notifications: List[Event] = field(default_factory=list)
+    # Observed tool results of this turn (ADR-013), in arrival order.
+    tools: List[Event] = field(default_factory=list)
 
     @property
     def last_stop(self) -> Optional[Event]:
@@ -92,7 +98,11 @@ class Turn:
         return ev.project_dir if ev else None
 
 
-def build_turns(events: List[Event], link_events: bool = True) -> List[Turn]:
+def build_turns(events: List[Event], link_events: bool = True,
+                unlinked_tools: Optional[List[Event]] = None) -> List[Turn]:
+    """Tool events never become turns or responses: they join the turn of
+    their prompt_id, or the only open turn when they carry none; otherwise
+    they go to ``unlinked_tools`` (counted, never exported as a turn's)."""
     turns: List[Turn] = []
     by_prompt_id: Dict[str, Turn] = {}
     since_last_response: List[Turn] = []  # prompt turns created after the last response
@@ -103,6 +113,16 @@ def build_turns(events: List[Event], link_events: bool = True) -> List[Turn]:
         return turn
 
     for ev in events:
+        if ev.kind == "tool":
+            owner = by_prompt_id.get(ev.prompt_id) if ev.prompt_id else None
+            if owner is None and not ev.prompt_id:
+                open_turns = [t for t in since_last_response if not t.responses]
+                owner = open_turns[0] if len(open_turns) == 1 else None
+            if owner is not None and link_events:
+                owner.tools.append(ev)
+            elif unlinked_tools is not None:
+                unlinked_tools.append(ev)
+            continue
         if not link_events:
             if ev.kind == "prompt":
                 new_turn(prompt=ev)
@@ -110,6 +130,12 @@ def build_turns(events: List[Event], link_events: bool = True) -> List[Turn]:
                 new_turn(link=LINK_NONE).responses.append(ev)
             continue
         if ev.kind == "prompt":
+            owner = by_prompt_id.get(ev.prompt_id) if ev.prompt_id else None
+            if owner is not None and owner.prompt is not None and owner.prompt.prompt_id == ev.prompt_id:
+                # Same prompt_id as a captured request: an input injected into
+                # that turn (task notification, subagent hand-back), not a new turn.
+                owner.notifications.append(ev)
+                continue
             turn = new_turn(prompt=ev)
             if ev.prompt_id:
                 by_prompt_id.setdefault(ev.prompt_id, turn)

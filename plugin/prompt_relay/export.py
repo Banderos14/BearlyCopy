@@ -3,8 +3,8 @@
 Mode A, Copy Response: ``response_text`` returns Claude's final message
 exactly as captured. Nothing is added, removed or re-encoded.
 
-Mode B, Copy Context: ``render_context`` builds a structured review packet
-for ChatGPT. Each fact carries a provenance label:
+Mode B, Copy for ChatGPT (formerly Review Pack): ``render_context`` builds a
+structured packet for an independent review in ChatGPT. Each fact carries a provenance label:
 
 - Confirmed locally   read by Prompt Relay on this machine (hook metadata
                       recorded by the local handler, read-only git output)
@@ -23,6 +23,7 @@ from typing import List, Optional
 
 from prompt_relay import correlation as c
 from prompt_relay.gitinfo import GitInfo
+from prompt_relay import tools
 from prompt_relay.history import Session
 from prompt_relay.sensitive import Finding, scan
 
@@ -110,11 +111,105 @@ def sensitive_findings(turn: c.Turn, request: bool = True) -> List[Finding]:
     return findings
 
 
+def _relative(path: str, root: Optional[str]) -> str:
+    """A path inside the project as project-relative; other paths keep only
+    their last two components (no user name, no machine layout)."""
+    if root:
+        base = root.rstrip("/") + "/"
+        if path.startswith(base):
+            return path[len(base):]
+    parts = [p for p in path.split("/") if p]
+    return "…/" + "/".join(parts[-2:]) if len(parts) > 2 else path
+
+
+def _duration(ms: Optional[int]) -> str:
+    if ms is None:
+        return "—"
+    return f"{ms / 1000:.1f} s" if ms >= 1000 else f"{ms} ms"
+
+
+def _command_cell(cmd: dict) -> str:
+    if cmd.get("command") is None:
+        return f"(command withheld: {cmd.get('command_withheld') or 'unavailable'})"
+    line = cmd["command"].strip().splitlines()[0] if cmd["command"].strip() else ""
+    line = line if len(line) <= 100 else line[:99] + "…"
+    return line.replace("|", "\\|")
+
+
+def _result_cell(cmd: dict) -> str:
+    if cmd.get("background"):
+        return "started in background; result not observed"
+    if cmd.get("outcome") == "interrupted":
+        return "interrupted"
+    code = cmd.get("exit_code")
+    text = f"exit {code}" if isinstance(code, int) else "exit code unavailable"
+    if cmd.get("compound"):
+        text += " ¹"
+    return text
+
+
+def _observed_section(add, session: Session, turn: c.Turn) -> None:
+    detail = tools.observed_detail(turn)
+    commands = detail["commands"]
+    add(f"## Observed during this turn [{CONFIRMED}]")
+    if not turn.tools:
+        add(f"[{UNAVAILABLE}] No tool events were captured for this turn. They need the Prompt Relay plugin 0.3.0 or "
+            "later (PostToolUse / PostToolUseFailure hooks) with capture on for this project.")
+        add("")
+        return
+    add("Source: Claude Code PostToolUse / PostToolUseFailure hook events of this session and turn.")
+    main = [x for x in commands if not x["agent_type"]]
+    sub = [x for x in commands if x["agent_type"]]
+    important = [x for x in main if x["kind"] in ("test", "build", "git") or x["outcome"] != "ok" or x["background"]]
+    others = len(main) - len(important)
+    if important:
+        add("")
+        add("| Time (UTC) | Command (as run) | Result | Duration |")
+        add("|---|---|---|---|")
+        for x in important:
+            when = x["at"][11:19] if len(x["at"]) >= 19 else x["at"]
+            mark = " (after Stop)" if x["after_stop"] else ""
+            add(f"| {when}{mark} | `{_command_cell(x)}` | {_result_cell(x)} | {_duration(x['duration_ms'])} |")
+    add("")
+    add(f"- Commands: {len(main)} observed; {len(important)} listed (tests, builds, git, failures, background); "
+        f"{others} other commands counted, not listed.")
+    if sub:
+        failed_sub = sum(1 for x in sub if x["outcome"] != "ok")
+        kinds = sorted({x["agent_type"] for x in sub})
+        add(f"- Subagents ({', '.join(kinds)}): {len(sub)} commands, {failed_sub} not successful; not in the counts above.")
+    if any(x["compound"] for x in important):
+        add("- ¹ The command has a pipe, `||`, `;` or `&`: the exit code is the last process's and may hide a failure.")
+    for x in important:
+        if x.get("output_tail"):
+            add(f"- Last lines of `{_command_cell(x)}` ({_result_cell(x)}), secret-scanned:")
+            add(_block(x["output_tail"]))
+        elif x.get("tail_withheld"):
+            add(f"- Output of `{_command_cell(x)}` withheld: {x['tail_withheld']}.")
+    if detail["notifications"]:
+        add(f"- Background or subagent completion messages delivered during the turn: {detail['notifications']}.")
+    if session.unlinked_tools:
+        add(f"- {len(session.unlinked_tools)} tool events of this session could not be linked to a turn and are not included.")
+    add("- Exit codes describe single commands. They do not show that the task is complete, and a later "
+        "successful run does not show that every earlier failure was fixed.")
+    add("")
+    files = detail["files_changed"]
+    add(f"## Files Claude changed (Edit/Write tool calls) [{CONFIRMED}]")
+    if files:
+        for f in files:
+            edits = f" ({f['count']} edits)" if f["count"] > 1 else ""
+            add(f"- {_relative(f['path'], session.project_dir)} — {', '.join(f['tools'])}{edits}")
+        add("- Files changed through shell commands appear only in the Git state below.")
+    else:
+        add("- None observed. Changes made through shell commands appear only in the Git state below.")
+    add("")
+
+
 def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: str) -> str:
     final = turn.final_response
     lines: List[str] = []
     add = lines.append
-    add("# Review Pack: Claude Code result for independent review (exported by Prompt Relay)")
+    add("# Copy for ChatGPT: Claude Code result for independent review")
+    add(f"Exported by Prompt Relay at {exported_at}. No AI service was used.")
     add("")
     add("Provenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; "
         "[Reported by Claude] = Claude's own words, not checked; "
@@ -122,19 +217,20 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
     add("")
     add("## Session")
     add(f"- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [{CONFIRMED}]")
-    add(f"- Project: {session.project_name} — {session.project_dir or UNAVAILABLE} [{CONFIRMED if session.project_dir else UNAVAILABLE}]")
+    add(f"- Project: {session.project_name} [{CONFIRMED if session.project_dir else UNAVAILABLE}]")
     add(f"- Session ID: {session.session_id or UNAVAILABLE} [{CONFIRMED if session.session_id else UNAVAILABLE}]")
     add(f"- Turn: {turn.index} of {len(session.turns)}")
     when = final.received_at if final else (turn.last_event.received_at if turn.last_event else "")
     add(f"- Response captured at: {when or UNAVAILABLE} [{CONFIRMED if when else UNAVAILABLE}]")
-    add(f"- Exported at: {exported_at}")
     add(f"- Response status: {status_text(turn)} [{CONFIRMED}]")
     if len(turn.responses) > 1:
         add(f"- Response events in this turn: {len(turn.responses)} (stop-hook continuations or background wake-ups); the last Stop is shown")
     if final and final.has_background_tasks:
-        add(f"- Background tasks at Stop: {len(final.background_tasks or [])} still in flight [{CONFIRMED}]")
+        add(f"- Background tasks at Stop: {len(final.work_tasks)} still in flight [{CONFIRMED}]")
     elif final and final.background_tasks is None:
         add(f"- Background tasks at Stop: not reported by Claude Code [{UNAVAILABLE}]")
+    if final and final.watchers:
+        add(f"- Watchers at Stop: {final.watchers} (monitors such as an artifact's live updates; not work in flight) [{CONFIRMED}]")
     add(f"- Request ↔ response link: {LINK_TEXT.get(turn.link, turn.link)}")
     add("")
 
@@ -161,6 +257,8 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
             add(f"- API error type: {err.error or UNAVAILABLE} [{CONFIRMED}]")
     add("")
 
+    _observed_section(add, session, turn)
+
     add(f"## Git state (read-only, collected at export time {exported_at})")
     if git.available:
         add(f"- Branch: {git.branch or UNAVAILABLE} [{CONFIRMED if git.branch else UNAVAILABLE}]")
@@ -175,16 +273,14 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
         add(f"- [{UNAVAILABLE}] {git.reason}")
     add("")
 
-    add("## Tests and CI")
-    add(f"- [{NOT_VERIFIED}] Prompt Relay has no independent source of test or CI results. "
-        "Any statement about tests, builds or CI in Claude's response is reported by Claude only.")
-    add("")
-    add("## Verification status")
-    add(f"- Claude's claims of success, passing tests or completed work: [{NOT_VERIFIED}]")
+    add("## Not checked")
+    add(f"- Claude's claims of success, passing tests or completed work: [{NOT_VERIFIED}]. Compare them with the "
+        "observed commands above; Prompt Relay does not interpret Claude's text.")
+    add(f"- CI: no source is connected [{UNAVAILABLE}]")
     add(f"- Completion signal: Claude Code Stop hook event, which only means Claude stopped responding [{CONFIRMED}]")
     add("")
     add("## Request for review")
     add("Please review this result independently. Check whether the response actually fulfils the original "
-        "request, point out unsupported claims, risks and missing verification, and propose the next concrete "
-        "step or follow-up prompt for Claude Code.")
+        "request, compare Claude's claims with the observed commands, point out unsupported claims, risks and "
+        "missing verification, and propose the next concrete step or follow-up prompt for Claude Code.")
     return "\n".join(lines) + "\n"

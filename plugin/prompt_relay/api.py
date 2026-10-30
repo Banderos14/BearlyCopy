@@ -19,12 +19,15 @@ from __future__ import annotations
 import datetime as _dt
 import json
 import os
+import re
+import time
 from typing import Any, Dict, List, Optional
 
 from prompt_relay import correlation as c
-from prompt_relay import export
+from prompt_relay import export, tools
 from prompt_relay.events import Event
-from prompt_relay.history import Session
+from prompt_relay.history import Session, display_title, session_title  # noqa: F401 (display_title re-exported)
+from prompt_relay.retention import ACTIVE_GRACE_S
 from prompt_relay.sensitive import Finding
 
 API_VERSION = 1
@@ -84,9 +87,24 @@ def project_ref(path: Optional[str]) -> Dict[str, Any]:
     return {"path": path, "name": name or None}
 
 
+def session_running(s: Session, now: Optional[float] = None) -> bool:
+    """A request without a Stop yet, with activity in the last 30 minutes
+    (ADR-007's grace). Background tasks at a Stop do not count: Claude
+    stopped."""
+    if not s.turns or not s.turns[-1].trailing:
+        return False
+    last = s.last_event_epoch
+    return last is not None and (time.time() if now is None else now) - last < ACTIVE_GRACE_S
+
+
 def session_summary(s: Session) -> Dict[str, Any]:
     last = s.turns[-1] if s.turns else None
+    claude_title = next((ev.session_title for ev in reversed(s.events) if ev.session_title), None)
     return {
+        "title": session_title(s),
+        "claude_code_title": claude_title,
+        "answered_count": sum(1 for t in s.turns if t.final_response is not None),
+        "running": session_running(s),
         "session_id": s.session_id,
         "session_key": s.key,
         "project": project_ref(s.project_dir),
@@ -129,7 +147,8 @@ def turn_object(t: c.Turn, full: bool = False) -> Dict[str, Any]:
     background = None
     if last_stop is not None:
         reported = last_stop.background_tasks is not None
-        background = {"reported": reported, "count": len(last_stop.background_tasks or []) if reported else None}
+        background = {"reported": reported, "count": len(last_stop.work_tasks) if reported else None,
+                      "watchers": last_stop.watchers if reported else None}
     return {
         "index": t.index,
         "status": t.status,
@@ -143,6 +162,9 @@ def turn_object(t: c.Turn, full: bool = False) -> Dict[str, Any]:
         "candidate_request_turns": list(t.candidate_turns),
         "background_tasks": background,
         "error": error,
+        "notification_count": len(t.notifications),
+        "observed": tools.observed_counts(t),
+        **({"observed_detail": tools.observed_detail(t)} if full else {}),
     }
 
 

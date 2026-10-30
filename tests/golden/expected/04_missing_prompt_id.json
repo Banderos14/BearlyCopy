@@ -9,6 +9,8 @@
       "command": "show",
       "data": {
         "session": {
+          "answered_count": 2,
+          "claude_code_title": null,
           "cwds": [
             "__PROJECT_A__"
           ],
@@ -28,14 +30,17 @@
             "name": "project-a",
             "path": "__PROJECT_A__"
           },
+          "running": false,
           "session_id": "sess-min",
           "session_key": "sess-min",
+          "title": "q1",
           "turn_count": 2
         },
         "turn": {
           "background_tasks": {
             "count": null,
-            "reported": false
+            "reported": false,
+            "watchers": null
           },
           "candidate_request_turns": [],
           "error": null,
@@ -50,6 +55,22 @@
           },
           "index": 2,
           "link": "sequence",
+          "notification_count": 0,
+          "observed": {
+            "background_started": 0,
+            "files_changed": 0,
+            "runs_exit_zero": 0,
+            "runs_nonzero": 0,
+            "runs_unknown": 0,
+            "tool_events": 0
+          },
+          "observed_detail": {
+            "artifacts": [],
+            "commands": [],
+            "files_changed": [],
+            "notifications": 0,
+            "shown_files": []
+          },
           "request": {
             "char_count": 2,
             "preview": "q2",
@@ -78,6 +99,8 @@
       "command": "turns",
       "data": {
         "session": {
+          "answered_count": 2,
+          "claude_code_title": null,
           "cwds": [
             "__PROJECT_A__"
           ],
@@ -97,15 +120,18 @@
             "name": "project-a",
             "path": "__PROJECT_A__"
           },
+          "running": false,
           "session_id": "sess-min",
           "session_key": "sess-min",
+          "title": "q1",
           "turn_count": 2
         },
         "turns": [
           {
             "background_tasks": {
               "count": null,
-              "reported": false
+              "reported": false,
+              "watchers": null
             },
             "candidate_request_turns": [],
             "error": null,
@@ -119,6 +145,15 @@
             },
             "index": 1,
             "link": "sequence",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
             "request": {
               "char_count": 2,
               "preview": "q1",
@@ -133,7 +168,8 @@
           {
             "background_tasks": {
               "count": null,
-              "reported": false
+              "reported": false,
+              "watchers": null
             },
             "candidate_request_turns": [],
             "error": null,
@@ -147,6 +183,15 @@
             },
             "index": 2,
             "link": "sequence",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
             "request": {
               "char_count": 2,
               "preview": "q2",

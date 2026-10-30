@@ -9,6 +9,8 @@
       "command": "show",
       "data": {
         "session": {
+          "answered_count": 2,
+          "claude_code_title": null,
           "cwds": [
             "__PROJECT_A__"
           ],
@@ -28,14 +30,17 @@
             "name": "project-a",
             "path": "__PROJECT_A__"
           },
+          "running": false,
           "session_id": "sess-a",
           "session_key": "sess-a",
+          "title": "first request",
           "turn_count": 2
         },
         "turn": {
           "background_tasks": {
             "count": 0,
-            "reported": true
+            "reported": true,
+            "watchers": 0
           },
           "candidate_request_turns": [],
           "error": null,
@@ -50,6 +55,22 @@
           },
           "index": 2,
           "link": "prompt_id",
+          "notification_count": 0,
+          "observed": {
+            "background_started": 0,
+            "files_changed": 0,
+            "runs_exit_zero": 0,
+            "runs_nonzero": 0,
+            "runs_unknown": 0,
+            "tool_events": 0
+          },
+          "observed_detail": {
+            "artifacts": [],
+            "commands": [],
+            "files_changed": [],
+            "notifications": 0,
+            "shown_files": []
+          },
           "request": {
             "char_count": 14,
             "preview": "second request",
@@ -82,6 +103,8 @@
       "command": "show",
       "data": {
         "session": {
+          "answered_count": 2,
+          "claude_code_title": null,
           "cwds": [
             "__PROJECT_A__"
           ],
@@ -101,14 +124,17 @@
             "name": "project-a",
             "path": "__PROJECT_A__"
           },
+          "running": false,
           "session_id": "sess-a",
           "session_key": "sess-a",
+          "title": "first request",
           "turn_count": 2
         },
         "turn": {
           "background_tasks": {
             "count": 0,
-            "reported": true
+            "reported": true,
+            "watchers": 0
           },
           "candidate_request_turns": [],
           "error": null,
@@ -123,6 +149,22 @@
           },
           "index": 1,
           "link": "prompt_id",
+          "notification_count": 0,
+          "observed": {
+            "background_started": 0,
+            "files_changed": 0,
+            "runs_exit_zero": 0,
+            "runs_nonzero": 0,
+            "runs_unknown": 0,
+            "tool_events": 0
+          },
+          "observed_detail": {
+            "artifacts": [],
+            "commands": [],
+            "files_changed": [],
+            "notifications": 0,
+            "shown_files": []
+          },
           "request": {
             "char_count": 13,
             "preview": "first request",
@@ -151,6 +193,8 @@
       "command": "turns",
       "data": {
         "session": {
+          "answered_count": 2,
+          "claude_code_title": null,
           "cwds": [
             "__PROJECT_A__"
           ],
@@ -170,15 +214,18 @@
             "name": "project-a",
             "path": "__PROJECT_A__"
           },
+          "running": false,
           "session_id": "sess-a",
           "session_key": "sess-a",
+          "title": "first request",
           "turn_count": 2
         },
         "turns": [
           {
             "background_tasks": {
               "count": 0,
-              "reported": true
+              "reported": true,
+              "watchers": 0
             },
             "candidate_request_turns": [],
             "error": null,
@@ -192,6 +239,15 @@
             },
             "index": 1,
             "link": "prompt_id",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
             "request": {
               "char_count": 13,
               "preview": "first request",
@@ -206,7 +262,8 @@
           {
             "background_tasks": {
               "count": 0,
-              "reported": true
+              "reported": true,
+              "watchers": 0
             },
             "candidate_request_turns": [],
             "error": null,
@@ -220,6 +277,15 @@
             },
             "index": 2,
             "link": "prompt_id",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
             "request": {
               "char_count": 14,
               "preview": "second request",

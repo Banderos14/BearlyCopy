@@ -11,6 +11,8 @@
         "project_filter": null,
         "sessions": [
           {
+            "answered_count": 1,
+            "claude_code_title": null,
             "cwds": [
               "__PROJECT_A__"
             ],
@@ -30,8 +32,10 @@
               "name": "project-a",
               "path": "__PROJECT_A__"
             },
+            "running": false,
             "session_id": "sess-a",
             "session_key": "sess-a",
+            "title": "Add input validation to the signup form and run the tests.",
             "turn_count": 1
           }
         ]
@@ -51,6 +55,8 @@
       "command": "turns",
       "data": {
         "session": {
+          "answered_count": 1,
+          "claude_code_title": null,
           "cwds": [
             "__PROJECT_A__"
           ],
@@ -70,15 +76,18 @@
             "name": "project-a",
             "path": "__PROJECT_A__"
           },
+          "running": false,
           "session_id": "sess-a",
           "session_key": "sess-a",
+          "title": "Add input validation to the signup form and run the tests.",
           "turn_count": 1
         },
         "turns": [
           {
             "background_tasks": {
               "count": 0,
-              "reported": true
+              "reported": true,
+              "watchers": 0
             },
             "candidate_request_turns": [],
             "error": null,
@@ -92,6 +101,15 @@
             },
             "index": 1,
             "link": "prompt_id",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
             "request": {
               "char_count": 58,
               "preview": "Add input validation to the signup form and run the tests.",

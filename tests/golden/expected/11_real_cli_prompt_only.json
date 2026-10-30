@@ -11,6 +11,8 @@
         "project_filter": null,
         "sessions": [
           {
+            "answered_count": 0,
+            "claude_code_title": null,
             "cwds": [
               "__PROJECT_A__"
             ],
@@ -30,8 +32,10 @@
               "name": "project-a",
               "path": "__PROJECT_A__"
             },
+            "running": false,
             "session_id": "d8365e27-9b63-41ae-b93a-008c5687f834",
             "session_key": "d8365e27-9b63-41ae-b93a-008c5687f834",
+            "title": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python…",
             "turn_count": 1
           }
         ]
@@ -68,6 +72,8 @@
       "command": "turns",
       "data": {
         "session": {
+          "answered_count": 0,
+          "claude_code_title": null,
           "cwds": [
             "__PROJECT_A__"
           ],
@@ -87,8 +93,10 @@
             "name": "project-a",
             "path": "__PROJECT_A__"
           },
+          "running": false,
           "session_id": "d8365e27-9b63-41ae-b93a-008c5687f834",
           "session_key": "d8365e27-9b63-41ae-b93a-008c5687f834",
+          "title": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python…",
           "turn_count": 1
         },
         "turns": [
@@ -99,6 +107,15 @@
             "final_response": null,
             "index": 1,
             "link": "none",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
             "request": {
               "char_count": 105,
               "preview": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python code block that prints 1.",

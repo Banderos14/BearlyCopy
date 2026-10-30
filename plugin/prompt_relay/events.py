@@ -15,6 +15,9 @@ KIND_BY_EVENT = {
     "UserPromptSubmit": "prompt",
     "Stop": "stop",
     "StopFailure": "stop_failure",
+    # Stored only in the reduced form of tools.reduce (ADR-013).
+    "PostToolUse": "tool",
+    "PostToolUseFailure": "tool",
 }
 
 
@@ -50,10 +53,33 @@ class Event:
     error_details: Optional[str]
     agent_id: Optional[str]
     received_at_epoch: Optional[float] = None
+    # kind == "tool": the reduced record (tools.reduce), never a raw payload.
+    tool: Optional[Dict[str, Any]] = None
+    # UserPromptSubmit.session_title: a title Claude Code gave the session.
+    session_title: Optional[str] = None
+
+    @property
+    def tool_name(self) -> Optional[str]:
+        return _str(self.tool.get("tool_name")) if self.tool else None
+
+    @property
+    def tool_path(self) -> Optional[str]:
+        return _nonempty_str(self.tool.get("path")) if self.tool else None
+
+    @property
+    def work_tasks(self) -> List[Any]:
+        """Background tasks that are work in flight. A ``monitor`` only watches
+        (Claude Code arms one for an Artifact's live updates and it keeps
+        running); it is reported apart and does not make work pending."""
+        return [t for t in self.background_tasks or [] if not (isinstance(t, dict) and t.get("type") == "monitor")]
+
+    @property
+    def watchers(self) -> int:
+        return len(self.background_tasks or []) - len(self.work_tasks)
 
     @property
     def has_background_tasks(self) -> bool:
-        return bool(self.background_tasks)
+        return bool(self.work_tasks)
 
 
 def from_record(record: Dict[str, Any]) -> Optional[Event]:
@@ -66,8 +92,12 @@ def from_record(record: Dict[str, Any]) -> Optional[Event]:
     context = record.get("context") if isinstance(record.get("context"), dict) else {}
     cwd = _nonempty_str(payload.get("cwd"))
     project_dir = _nonempty_str(context.get("claude_project_dir")) or cwd
+    if kind == "tool" and payload.get("reduced") != 1:
+        return None  # a raw tool payload is never read, even if one was stored
     if kind == "prompt":
         text = _str(payload.get("prompt"))
+    elif kind == "tool":
+        text = None
     else:
         text = _str(payload.get("last_assistant_message"))
     stop_hook_active = payload.get("stop_hook_active")
@@ -88,6 +118,8 @@ def from_record(record: Dict[str, Any]) -> Optional[Event]:
         error_details=_str(payload.get("error_details")),
         agent_id=_nonempty_str(payload.get("agent_id")),
         received_at_epoch=_epoch(record.get("received_at_epoch")),
+        tool=dict(payload) if kind == "tool" else None,
+        session_title=_nonempty_str(payload.get("session_title")) if kind == "prompt" else None,
     )
 
 

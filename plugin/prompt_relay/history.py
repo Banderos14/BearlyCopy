@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
@@ -29,6 +30,7 @@ class Session:
     unsupported_lines: int = 0
     foreign_lines: int = 0  # records whose session_id does not belong to this file
     cwds: List[str] = field(default_factory=list)
+    unlinked_tools: List[Event] = field(default_factory=list)
 
     @property
     def project_dir(self) -> Optional[str]:
@@ -73,12 +75,14 @@ def load_session_file(store: Store, sf: SessionFile) -> Session:
     for ev in events:
         if ev.cwd and ev.cwd not in cwds:
             cwds.append(ev.cwd)
+    unlinked: List[Event] = []
     return Session(
         key=sf.key,
         session_id=session_id,
         events=events,
         # Events without a session id may come from different sessions.
-        turns=build_turns(events, link_events=sf.key != NO_SESSION_KEY),
+        turns=build_turns(events, link_events=sf.key != NO_SESSION_KEY, unlinked_tools=unlinked),
+        unlinked_tools=unlinked,
         corrupt_lines=result.corrupt_lines,
         unsupported_lines=result.unsupported_lines,
         foreign_lines=foreign,
@@ -158,3 +162,23 @@ def select_turn(
     if newer:
         warnings.append(f"{len(newer)} newer prompt(s) in this session have no response yet")
     return sess, chosen, warnings
+
+
+TITLE_CHARS = 80
+_WRAPPER = re.compile(r"</?pasted_content\b[^>]*>")
+
+
+def display_title(text: str) -> Optional[str]:
+    """One line for display: wrapper tags dropped, whitespace collapsed,
+    at most TITLE_CHARS characters. The stored request stays verbatim."""
+    line = " ".join(_WRAPPER.sub(" ", text).split())
+    if not line:
+        return None
+    return line if len(line) <= TITLE_CHARS else line[: TITLE_CHARS - 1] + "…"
+
+
+def session_title(s: Session) -> Optional[str]:
+    for t in s.turns:
+        if t.prompt is not None and t.prompt.text:
+            return display_title(t.prompt.text)
+    return None

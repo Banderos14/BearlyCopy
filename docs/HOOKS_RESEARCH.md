@@ -81,6 +81,31 @@ Input: common fields + `error` (`rate_limit`, `overloaded`,
 error string, not Claude's answer**. Output and exit code are ignored.
 Prompt Relay stores it as `api_error` and never offers its text as a response.
 
+### PostToolUse / PostToolUseFailure — observed 2026-10-30 (stage 5.1)
+Captured in a sandbox: a Claude Desktop Code-tab session in a throwaway
+folder whose `.claude/settings.local.json` registered capture-only hooks
+(stdin copied to a file; no stdout; `async: true` for the tool events). The
+plugin and `~/.claude/settings.json` were not touched. Redacted fixture:
+`tests/fixtures/turns/real_desktop_tool_turn.json` (22 events). The CLI could not
+be used: it is logged out on this Mac.
+
+| Question | Observed |
+|---|---|
+| Ids (V2) | every tool event had `session_id`, `prompt_id`, `tool_use_id`, `duration_ms`, `transcript_path`; subagent tool events also `agent_id`, `agent_type`. **All tool events of the turn, including the subagent's, carried the turn's `prompt_id`** |
+| Bash success | `tool_response` = `stdout`, `stderr`, `interrupted`, `isImage`, `noOutputExpected`; no exit code |
+| Bash failure (V5) | `PostToolUseFailure`, `error` first line `Exit code 3`, `is_interrupt: false`, no `tool_response` |
+| Pipe | `python3 -c "…exit(2)" \| cat` → **PostToolUse** (success): the pipe's last process decides |
+| Parallel (V5a) | three parallel Bash calls → three events within 10 ms, same `prompt_id`, none lost |
+| Background (V5c) | `run_in_background: true` → PostToolUse at start with `tool_response.backgroundTaskId`; no event when it finished |
+| Background / subagent completion | delivered to Claude as **UserPromptSubmit events with the same `prompt_id`** and prompt text starting `<task-notification>` or `<agent-message from=…>`; the second carried `session_title`. Before the stage 5.1 fix the Core made each of them a new, never-answered turn |
+| Write / Edit | `tool_input` has `content` or `old_string`/`new_string`; `tool_response` has `originalFile` and `structuredPatch` (full file content) — never stored |
+| `if: "Read(*.png)"` (V3) | works: the extra handler ran for `red.png` only |
+| SendUserFile (V4) | PostToolUse fires; `tool_input.files` (absolute paths), `tool_response.attachments[]` with `path`, `size`, `media_type`, `isImage`, `pathValidated` |
+| Artifact (V9) | PostToolUse fires; `tool_input.file_path` (+ private `__artifact…` keys); `tool_response` has `title`, `url`, `version`, `audience` (`owner`), `path`, `artifact_id`, `owned` |
+| Agent | `tool_response.isAsync: true`, `agentId`, `outputFile`; the hand-back is a separate tool `SubagentHandback` inside the subagent |
+| After Stop (V5b) | no tool event arrived after Stop in this run |
+| Not observed | V1 latency at scale and V5d (`-p` teardown): need a logged-in CLI |
+
 ### SessionStart — researched, not connected
 `source`: `startup | resume | clear | compact | fork`; optional `model`,
 `session_title`. Possible future use: show "session started/resumed" in the

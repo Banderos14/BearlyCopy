@@ -6,7 +6,9 @@
           {
             "type": "command",
             "command": "/bin/sh",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"
+            ],
             "timeout": 10
           }
         ]
@@ -18,7 +20,9 @@
           {
             "type": "command",
             "command": "/bin/sh",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"
+            ],
             "timeout": 10
           }
         ]
@@ -30,8 +34,42 @@
           {
             "type": "command",
             "command": "/bin/sh",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"
+            ],
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit|SendUserFile|Artifact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"
+            ],
+            "timeout": 10,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"
+            ],
+            "timeout": 10,
+            "async": true
           }
         ]
       }

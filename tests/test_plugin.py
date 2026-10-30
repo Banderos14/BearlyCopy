@@ -33,7 +33,10 @@ MANIFEST = PLUGIN / ".claude-plugin" / "plugin.json"
 HOOKS = PLUGIN / "hooks" / "hooks.json"
 LAUNCHER_REL = Path("hooks") / "run-hook"
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
-EVENTS = {"UserPromptSubmit", "Stop", "StopFailure"}
+EVENTS = {"UserPromptSubmit", "Stop", "StopFailure", "PostToolUse", "PostToolUseFailure"}
+# Tool events (ADR-013): async, limited by a matcher, never blocking Claude.
+TOOL_MATCHERS = {"PostToolUse": "Bash|Write|Edit|MultiEdit|NotebookEdit|SendUserFile|Artifact",
+                 "PostToolUseFailure": "Bash|Write|Edit|MultiEdit|NotebookEdit"}
 CLAUDE = shutil.which("claude")
 
 
@@ -72,11 +75,15 @@ class PluginPackageTests(unittest.TestCase):
         self.assertEqual(set(doc["hooks"]), EVENTS)
         for event, groups in doc["hooks"].items():
             self.assertEqual(len(groups), 1, event)
-            self.assertNotIn("matcher", groups[0])
+            expected = {"type": "command", "command": "/bin/sh",
+                        "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"], "timeout": 10}
+            if event in TOOL_MATCHERS:
+                self.assertEqual(groups[0]["matcher"], TOOL_MATCHERS[event])
+                expected["async"] = True
+            else:
+                self.assertNotIn("matcher", groups[0])
             (handler,) = groups[0]["hooks"]
-            self.assertEqual(handler, {"type": "command", "command": "/bin/sh",
-                                       "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"], "timeout": 10},
-                             "exec form: the plugin root is one argument, never shell-parsed")
+            self.assertEqual(handler, expected, "exec form: the plugin root is one argument, never shell-parsed")
         launcher = PLUGIN / LAUNCHER_REL
         self.assertTrue(launcher.is_file())
         self.assertTrue(os.access(str(launcher), os.X_OK))
@@ -142,7 +149,7 @@ class ClaudeCliValidationTests(unittest.TestCase):
         self.assertEqual((entry["version"], entry["enabled"]), (__version__, True))
         self.assertNotIn("errors", entry)
         details = self.claude("--plugin-dir", str(PLUGIN), "plugin", "details", "prompt-relay").stdout.decode()
-        self.assertRegex(details, r"Hooks \(3\)\s+UserPromptSubmit, Stop, StopFailure")
+        self.assertRegex(details, r"Hooks \(5\)")
         self.assertRegex(details, r"Always-on:\s+~0 tok")
 
     def test_plugin_root_with_spaces_and_unicode_validates(self):
