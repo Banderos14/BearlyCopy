@@ -40,9 +40,9 @@ public final class AppModel {
     public private(set) var refreshMode: RefreshMode = .polling(seconds: AppModel.pollSeconds)
 
     // MARK: Selection
-    public private(set) var selectedProjectPath: String?
-    public private(set) var selectedSessionKey: String?
-    public private(set) var selectedTurnIndex: Int?
+    public private(set) var selectedProjectPath: String? { didSet { dropStaleHandoff() } }
+    public private(set) var selectedSessionKey: String? { didSet { dropStaleHandoff() } }
+    public private(set) var selectedTurnIndex: Int? { didSet { dropStaleHandoff() } }
 
     // MARK: Copy
     public private(set) var copyFeedback: CopyFeedback = .idle
@@ -184,6 +184,48 @@ public final class AppModel {
         }
     }
 
+    // MARK: Clipboard (Text / Images)
+
+    public enum ClipboardTab: String, CaseIterable, Sendable { case text = "Text", images = "Images" }
+    /// The Clipboard view's tab; kept while the island is open.
+    public var clipboardTab: ClipboardTab = .text
+
+    public func openClipboard(_ tab: ClipboardTab) {
+        clipboardTab = tab
+        navigate(to: .clipboard)
+    }
+
+    static let clipboardNoticeKey = "clipboard.noticeAcknowledged"
+    /// The one-time notice about the image history: shown until the user
+    /// answers it. Images are kept by default, but only from the moment
+    /// this notice has been shown (never silently); Turn Off clears them.
+    public internal(set) var clipboardNoticeVisible = false
+
+    /// The notice is on screen: the history starts (unless already decided).
+    public func clipboardNoticeAppeared() {
+        guard clipboardNoticeVisible, stateDefaults?.object(forKey: Self.clipboardHistoryKey) == nil else { return }
+        clipboardHistoryEnabled = true
+    }
+
+    public func answerClipboardNotice(keepOn: Bool) {
+        if !keepOn { clipboardHistoryEnabled = false }
+        clipboardNoticeVisible = false
+        stateDefaults?.set(true, forKey: Self.clipboardNoticeKey)
+    }
+
+    /// Copies chosen clipboard images as files under readable names.
+    public func copyClipboardImages(_ items: [ClipboardImageHistory.Item]) {
+        guard let history = clipboardImages else { return }
+        let urls = history.exportFiles(items)
+        guard urls.count == items.count, !urls.isEmpty else { finishCopy(.failed("The images could not be prepared.")); return }
+        do {
+            try clipboard.copyFiles(urls)
+            finishCopy(.copied(.files, characters: urls.count))
+        } catch {
+            finishCopy(.failed("The images could not be copied."))
+        }
+    }
+
     static func decode<T: Decodable>(_ type: T.Type, _ data: Data?) -> T? {
         data.flatMap { try? JSONDecoder().decode(type, from: $0) }
     }
@@ -202,6 +244,8 @@ public final class AppModel {
         let history = ClipboardImageHistory.live(dataDirectory: locator.dataDirectory)
         model.clipboardImages = history
         if UserDefaults.standard.bool(forKey: clipboardHistoryKey) { history.setEnabled(true) }
+        model.clipboardNoticeVisible = UserDefaults.standard.object(forKey: clipboardHistoryKey) == nil
+            && !UserDefaults.standard.bool(forKey: clipboardNoticeKey)
         return model
     }
 
@@ -627,7 +671,7 @@ public final class AppModel {
             case .capture: return "Capture"
             case .activity: return "Observed Work"
             case .mockup: return "Mockup States"
-            case .clipboard: return "Clipboard Images"
+            case .clipboard: return "Clipboard"
             case .copies: return "Recent Copies"
             case .history: return "History"
             case .importReport: return "Import Report"
@@ -639,6 +683,8 @@ public final class AppModel {
 
     public var route: IslandRoute = .home {
         didSet {
+            // Recent Copies is the Text tab of Clipboard now (Phase 6).
+            if route == .copies { clipboardTab = .text; route = .clipboard }
             if route == .home { backRoute = .home }
         }
     }
@@ -890,7 +936,7 @@ public final class AppModel {
 
     public private(set) var imports: [ImportedReport] = []
     /// The import shown on Home, when an import is selected instead of a local turn.
-    public private(set) var selectedImportID: String?
+    public private(set) var selectedImportID: String? { didSet { dropStaleHandoff() } }
     public var selectedImport: ImportedReport? { imports.first { $0.id == selectedImportID } }
 
     /// The report Home shows.
@@ -941,15 +987,38 @@ public final class AppModel {
     // MARK: Hand-off (two steps: text, then files)
 
     /// After Copy for ChatGPT with files selected: the files still to hand
-    /// over. Nothing here says they reached ChatGPT.
+    /// over. Nothing here says they reached ChatGPT. It belongs to one
+    /// report (project, session and turn are in `ref`) and to the files
+    /// chosen when its text was copied; showing another report, or closing
+    /// the island, ends it (the files and the clipboard stay as they are).
     public struct HandoffStep: Equatable, Sendable {
         public let ref: ReportRef
         public let characters: Int
-        public let fileCount: Int
+        /// The chosen files at the moment of the copy, in hand-off order.
+        public let attachmentIDs: [String]
+        public var fileCount: Int { attachmentIDs.count }
         /// Set once the files were put on the clipboard (not "sent").
         public var filesCopied = false
     }
     public internal(set) var handoffStep: HandoffStep?
+
+    /// The hand-off of the report shown now; nil for any other report.
+    public var activeHandoff: HandoffStep? {
+        guard let step = handoffStep, step.ref == currentRef else { return nil }
+        return step
+    }
+
+    /// The files chosen for the report changed after its text was copied:
+    /// the old set is not handed over silently.
+    public var handoffSelectionChanged: Bool {
+        guard let step = activeHandoff else { return false }
+        return handoffAttachments(for: step.ref).map(\.id) != step.attachmentIDs
+    }
+
+    /// Ends a hand-off that no longer belongs to the report shown.
+    func dropStaleHandoff() {
+        if let step = handoffStep, step.ref != currentRef { handoffStep = nil }
+    }
     /// The mockup whose states are open (route `.mockup`).
     public internal(set) var openMockupID: String?
 
@@ -1118,6 +1187,20 @@ public final class AppModel {
     }
 
     public func clearCopyHistory() { copyHistory = [] }
+
+    public func removeCopyRecord(_ record: CopyRecord) { copyHistory.removeAll { $0.id == record.id } }
+
+    /// One line to recognise a copy by: the task (or, for an import without
+    /// one, the text), when it is at hand. Display only; nothing is stored.
+    public func copyPreview(_ record: CopyRecord) -> String? {
+        switch record.ref {
+        case .imported(let id):
+            return imports.first { $0.id == id }.map { Self.oneLine($0.task ?? $0.text) }
+        case .local(let key, let index):
+            guard key == selectedSessionKey, let turn = turns.value?.first(where: { $0.index == index }) else { return nil }
+            return turn.userRequestPreview.map(Self.oneLine)
+        }
+    }
 
     // MARK: Capture per project (Settings → Projects)
 
@@ -1339,8 +1422,10 @@ public final class AppModel {
     func finishCopy(_ feedback: CopyFeedback) {
         copyFeedback = feedback
         feedbackReset?.cancel()
+        // "Copied!" for 2 s; a failure stays long enough to be read.
+        let seconds: UInt64 = { if case .failed = feedback { return 6 } else { return 2 } }()
         feedbackReset = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
             guard !Task.isCancelled else { return }
             self?.copyFeedback = .idle
         }

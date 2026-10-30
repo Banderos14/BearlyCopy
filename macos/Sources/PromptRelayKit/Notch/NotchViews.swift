@@ -172,7 +172,9 @@ public struct NotchRootView: View {
             }
         }
         .frame(width: presentation.islandWidth, alignment: .top)
-        .fixedSize(horizontal: false, vertical: true)
+        // The whole height budget is offered; the content takes what it needs.
+        .modifier(BudgetModifier(maxHeight: presentation.notchSize.height + presentation.maxContentHeight))
+        .environment(\.islandReduceMotion, presentation.reduceMotion)
         // Read after layout; the window follows on the next display pass.
         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { h in
             presentation.reportContentHeight(h - presentation.notchSize.height)

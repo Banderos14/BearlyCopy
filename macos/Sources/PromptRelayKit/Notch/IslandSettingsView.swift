@@ -19,13 +19,9 @@ struct IslandSettingsView: View {
     var body: some View {
         BoundedScroll(maxHeight: presentation.listHeight(chrome: 16)) {
             VStack(alignment: .leading, spacing: 8) {
-                if let settings {
-                    notch(settings)
-                    appearance(settings)
-                    notifications(settings)
-                }
+                // Capture → Clipboard → Appearance → Notifications → Privacy → Advanced → About.
                 section("Capture") {
-                    rowButton("Projects", detail: "Choose which folders Prompt Relay captures, and add folders.", value: captureSummary) {
+                    rowButton("Projects", detail: "Which folders Prompt Relay captures Claude Code's answers from. New folders start off.", value: captureSummary) {
                         model.navigate(to: .capture)
                     }
                     Hairline()
@@ -35,17 +31,19 @@ struct IslandSettingsView: View {
                                if on { model.selectSession(model.selectedSessionKey) } else { model.unpinSession() }
                            }))
                 }
-                section("Clipboard images") {
+                section("Clipboard") {
                     toggle("Keep the last 5 copied images",
-                           detail: "For attaching screenshots later. Only images are kept, never text; password-manager items are skipped. Kept for 24 hours. Off by default; turning it off deletes them.",
+                           detail: "Screenshots and image files you copy anywhere, kept on this Mac for 24 hours to copy or drag later. Text from other apps is never read; password-manager items are skipped. Turning it off deletes them.",
                            isOn: Binding(get: { model.clipboardHistoryEnabled }, set: { model.clipboardHistoryEnabled = $0 }))
-                    if model.clipboardHistoryEnabled {
-                        Hairline()
-                        rowButton("Clipboard Images", detail: "See, attach or delete them.",
-                                  value: "\(model.clipboardImages?.items.count ?? 0) of \(ClipboardImageHistory.limit)") {
-                            model.navigate(to: .clipboard)
-                        }
+                    Hairline()
+                    rowButton("Open Clipboard", detail: "Your last copies in Prompt Relay and the kept images.",
+                              value: model.clipboardHistoryEnabled ? "\(model.clipboardImages?.items.count ?? 0) of \(ClipboardImageHistory.limit) images" : "") {
+                        model.navigate(to: .clipboard)
                     }
+                }
+                if let settings {
+                    appearance(settings)
+                    notifications(settings)
                 }
                 privacy
                 diagnostics
@@ -66,9 +64,9 @@ struct IslandSettingsView: View {
     // MARK: Sections
 
     @ViewBuilder
-    private func notch(_ settings: NotchSettings) -> some View {
+    private func notchRows(_ settings: NotchSettings) -> some View {
         @Bindable var settings = settings
-        section("Notch") {
+        Group {
             toggle("Open on hover", detail: "Show the answer when the pointer rests on the notch. Off: open from the menu bar or \(HotKeyRegistration.displayString).",
                    isOn: $settings.notchEnabled)
             Hairline()
@@ -86,10 +84,13 @@ struct IslandSettingsView: View {
     private func appearance(_ settings: NotchSettings) -> some View {
         @Bindable var settings = settings
         section("Appearance") {
+            notchRows(settings)
+            Hairline()
             toggle("Show Relay the bear", detail: "A small companion beside the notch. It reacts to new answers and copies.",
                    isOn: $settings.mascotEnabled)
             Hairline()
-            picker("Motion", detail: "Reduced uses short fades instead of springs.", current: settings.animation.title,
+            picker("Motion", detail: "Reduced: short fades instead of moving and resizing (also follows the system's Reduce Motion).",
+                   current: settings.animation.title,
                    options: NotchSettings.Animation.allCases.map { ($0.title, $0) }) { settings.animation = $0 }
         }
     }
@@ -124,8 +125,8 @@ struct IslandSettingsView: View {
             Hairline()
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Recent Copies").font(.system(size: 12.5)).foregroundStyle(Island.primary)
-                    Text("References to your last \(AppModel.copyHistoryLimit) copies; no text is stored.").font(.system(size: 11)).foregroundStyle(Island.tertiary)
+                    Text("Clipboard text list").font(.system(size: 12.5)).foregroundStyle(Island.primary)
+                    Text("References to your last \(AppModel.copyHistoryLimit) copies; the text itself is not stored.").font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 }
                 Spacer()
                 Button("Clear") { model.clearCopyHistory() }
@@ -138,7 +139,7 @@ struct IslandSettingsView: View {
 
     @ViewBuilder
     private var diagnostics: some View {
-        section("Diagnostics") {
+        section("Advanced") {
             coreRow
             Hairline()
             pluginRow

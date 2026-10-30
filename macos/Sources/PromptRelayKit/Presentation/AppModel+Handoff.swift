@@ -24,7 +24,10 @@ extension AppModel {
         public var isEmpty: Bool { documents + images + mockups + links == 0 }
 
         /// "1 document · 1 mockup (7 states) · 3 images"
-        public var line: String {
+        public var line: String { parts.joined(separator: " · ") }
+
+        /// The same facts one by one (chips); empty kinds are left out.
+        public var parts: [String] {
             var parts: [String] = []
             if documents > 0 { parts.append(documents == 1 ? "1 document" : "\(documents) documents") }
             if mockups > 0 {
@@ -33,7 +36,7 @@ extension AppModel {
             }
             if images > 0 { parts.append(images == 1 ? "1 image" : "\(images) images") }
             if links > 0 { parts.append(links == 1 ? "1 link" : "\(links) links") }
-            return parts.joined(separator: " · ")
+            return parts
         }
     }
 
@@ -343,13 +346,18 @@ extension AppModel {
     }
 
     func beginHandoff(ref: ReportRef, characters: Int) {
-        let count = handoffAttachments(for: ref).count
-        handoffStep = count > 0 ? HandoffStep(ref: ref, characters: characters, fileCount: count) : nil
+        let ids = handoffAttachments(for: ref).map(\.id)
+        handoffStep = ids.isEmpty ? nil : HandoffStep(ref: ref, characters: characters, attachmentIDs: ids)
     }
 
+    /// The files of the active hand-off: exactly the set chosen at the copy,
+    /// and only while that report is shown and its choice is unchanged.
     private func preparedHandoffFiles() -> [URL] {
-        guard let step = handoffStep, let store = reportStore else { return [] }
-        do { return try store.handoffFiles(for: handoffAttachments(for: step.ref), names: handoffNames(for: step.ref)) } catch {
+        guard let step = activeHandoff, !handoffSelectionChanged, let store = reportStore else { return [] }
+        let byID = Dictionary(uniqueKeysWithValues: attachments(for: step.ref).map { ($0.id, $0) })
+        let chosen = step.attachmentIDs.compactMap { byID[$0] }
+        guard chosen.count == step.attachmentIDs.count else { return [] }
+        do { return try store.handoffFiles(for: chosen, names: handoffNames(for: step.ref)) } catch {
             attachmentMessage = "Prompt Relay could not prepare the files."
             return []
         }
@@ -357,6 +365,10 @@ extension AppModel {
 
     /// Step 2: the files on the clipboard, like ⌘C in Finder.
     public func copyHandoffFiles() {
+        guard !handoffSelectionChanged else {
+            finishCopy(.failed("The chosen files changed. Use Copy for ChatGPT again."))
+            return
+        }
         let files = preparedHandoffFiles()
         guard !files.isEmpty else { finishCopy(.failed("The files are missing.")); return }
         do {

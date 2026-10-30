@@ -126,10 +126,9 @@ final class IslandLayoutTests: XCTestCase {
             let island = IslandHost(model: m, maxContentHeight: maxContent)
             let f = island.presentation.layoutFrames
             let row = try XCTUnwrap(f["card.attachments"], "the attachments card is shown")
-            let columns = DetailsLayout(presentation: island.presentation).columns
-            let handoff = try XCTUnwrap(f["card.handoff"])
-            XCTAssertLessThanOrEqual(row.maxY - handoff.minY, columns + 0.5,
-                                     "any number of files scrolls inside the card; the column keeps its height")
+            let footerTop = try XCTUnwrap(f["details.footer"]).minY
+            XCTAssertLessThanOrEqual(row.maxY, footerTop - 4, "any number of files scrolls inside the card, above the footer")
+            island.assertNoOverlap(["details.header", "card.task", "card.response", "card.handoff", "card.attachments", "details.footer"])
             await m.copySelectedResponse()
             island.settle()
             let footer = try XCTUnwrap(island.presentation.layoutFrames["home.actions"])
@@ -155,7 +154,8 @@ final class IslandLayoutTests: XCTestCase {
             island.settle()
             let bar = try XCTUnwrap(island.presentation.layoutFrames["details.handoff"], "the step-2 bar is shown")
             XCTAssertTrue(island.contains(bar), "the step-2 bar is inside the island (\(maxContent))")
-            XCTAssertGreaterThanOrEqual(island.height - bar.maxY, 16 + 6, "the copy line below the bar fits (\(maxContent))")
+            XCTAssertGreaterThanOrEqual(island.height - bar.maxY, 16, "the step-2 footer sits above the rounded edge (\(maxContent))")
+            island.assertNoOverlap(["details.header", "card.task", "card.response", "card.handoff", "card.attachments", "details.footer"])
             XCTAssertLessThanOrEqual(island.height, 32 + maxContent)
             m.endHandoff()
             island.close()
@@ -172,7 +172,9 @@ final class IslandLayoutTests: XCTestCase {
         let scroll = try XCTUnwrap(island.responseScrollView(), "the answer has its own scroll view")
         XCTAssertNil(island.ancestorScrollView(of: scroll), "not nested in another vertical scroll: the wheel scrolls only the answer")
         let card = try XCTUnwrap(island.presentation.layoutFrames["response.scroll"])
-        XCTAssertLessThanOrEqual(card.height, DetailsLayout(presentation: island.presentation).responseScroll(taskLines: 1) + 0.5)
+        XCTAssertLessThanOrEqual(card.maxY, try XCTUnwrap(island.presentation.layoutFrames["response.full"]).minY,
+                                 "View Full Report stays below the answer, never under it")
+        island.assertNoOverlap(["details.header", "card.task", "card.response", "details.footer"])
         XCTAssertGreaterThan(scroll.documentView?.frame.height ?? 0, scroll.contentView.bounds.height * 3, "a long report scrolls")
         XCTAssertNotNil(island.presentation.layoutFrames["response.full"], "View Full Report stays")
 
@@ -200,14 +202,6 @@ final class IslandLayoutTests: XCTestCase {
         let again = try XCTUnwrap(island.responseScrollView())
         XCTAssertEqual(again.contentView.bounds.origin.y, start, accuracy: 1, "and so does the long one, opened again")
         island.close()
-    }
-
-    func testScrollIdentityChangesWithTheAnswerOnly() {
-        let a = ResponseCard.scrollIdentity(ref: .imported(id: "a"), text: "x")
-        XCTAssertEqual(a, ResponseCard.scrollIdentity(ref: .imported(id: "a"), text: "x"))
-        XCTAssertNotEqual(a, ResponseCard.scrollIdentity(ref: .imported(id: "b"), text: "x"))
-        XCTAssertNotEqual(a, ResponseCard.scrollIdentity(ref: .local(sessionKey: "a", turn: 1), text: "x"))
-        XCTAssertNotEqual(a, ResponseCard.scrollIdentity(ref: .imported(id: "a"), text: "xy"), "the full text replacing the preview")
     }
 
     // MARK: Mascot
@@ -394,6 +388,25 @@ final class IslandHost {
     }
 
     func close() { window.close() }
+
+    /// The blocks are laid out, inside the island, and none overlaps another
+    /// (the Phase 5 defect: the footer drew over the Response).
+    func assertNoOverlap(_ ids: [String], file: StaticString = #filePath, line: UInt = #line) {
+        settle()
+        let f = presentation.layoutFrames
+        let rects = ids.compactMap { id in f[id].map { (id, $0) } }
+        XCTAssertEqual(rects.count, ids.count, "laid out: \(ids.filter { f[$0] == nil })", file: file, line: line)
+        for (id, r) in rects {
+            XCTAssertTrue(contains(r.insetBy(dx: 1, dy: 1)), "\(id) \(r) inside the island (height \(height))", file: file, line: line)
+        }
+        for i in rects.indices {
+            for j in rects.indices where j > i {
+                let overlap = rects[i].1.intersection(rects[j].1)
+                XCTAssertTrue(overlap.isNull || overlap.width < 0.5 || overlap.height < 0.5,
+                              "\(rects[i].0) \(rects[i].1) overlaps \(rects[j].0) \(rects[j].1)", file: file, line: line)
+            }
+        }
+    }
 
     /// Whether every corner and edge midpoint of `rect` is inside the island outline.
     func contains(_ rect: CGRect) -> Bool {

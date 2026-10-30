@@ -10,26 +10,85 @@ import UniformTypeIdentifiers
 // Back to Home. The band level with the camera stays pure black; content
 // sits on deep graphite cards. One white accent: Copy Response.
 
-/// The island's palette and metrics.
+/// The island's design tokens: colors by role, spacing, radii and motion.
+/// Dark only for now (the island merges with the black camera housing);
+/// a light theme replaces the color roles here and nothing else.
 enum Island {
-    static let primary = Color.white.opacity(0.94)
-    static let secondary = Color.white.opacity(0.70)
-    static let tertiary = Color.white.opacity(0.52)
-    /// Cards: deep graphite on the black island.
-    static let card = Color(white: 0.115)
-    static let cardRaised = Color(white: 0.16)
-    static let code = Color(white: 0.075)
-    static let control = Color(white: 0.19)
-    static let hover = Color.white.opacity(0.07)
-    static let selected = Color.white.opacity(0.11)
-    static let hairline = Color.white.opacity(0.08)
-    /// The one restrained accent for meaningful states (new, capture on).
-    static let accent = Color(red: 0.45, green: 0.85, blue: 0.72)
-    static let warning = Color(red: 1.0, green: 0.74, blue: 0.38)
-    static let error = Color(red: 1.0, green: 0.47, blue: 0.43)
-    static let cardRadius: CGFloat = 14
+    // Text
+    static let primary = Color(red: 0.95, green: 0.96, blue: 0.97)
+    static let secondary = Color(red: 0.71, green: 0.73, blue: 0.77)
+    static let tertiary = Color(red: 0.53, green: 0.56, blue: 0.60)
+    // Surfaces: cool graphite on the black island, a step lighter for what is interactive.
+    static let card = Color(red: 0.100, green: 0.108, blue: 0.124)
+    static let cardRaised = Color(red: 0.150, green: 0.160, blue: 0.182)
+    static let code = Color(red: 0.066, green: 0.072, blue: 0.084)
+    static let control = Color(red: 0.180, green: 0.192, blue: 0.218)
+    static let hover = Color.white.opacity(0.06)
+    static let selected = Color(red: 0.38, green: 0.80, blue: 0.82).opacity(0.14)
+    static let hairline = Color.white.opacity(0.07)
+    // Roles
+    /// Soft teal: new answers, selection, what is on.
+    static let accent = Color(red: 0.38, green: 0.80, blue: 0.82)
+    /// A copy that succeeded, a check that exited 0.
+    static let success = Color(red: 0.47, green: 0.82, blue: 0.57)
+    static let warning = Color(red: 0.98, green: 0.74, blue: 0.40)
+    static let error = Color(red: 0.95, green: 0.48, blue: 0.46)
+    /// Visual review (mockups).
+    static let review = Color(red: 0.73, green: 0.65, blue: 1.0)
+    // Shape and spacing
+    static let cardRadius: CGFloat = 12
+    static let controlHeight: CGFloat = 28
     /// Inner padding of a card: its text never runs into the rounded edge.
-    static let cardPadding = EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
+    static let cardPadding = EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
+    enum Space {
+        static let xs: CGFloat = 4
+        static let s: CGFloat = 6
+        static let m: CGFloat = 8
+        static let l: CGFloat = 10
+    }
+    // Motion
+    /// Geometry changes (a card taking its new height): short, no bounce.
+    static func geometry(reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .smooth(duration: 0.22) }
+    /// Content replaced in place (another answer): a quick cross-fade.
+    static func fade(reduceMotion: Bool) -> Animation { .easeOut(duration: reduceMotion ? 0.1 : 0.16) }
+}
+
+/// Reduce Motion as the island applies it (the system setting or the app's own).
+struct IslandReduceMotionKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var islandReduceMotion: Bool {
+        get { self[IslandReduceMotionKey.self] }
+        set { self[IslandReduceMotionKey.self] = newValue }
+    }
+}
+
+/// Offers its one child the island's whole height budget and takes the
+/// height the child uses, never more than the budget. Scroll areas inside
+/// take what is left after the fixed rows (header, footer), so nothing can
+/// grow past the island and draw over the rows below it — the cause of
+/// Phase 5's overlaps, where estimated heights left the real content taller
+/// than its frame.
+struct HeightBudget: Layout {
+    var maxHeight: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let size = child.sizeThatFits(ProposedViewSize(width: proposal.width, height: maxHeight))
+        return CGSize(width: proposal.width ?? size.width, height: min(size.height, maxHeight))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, anchor: .topLeading,
+                              proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
+    }
+}
+
+struct BudgetModifier: ViewModifier {
+    let maxHeight: CGFloat
+    func body(content: Content) -> some View { HeightBudget(maxHeight: maxHeight) { content } }
 }
 
 /// One spacing rule for the open island. The notch outline's sides stand
@@ -145,8 +204,7 @@ struct IslandContent: View {
                 case .capture: ProjectsView(model: model, presentation: presentation)
                 case .activity: ActivityView(model: model, presentation: presentation)
                 case .mockup: MockupStatesView(model: model, presentation: presentation)
-                case .clipboard: ClipboardImagesView(model: model, presentation: presentation)
-                case .copies: CopiesView(model: model, presentation: presentation)
+                case .clipboard, .copies: ClipboardView(model: model, presentation: presentation)
                 case .history: HistoryView(model: model, presentation: presentation)
                 case .importReport: ImportView(model: model, presentation: presentation)
                 case .settings: IslandSettingsView(model: model, presentation: presentation, settings: settings, notifier: notifier,
@@ -179,31 +237,6 @@ struct IslandBand<Leading: View, Trailing: View>: View {
         }
         .padding(.horizontal, leadingInset)
         .frame(height: presentation.notchSize.height)
-    }
-}
-
-struct ProjectPicker: View {
-    let model: AppModel
-
-    var body: some View {
-        Button { model.navigate(to: .projects) } label: {
-            HStack(spacing: 4) {
-                Text(title)
-                    .font(.system(size: 13.5, weight: .semibold))
-                    .foregroundStyle(Island.primary)
-                    .lineLimit(1).truncationMode(.middle)
-                Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Project: \(title). Choose project")
-        .help("Choose a project or turn capture on and off")
-    }
-
-    private var title: String {
-        if let report = model.selectedImport { return report.projectName ?? "Cloud import" }
-        return model.selectedProject.map(Wording.projectName) ?? "Prompt Relay"
     }
 }
 
@@ -276,6 +309,9 @@ struct ReportFacts {
         case unknownSource(String)
     }
 
+    /// Claude Code started the turn itself (never shown as the user's request).
+    var isAutomated: Bool { if case .automated = task { return true } else { return false } }
+
     /// The request was pasted into Claude Code (shown without its wrapper).
     var taskWasPasted: Bool {
         guard model.selectedImport == nil, let request = model.selectedTurn?.request else { return false }
@@ -322,62 +358,6 @@ struct ReportFacts {
     }
 }
 
-// MARK: - Home
-
-struct HomeView: View {
-    let model: AppModel
-    let presentation: NotchPresentation
-    let actions: SurfaceActions
-    @State private var taskExpanded = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
-            content
-            HomeFooter(model: model, actions: actions).islandFrame("home.footer")
-        }
-        .islandPadding(presentation)
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        let facts = ReportFacts(model: model)
-        if let error = model.projects.error, model.projects.value == nil, model.selectedImport == nil {
-            MessageCard(title: "Prompt Relay can't read its history", detail: error.detail,
-                        symbol: "exclamationmark.triangle", tint: Island.warning,
-                        action: ("Diagnostics", { model.navigate(to: .settings) }))
-        } else if facts.source == nil {
-            if model.projects.value?.isEmpty == false { ProjectPicker(model: model) }
-            if model.projects.value?.isEmpty == true {
-                MessageCard(title: "Choose a project to capture",
-                            detail: "Prompt Relay keeps Claude Code's final answers for projects you turn on. Nothing is captured until you do.",
-                            symbol: "folder.badge.plus", tint: Island.accent,
-                            action: ("Choose Project…", { model.navigate(to: .projects) }))
-            } else {
-                MessageCard(title: "No answer yet",
-                            detail: "When Claude Code finishes in a captured project, its answer appears here.",
-                            symbol: "text.bubble", tint: Island.secondary, action: nil)
-            }
-        } else {
-            HStack(spacing: 8) {
-                ProjectPicker(model: model)
-                Spacer(minLength: 8)
-                SourceLine(model: model, facts: facts)
-            }
-            TaskCard(facts: facts, expanded: $taskExpanded, lines: IslandMetrics.of(presentation).compact ? 1 : 2)
-                .islandFrame("card.task")
-            ResponseCard(model: model, presentation: presentation, facts: facts) { model.navigate(to: .reader) }
-            AttachmentStrip(model: model, compact: IslandMetrics.of(presentation).compact)
-            HStack(spacing: 8) {
-                CopyActions(model: model, blocked: facts.blocker != nil)
-                Spacer(minLength: 0)
-                AttachButton(model: model)
-            }
-            .islandFrame("home.actions")
-            CopyFeedbackLine(model: model)
-        }
-    }
-}
-
 /// "Claude Code · this Mac · 4 min ago", or the import's provenance, and
 /// a warning when capture is off for the project.
 struct SourceLine: View {
@@ -406,10 +386,14 @@ struct SourceLine: View {
     }
 }
 
+/// The request: one or two lines; expanded, the whole text scrolls inside
+/// the card (at most `expandedHeight`), so a long pasted request never
+/// pushes the Response out. Task and Response scroll independently.
 struct TaskCard: View {
     let facts: ReportFacts
     @Binding var expanded: Bool
     var lines = 2
+    static let expandedHeight: CGFloat = 132
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -426,12 +410,16 @@ struct TaskCard: View {
                 Spacer(minLength: 0)
                 if canExpand {
                     Button { expanded.toggle() } label: {
-                        Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.system(size: 9, weight: .bold))
-                            .frame(width: 20, height: 16).contentShape(Rectangle())
+                        HStack(spacing: 3) {
+                            Text(expanded ? "Less" : "More").font(.system(size: 10.5, weight: .medium))
+                            Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.system(size: 8, weight: .bold))
+                        }
+                        .padding(.horizontal, 6).frame(height: 18).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Island.tertiary)
+                    .foregroundStyle(Island.secondary)
                     .accessibilityLabel(expanded ? "Show less of the task" : "Show the whole task")
+                    .help(expanded ? "Collapse the task" : "Show the whole task; it scrolls inside this card")
                 }
             }
             switch facts.task {
@@ -439,20 +427,10 @@ struct TaskCard: View {
                 Text("Claude Code started this turn itself; you did not write its message.")
                     .font(.system(size: 12)).foregroundStyle(Island.tertiary)
                 if let earlier {
-                    Text("Your request before it (turn \(turn ?? 0)): \(earlier.trimmingCharacters(in: .whitespacesAndNewlines))")
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(Island.secondary)
-                        .lineLimit(expanded ? 12 : lines)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .textSelection(.enabled)
+                    body(text: "Your request before it (turn \(turn ?? 0)): \(earlier.trimmingCharacters(in: .whitespacesAndNewlines))")
                 }
             case .linked(let text), .inferred(let text), .supplied(let text), .unknownSource(let text):
-                Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(Island.secondary)
-                    .lineLimit(expanded ? 12 : lines)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
+                body(text: text.trimmingCharacters(in: .whitespacesAndNewlines))
             case .unavailable(let why):
                 Text(why.isEmpty ? "Unavailable" : "Unavailable: \(why)").font(.system(size: 12)).foregroundStyle(Island.tertiary)
             }
@@ -461,6 +439,24 @@ struct TaskCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private func body(text: String) -> some View {
+        let shown = Text(text).font(.system(size: 12.5)).foregroundStyle(Island.secondary)
+        if expanded {
+            BoundedScroll(maxHeight: Self.expandedHeight, minHeight: 36) {
+                shown.frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                    .padding(.trailing, 6)
+            }
+            .islandFrame("task.scroll")
+        } else {
+            shown.lineLimit(lines).truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var canExpand: Bool {
@@ -473,19 +469,18 @@ struct TaskCard: View {
 }
 
 /// Claude's answer, rendered from Markdown, scrolling inside the card: the
-/// pointer over it scrolls only the answer. A different answer starts at its
-/// top again. View Full Report opens the reader; every copy uses the
-/// original text, never what is drawn here.
+/// pointer over it scrolls only the answer. Another answer starts at its
+/// top; the card takes its new height smoothly and the text cross-fades.
+/// View Full Report opens the reader; every copy uses the original text,
+/// never what is drawn here.
 struct ResponseCard: View {
     let model: AppModel
-    let presentation: NotchPresentation
     let facts: ReportFacts
-    /// Height of the answer's own scroll area (Details computes it).
-    var scrollHeight: CGFloat? = nil
     let openFull: () -> Void
+    @Environment(\.islandReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Island.Space.m) {
             HStack(spacing: 6) {
                 Caption("Response")
                 if let n = facts.characters, n > 0 {
@@ -498,15 +493,18 @@ struct ResponseCard: View {
                 Text(model.selectedTurn?.error?.message ?? blocker)
                     .font(.system(size: 12.5))
                     .foregroundStyle(model.selectedTurn?.status == .apiError ? Island.error : Island.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 let text = facts.text ?? ""
-                BoundedScroll(maxHeight: scrollHeight ?? Self.scrollHeight(presentation, hasAttachments: !model.attachments(for: model.currentRef).isEmpty || model.attachmentMessage != nil)) {
+                BoundedScroll(minHeight: 48, resetID: model.currentRef) {
                     MarkdownBlocksView(blocks: Markdown.blocks(text), codeLineLimit: nil, fontSize: 13)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.trailing, 6)   // room for the scroller
                         .textSelection(.enabled)
+                        .id(model.currentRef)
+                        .transition(.opacity)
                 }
-                .id(Self.scrollIdentity(ref: model.currentRef, text: text))
+                .animation(Island.fade(reduceMotion: reduceMotion), value: model.currentRef)
                 .islandFrame("response.scroll")
                 .accessibilityLabel("Response")
                 Button(action: openFull) {
@@ -520,7 +518,7 @@ struct ResponseCard: View {
                 .buttonStyle(.plain)
                 .islandFrame("response.full")
                 .accessibilityLabel("View Full Report")
-                .help("Read the complete report with more room")
+                .help("Open Full Report: the complete answer, formatted or as plain text")
             }
         }
         .padding(Island.cardPadding)
@@ -528,24 +526,9 @@ struct ResponseCard: View {
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
         .islandFrame("card.response")
     }
-
-    /// Height of the answer's scroll area: what Home has left on this display
-    /// after its other rows (measured: about 290 pt, plus a line of copy
-    /// feedback and the image strip when shown), within a comfortable range.
-    @MainActor static func scrollHeight(_ presentation: NotchPresentation, hasAttachments: Bool) -> CGFloat {
-        let compact = IslandMetrics.of(presentation).compact
-        let chrome: CGFloat = (compact ? 290 : 322) + (hasAttachments ? AttachmentStrip.rowHeight(compact: compact) : 0)
-        return min(max(presentation.maxContentHeight - chrome, 60), 260)
-    }
-
-    /// Changes with the answer shown, so a different answer starts at its top
-    /// (and again once its full text replaces the preview).
-    static func scrollIdentity(ref: ReportRef?, text: String) -> String {
-        "\(ref.map { String(describing: $0) } ?? "none")#\(text.utf8.count)"
-    }
 }
 
-/// The first blocks of the answer, clipped to a few lines with a fade. Display only.
+/// The first blocks of the answer, clipped to a few lines. Display only.
 struct ResponsePreview: View {
     let text: String
     let lines: Int
@@ -556,43 +539,47 @@ struct ResponsePreview: View {
             .frame(maxWidth: .infinity, maxHeight: CGFloat(lines) * 19, alignment: .topLeading)
             .fixedSize(horizontal: false, vertical: true)
             .clipped()
-            .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.75),
-                                         .init(color: .black.opacity(0.2), location: 1)],
-                                 startPoint: .top, endPoint: .bottom))
     }
 }
 
-/// Copy Response (the one white accent) and Copy for ChatGPT.
+/// Copy Response (the one white button) and Copy for ChatGPT. A copy that
+/// worked shows "Copied!" with a check on the button for 2 s; a failure is
+/// never shown as a success (see `CopyFailureLine`).
 struct CopyActions: View {
     let model: AppModel
     let blocked: Bool
+    /// Reports which button the pointer is over (Quick Peek explains it).
+    var onHover: ((AppModel.CopyKind?) -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Island.Space.m) {
             Button {
                 Task { await model.copySelectedResponse() }
             } label: {
-                Label(copied(.response) ? "Copied" : "Copy Response",
+                Label(copied(.response) ? "Copied!" : "Copy Response",
                       systemImage: copied(.response) ? "checkmark" : "doc.on.doc")
             }
             .buttonStyle(IslandPillStyle(prominent: true))
             .disabled(blocked)
             .keyboardShortcut("c", modifiers: [.command, .shift])
+            .onHover { onHover?($0 ? .response : nil) }
             .accessibilityLabel("Copy Response")
-            .accessibilityHint("Copies Claude's complete final answer, unchanged")
-            .help("Copy Claude's complete answer, exactly as written (⇧⌘C)")
+            .accessibilityHint("Copies only Claude's complete final answer, unchanged")
+            .help("Copy Response: only Claude's answer, exactly as written (⇧⌘C)")
 
             Button {
                 Task { await model.copySelectedContext() }
             } label: {
-                Label(copied(.context) ? "Copied" : "Copy for ChatGPT",
+                Label(copied(.context) ? "Copied!" : "Copy for ChatGPT",
                       systemImage: copied(.context) ? "checkmark" : "checklist")
             }
             .buttonStyle(IslandPillStyle(prominent: false))
             .disabled(blocked)
             .keyboardShortcut("c", modifiers: [.command, .option])
+            .onHover { onHover?($0 ? .context : nil) }
             .accessibilityLabel("Copy for ChatGPT")
-            .help("Copy the task, the complete answer, the observed work and the attachment list, with a request for an independent review (⌥⌘C)")
+            .accessibilityHint("Copies a review package: task, answer, observed commands, changed files, Git state and attachment list")
+            .help("Copy for ChatGPT: task, answer, commands and checks, changed files, Git state and the attachment list, for an independent review (⌥⌘C)")
         }
         .animation(.easeOut(duration: 0.15), value: model.copyFeedback)
     }
@@ -603,123 +590,16 @@ struct CopyActions: View {
     }
 }
 
-/// One line after a copy: what exactly went to the clipboard.
-struct CopyFeedbackLine: View {
-    let model: AppModel
-
-    var body: some View {
-        Group {
-            switch model.copyFeedback {
-            case .copied(.response, let n): line("Copied the complete response: \(n.formatted()) characters.", Island.accent)
-            case .copied(.context, let n): line("Copied for ChatGPT: \(n.formatted()) characters.", Island.accent)
-            case .copied(.image, _): line("Copied the image.", Island.accent)
-            case .copied(.files, let n): line(n == 1 ? "Copied the file." : "Copied \(n) files.", Island.accent)
-            case .copied(.responseWithImages, let n):
-                line("Copied \(n.formatted()) characters and the images. Check that the images arrive where you paste.", Island.accent)
-            case .failed(let reason): line(reason, Island.error)
-            default: EmptyView()
-            }
-        }
-        .transition(.opacity)
-    }
-
-    private func line(_ text: String, _ tint: Color) -> some View {
-        Text(text).font(.system(size: 11)).foregroundStyle(tint).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// Copies, History and Import on the left; Settings and Quit in the corner.
-struct HomeFooter: View {
-    let model: AppModel
-    let actions: SurfaceActions
-
-    var body: some View {
-        HStack(spacing: 6) {
-            FooterLink(title: "Copies", symbol: "clock.arrow.circlepath", help: "Your last five copies") { model.navigate(to: .copies) }
-            FooterLink(title: "History", symbol: "tray.full", help: "Every captured and imported report, with search") {
-                model.navigate(to: .history)
-            }
-            FooterLink(title: "Import", symbol: "square.and.arrow.down", help: "Import a report from a Claude Code cloud session") {
-                model.navigate(to: .importReport)
-            }
-            Spacer(minLength: 4)
-            Button { model.navigate(to: .settings) } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 28, height: 26)
-                    .overlay(alignment: .topTrailing) {
-                        if !AppBuild.otherBuildsRunning().isEmpty {
-                            Circle().fill(Island.warning).frame(width: 5, height: 5).offset(x: -4, y: 4)
-                        }
-                    }
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut(",", modifiers: .command)
-            .accessibilityLabel("Settings")
-            .help("Settings (⌘,)")
-            QuitButton(actions: actions)
-        }
-        .foregroundStyle(Island.secondary)
-    }
-}
-
-struct FooterLink: View {
-    let title: String
-    let symbol: String
-    let help: String
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            Label(title, systemImage: symbol)
-                .font(.system(size: 11.5, weight: .medium))
-                .padding(.horizontal, 9).frame(height: 26)
-                .background(Capsule().fill(hovering ? Island.cardRaised : Island.card))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .help(help)
-    }
-}
-
-/// Quit asks once more: the first click turns it into "Quit?" for a few seconds.
-struct QuitButton: View {
-    let actions: SurfaceActions
-    @State private var armed = false
-
-    var body: some View {
-        Button {
-            if armed { actions.quit() } else {
-                armed = true
-                Task { try? await Task.sleep(nanoseconds: 3_000_000_000); armed = false }
-            }
-        } label: {
-            Group {
-                if armed {
-                    Text("Quit?").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(Island.error).padding(.horizontal, 6)
-                } else {
-                    Image(systemName: "power").font(.system(size: 12, weight: .medium))
-                }
-            }
-            .frame(minWidth: 28, minHeight: 26)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(armed ? "Confirm: quit Prompt Relay" : "Quit Prompt Relay")
-        .help("Quit Prompt Relay")
-        .animation(.easeOut(duration: 0.15), value: armed)
-    }
-}
-
 // MARK: - Quick Peek
 
+/// Answers four questions without Details: which session, what Claude just
+/// reported (its own first line, never a summary), what else there is
+/// (failures, documents, images, mockups) and what each copy does.
 struct PeekContent: View {
     let model: AppModel
     let presentation: NotchPresentation
     let interaction: NotchInteraction
+    @State private var hovered: AppModel.CopyKind?
 
     var body: some View {
         let facts = ReportFacts(model: model)
@@ -730,9 +610,9 @@ struct PeekContent: View {
                             .islandFrame("band.mascot")
                 }
             } trailing: {
-                BandStatus(model: model)
+                if let at = facts.at { Text(Wording.relative(at)).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.tertiary) }
             }
-            VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+            VStack(alignment: .leading, spacing: Island.Space.m) {
                 if facts.source == nil {
                     HStack(alignment: .center) {
                         Text(model.projects.value?.isEmpty == true ? "Click to choose a project to capture." : "No answer yet.")
@@ -741,78 +621,131 @@ struct PeekContent: View {
                         expandButton
                     }
                 } else {
-                    // 1. project · session · status and time
-                    HStack(spacing: 5) {
-                        Text(model.selectedImport.map { $0.projectName ?? "Cloud import" }
-                             ?? model.selectedProject.map(Wording.projectName) ?? "Prompt Relay")
-                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(Island.primary)
-                            .lineLimit(1).truncationMode(.middle).layoutPriority(1)
-                        if let session = model.selectedImport == nil ? model.selectedSession.map(Wording.sessionTitle) : "imported" {
-                            Text("· " + session).font(.system(size: 12)).foregroundStyle(Island.secondary).lineLimit(1)
-                        }
-                        Spacer(minLength: 6)
-                        Text(statusLine).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1).layoutPriority(1)
+                    header
+                    VStack(alignment: .leading, spacing: 3) {
+                        taskLine(facts)
+                        answerLine(facts)
                     }
-                    // 2. the task, 3. the start of Claude's own answer
-                    switch facts.task {
-                    case .linked(let task), .inferred(let task), .supplied(let task):
-                        Text(task.trimmingCharacters(in: .whitespacesAndNewlines))
-                            .font(.system(size: 12)).foregroundStyle(Island.primary).lineLimit(1)
-                    case .unknownSource(let task):
-                        Text("Source not established · " + task.trimmingCharacters(in: .whitespacesAndNewlines))
-                            .font(.system(size: 12)).foregroundStyle(Island.primary).lineLimit(1)
-                    case .automated(let earlier, _):
-                        Text(earlier.map { "Started automatically · after: " + $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                             ?? "Started automatically by Claude Code")
-                            .font(.system(size: 12)).foregroundStyle(Island.primary).lineLimit(1)
-                    case .unavailable: EmptyView()
-                    }
-                    if let blocker = facts.blocker {
-                        Text(model.selectedTurn?.error?.message ?? blocker).font(.system(size: 11.5)).foregroundStyle(Island.secondary)
-                            .lineLimit(1)
+                    factsLine
+                    if let step = model.activeHandoff {
+                        HandoffFooter(model: model, step: step).islandFrame("peek.handoff")
                     } else {
-                        Text(Self.firstLine(facts.text ?? "")).font(.system(size: 11.5)).foregroundStyle(Island.secondary)
-                            .lineLimit(1).islandFrame("peek.preview")
-                    }
-                    // 4. facts and materials, one line each at most
-                    let summary = model.materialSummary(for: model.currentRef)
-                    if model.selectedImport == nil || !summary.isEmpty {
-                        HStack(spacing: 5) {
-                            if model.selectedImport == nil { ObservedChips(observed: model.selectedTurn?.observed) }
-                            if !summary.isEmpty {
-                                Text(summary.line).font(.system(size: 10.5)).foregroundStyle(Island.secondary).lineLimit(1)
-                            }
-                            if summary.needsVisualReview {
-                                Text("Visual review required").font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(Color(red: 0.73, green: 0.65, blue: 1)).lineLimit(1)
-                            }
+                        HStack(spacing: Island.Space.m) {
+                            CopyActions(model: model, blocked: facts.blocker != nil) { hovered = $0 }
                             Spacer(minLength: 0)
+                            detailsButton
                         }
+                        .islandFrame("peek.actions")
                     }
-                    // 5. the two copies and Details
-                    HStack(spacing: 8) {
-                        CopyActions(model: model, blocked: facts.blocker != nil)
-                        Spacer(minLength: 0)
-                        detailsButton
-                    }
-                    .islandFrame("peek.actions")
-                    CopyFeedbackLine(model: model)
+                    CopyFailureLine(model: model)
                 }
             }
             .islandPadding(presentation)
         }
+        .animation(.easeOut(duration: 0.15), value: model.activeHandoff)
     }
 
-    /// The status in words; the band already shows how long ago.
-    private var statusLine: String {
-        if model.selectedImport != nil { return "Imported" }
-        guard let turn = model.selectedTurn else { return "" }
-        switch turn.status {
-        case .awaitingResponse: return "Working"
-        case .apiError: return "API error"
-        case .stopReceivedBackgroundTasksPending: return "Stopped · background work"
-        default: return "Stopped"
+    /// Project · session, and the turn's state as a chip.
+    private var header: some View {
+        HStack(spacing: 5) {
+            Text(model.selectedImport.map { $0.projectName ?? "Cloud import" }
+                 ?? model.selectedProject.map(Wording.projectName) ?? "Prompt Relay")
+                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Island.primary)
+                .lineLimit(1).truncationMode(.middle).layoutPriority(1)
+            if let session = model.selectedImport == nil ? model.selectedSession.map(Wording.sessionTitle) : "imported report" {
+                Text("· " + session).font(.system(size: 12)).foregroundStyle(Island.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 6)
+            let (label, tint) = status
+            if !label.isEmpty { Tag(label, tint: tint).layoutPriority(1) }
         }
+        .islandFrame("peek.header")
+    }
+
+    private func taskLine(_ facts: ReportFacts) -> some View {
+        let text: String? = {
+            switch facts.task {
+            case .linked(let t), .inferred(let t), .supplied(let t): return t
+            case .unknownSource(let t): return "Source not established · " + t
+            case .automated(let earlier, _):
+                return earlier.map { "Started automatically · after: " + $0 } ?? "Started automatically by Claude Code"
+            case .unavailable: return nil
+            }
+        }()
+        return Group {
+            if let text {
+                HStack(spacing: 5) {
+                    Image(systemName: facts.isAutomated ? "gearshape.2" : "person").font(.system(size: 9.5))
+                        .foregroundStyle(Island.tertiary).frame(width: 12)
+                    Text(Self.oneLine(text)).font(.system(size: 11.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                }
+                .accessibilityLabel(facts.isAutomated ? "Started automatically" : "Your task: \(text)")
+            }
+        }
+    }
+
+    private func answerLine(_ facts: ReportFacts) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Image(systemName: "text.bubble").font(.system(size: 9.5)).foregroundStyle(Island.tertiary).frame(width: 12)
+            if let blocker = facts.blocker {
+                Text(model.selectedTurn?.error?.message ?? blocker).font(.system(size: 12.5))
+                    .foregroundStyle(model.selectedTurn?.status == .apiError ? Island.error : Island.secondary).lineLimit(2)
+            } else {
+                Text(Self.firstLine(facts.text ?? "")).font(.system(size: 12.5)).foregroundStyle(Island.primary)
+                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .islandFrame("peek.preview")
+    }
+
+    /// What there is beyond the text, only what was really observed or
+    /// attached; while a copy button is hovered, what that button copies.
+    private var factsLine: some View {
+        let summary = model.materialSummary(for: model.currentRef)
+        let observed = model.selectedImport == nil ? model.selectedTurn?.observed : nil
+        let failed = observed.map { max($0.commandsNonzero ?? 0, $0.runsNonzero) } ?? 0
+        let files = model.handoffAttachments(for: model.currentRef).count
+        return HStack(spacing: 5) {
+            switch hovered {
+            case .response?:
+                hint("Copies only Claude's answer, exactly as written.")
+            case .context?:
+                hint("Copies task, answer, commands, changed files and Git state for review"
+                     + (files > 0 ? "; then the \(files == 1 ? "file" : "\(files) files")." : "."))
+            default:
+                if failed > 0 { Tag(failed == 1 ? "1 failed run" : "\(failed) failed runs", tint: Island.error) }
+                if let o = observed, o.runsExitZero > 0 { Tag("\(o.runsExitZero)× exit 0", tint: Island.success) }
+                ForEach(summary.parts, id: \.self) { Tag($0, tint: Island.secondary) }
+                if summary.needsVisualReview { Tag("Visual review required", tint: Island.review) }
+                if failed == 0 && (observed?.runsExitZero ?? 0) == 0 && summary.parts.isEmpty && !summary.needsVisualReview {
+                    hint("Copy Response: the answer · Copy for ChatGPT: a review package")
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(height: 17)
+        .islandFrame("peek.facts")
+    }
+
+    private func hint(_ text: String) -> some View {
+        Text(text).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
+    }
+
+    /// The turn's state; "New answer" while unseen.
+    private var status: (String, Color) {
+        if model.selectedImport != nil { return ("Imported", Island.secondary) }
+        guard let turn = model.selectedTurn else { return ("", Island.tertiary) }
+        if model.hasUnseenAnswer { return ("New answer", Island.accent) }
+        switch turn.status {
+        case .awaitingResponse: return ("Working", Island.warning)
+        case .apiError: return ("API error", Island.error)
+        case .stopReceivedBackgroundTasksPending: return ("Stopped · background work", Island.warning)
+        default: return ("Stopped", Island.secondary)
+        }
+    }
+
+    static func oneLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty } ?? ""
     }
 
     /// The first non-empty line of the answer, without Markdown markers. Display only.
@@ -829,7 +762,7 @@ struct PeekContent: View {
                 Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
             }
             .font(.system(size: 12, weight: .semibold))
-            .padding(.horizontal, 11).frame(height: 28)
+            .padding(.horizontal, 11).frame(height: Island.controlHeight)
             .background(Capsule().fill(Island.control))
         }
         .buttonStyle(.plain)
@@ -923,31 +856,48 @@ struct IslandPillStyle: ButtonStyle {
     }
 }
 
-/// ‹ 2/5 ›: earlier answers of the selected session.
+/// ‹ 7/8 ›: the answers of the selected session in the order they came,
+/// 1 the first and N the newest (Phase 5 counted newest first, so the
+/// newest showed as 1/N, and as 2/N when Claude Code started a later turn
+/// itself). Automatic turns are counted and marked, never hidden.
 struct AnswerStepper: View {
     let model: AppModel
     let turn: Turn
 
-    var body: some View {
+    /// 1-based position in chronological order and the number of answers.
+    @MainActor static func position(_ model: AppModel, turn index: Int) -> (position: Int, count: Int)? {
         let answers = NotchRootView.answerTurns(model)
-        if answers.count > 1, let index = answers.firstIndex(of: turn.index) {
-            let position = index + 1
+        guard let i = answers.firstIndex(of: index) else { return nil }
+        return (answers.count - i, answers.count)
+    }
+
+    var body: some View {
+        if let (position, count) = Self.position(model, turn: turn.index), count > 1 {
             HStack(spacing: 1) {
-                step("chevron.left", label: "Older answer", enabled: position < answers.count) { NotchRootView.step(model, by: 1) }
-                Text("\(position)/\(answers.count)").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Island.tertiary)
-                step("chevron.right", label: "Newer answer", enabled: position > 1) { NotchRootView.step(model, by: -1) }
+                step("chevron.left", label: "Previous answer", enabled: position > 1) { NotchRootView.step(model, by: 1) }
+                HStack(spacing: 3) {
+                    if turn.requestOrigin == .automated {
+                        Image(systemName: "gearshape.2").font(.system(size: 8.5)).help("Claude Code started this turn itself")
+                    }
+                    Text("\(position)/\(count)").font(.system(size: 10.5).monospacedDigit())
+                }
+                .foregroundStyle(Island.tertiary)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Answer \(position) of \(count)")
+                step("chevron.right", label: "Next answer", enabled: position < count) { NotchRootView.step(model, by: -1) }
             }
         }
     }
 
     private func step(_ symbol: String, label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 9, weight: .bold)).frame(width: 18, height: 18).contentShape(Rectangle())
+            Image(systemName: symbol).font(.system(size: 9, weight: .bold)).frame(width: 20, height: 20).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.white.opacity(enabled ? 0.8 : 0.25))
+        .foregroundStyle(Island.primary.opacity(enabled ? 0.85 : 0.25))
         .disabled(!enabled)
         .accessibilityLabel(label)
+        .help(label + (symbol == "chevron.left" ? " (←)" : " (→)"))
     }
 }
 
@@ -997,12 +947,19 @@ struct IslandSwitchStyle: ToggleStyle {
     }
 }
 
-/// A scroll view as tall as its content, up to `maxHeight`; longer content
-/// scrolls inside the island and fades at the bottom edge.
+/// A scroll view as tall as its content, up to `maxHeight` and up to the
+/// height its parent offers (see `HeightBudget`); longer content scrolls
+/// inside it. When `resetID` changes (another answer) it returns to the top
+/// and takes the new height smoothly; the scroll view itself is kept, so
+/// its height never drops to nothing between two answers.
 struct BoundedScroll<Content: View>: View {
-    let maxHeight: CGFloat
+    var maxHeight: CGFloat = .infinity
+    /// Never squeezed below this (or below the content, if shorter).
+    var minHeight: CGFloat = 0
+    var resetID: AnyHashable? = nil
     @ViewBuilder let content: Content
-    @State private var height: CGFloat = 0
+    @State private var height: CGFloat?
+    @Environment(\.islandReduceMotion) private var reduceMotion
 
     var body: some View {
         // The content's height is read after layout (no preference: a
@@ -1010,19 +967,29 @@ struct BoundedScroll<Content: View>: View {
         // times per frame). The scroller does not depend on the measurement:
         // with legacy scrollers (a mouse attached) showing it only when
         // "too tall" narrowed the content, which changed its height again.
-        ScrollView {
-            content.onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { new in
-                if abs(new - height) >= 0.5 { height = new }
+        // No fade mask: it darkened the last lines (Phase 6).
+        let natural = min(height ?? 0, maxHeight)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: 0).id(Self.top)
+                    content
+                }
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { new in
+                    guard abs(new - (height ?? -1)) >= 0.5 else { return }
+                    if height == nil { height = new } else {
+                        withAnimation(Island.geometry(reduceMotion: reduceMotion)) { height = new }
+                    }
+                }
             }
+            .scrollIndicators(.automatic)
+            .scrollBounceBehavior(.basedOnSize)
+            .onChange(of: resetID) { proxy.scrollTo(Self.top, anchor: .top) }
         }
-        .scrollIndicators(.automatic)
-        .scrollBounceBehavior(.basedOnSize)
-        .frame(height: min(max(height, 1), maxHeight))
-        .mask(LinearGradient(stops: [.init(color: .black, location: 0),
-                                     .init(color: .black, location: height > maxHeight ? 0.9 : 1),
-                                     .init(color: height > maxHeight ? .clear : .black, location: 1)],
-                             startPoint: .top, endPoint: .bottom))
+        .frame(minHeight: max(1, min(minHeight, natural)), idealHeight: max(1, natural), maxHeight: max(1, natural))
     }
+
+    private static var top: String { "bounded-scroll-top" }
 }
 
 /// A grouped list card: rows separated by hairlines, like a macOS form.
@@ -1043,149 +1010,15 @@ struct Hairline: View {
 
 // MARK: - Attachments
 
-struct AttachButton: View {
-    let model: AppModel
-
-    var body: some View {
-        Button { model.chooseAttachments() } label: {
-            Image(systemName: "paperclip").font(.system(size: 12, weight: .medium))
-                .frame(width: 30, height: 30).background(Circle().fill(Island.control))
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(Island.primary)
-        .disabled(model.reportStore == nil || model.currentRef == nil || model.isPresentingSystemDialog)
-        .islandFrame("home.attach")
-        .accessibilityLabel("Add images to this report")
-        .help("Add screenshots or other images to this report. They are copied into Prompt Relay's private folder.")
-    }
-}
-
-/// The report's images as compact file cards (thumbnail, name, type and
-/// size, actions, ×), in one row that scrolls sideways: any number of images
-/// adds one fixed-height row to Home. Images are never inside the text.
-struct AttachmentStrip: View {
-    let model: AppModel
-    var compact = false
-
-    static func cardHeight(compact: Bool) -> CGFloat { compact ? 40 : 52 }
-    /// Home's extra height when a report has images (caption + row + spacing).
-    static func rowHeight(compact: Bool) -> CGFloat { compact ? 70 : 86 }
-
-    var body: some View {
-        let attachments = model.attachments(for: model.currentRef)
-        if !attachments.isEmpty || model.attachmentMessage != nil {
-            VStack(alignment: .leading, spacing: 7) {
-                if !attachments.isEmpty {
-                    HStack(spacing: 10) {
-                        Caption("Images · \(attachments.count)")
-                        Spacer(minLength: 0)
-                        Button("Show in Finder") { model.revealAttachmentsForHandoff(attachments) }
-                            .help("Opens the images under their original names, selected: drag them into ChatGPT after pasting the text.")
-                        Button("Copy Text + Images") { Task { await model.copyResponseWithImages() } }
-                            .help("The complete text and the images in one copy. Some apps paste only the text; then paste the text and drag the images.")
-                    }
-                    .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(attachments) { AttachmentCard(model: model, attachment: $0, compact: compact) }
-                        }
-                    }
-                    .frame(height: Self.cardHeight(compact: compact))
-                    .mask(HStack(spacing: 0) {
-                        Color.black
-                        LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 18)
-                    })
-                    .islandFrame("home.attachments")
-                }
-                if let message = model.attachmentMessage {
-                    Text(message).font(.system(size: 11)).foregroundStyle(Island.warning)
-                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-    }
-}
-
-/// One image: a small thumbnail, its original name, type and size; the ⋯
-/// menu (Open, Copy Image, Copy File, Show in Finder) and × to remove it from
-/// the report. Drag the card into another app to give it the file.
-struct AttachmentCard: View {
-    let model: AppModel
-    let attachment: ReportAttachment
-    var compact = false
-    @State private var hovering = false
-
-    var body: some View {
-        let url = model.attachmentURL(attachment)
-        HStack(spacing: 9) {
-            Group {
-                if let url, let thumb = Thumbnails.image(for: url) {
-                    Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fill)
-                } else {
-                    Image(systemName: "exclamationmark.triangle").foregroundStyle(Island.warning)
-                }
-            }
-            .frame(width: compact ? 30 : 40, height: compact ? 30 : 40)
-            .background(Island.code)
-            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).stroke(Island.hairline))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(attachment.originalFilename)
-                    .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
-                    .lineLimit(1).truncationMode(.middle)
-                if !compact || url == nil {
-                    Text(url == nil ? "Missing" : Self.detail(attachment))
-                        .font(.system(size: 10.5)).foregroundStyle(url == nil ? Island.warning : Island.tertiary)
-                        .lineLimit(1)
-                }
-            }
-            .frame(width: 104, alignment: .leading)
-            Menu {
-                Button("Open") { if let url { NSWorkspace.shared.open(url) } }.disabled(url == nil)
-                Button("Copy Image") { model.copyAttachment(attachment) }.disabled(url == nil)
-                Button("Copy File") { model.copyAttachmentFiles([attachment]) }.disabled(url == nil)
-                Button("Show in Finder") { model.revealAttachmentsForHandoff([attachment]) }.disabled(url == nil)
-            } label: {
-                Image(systemName: "ellipsis").font(.system(size: 11, weight: .semibold))
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .accessibilityLabel("Actions for \(attachment.originalFilename)")
-            Button { model.removeAttachment(attachment) } label: {
-                Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
-                    .frame(width: 18, height: 18).background(Circle().fill(Island.control))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Island.secondary)
-            .accessibilityLabel("Remove \(attachment.originalFilename) from this report")
-            .help("Remove from this report (the text stays as it is)")
-        }
-        .padding(.leading, 6).padding(.trailing, 8)
-        .frame(height: AttachmentStrip.cardHeight(compact: compact))
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(hovering ? Island.cardRaised : Island.card))
-        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .onHover { hovering = $0 }
-        .onTapGesture(count: 2) { if let url { NSWorkspace.shared.open(url) } }
-        .onDrag { model.dragFile(for: attachment).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
-        .help("\(attachment.originalFilename) · drag into another app, double-click to open")
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Image \(attachment.originalFilename)")
-    }
-
-    static func detail(_ a: ReportAttachment) -> String {
-        let type = a.mimeType.split(separator: "/").last.map { String($0).uppercased() } ?? "IMAGE"
-        return "\(type) · \(ByteCountFormatter.string(fromByteCount: Int64(a.byteCount), countStyle: .file))"
-    }
-}
-
 /// Small thumbnails decoded once at display size (never the full image).
 @MainActor
 enum Thumbnails {
-    private static var cache: [URL: NSImage] = [:]
+    /// Keyed by file and size: a 64 px thumbnail is never reused where 240 px is drawn.
+    private static var cache: [String: NSImage] = [:]
 
     static func image(for url: URL, maxPixels: Int = 96) -> NSImage? {
-        if let hit = cache[url] { return hit }
+        let key = "\(maxPixels)@\(url.path)"
+        if let hit = cache[key] { return hit }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true,
                                                                          kCGImageSourceCreateThumbnailWithTransform: true,
@@ -1193,7 +1026,7 @@ enum Thumbnails {
         else { return nil }
         let image = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
         if cache.count > 64 { cache.removeAll() }
-        cache[url] = image
+        cache[key] = image
         return image
     }
 }
@@ -1307,59 +1140,6 @@ struct ProjectRowView: View {
         }
         if imports > 0 { parts.append(imports == 1 ? "1 cloud import" : "\(imports) cloud imports") }
         return parts.joined(separator: " · ")
-    }
-}
-
-// MARK: - Recent Copies
-
-struct CopiesView: View {
-    let model: AppModel
-    let presentation: NotchPresentation
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
-            Text("The last \(AppModel.copyHistoryLimit) copies you made here. Copy Again fetches the original text again; nothing outside Prompt Relay is watched.")
-                .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
-            if model.copyHistory.isEmpty {
-                MessageCard(title: "Nothing copied yet", detail: "Copy a response or a Review Pack and it appears here.",
-                            symbol: "clock.arrow.circlepath", tint: Island.secondary, action: nil)
-            } else {
-                GroupCard {
-                    ForEach(Array(model.copyHistory.enumerated()), id: \.element.id) { i, record in
-                        if i > 0 { Hairline() }
-                        row(record)
-                    }
-                }
-            }
-            CopyFeedbackLine(model: model)
-        }
-        .islandPadding(presentation)
-    }
-
-    private func row(_ record: CopyRecord) -> some View {
-        let available = model.isAvailable(record.ref)
-        return HStack(spacing: 8) {
-            Button { model.open(record.ref) } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: record.kind == .response ? "doc.on.doc" : "checklist")
-                        .font(.system(size: 12)).foregroundStyle(Island.secondary).frame(width: 16)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(record.kind.title) · \(record.projectName)").font(.system(size: 12.5, weight: .semibold))
-                            .foregroundStyle(Island.primary).lineLimit(1)
-                        Text(available ? "\(record.label) · \(Wording.relative(record.at))" : "No longer in history")
-                            .font(.system(size: 11)).foregroundStyle(available ? Island.tertiary : Island.warning).lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
-            .buttonStyle(IslandRowStyle())
-            .disabled(!available)
-            Button("Copy Again") { Task { await model.copyAgain(record) } }
-                .buttonStyle(IslandPillStyle(prominent: false))
-                .disabled(!available)
-                .padding(.trailing, 10)
-        }
-        .padding(.horizontal, 2)
     }
 }
 
@@ -1666,7 +1446,10 @@ struct ImportView: View {
 // MARK: - Full Report
 
 /// The whole report, scrolling inside the island: formatted, or the exact
-/// plain text. It always shows everything the report contains.
+/// plain text. Both are drawn from the same original text in one viewport
+/// that keeps its size, so switching never changes the island's height
+/// (Phase 5: back to Formatted, the island collapsed to 93 pt and cut the
+/// report off; see `NotchPresentation.reportContentHeight`).
 struct ReaderView: View {
     let model: AppModel
     let presentation: NotchPresentation
@@ -1688,29 +1471,20 @@ struct ReaderView: View {
                 .labelsHidden()
                 .controlSize(.small)
                 .fixedSize()
+                .help("Formatted renders the Markdown; Plain Text shows the exact characters. Both copy the same original.")
             }
             if let text = fullText {
-                Group {
-                    if plain {
-                        VerbatimTextView(text, textColor: NSColor.white.withAlphaComponent(0.92), fontSize: 12.5)
-                            .padding(6)
-                            .frame(height: presentation.listHeight(chrome: 92))
-                    } else {
-                        BoundedScroll(maxHeight: presentation.listHeight(chrome: 92)) {
-                            MarkdownBlocksView(blocks: Markdown.blocks(text), codeLineLimit: nil, fontSize: 13)
-                                .padding(12)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .textSelection(.enabled)
-                        }
-                    }
-                }
-                .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
-                .clipShape(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous))
+                ReaderBody(text: text, plain: plain)
+                    .frame(minHeight: 120, maxHeight: .infinity)
+                    .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+                    .clipShape(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous))
+                    .islandFrame("reader.body")
                 HStack(spacing: 8) {
                     CopyActions(model: model, blocked: false)
                     Spacer(minLength: 0)
                 }
-                CopyFeedbackLine(model: model)
+                .islandFrame("reader.actions")
+                CopyFailureLine(model: model)
             } else if model.detail.isLoading {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity).padding(.vertical, 8)
             } else {
@@ -1725,5 +1499,29 @@ struct ReaderView: View {
     private var fullText: String? {
         if let report = model.selectedImport { return report.text }
         return model.selectedResponseText
+    }
+}
+
+/// One viewport, two renderings of the same text. Each fills the viewport
+/// (no measured height), so the switch is a swap inside a fixed frame.
+struct ReaderBody: View {
+    let text: String
+    let plain: Bool
+
+    var body: some View {
+        if plain {
+            VerbatimTextView(text, textColor: NSColor.white.withAlphaComponent(0.92), fontSize: 12.5)
+                .padding(6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollView {
+                MarkdownBlocksView(blocks: Markdown.blocks(text), codeLineLimit: nil, fontSize: 13)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .scrollIndicators(.automatic)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }

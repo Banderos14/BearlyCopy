@@ -49,10 +49,20 @@ public final class NotchPresentation {
 
     public init() {}
 
-    /// Called by the view when its content size changes.
+    /// The last height the view asked for (applied or still queued).
+    @ObservationIgnored private var requestedContentHeight: CGFloat?
+
+    /// Called by the view when its content size changes. Compared with the
+    /// last *request*, not with `contentHeight`: the controller applies a
+    /// request after the layout pass, so a second report in the same pass
+    /// (a scroller measured its content: 93 → 319 pt) equalled the old,
+    /// not yet replaced height and was dropped, leaving the island at 93 pt
+    /// with its content cut off (Phase 6: Full Report, Plain → Formatted).
     func reportContentHeight(_ height: CGFloat) {
         let clamped = min(max(height.rounded(.up), NotchLayout.minContentHeight), maxContentHeight)
-        guard abs(clamped - contentHeight) >= 1 else { return }
+        let last = requestedContentHeight ?? contentHeight
+        guard abs(clamped - last) >= 1 else { return }
+        requestedContentHeight = clamped
         if let onContentHeight { onContentHeight(clamped) } else { contentHeight = clamped }
     }
 
@@ -397,10 +407,11 @@ public final class NotchController {
         case .hidden:
             presentation.isExpanded = false
             presentation.isFocused = false
-            if old.isExpanded { model.surfaceDisappeared() }
+            if old.isExpanded { model.surfaceDisappeared(); model.endHandoff() }
             panel?.orderOut(nil)
         case .compact:
-            if old.isExpanded { model.surfaceDisappeared() }
+            // Closing ends step 2 on screen; the files and the clipboard stay.
+            if old.isExpanded { model.surfaceDisappeared(); model.endHandoff() }
             presentation.isFocused = false
             withAnimation(presentation.animation) { presentation.isExpanded = false }
             if old.isExpanded {

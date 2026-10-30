@@ -8,86 +8,61 @@ import SwiftUI
 
 // MARK: - Layout
 
-/// Heights of Details on this display, from the island's height budget.
+/// Details on this display: two columns when there is room, else one with a
+/// switch. Heights are not estimated here: the island offers its whole
+/// height budget (`HeightBudget`), the header and footer take what they
+/// need and the scroll areas share the rest.
 @MainActor
 struct DetailsLayout {
     let presentation: NotchPresentation
-    /// Step 2 of the hand-off replaces the action row with a taller bar.
-    var handoff = false
 
     var metrics: IslandMetrics { IslandMetrics.of(presentation) }
     /// Content width inside the island's visible sides.
     var contentWidth: CGFloat { presentation.islandWidth - 2 * metrics.leading }
-    /// Two columns when there is room; one column (with a switch) otherwise.
     var twoColumns: Bool { contentWidth >= 520 && presentation.maxContentHeight >= 300 }
-    var rightColumn: CGFloat { contentWidth >= 600 ? 252 : 232 }
-    /// Height for the columns: the island's content height minus the header,
-    /// the action row, the feedback line and paddings.
-    var columns: CGFloat {
-        // Header, action row (or the step-2 bar: message, buttons, hint), feedback line.
-        let actions: CGFloat = handoff ? 32 + 52 : 32
-        let chrome: CGFloat = 22 + actions + 16 + metrics.top + metrics.bottom + 3 * metrics.spacing
-        return max(170, presentation.maxContentHeight - chrome)
-    }
-    /// The answer's scroll area inside the left column.
-    func responseScroll(taskLines: Int) -> CGFloat {
-        let task: CGFloat = taskLines == 1 ? 52 : 68
-        let chrome: CGFloat = task + metrics.spacing + 24 + 18 + 22 + 8
-        return max(60, columns - chrome)
-    }
+    var rightColumn: CGFloat { contentWidth >= 600 ? 260 : 248 }
 }
 
 // MARK: - Details
 
+/// Three regions that never overlap: the header (project, session, source),
+/// the content (Task, Response, what goes to ChatGPT, attachments) and the
+/// footer (the copies and navigation, or step 2 of the hand-off instead).
 struct DetailsView: View {
     let model: AppModel
     let presentation: NotchPresentation
     let actions: SurfaceActions
     @State private var taskExpanded = false
     @State private var pane: Pane = .report
-    enum Pane: String, CaseIterable { case report = "Response", handoff = "Handoff" }
+    @Environment(\.islandReduceMotion) private var reduceMotion
+    enum Pane: String, CaseIterable { case report = "Response", handoff = "For ChatGPT" }
 
     var body: some View {
-        let layout = DetailsLayout(presentation: presentation, handoff: model.handoffStep != nil)
+        let layout = DetailsLayout(presentation: presentation)
         let facts = ReportFacts(model: model)
         VStack(alignment: .leading, spacing: layout.metrics.spacing) {
             if let error = model.projects.error, model.projects.value == nil, model.selectedImport == nil {
                 MessageCard(title: "Prompt Relay can't read its history", detail: error.detail,
                             symbol: "exclamationmark.triangle", tint: Island.warning,
                             action: ("Diagnostics", { model.navigate(to: .settings) }))
+                DetailsFooter(model: model, actions: actions, blocked: true, showsCopies: false)
             } else if facts.source == nil {
                 SessionHeader(model: model, facts: facts)
+                ClipboardNotice(model: model)
                 emptyState
+                DetailsFooter(model: model, actions: actions, blocked: true, showsCopies: false)
+                    .islandFrame("home.footer")
             } else {
                 SessionHeader(model: model, facts: facts).islandFrame("details.header")
-                if layout.twoColumns {
-                    HStack(alignment: .top, spacing: 10) {
-                        reportColumn(layout, facts: facts)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                        handoffColumn(layout)
-                            .frame(width: layout.rightColumn, alignment: .topLeading)
-                    }
-                    .frame(height: layout.columns, alignment: .top)
-                } else {
-                    Picker("", selection: $pane) {
-                        ForEach(Pane.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented).labelsHidden().frame(width: 200)
-                    Group {
-                        if pane == .report { reportColumn(layout, facts: facts) } else { handoffColumn(layout) }
-                    }
-                    .frame(height: layout.columns - 30, alignment: .top)
-                }
-                if model.handoffStep != nil {
-                    HandoffStepBar(model: model).islandFrame("details.handoff")
-                } else {
-                    DetailsActions(model: model, actions: actions, blocked: facts.blocker != nil).islandFrame("home.actions")
-                }
-                CopyFeedbackLine(model: model)
+                ClipboardNotice(model: model)
+                content(layout, facts: facts)
+                DetailsFooter(model: model, actions: actions, blocked: facts.blocker != nil)
+                    .islandFrame("details.footer")
             }
-            if facts.source == nil { HomeFooter(model: model, actions: actions).islandFrame("home.footer") }
         }
         .islandPadding(presentation)
+        .animation(Island.geometry(reduceMotion: reduceMotion), value: model.activeHandoff)
+        .onChange(of: model.currentRef) { taskExpanded = false }
     }
 
     @ViewBuilder
@@ -104,19 +79,35 @@ struct DetailsView: View {
         }
     }
 
-    private func reportColumn(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
-        let lines = layout.metrics.compact || layout.columns < 230 ? 1 : 2
-        return VStack(alignment: .leading, spacing: layout.metrics.spacing) {
-            TaskCard(facts: facts, expanded: $taskExpanded, lines: lines).islandFrame("card.task")
-            ResponseCard(model: model, presentation: presentation, facts: facts,
-                         scrollHeight: layout.responseScroll(taskLines: taskExpanded ? 2 : lines)) {
-                model.navigate(to: .reader)
+    @ViewBuilder
+    private func content(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
+        if layout.twoColumns {
+            HStack(alignment: .top, spacing: Island.Space.l) {
+                reportColumn(layout, facts: facts)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                handoffColumn
+                    .frame(width: layout.rightColumn, alignment: .topLeading)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: layout.metrics.spacing) {
+                Picker("", selection: $pane) {
+                    ForEach(Pane.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented).labelsHidden().frame(width: 220)
+                if pane == .report { reportColumn(layout, facts: facts) } else { handoffColumn }
             }
         }
     }
 
-    private func handoffColumn(_ layout: DetailsLayout) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func reportColumn(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
+        VStack(alignment: .leading, spacing: layout.metrics.spacing) {
+            TaskCard(facts: facts, expanded: $taskExpanded, lines: layout.metrics.compact ? 1 : 2).islandFrame("card.task")
+            ResponseCard(model: model, facts: facts) { model.navigate(to: .reader) }
+        }
+    }
+
+    private var handoffColumn: some View {
+        VStack(alignment: .leading, spacing: Island.Space.m) {
             HandoffContentsCard(model: model).islandFrame("card.handoff")
             AttachmentsCard(model: model).islandFrame("card.attachments")
         }
@@ -192,6 +183,7 @@ struct NewElsewhereChip: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Dismiss")
+            .help("Dismiss")
         }
         .frame(maxWidth: 240, alignment: .trailing)
     }
@@ -203,30 +195,63 @@ struct NewElsewhereChip: View {
     }
 }
 
-/// Copy Response, Copy for ChatGPT, then History and the rest.
-struct DetailsActions: View {
+/// The footer: the two copies and the navigation icons, or, after Copy for
+/// ChatGPT with files, step 2 in their place (never on top of the content).
+struct DetailsFooter: View {
     let model: AppModel
     let actions: SurfaceActions
     let blocked: Bool
+    var showsCopies = true
 
     var body: some View {
-        HStack(spacing: 8) {
-            CopyActions(model: model, blocked: blocked)
-            Spacer(minLength: 4)
-            FooterLink(title: "History", symbol: "tray.full", help: "Every captured and imported report, with search") {
+        VStack(alignment: .leading, spacing: Island.Space.s) {
+            if showsCopies, let step = model.activeHandoff {
+                HandoffFooter(model: model, step: step)
+                    .islandFrame("details.handoff")
+                    .transition(.opacity)
+            } else {
+                HStack(spacing: Island.Space.m) {
+                    if showsCopies { CopyActions(model: model, blocked: blocked) }
+                    Spacer(minLength: 4)
+                    NavigationIcons(model: model, actions: actions)
+                }
+                .islandFrame("home.actions")
+                .transition(.opacity)
+            }
+            CopyFailureLine(model: model)
+        }
+    }
+}
+
+/// History, Clipboard and Settings as icons; Import and Quit in the ⋯ menu.
+struct NavigationIcons: View {
+    let model: AppModel
+    let actions: SurfaceActions
+
+    var body: some View {
+        HStack(spacing: 2) {
+            IconLink(symbol: "tray.full", label: "History", help: "History: every captured and imported report") {
                 model.navigate(to: .history)
             }
-            IconLink(symbol: "clock.arrow.circlepath", label: "Recent Copies", help: "Your last five copies") {
-                model.navigate(to: .copies)
-            }
-            IconLink(symbol: "square.and.arrow.down", label: "Import Report", help: "Import a report from a Claude Code cloud session") {
-                model.navigate(to: .importReport)
+            IconLink(symbol: "doc.on.clipboard", label: "Clipboard",
+                     help: "Clipboard: your last copies and copied images") {
+                model.navigate(to: .clipboard)
             }
             IconLink(symbol: "gearshape", label: "Settings", help: "Settings (⌘,)", badge: !AppBuild.otherBuildsRunning().isEmpty) {
                 model.navigate(to: .settings)
             }
             .keyboardShortcut(",", modifiers: .command)
-            QuitButton(actions: actions)
+            Menu {
+                Button("Import Report…") { model.navigate(to: .importReport) }
+                Divider()
+                Button("Quit Prompt Relay") { actions.quit() }
+            } label: {
+                Image(systemName: "ellipsis").font(.system(size: 12, weight: .semibold))
+                    .frame(width: 26, height: 26).contentShape(Rectangle())
+            }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .accessibilityLabel("More")
+            .help("More: Import Report, Quit")
         }
         .foregroundStyle(Island.secondary)
     }
@@ -238,89 +263,137 @@ struct IconLink: View {
     let help: String
     var badge = false
     let action: () -> Void
+    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 12.5, weight: .medium))
                 .frame(width: 26, height: 26)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(hovering ? Island.hover : .clear))
                 .overlay(alignment: .topTrailing) {
                     if badge { Circle().fill(Island.warning).frame(width: 5, height: 5).offset(x: -3, y: 3) }
                 }
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { hovering = $0 }
         .accessibilityLabel(label)
         .help(help)
     }
 }
 
+/// Only failures need words; a success shows on the button itself.
+struct CopyFailureLine: View {
+    let model: AppModel
+
+    var body: some View {
+        if case .failed(let reason) = model.copyFeedback {
+            Label(reason, systemImage: "exclamationmark.triangle.fill")
+                .font(.system(size: 11)).foregroundStyle(Island.error)
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                .transition(.opacity)
+        }
+    }
+}
+
 // MARK: - What goes to ChatGPT
 
+/// What Copy for ChatGPT puts together for this report, one row per part,
+/// with a short fact each. "Not captured" and "no tools used" are told apart.
 struct HandoffContentsCard: View {
     let model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Caption("In Copy for ChatGPT")
-            row(symbol: "text.quote", title: "Task + full answer", detail: "verbatim")
+        VStack(alignment: .leading, spacing: 5) {
+            Caption("Copy for ChatGPT")
+            row(symbol: "text.quote", title: "Task & Response", detail: taskDetail, help: "Your request and Claude's complete answer, verbatim, once")
             if model.selectedImport != nil {
-                row(symbol: "icloud.and.arrow.down", title: "Imported: nothing observed", detail: nil)
+                row(symbol: "terminal", title: "Commands & Checks", detail: "not observed",
+                    help: "Imported reports come from cloud sessions that Prompt Relay cannot observe")
             } else if let turn = model.selectedTurn {
-                let observed = turn.observed
                 Button { model.navigate(to: .activity) } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "terminal").frame(width: 14).foregroundStyle(Island.tertiary)
-                        Text("Observed work").foregroundStyle(Island.primary).lineLimit(1).fixedSize()
-                        Spacer(minLength: 2)
-                        ObservedChips(observed: observed, compact: true)
-                        Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary)
-                    }
-                    .font(.system(size: 11.5))
-                    .contentShape(Rectangle())
+                    rowLabel(symbol: "terminal", title: "Commands & Checks", detail: Self.commands(turn.observed, captureOn: captureOn),
+                             tint: failed(turn.observed) > 0 ? Island.error : Island.tertiary, chevron: true)
                 }
                 .buttonStyle(.plain)
-                .help("Commands, exit codes and durations Prompt Relay observed in this turn")
-                if let observed, observed.filesChanged > 0 {
-                    row(symbol: "doc.badge.ellipsis", title: "Files Claude changed",
-                        detail: "\(observed.filesChanged)")
+                .help("The commands, exit codes and durations Prompt Relay observed in this turn")
+                if let observed = turn.observed {
+                    row(symbol: "doc.badge.ellipsis", title: "Changed Files",
+                        detail: observed.filesChanged == 0 ? "none observed" : (observed.filesChanged == 1 ? "1 file" : "\(observed.filesChanged) files"),
+                        help: "Files Claude edited or wrote, as observed by the tool hooks")
                 }
-                row(symbol: "arrow.triangle.branch", title: "Git state", detail: "at copy time")
+                row(symbol: "arrow.triangle.branch", title: "Git State", detail: "read when you copy",
+                    help: "Branch and uncommitted changes, read locally at the moment of the copy (read-only)")
             }
+            let n = model.handoffAttachments(for: model.currentRef).count
+            row(symbol: "paperclip", title: "Attachments", detail: n == 0 ? "none selected" : "\(n) selected",
+                help: "The files you selected below; their names are listed in the text, the files follow in step 2")
         }
-        .padding(EdgeInsets(top: 9, leading: 11, bottom: 9, trailing: 11))
+        .padding(Island.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Island.card))
+        .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
     }
 
-    private func row(symbol: String, title: String, detail: String?) -> some View {
+    private var captureOn: Bool { model.selectedProject?.captureEnabled ?? true }
+
+    private var taskDetail: String {
+        switch ReportFacts(model: model).task {
+        case .unavailable: return "answer only"
+        case .automated: return "automatic turn"
+        default: return "verbatim"
+        }
+    }
+
+    private func failed(_ o: ObservedCounts?) -> Int { o.map { max($0.commandsNonzero ?? 0, $0.runsNonzero) } ?? 0 }
+
+    /// A fact, never a verdict. Distinguishes: no tool events captured for
+    /// this turn (older plugin, or capture off) from tools not used at all.
+    static func commands(_ o: ObservedCounts?, captureOn: Bool) -> String {
+        guard let o else { return captureOn ? "not captured for this turn" : "capture off" }
+        if o.toolEvents == 0 { return "no tools used" }
+        let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
+        var parts: [String] = []
+        if failed > 0 { parts.append("\(failed) failed") }
+        if o.runsExitZero > 0 { parts.append("\(o.runsExitZero) checks exit 0") }
+        if parts.isEmpty { parts.append(o.toolEvents == 1 ? "1 tool event" : "\(o.toolEvents) tool events") }
+        return parts.joined(separator: " · ")
+    }
+
+    private func row(symbol: String, title: String, detail: String, help: String) -> some View {
+        rowLabel(symbol: symbol, title: title, detail: detail, tint: Island.tertiary, chevron: false).help(help)
+    }
+
+    private func rowLabel(symbol: String, title: String, detail: String, tint: Color, chevron: Bool) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: symbol).frame(width: 14).foregroundStyle(Island.tertiary)
+            Image(systemName: symbol).font(.system(size: 10.5)).frame(width: 14).foregroundStyle(Island.tertiary)
             Text(title).foregroundStyle(Island.primary).lineLimit(1).fixedSize()
-            Spacer(minLength: 2)
-            if let detail { Text(detail).foregroundStyle(Island.tertiary).lineLimit(1).truncationMode(.tail) }
+            Spacer(minLength: 4)
+            Text(detail).font(.system(size: 10.5)).foregroundStyle(tint).lineLimit(1).truncationMode(.tail)
+            if chevron { Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary) }
         }
         .font(.system(size: 11.5))
+        .contentShape(Rectangle())
     }
 }
 
-/// "2 runs exit 0 · 1 run exit 1": facts about single commands, never a verdict.
+/// "1× exit ≠ 0 · 2× exit 0": facts about single commands, never a verdict.
+/// Nothing at all when no command was observed (no "none" that reads like
+/// an error).
 struct ObservedChips: View {
     let observed: ObservedCounts?
     /// One chip only (a narrow row): failures first.
     var compact = false
 
     var body: some View {
-        HStack(spacing: 4) {
-            if let o = observed, o.toolEvents > 0 {
+        if let o = observed, o.toolEvents > 0 {
+            HStack(spacing: 4) {
                 // A failure of any command shows; exit 0 is counted for tests and builds only.
                 let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
-                if failed > 0 { chip("\(failed)× exit ≠ 0", Island.error).help("Shell commands that exited non-zero") }
+                if failed > 0 { chip(failed == 1 ? "1 failed run" : "\(failed) failed runs", Island.error).help("Shell commands that exited non-zero") }
                 if o.runsExitZero > 0 && !(compact && failed > 0) {
-                    chip("\(o.runsExitZero)× exit 0", Island.accent).help("Test and build commands that exited 0")
+                    chip("\(o.runsExitZero)× exit 0", Island.success).help("Test and build commands that exited 0 (not proof that the task is done)")
                 }
-                if failed + o.runsExitZero == 0 { chip("\(o.toolEvents) events", Island.secondary) }
-            } else {
-                chip("none", Island.tertiary)
+                if failed + o.runsExitZero == 0 { chip("\(o.toolEvents) tool events", Island.secondary) }
             }
         }
     }
@@ -350,7 +423,7 @@ struct AttachmentsCard: View {
                 Spacer(minLength: 0)
                 Menu {
                     Button("Files…") { model.chooseFiles() }
-                    if model.clipboardHistoryEnabled { Button("From Clipboard Images…") { model.navigate(to: .clipboard) } }
+                    Button("From Clipboard…") { model.openClipboard(.images) }
                 } label: {
                     Image(systemName: "paperclip").font(.system(size: 11, weight: .medium))
                 }
@@ -359,7 +432,7 @@ struct AttachmentsCard: View {
                 .accessibilityLabel("Add attachments")
                 .help("Add documents, PDFs or images to this report (copied as snapshots)")
             }
-            ScrollView(.vertical) {
+            BoundedScroll(minHeight: 34) {
                 VStack(alignment: .leading, spacing: 3) {
                     if !suggestions.isEmpty {
                         HStack {
@@ -386,11 +459,10 @@ struct AttachmentsCard: View {
                 }
                 .padding(.trailing, 4)
             }
-            .scrollIndicators(.automatic)
         }
-        .padding(EdgeInsets(top: 9, leading: 11, bottom: 9, trailing: 9))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Island.card))
+        .padding(Island.cardPadding)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
     }
 }
 
@@ -537,66 +609,90 @@ struct LinkRow: View {
 
 // MARK: - Step 2 of the hand-off
 
-struct HandoffStepBar: View {
+/// Step 2, in place of the footer: the text is on the clipboard; now the
+/// files chosen at the copy. When the choice changed since, nothing old is
+/// handed over: the step asks for a new Copy for ChatGPT.
+struct HandoffFooter: View {
     let model: AppModel
+    let step: AppModel.HandoffStep
 
     var body: some View {
-        if let step = model.handoffStep {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Island.accent)
-                    Text("Text copied (\(step.characters.formatted()) characters). Paste it in ChatGPT, then add "
-                         + (step.fileCount == 1 ? "the file." : "the \(step.fileCount) files."))
-                        .foregroundStyle(Island.primary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                }
-                .font(.system(size: 11.5))
-                HStack(spacing: 8) {
-                    Button { model.copyHandoffFiles() } label: {
-                        Label(step.fileCount == 1 ? "Copy File" : "Copy \(step.fileCount) Files", systemImage: "doc.on.doc")
+        let changed = model.handoffSelectionChanged
+        VStack(alignment: .leading, spacing: Island.Space.s) {
+            HStack(spacing: 6) {
+                Image(systemName: changed ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+                    .foregroundStyle(changed ? Island.warning : Island.success)
+                Text(changed
+                     ? "The chosen files changed after the text was copied."
+                     : "Text copied. Paste it in ChatGPT, then add " + (step.fileCount == 1 ? "the file." : "the \(step.fileCount) files."))
+                    .foregroundStyle(Island.primary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .font(.system(size: 11.5))
+            HStack(spacing: Island.Space.m) {
+                if changed {
+                    Button { Task { await model.copySelectedContext() } } label: {
+                        Label("Copy for ChatGPT Again", systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(IslandPillStyle(prominent: true))
-                    DragAllButton(model: model, count: step.fileCount)
-                    Button("Show in Finder") { model.revealHandoffFiles() }.buttonStyle(IslandPillStyle(prominent: false))
-                    Spacer(minLength: 0)
-                    Button("Done") { model.endHandoff() }.buttonStyle(.plain).font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(Island.secondary)
+                    .help("Copy the text again with the files chosen now")
+                } else {
+                    Button { model.copyHandoffFiles() } label: {
+                        Label(filesCopied ? "Copied!" : (step.fileCount == 1 ? "Copy File" : "Copy \(step.fileCount) Files"),
+                              systemImage: filesCopied ? "checkmark" : "doc.on.doc")
+                    }
+                    .buttonStyle(IslandPillStyle(prominent: true))
+                    .help("Put the files on the clipboard, like ⌘C in Finder")
+                    FileDragButton(title: step.fileCount == 1 ? "Drag" : "Drag \(step.fileCount)",
+                                   help: "Drag the files into ChatGPT") { model.handoffFileURLs() }
+                    IconLink(symbol: "folder", label: "Show in Finder", help: "Show the files in Finder") { model.revealHandoffFiles() }
                 }
-                Text(step.filesCopied
-                     ? "Files are on the clipboard. Paste them in ChatGPT; Prompt Relay cannot see whether they arrive."
-                     : "Files are prepared, not sent. Pasting several files at once is not verified for every app.")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Button("Done") { model.endHandoff() }
+                    .buttonStyle(IslandPillStyle(prominent: false))
+                    .help("Close step 2; the clipboard keeps what you copied")
             }
         }
+        .padding(.horizontal, Island.Space.l).padding(.vertical, Island.Space.m)
+        .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+        .animation(.easeOut(duration: 0.15), value: model.copyFeedback)
+    }
+
+    private var filesCopied: Bool {
+        if case .copied(.files, _) = model.copyFeedback { return true }
+        return false
     }
 }
 
-/// Drag every hand-off file at once (in order) into another app.
-struct DragAllButton: View {
-    let model: AppModel
-    let count: Int
+/// Drag several files at once (in order) into another app.
+struct FileDragButton: View {
+    let title: String
+    let help: String
+    let urls: @MainActor () -> [URL]
 
     var body: some View {
-        Label(count == 1 ? "Drag" : "Drag All", systemImage: "hand.draw")
-            .font(.system(size: 12, weight: .semibold))
-            .padding(.horizontal, 12).frame(height: 28)
+        Label(title, systemImage: "hand.draw")
+            .font(.system(size: 12, weight: .medium))
+            .padding(.horizontal, 12).frame(height: Island.controlHeight)
             .background(Capsule().fill(Island.control))
             .foregroundStyle(Island.primary)
-            .overlay(DragAllSource(model: model))
-            .help("Drag the files into ChatGPT")
-            .accessibilityLabel("Drag all files")
+            .fixedSize()
+            .overlay(FileDragSource(urls: urls))
+            .help(help)
+            .accessibilityLabel(title)
     }
 }
 
 /// An AppKit drag source for several files (SwiftUI's onDrag carries one).
-struct DragAllSource: NSViewRepresentable {
-    let model: AppModel
+struct FileDragSource: NSViewRepresentable {
+    let urls: @MainActor () -> [URL]
 
-    func makeNSView(context: Context) -> DragView { DragView(model: model) }
-    func updateNSView(_ view: DragView, context: Context) { view.model = model }
+    func makeNSView(context: Context) -> DragView { DragView(urls: urls) }
+    func updateNSView(_ view: DragView, context: Context) { view.urls = urls }
 
     final class DragView: NSView, NSDraggingSource {
-        var model: AppModel
-        init(model: AppModel) { self.model = model; super.init(frame: .zero) }
+        var urls: @MainActor () -> [URL]
+        init(urls: @escaping @MainActor () -> [URL]) { self.urls = urls; super.init(frame: .zero) }
         required init?(coder: NSCoder) { nil }
 
         func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
@@ -604,19 +700,15 @@ struct DragAllSource: NSViewRepresentable {
         }
 
         override func mouseDragged(with event: NSEvent) {
-            let urls = preparedURLs()
-            guard !urls.isEmpty else { return }
-            let items = urls.enumerated().map { i, url -> NSDraggingItem in
+            let files = MainActor.assumeIsolated { urls() }
+            guard !files.isEmpty else { return }
+            let items = files.enumerated().map { i, url -> NSDraggingItem in
                 let item = NSDraggingItem(pasteboardWriter: url as NSURL)
                 let icon = NSWorkspace.shared.icon(forFile: url.path)
                 item.setDraggingFrame(NSRect(x: CGFloat(i) * 4, y: 0, width: 32, height: 32), contents: icon)
                 return item
             }
             beginDraggingSession(with: items, event: event, source: self)
-        }
-
-        private func preparedURLs() -> [URL] {
-            MainActor.assumeIsolated { model.handoffFileURLs() }
         }
     }
 }
@@ -869,7 +961,7 @@ struct MockupStatesView: View {
                 HStack(spacing: 8) {
                     Button("Import Images…") { model.importStateImages(material) }.buttonStyle(IslandPillStyle(prominent: true))
                     if model.clipboardHistoryEnabled {
-                        Button("From Clipboard…") { model.navigate(to: .clipboard) }.buttonStyle(IslandPillStyle(prominent: false))
+                        Button("From Clipboard…") { model.openClipboard(.images) }.buttonStyle(IslandPillStyle(prominent: false))
                     }
                     Spacer()
                     Text("\(material.states.filter { $0.status == .captured }.count) of \(material.states.count) saved · order = file order")
@@ -955,82 +1047,3 @@ struct StateCard: View {
     }
 }
 
-// MARK: - Clipboard images
-
-struct ClipboardImagesView: View {
-    let model: AppModel
-    let presentation: NotchPresentation
-    @State private var chosen: Set<String> = []
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
-            if let history = model.clipboardImages, history.isEnabled {
-                Text("The last \(ClipboardImageHistory.limit) images you copied, kept for 24 hours. Text is never read.")
-                    .font(.system(size: 11)).foregroundStyle(Island.tertiary)
-                if history.items.isEmpty {
-                    MessageCard(title: "No images yet", detail: "Copy a screenshot (⌃⇧⌘4) or an image file; it appears here.",
-                                symbol: "photo.on.rectangle", tint: Island.secondary, action: nil)
-                } else {
-                    HStack(spacing: 8) {
-                        ForEach(history.items) { item in
-                            ClipboardThumb(history: history, item: item, chosen: chosen.contains(item.id)) {
-                                if chosen.contains(item.id) { chosen.remove(item.id) } else { chosen.insert(item.id) }
-                            }
-                        }
-                        Spacer(minLength: 0)
-                    }
-                }
-                HStack(spacing: 8) {
-                    let items = history.items.filter { chosen.contains($0.id) }
-                    Button(items.isEmpty ? "Attach" : "Attach \(items.count)") {
-                        model.attachClipboardImages(items, mockup: model.backRoute == .mockup ? model.openMockupMaterial : nil)
-                        chosen = []
-                        model.goBack()
-                    }
-                    .buttonStyle(IslandPillStyle(prominent: true)).disabled(items.isEmpty || model.currentRef == nil)
-                    Button("Clear All") { history.clearAll(); chosen = [] }.buttonStyle(IslandPillStyle(prominent: false))
-                        .disabled(history.items.isEmpty)
-                    Spacer()
-                    if let message = history.message { Text(message).font(.system(size: 10.5)).foregroundStyle(Island.warning) }
-                }
-            } else {
-                MessageCard(title: "Clipboard images are off",
-                            detail: "Turn them on in Settings to keep the last five images you copy (screenshots), for attaching later. Off by default.",
-                            symbol: "photo.on.rectangle", tint: Island.secondary,
-                            action: ("Settings", { model.navigate(to: .settings) }))
-            }
-        }
-        .islandPadding(presentation)
-    }
-}
-
-struct ClipboardThumb: View {
-    let history: ClipboardImageHistory
-    let item: ClipboardImageHistory.Item
-    let chosen: Bool
-    let toggle: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            ZStack(alignment: .topLeading) {
-                Group {
-                    if let thumb = Thumbnails.image(for: history.url(for: item), maxPixels: 160) {
-                        Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fill)
-                    } else { Color.clear }
-                }
-                .frame(width: 84, height: 54).background(Island.code).clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 7))
-                SelectBox(selected: chosen, action: toggle).padding(3)
-            }
-            HStack(spacing: 2) {
-                Text(item.displayName).font(.system(size: 10)).foregroundStyle(Island.secondary).lineLimit(1)
-                Spacer(minLength: 0)
-                Button { history.remove(item) } label: { Image(systemName: "xmark").font(.system(size: 7, weight: .bold)) }
-                    .buttonStyle(.plain).foregroundStyle(Island.tertiary).accessibilityLabel("Delete this image")
-            }
-            Text(Wording.clock(ISO8601DateFormatter().string(from: item.capturedAt))).font(.system(size: 9.5))
-                .foregroundStyle(Island.tertiary)
-        }
-        .frame(width: 84)
-    }
-}

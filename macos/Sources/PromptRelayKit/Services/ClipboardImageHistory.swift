@@ -180,6 +180,45 @@ public final class ClipboardImageHistory {
 
     public func url(for item: Item) -> URL { folder.appendingPathComponent(item.storedFilename) }
 
+    /// A readable file name: the copied file's own name, or "Screenshot
+    /// 2026-10-30 at 10.12.04.png" for a screenshot (stored files are UUIDs).
+    public static func exportName(_ item: Item) -> String {
+        if let name = item.originalName { return ((name as NSString).deletingPathExtension) + ".png" }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
+        return "Screenshot \(f.string(from: item.capturedAt)).png"
+    }
+
+    /// Copies of `items` under readable names, in order, for Copy and Drag
+    /// as files. Each export gets its own folder (a later export never
+    /// breaks file URLs still on the clipboard); folders older than the
+    /// retention period are removed. Local only.
+    public func exportFiles(_ items: [Item], now: Date = Date()) -> [URL] {
+        let share = folder.appendingPathComponent("share", isDirectory: true)
+        if let old = try? fm.contentsOfDirectory(at: share, includingPropertiesForKeys: [.creationDateKey]) {
+            for dir in old {
+                let created = (try? dir.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
+                if now.timeIntervalSince(created) > retention { try? fm.removeItem(at: dir) }
+            }
+        }
+        let dir = share.appendingPathComponent(UUID().uuidString.lowercased(), isDirectory: true)
+        guard (try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])) != nil
+        else { return [] }
+        var used = Set<String>()
+        return items.compactMap { item in
+            var name = Self.exportName(item)
+            var n = 2
+            while used.contains(name.lowercased()) {
+                name = "\((Self.exportName(item) as NSString).deletingPathExtension) \(n).png"; n += 1
+            }
+            used.insert(name.lowercased())
+            let target = dir.appendingPathComponent(name)
+            guard (try? fm.copyItem(at: url(for: item), to: target)) != nil else { return nil }
+            return target
+        }
+    }
+
     public func remove(_ item: Item) {
         items.removeAll { $0.id == item.id }
         delete(item)
@@ -189,6 +228,7 @@ public final class ClipboardImageHistory {
     public func clearAll() {
         items.forEach(delete)
         items = []
+        try? fm.removeItem(at: folder.appendingPathComponent("share", isDirectory: true))   // exported copies too
         persist()
     }
 
