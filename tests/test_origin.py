@@ -100,6 +100,22 @@ class ExportOriginTests(IsolatedTestCase):
         session = json.loads(self.cli("sessions", "--json").stdout)["data"]["sessions"][0]
         self.assertEqual(session["title"], "Run the e2e steps")
 
+    def test_claude_code_title_names_a_session_not_started_by_the_user(self):
+        # Real e2e, 2026-10-30: two sessions started from another one both
+        # began "Background (from the session that started this one)".
+        base = {"session_id": "s-origin", "cwd": self.project, "transcript_path": "/x.jsonl", "prompt_id": "p1",
+                "session_title": "E2E worker session"}
+        self.assertHookOk(self.hook({**base, "hook_event_name": "UserPromptSubmit",
+                                     "prompt": "<system-reminder>Linked sessions now.</system-reminder>\n\nBackground (from the session that started this one): steps"}))
+        session = json.loads(self.cli("sessions", "--json").stdout)["data"]["sessions"][0]
+        self.assertEqual(session["title"], "E2E worker session")
+        self.turn(2, "Fix the tests", "ok")
+        # A user's first request keeps its own words even when a title exists.
+        base2 = {**base, "session_id": "s-user", "prompt_id": "q1"}
+        self.assertHookOk(self.hook({**base2, "hook_event_name": "UserPromptSubmit", "prompt": "Fix the build"}))
+        titles = {s["session_id"]: s["title"] for s in json.loads(self.cli("sessions", "--json").stdout)["data"]["sessions"]}
+        self.assertEqual(titles["s-user"], "Fix the build")
+
     def test_display_preview_skips_a_long_leading_reminder(self):
         # The real reminder (257 chars) was longer than the 200-char preview.
         reminder = "<system-reminder>\n" + "Linked sessions now: x (idle). " * 9 + "\n</system-reminder>\n\n"

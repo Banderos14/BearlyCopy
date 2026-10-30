@@ -100,8 +100,12 @@ def session_running(s: Session, now: Optional[float] = None) -> bool:
 def session_summary(s: Session) -> Dict[str, Any]:
     last = s.turns[-1] if s.turns else None
     claude_title = next((ev.session_title for ev in reversed(s.events) if ev.session_title), None)
+    first = next((t.prompt for t in s.turns if t.prompt is not None and t.prompt.text), None)
+    # A session started by another one opens with Claude Code's own text, not
+    # the user's: its title then says more than that text (Phase 5.11).
+    by_user = first is not None and origin.is_user(origin.classify(first.text))
     return {
-        "title": session_title(s),
+        "title": session_title(s) if by_user or not claude_title else claude_title,
         "claude_code_title": claude_title,
         "answered_count": sum(1 for t in s.turns if t.final_response is not None),
         "running": session_running(s),
