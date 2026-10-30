@@ -258,7 +258,7 @@ struct HandoffContentsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Caption("In Copy for ChatGPT")
-            row(symbol: "text.quote", title: "Task and the complete answer", detail: "once, unchanged")
+            row(symbol: "text.quote", title: "Task + full answer", detail: "verbatim")
             if model.selectedImport != nil {
                 row(symbol: "icloud.and.arrow.down", title: "Imported: nothing observed", detail: nil)
             } else if let turn = model.selectedTurn {
@@ -266,7 +266,7 @@ struct HandoffContentsCard: View {
                 Button { model.navigate(to: .activity) } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "terminal").frame(width: 14).foregroundStyle(Island.tertiary)
-                        Text("Observed work").foregroundStyle(Island.primary)
+                        Text("Observed work").foregroundStyle(Island.primary).lineLimit(1).fixedSize()
                         Spacer(minLength: 2)
                         ObservedChips(observed: observed)
                         Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary)
@@ -280,7 +280,7 @@ struct HandoffContentsCard: View {
                     row(symbol: "doc.badge.ellipsis", title: "Files Claude changed",
                         detail: "\(observed.filesChanged)")
                 }
-                row(symbol: "arrow.triangle.branch", title: "Git state", detail: "read when copied")
+                row(symbol: "arrow.triangle.branch", title: "Git state", detail: "at copy time")
             }
         }
         .padding(EdgeInsets(top: 9, leading: 11, bottom: 9, trailing: 11))
@@ -291,9 +291,9 @@ struct HandoffContentsCard: View {
     private func row(symbol: String, title: String, detail: String?) -> some View {
         HStack(spacing: 6) {
             Image(systemName: symbol).frame(width: 14).foregroundStyle(Island.tertiary)
-            Text(title).foregroundStyle(Island.primary).lineLimit(1)
+            Text(title).foregroundStyle(Island.primary).lineLimit(1).fixedSize()
             Spacer(minLength: 2)
-            if let detail { Text(detail).foregroundStyle(Island.tertiary).lineLimit(1) }
+            if let detail { Text(detail).foregroundStyle(Island.tertiary).lineLimit(1).truncationMode(.tail) }
         }
         .font(.system(size: 11.5))
     }
@@ -310,7 +310,7 @@ struct ObservedChips: View {
                 if o.runsNonzero > 0 { chip("\(o.runsNonzero)× exit ≠ 0", Island.error) }
                 if o.runsExitZero + o.runsNonzero == 0 { chip("\(o.toolEvents) events", Island.secondary) }
             } else {
-                chip("none observed", Island.tertiary)
+                chip("none", Island.tertiary)
             }
         }
     }
@@ -490,7 +490,7 @@ struct MockupRow: View {
                 .frame(width: 24, height: 24).background(Island.code).clipShape(RoundedRectangle(cornerRadius: 5))
             VStack(alignment: .leading, spacing: 0) {
                 Text(material.title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary).lineLimit(1)
-                Text("Mockup · \(material.states.count) states · \(captured) saved").font(.system(size: 10))
+                Text("\(captured) of \(material.states.count) states saved").font(.system(size: 10))
                     .foregroundStyle(Island.tertiary).lineLimit(1)
             }
             Spacer(minLength: 0)

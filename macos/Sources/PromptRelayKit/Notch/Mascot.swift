@@ -33,7 +33,10 @@ public final class MascotState {
     /// follower of `headTarget`, so the head trails the eyes (inertia).
     public internal(set) var head: CGPoint = .zero
     public internal(set) var headTarget: CGPoint = .zero
-    var headVelocity: CGPoint = .zero
+    /// The spring's exact state; `head` is published only when it moves
+    /// visibly (≥ 0.01, about 0.014 pt), so views redraw less often.
+    @ObservationIgnored var headExact: CGPoint = .zero
+    @ObservationIgnored var headVelocity: CGPoint = .zero
     /// Counts successful copies: each one plays the short happy reaction
     /// (a hop with the eyes closed).
     public internal(set) var cheers = 0

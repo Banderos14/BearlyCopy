@@ -565,7 +565,7 @@ extension NotchController {
             mascot.gaze = CGPoint(x: mascot.gaze.x + ex * 0.45, y: mascot.gaze.y + ey * 0.45)
         }
         let omega: CGFloat = 14, zeta: CGFloat = 0.75
-        var v = mascot.headVelocity, h = mascot.head
+        var v = mascot.headVelocity, h = mascot.headExact
         let ax = omega * omega * (mascot.headTarget.x - h.x) - 2 * zeta * omega * v.x
         let ay = omega * omega * (mascot.headTarget.y - h.y) - 2 * zeta * omega * v.y
         v = CGPoint(x: v.x + ax * dt, y: v.y + ay * dt)
@@ -574,10 +574,12 @@ extension NotchController {
             && abs(v.x) < 0.05 && abs(v.y) < 0.05
         if headDone {
             mascot.headVelocity = .zero
+            mascot.headExact = mascot.headTarget
             if mascot.head != mascot.headTarget { mascot.head = mascot.headTarget }
         } else {
             mascot.headVelocity = v
-            mascot.head = h
+            mascot.headExact = h
+            if abs(h.x - mascot.head.x) >= 0.01 || abs(h.y - mascot.head.y) >= 0.01 { mascot.head = h }
         }
         if eyesDone && headDone { gazeTick = nil; return }
         gazeTick = scheduler.schedule(after: 1.0 / 30) { [weak self] in
@@ -605,7 +607,7 @@ extension NotchController {
         if presentation.reduceMotion || !presentation.showsMascot {
             gazeTick?.cancel(); gazeTick = nil
             eyesReturn?.cancel(); eyesReturn = nil
-            mascot.gazeTarget = .zero; mascot.headTarget = .zero; mascot.headVelocity = .zero
+            mascot.gazeTarget = .zero; mascot.headTarget = .zero; mascot.headVelocity = .zero; mascot.headExact = .zero
             if mascot.gaze != .zero { mascot.gaze = .zero }
             if mascot.head != .zero { mascot.head = .zero }
             return

@@ -768,14 +768,15 @@ struct PeekContent: View {
         }
     }
 
+    /// The status in words; the band already shows how long ago.
     private var statusLine: String {
-        if let report = model.selectedImport { return "imported " + Wording.relative(report.importedAt) }
+        if model.selectedImport != nil { return "Imported" }
         guard let turn = model.selectedTurn else { return "" }
-        let when = Wording.relative(turn.finalResponse?.receivedAt ?? turn.request?.receivedAt)
         switch turn.status {
-        case .awaitingResponse: return "working"
-        case .apiError: return "API error · " + when
-        default: return "Stopped " + when
+        case .awaitingResponse: return "Working"
+        case .apiError: return "API error"
+        case .stopReceivedBackgroundTasksPending: return "Stopped · background work"
+        default: return "Stopped"
         }
     }
 

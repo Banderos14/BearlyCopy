@@ -53,7 +53,7 @@ final class SnapshotTests: XCTestCase {
             let interaction = NotchInteraction(scheduler: MainQueueScheduler())
             for (background, theme) in [(Color(white: 0.86), "light"), (Color(white: 0.22), "dark")] {
                 for _ in 0..<2 {
-                    let size = expanded ? NSSize(width: NotchLayout.expandedWidth, height: 32 + p.contentHeight)
+                    let size = expanded ? NSSize(width: NotchLayout.peekWidth, height: 32 + p.contentHeight)
                                         : NSSize(width: 185 + 2 * NotchLayout.earWidth, height: 32)
                     try render(NotchRootView(model: model, presentation: p, interaction: interaction, actions: actions, settings: settings),
                                size: size, background: background, to: "\(dir)/\(prefix)-\(name)-\(theme).png")
@@ -68,9 +68,41 @@ final class SnapshotTests: XCTestCase {
             try renderIsland(model, actions: actions, settings: settings, to: "\(dir)/\(prefix)-island-\(route.rawValue).png")
         }
         model.route = .home
-        if !live, let report = model.imports.first {
+        if !live, let report = model.imports.first, let store = model.reportStore {
             model.selectImport(report.id)
             try renderIsland(model, actions: actions, settings: settings, to: "\(dir)/demo-island-home-import.png")
+            // Phase 5: a document, an image and a mockup with partly captured states.
+            let src = store.root.appendingPathComponent("src")
+            try FileManager.default.createDirectory(at: src, withIntermediateDirectories: true)
+            let md = src.appendingPathComponent("PHASE5_PROPOSAL.md")
+            try Data("# Phase 5\n".utf8).write(to: md)
+            try store.addFile(from: md, to: report.ref, source: .claude, displayPath: "docs/PHASE5_PROPOSAL.md")
+            let png = src.appendingPathComponent("Screenshot 14.03.png")
+            try TypedAttachmentTests.png(.systemTeal).write(to: png)
+            try store.addFile(from: png, to: report.ref, source: .clipboard)
+            var mockup = try store.addMaterial(ReportMaterial(
+                id: "m", reportKey: report.ref.key, kind: .mockup, title: "Prompt Relay Phase 5 Island",
+                url: "https://claude.ai/artifact/x", audience: "owner", sourcePath: "…/scratchpad/phase5-island.html", version: nil,
+                addedAt: "t", provenance: "Published by Claude in this turn (Artifact tool)", selected: true,
+                states: ["Resting", "Quick Peek", "Details", "Project and session", "Observed work", "Transfer", "Clipboard images"]
+                    .map { MockupState(id: AppModel.slug($0), title: $0, summary: nil, interactive: [], status: .namedOnly,
+                                       attachmentID: nil, failure: nil, selected: true) }))
+            for (i, color) in [NSColor.systemTeal, .systemPurple, .systemOrange].enumerated() {
+                let shot = src.appendingPathComponent("state-\(i).png")
+                try TypedAttachmentTests.png(color).write(to: shot)
+                mockup = try store.setStateImage(from: shot, mockupID: mockup.id, stateID: mockup.states[i].id)
+            }
+            model.openMockup(mockup)
+            try await Task.sleep(nanoseconds: 300_000_000)
+            try renderIsland(model, actions: actions, settings: settings, to: "\(dir)/demo-island-mockup-states.png")
+            model.route = .home
+            try await Task.sleep(nanoseconds: 300_000_000)
+            try renderIsland(model, actions: actions, settings: settings, to: "\(dir)/demo-island-home-attachments.png")
+            let peek = presentation(expanded: true, surface: .peek)
+            try render(NotchRootView(model: model, presentation: peek, interaction: NotchInteraction(scheduler: MainQueueScheduler()),
+                                     actions: actions, settings: settings),
+                       size: NSSize(width: NotchLayout.peekWidth, height: 32 + peek.contentHeight), background: Color(white: 0.22),
+                       to: "\(dir)/demo-peek-attachments.png")
         }
         let empty = AppModel(core: FakeCore(projects: []), clipboard: ClipboardService(pasteboard: pasteboard), dataDirectory: nil)
         await empty.refreshNow()
@@ -85,12 +117,13 @@ final class SnapshotTests: XCTestCase {
     private func presentation(expanded: Bool, surface: NotchPresentation.Surface, indicator: Bool = false) -> NotchPresentation {
         let p = NotchPresentation()
         p.notchSize = CGSize(width: 185, height: 32)
-        p.islandWidth = NotchLayout.expandedWidth
+        p.islandWidth = surface == .peek ? NotchLayout.peekWidth : NotchLayout.expandedWidth
         p.isExpanded = expanded
         p.surface = surface
         p.showsIndicator = indicator
         p.showsMascot = true
-        p.maxContentHeight = 568
+        // A 14-inch MacBook: 38 % of 982 pt, minus the band.
+        p.maxContentHeight = (982 * NotchLayout.maxScreenShare).rounded() - 32
         return p
     }
 
