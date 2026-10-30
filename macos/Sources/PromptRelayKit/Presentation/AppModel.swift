@@ -10,7 +10,7 @@ import UniformTypeIdentifiers
 @Observable
 public final class AppModel {
     public enum CopyKind: String, Sendable {
-        case response = "Response", context = "Review Pack", image = "Image", responseWithImages = "Response and images"
+        case response = "Response", context = "Copy for ChatGPT", image = "Image", responseWithImages = "Response and images"
         case files = "Files"
     }
 
@@ -83,6 +83,24 @@ public final class AppModel {
     /// one or every surface is closed.
     public private(set) var followsLatest = true
     private var lastFollowedAt: String?
+    /// The user chose this project/session (Project → Session → Turn). A new
+    /// answer in another session never replaces it: it shows as
+    /// `newAnswerElsewhere`. Kept across launches (`selectionKey`).
+    public private(set) var sessionPinned = false {
+        didSet { saveSelection() }
+    }
+    /// The newest answer finished in a session other than the pinned one,
+    /// until the user opens it or dismisses the chip.
+    public var newAnswerElsewhere: ReadyAnswer? {
+        guard sessionPinned, let answer = readyAnswer, answer.sessionKey != selectedSessionKey,
+              answer.at != elsewhereAcknowledgedAt else { return nil }
+        if let seen = pinnedAt, !Self.isNewer(answer.at, than: seen) { return nil }
+        return answer
+    }
+    private var elsewhereAcknowledgedAt: String?
+    /// When the pin was set: answers older than that are not "new".
+    private var pinnedAt: String?
+    static let selectionKey = "selection.pinned"
     /// Called once per newly arrived answer (for an optional notification).
     public var onNewAnswer: ((ReadyAnswer) -> Void)?
 
@@ -91,7 +109,7 @@ public final class AppModel {
     private let stateDefaults: UserDefaults?
 
     private let core: CoreProviding
-    private let clipboard: ClipboardService
+    let clipboard: ClipboardService
     private let dataDirectory: URL?
     private var watcher: StoreWatcher?
     private var pollTimer: Timer?
@@ -117,9 +135,54 @@ public final class AppModel {
         imports = reportStore?.imports() ?? []
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
         pinned = Self.decode([ReportRef].self, stateDefaults?.data(forKey: Self.pinsKey)) ?? []
+        if let saved = Self.decode(SavedSelection.self, stateDefaults?.data(forKey: Self.selectionKey)) {
+            selectedProjectPath = saved.projectPath
+            selectedSessionKey = saved.sessionKey
+            pinnedAt = saved.pinnedAt
+            restoringPin = true
+            sessionPinned = true
+            restoringPin = false
+            followsLatest = true
+        }
+    }
+
+    struct SavedSelection: Codable {
+        let projectPath: String?
+        let sessionKey: String?
+        let pinnedAt: String?
+    }
+    private var restoringPin = false
+
+    private func saveSelection() {
+        guard !restoringPin, let defaults = stateDefaults else { return }
+        if sessionPinned, let data = try? JSONEncoder().encode(SavedSelection(projectPath: selectedProjectPath,
+                                                                                sessionKey: selectedSessionKey,
+                                                                                pinnedAt: pinnedAt)) {
+            defaults.set(data, forKey: Self.selectionKey)
+        } else {
+            defaults.removeObject(forKey: Self.selectionKey)
+        }
+    }
+
+    /// Pins the current project and session (a manual pick).
+    private func pinSelection() {
+        pinnedAt = readyAnswer?.at ?? pinnedAt
+        if sessionPinned { saveSelection() } else { sessionPinned = true }
     }
 
     public let reportStore: ReportStore?
+    /// The optional clipboard image history (off by default; Settings).
+    public var clipboardImages: ClipboardImageHistory?
+    static let clipboardHistoryKey = "clipboard.imagesEnabled"
+
+    public var clipboardHistoryEnabled: Bool {
+        get { clipboardImages?.isEnabled ?? false }
+        set {
+            clipboardImages?.setEnabled(newValue)
+            stateDefaults?.set(newValue, forKey: Self.clipboardHistoryKey)
+            if !newValue { clipboardImages?.clearAll() }
+        }
+    }
 
     static func decode<T: Decodable>(_ type: T.Type, _ data: Data?) -> T? {
         data.flatMap { try? JSONDecoder().decode(type, from: $0) }
@@ -133,9 +196,13 @@ public final class AppModel {
     /// The live app: the CLI adapter, the general pasteboard, the default data dir.
     public static func live() -> AppModel {
         let locator = CoreLocator()
-        return AppModel(core: CoreClient.live(locator: locator), clipboard: ClipboardService(),
-                        dataDirectory: locator.dataDirectory, stateDefaults: .standard,
-                        reportStore: ReportStore.live(dataDirectory: locator.dataDirectory))
+        let model = AppModel(core: CoreClient.live(locator: locator), clipboard: ClipboardService(),
+                             dataDirectory: locator.dataDirectory, stateDefaults: .standard,
+                             reportStore: ReportStore.live(dataDirectory: locator.dataDirectory))
+        let history = ClipboardImageHistory.live(dataDirectory: locator.dataDirectory)
+        model.clipboardImages = history
+        if UserDefaults.standard.bool(forKey: clipboardHistoryKey) { history.setEnabled(true) }
+        return model
     }
 
     // MARK: Derived
@@ -315,6 +382,7 @@ public final class AppModel {
             if selectedSessionKey == nil || !list.contains(where: { $0.sessionKey == selectedSessionKey }) {
                 selectedSessionKey = list.first?.sessionKey
                 selectedTurnIndex = nil
+                if sessionPinned { saveSelection() }
             }
         } catch {
             sessions = sessions.failing(Self.coreError(error))
@@ -384,7 +452,9 @@ public final class AppModel {
         readyAnswer = answer
         // At launch and for each newer answer: select it, unless the user is
         // looking at something else right now.
-        if followsLatest, lastFollowedAt != at {
+        // A pinned session is followed only within itself: an answer from
+        // another session waits behind the "New in …" chip.
+        if followsLatest, lastFollowedAt != at, !sessionPinned || answer.sessionKey == selectedSessionKey {
             lastFollowedAt = at
             select(answer)
         }
@@ -446,10 +516,38 @@ public final class AppModel {
     public func revealReadyAnswer() async {
         guard let answer = readyAnswer else { return }
         acknowledgeReadyAnswer()
+        // A pinned session stays: the other session's answer waits behind the chip.
+        if sessionPinned, answer.sessionKey != selectedSessionKey { return }
         followsLatest = true
         lastFollowedAt = answer.at
         select(answer)
+        if sessionPinned { pinnedAt = answer.at; saveSelection() }
         await loadSessions()
+    }
+
+    /// The "New in …" chip: open the other session's newest answer and pin it.
+    public func openNewAnswerElsewhere() {
+        guard let answer = newAnswerElsewhere else { return }
+        elsewhereAcknowledgedAt = answer.at
+        followsLatest = true
+        lastFollowedAt = answer.at
+        select(answer)
+        pinnedAt = answer.at
+        pinSelection()
+        route = .home
+        Task { await loadSessions() }
+    }
+
+    public func dismissNewAnswerElsewhere() {
+        elsewhereAcknowledgedAt = newAnswerElsewhere?.at
+    }
+
+    /// Back to following the newest answer of any session (Settings or the chip menu).
+    public func unpinSession() {
+        sessionPinned = false
+        pinnedAt = nil
+        followsLatest = true
+        refresh()
     }
 
     /// Points the selection at `answer` without loading (the caller loads).
@@ -468,6 +566,7 @@ public final class AppModel {
 
     /// A manual pick keeps the selection until the user returns to the newest answer.
     private func noteManualSelection() {
+        pinSelection()
         guard let answer = readyAnswer else { followsLatest = true; return }
         followsLatest = selectedSessionKey == answer.sessionKey
             && (selectedTurnIndex == nil || selectedTurnIndex == answer.turnIndex)
@@ -482,13 +581,14 @@ public final class AppModel {
         selectedSessionKey = nil
         selectedTurnIndex = nil
         followsLatest = false
+        pinSelection()
         sessions = .idle; turns = .idle; detail = .idle
         Task { await loadSessions() }
     }
 
     public func selectSession(_ key: String?) {
         selectedImportID = nil
-        guard key != selectedSessionKey else { return }
+        guard key != selectedSessionKey else { if key != nil { pinSelection() }; return }
         selectedSessionKey = key
         selectedTurnIndex = nil
         noteManualSelection()
@@ -511,11 +611,23 @@ public final class AppModel {
     /// every host (the notch and the floating fallback).
     public enum IslandRoute: String, CaseIterable, Identifiable, Sendable {
         case home, projects, copies, history, importReport, settings, reader
+        /// Capture switches and Add Project (Settings → Capture).
+        case capture
+        /// Observed work of the current turn.
+        case activity
+        /// States of the open mockup.
+        case mockup
+        /// The optional clipboard image history.
+        case clipboard
         public var id: String { rawValue }
         public var title: String {
             switch self {
             case .home: return "Answer"
-            case .projects: return "Projects"
+            case .projects: return "Project and Session"
+            case .capture: return "Capture"
+            case .activity: return "Observed Work"
+            case .mockup: return "Mockup States"
+            case .clipboard: return "Clipboard Images"
             case .copies: return "Recent Copies"
             case .history: return "History"
             case .importReport: return "Import Report"
@@ -576,6 +688,10 @@ public final class AppModel {
         presentFilePicker(.folders) { [weak self] urls in
             urls?.forEach { self?.addProject($0) }
         }
+    }
+
+    func presentDialog(_ request: FilePickRequest, completion: @escaping @MainActor ([URL]?) -> Void) {
+        presentFilePicker(request, completion: completion)
     }
 
     private func presentFilePicker(_ request: FilePickRequest, completion: @escaping @MainActor ([URL]?) -> Void) {
@@ -822,11 +938,26 @@ public final class AppModel {
         attachmentsVersion += 1
     }
 
+    // MARK: Hand-off (two steps: text, then files)
+
+    /// After Copy for ChatGPT with files selected: the files still to hand
+    /// over. Nothing here says they reached ChatGPT.
+    public struct HandoffStep: Equatable, Sendable {
+        public let ref: ReportRef
+        public let characters: Int
+        public let fileCount: Int
+        /// Set once the files were put on the clipboard (not "sent").
+        public var filesCopied = false
+    }
+    public internal(set) var handoffStep: HandoffStep?
+    /// The mockup whose states are open (route `.mockup`).
+    public internal(set) var openMockupID: String?
+
     // MARK: Attachments
 
     /// Bumped on every change so views showing attachments refresh.
-    public private(set) var attachmentsVersion = 0
-    public private(set) var attachmentMessage: String?
+    public internal(set) var attachmentsVersion = 0
+    public internal(set) var attachmentMessage: String?
 
     public func attachments(for ref: ReportRef?) -> [ReportAttachment] {
         _ = attachmentsVersion
@@ -867,6 +998,7 @@ public final class AppModel {
         case .writeFailed: return "\(file) could not be saved in Prompt Relay's folder"
         case .removeFailed: return "The image could not be removed"
         case .empty: return "\(file) is empty"
+        case .unsupported(let name): return "\(name) is not a document, PDF or image Prompt Relay can keep"
         }
     }
 
@@ -950,7 +1082,7 @@ public final class AppModel {
         didSet { stateDefaults?.set(try? JSONEncoder().encode(copyHistory), forKey: Self.copiesKey) }
     }
 
-    private func record(_ kind: CopyRecord.Kind, ref: ReportRef, characters: Int) {
+    func record(_ kind: CopyRecord.Kind, ref: ReportRef, characters: Int) {
         let (project, label) = describe(ref)
         let entry = CopyRecord(id: UUID().uuidString, ref: ref, kind: kind, projectName: project, label: label,
                                at: ReportStore.now(), characters: characters)
@@ -1147,7 +1279,9 @@ public final class AppModel {
     /// until the user confirms (the same rule as `copy-context`).
     public func copyReviewPack(_ ref: ReportRef) async {
         copyFeedback = .working(.context)
-        let attached = attachments(for: ref)
+        let attached = attachments(for: ref).filter(\.isSelected)
+        let selectedMaterials = materials(for: ref).filter(\.selected)
+        let names = handoffNames(for: ref)
         let text: String, findings: [SensitiveFinding]
         switch ref {
         case .imported(let id):
@@ -1155,12 +1289,13 @@ public final class AppModel {
                 finishCopy(.failed("This report is no longer in Prompt Relay's history."))
                 return
             }
-            text = ReviewPack.render(imported: report, attachments: attached, exportedAt: ReportStore.now())
+            text = ReviewPack.render(imported: report, attachments: attached, exportedAt: ReportStore.now(),
+                                     materials: selectedMaterials, names: names)
             findings = SecretScanner.scan(report.task ?? "", section: "request") + SecretScanner.scan(report.text, section: "response")
         case .local(let key, let index):
             do {
                 let result = try await core.context(sessionKey: key, turn: index)
-                text = ReviewPack.render(local: result.data.text, attachments: attached)
+                text = ReviewPack.render(local: result.data.text, attachments: attached, materials: selectedMaterials, names: names)
                 findings = result.data.sensitiveFindings
             } catch {
                 finishCopy(.failed(Self.message(for: error)))
@@ -1176,6 +1311,7 @@ public final class AppModel {
             try clipboard.copy(text)
             finishCopy(.copied(.context, characters: text.unicodeScalars.count))
             record(.reviewPack, ref: ref, characters: text.unicodeScalars.count)
+            beginHandoff(ref: ref, characters: text.unicodeScalars.count)
         } catch {
             finishCopy(.failed(Self.message(for: error)))
         }
@@ -1190,6 +1326,7 @@ public final class AppModel {
         do {
             try clipboard.copy(pending.text)
             finishCopy(.copied(.context, characters: pending.text.unicodeScalars.count))
+            beginHandoff(ref: pending.ref, characters: pending.text.unicodeScalars.count)
         } catch {
             finishCopy(.failed(Self.message(for: error)))
         }
@@ -1199,7 +1336,7 @@ public final class AppModel {
         pendingSensitiveContext = nil
     }
 
-    private func finishCopy(_ feedback: CopyFeedback) {
+    func finishCopy(_ feedback: CopyFeedback) {
         copyFeedback = feedback
         feedbackReset?.cancel()
         feedbackReset = Task { [weak self] in
@@ -1234,6 +1371,8 @@ public enum FilePickRequest: Equatable, Sendable {
     case images
     /// Project folders (only their paths are used).
     case folders
+    /// Documents, PDFs and images to keep with a report.
+    case files
 }
 
 /// The system `NSOpenPanel`, as its own window with the keyboard: the island
@@ -1265,6 +1404,11 @@ public enum LiveFilePicker {
             panel.canChooseFiles = false
             panel.canChooseDirectories = true
             panel.message = "Choose project folders. Capture stays off until you turn it on."
+        case .files:
+            panel.canChooseFiles = true
+            panel.canChooseDirectories = false
+            panel.allowedContentTypes = [.image, .pdf, .text, .sourceCode, .json, .commaSeparatedText, .xml, .html, .yaml]
+            panel.message = "Choose documents, PDFs or images to keep with this report (snapshots)."
         }
         // Prompt Relay is an agent app whose island is a non-activating
         // panel: the click on 📎 did not make it the active app. The dialog

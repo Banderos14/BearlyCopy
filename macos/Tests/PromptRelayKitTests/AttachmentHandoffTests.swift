@@ -191,19 +191,20 @@ final class AttachmentHandoffTests: XCTestCase {
 
     // MARK: Review Pack
 
-    func testALocalPackListsImagesBeforeTestsWithoutTouchingTheResponse() throws {
-        let response = "Done.\n\n## Tests and CI\nAll green (Claude says).\n"
-        let core = "# Review Pack: x\n\n## Claude final response\n[Reported by Claude] x\n\n```markdown\n\(response)\n```\n\n"
-            + "## Git state\n- x\n\n## Tests and CI\n- [Not verified] y\n\n## Request for review\nPlease review.\n"
+    func testALocalPackListsImagesBeforeNotCheckedWithoutTouchingTheResponse() throws {
+        // The response itself contains the anchor heading: only the Core's own counts.
+        let response = "Done.\n\n## Not checked\nAll green (Claude says).\n"
+        let core = "# Copy for ChatGPT: x\n\n## Claude final response\n[Reported by Claude] x\n\n```markdown\n\(response)\n```\n\n"
+            + "## Git state\n- x\n\n## Not checked\n- [Not verified] y\n\n## Request for review\nPlease review.\n"
         let a = ReportAttachment(id: "a", reportKey: "k", originalFilename: "screen.png", storedFilename: "a.png", mimeType: "image/png",
                                  byteCount: 2048, sha256: "s", addedAt: "t", provenance: "p")
         let pack = ReviewPack.render(local: core, attachments: [a])
         XCTAssertEqual(ReviewPackReader.response(in: pack).map { Data($0.utf8) }, Data(response.utf8), "the response is untouched")
-        let section = try XCTUnwrap(pack.range(of: "## Attachments (1, sent separately)"))
-        let tests = try XCTUnwrap(pack.range(of: "\n## Tests and CI\n- [Not verified]"))
-        XCTAssertLessThan(section.lowerBound, tests.lowerBound, "listed before Tests and CI, after the response")
+        let section = try XCTUnwrap(pack.range(of: "## Attachments (1 file, sent separately)"))
+        let tests = try XCTUnwrap(pack.range(of: "\n## Not checked\n- [Not verified]"))
+        XCTAssertLessThan(section.lowerBound, tests.lowerBound, "listed before Not checked, after the response")
         XCTAssertGreaterThan(section.lowerBound, try XCTUnwrap(pack.range(of: "## Git state")).lowerBound)
-        XCTAssertTrue(pack.contains("if they are not attached to this message, they were not shared"), "no claim that they were sent")
+        XCTAssertTrue(pack.contains("part of this review only if they are attached to this message"), "no claim that they were sent")
         XCTAssertFalse(pack.contains("a.png"), "no private file name or path")
         XCTAssertEqual(ReviewPack.render(local: core, attachments: []), core)
     }

@@ -161,7 +161,9 @@ final class NotchControllerTests: XCTestCase {
         controller.interaction.pointerEntered()
         clock.advance(0.2)
         XCTAssertEqual(controller.interaction.phase, .expanded(focused: false))
-        assertFrame(controller.panelFrame, controller.layout?.expandedFrame(contentHeight: controller.presentation.contentHeight))
+        // Hover opens Quick Peek at its own (narrower) width.
+        assertFrame(controller.panelFrame, controller.layout?.expandedFrame(contentHeight: controller.presentation.contentHeight, peek: true))
+        XCTAssertEqual(controller.panelFrame?.width ?? 0, NotchLayout.peekWidth, accuracy: 0.5)
         XCTAssertTrue(controller.presentation.isExpanded)
         // The real view measures its content; the window follows it exactly,
         // still hanging from the top edge (no empty transparent area below).
@@ -169,7 +171,7 @@ final class NotchControllerTests: XCTestCase {
         let measured = controller.presentation.contentHeight
         XCTAssertGreaterThanOrEqual(measured, NotchLayout.minContentHeight)
         XCTAssertLessThanOrEqual(measured, controller.layout?.maxContentHeight ?? 0)
-        assertFrame(controller.panelFrame, controller.layout?.expandedFrame(contentHeight: measured))
+        assertFrame(controller.panelFrame, controller.layout?.expandedFrame(contentHeight: measured, peek: true))
         XCTAssertEqual(controller.panelFrame?.maxY ?? 0, 982, accuracy: 1)
         controller.interaction.pointerExited()
         clock.advance(0.4)
@@ -476,9 +478,12 @@ final class NotchControllerTests: XCTestCase {
         pointer.move(to: CGPoint(x: ear.minX + NotchLayout.earWidth / 2 + 30, y: ear.midY))
         clock.run(0.5)
         XCTAssertEqual(mascot.gaze.x, tanh(30 / 220), accuracy: 0.05, "just right of the bear")
-        clock.advance(PointerFollower.restAfter + 1)
-        clock.run(0.5)
-        XCTAssertEqual(mascot.gaze, .zero, "after a long stillness, neutral again (eased)")
+        clock.advance(PointerFollower.restAfter + 0.1)
+        clock.run(0.6)
+        XCTAssertEqual(mascot.head, .zero, "R8: the head is back first")
+        clock.run(NotchController.eyesLinger + 0.6)
+        XCTAssertEqual(mascot.gaze, .zero, "then the eyes: neutral again (eased)")
+        XCTAssertEqual(clock.liveTimers(matching: 1.0 / 30), 0, "and nothing runs once still")
 
         workspace.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
         XCTAssertFalse(controller.isFollowingPointer, "display asleep: nothing runs")
@@ -513,8 +518,9 @@ final class NotchControllerTests: XCTestCase {
         controller.look(at: CGPoint(x: 200, y: 16))       // pointer far right of the left ear
         XCTAssertGreaterThan(controller.presentation.mascot.gazeTarget.x, 0.5)
         controller.pointerLeft()
-        clock.run(0.5)
+        clock.run(NotchController.eyesLinger + 1)
         XCTAssertEqual(controller.presentation.mascot.gaze, .zero, "back to neutral")
+        XCTAssertEqual(controller.presentation.mascot.head, .zero)
 
         let mascot = controller.presentation.mascot
         controller.react(newAnswer: false, copy: .copied(.response, characters: 3), coreDown: false)

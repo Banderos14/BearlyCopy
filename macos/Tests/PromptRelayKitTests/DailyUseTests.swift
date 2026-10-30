@@ -174,15 +174,51 @@ final class FollowLatestTests: XCTestCase {
         XCTAssertEqual(m.readyAnswer?.sessionKey, "failed")
         XCTAssertTrue(m.hasUnseenAnswer || m.readyAnswer != nil)
 
-        // Closing every surface hands control back; the next answer is followed.
+        // Phase 5 (R7): the user picked this session, so an answer in another
+        // session never replaces it, even after the island closes: it waits
+        // behind the "New in …" chip.
         m.surfaceDisappeared()
         XCTAssertTrue(m.followsLatest)
+        XCTAssertTrue(m.sessionPinned)
         c.sessionsByProject["/done"] = [sessionSummary("done-new", project: "/done", last: "2026-10-29T15:00:00.000000Z", lastTurn: 3),
                                         sessionSummary("done-old", project: "/done", last: "2026-10-28T09:00:00.000000Z")]
         c.turnsBySession["done-new"] = [turn(1), turn(2), turn(3, preview: "third", chars: 5)]
         await m.refreshNow()
+        XCTAssertEqual(m.selectedSessionKey, "done-old", "the chosen session stays")
+        XCTAssertEqual(m.newAnswerElsewhere?.sessionKey, "done-new", "the new answer is announced, not shown")
+        await m.revealReadyAnswer()
+        XCTAssertEqual(m.selectedSessionKey, "done-old", "opening the island does not switch sessions either")
+
+        // The chip opens the other session's newest answer and pins it.
+        m.openNewAnswerElsewhere()
+        try await waitUntil { m.selectedResponseText == "done-new#3" }
         XCTAssertEqual(m.selectedSessionKey, "done-new")
         XCTAssertEqual(m.selectedTurnIndex, 3)
+        XCTAssertNil(m.newAnswerElsewhere)
+
+        // A new answer in the pinned session itself is followed.
+        c.sessionsByProject["/done"] = [sessionSummary("done-new", project: "/done", last: "2026-10-29T16:00:00.000000Z", lastTurn: 4),
+                                        sessionSummary("done-old", project: "/done", last: "2026-10-28T09:00:00.000000Z")]
+        c.turnsBySession["done-new"] = [turn(1), turn(2), turn(3, preview: "third", chars: 5), turn(4, preview: "fourth", chars: 6)]
+        await m.refreshNow()
+        XCTAssertEqual(m.selectedSessionKey, "done-new")
+        XCTAssertEqual(m.selectedTurnIndex, 4)
+    }
+
+    func testPinnedSessionSurvivesARestart() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "pr-pin-\(UUID().uuidString)"))
+        let c = core()
+        let first = AppModel(core: c, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        await first.refreshNow()
+        first.selectProject("/done")
+        try await waitUntil { first.selectedSessionKey != nil }
+        first.selectSession("done-old")
+        try await waitUntil { first.selectedResponseText == "done-old#1" }
+
+        let second = AppModel(core: c, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        await second.refreshNow()
+        XCTAssertEqual(second.selectedSessionKey, "done-old", "the chosen session is back after a restart")
+        XCTAssertTrue(second.sessionPinned)
     }
 
     func testCopyKeepsEveryAnswer() async {

@@ -42,7 +42,8 @@ public final class LivePointerEvents: PointerEvents {
 @MainActor
 public final class PointerFollower {
     public static let maxRate: Double = 30
-    public static let restAfter: TimeInterval = 12
+    /// R8: the head returns to neutral this long after the pointer stops.
+    public static let restAfter: TimeInterval = 1.2
 
     private let events: PointerEvents
     private let scheduler: NotchScheduling

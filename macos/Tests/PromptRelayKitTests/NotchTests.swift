@@ -164,9 +164,16 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(layout.expanded.maxY, screen.frame.maxY, "hangs from the top edge")
         XCTAssertEqual(layout.expanded.midX, layout.notch.midX, accuracy: 0.5)
         XCTAssertTrue(screen.frame.contains(layout.expanded))
-        XCTAssertEqual(layout.expandedIslandWidth, 480, "a compact card, not a window")
-        XCTAssertEqual(layout.expanded.height, NotchLayout.maxIslandHeight + NotchLayout.shadowInset)
-        XCTAssertEqual(layout.maxContentHeight, NotchLayout.maxIslandHeight - 32)
+        // Phase 5: Details 640 wide on a MacBook, Quick Peek 520; at most
+        // 38 % of the display height (982 → 373 pt, band included).
+        XCTAssertEqual(layout.expandedIslandWidth, 640, "wider, but low")
+        XCTAssertEqual(layout.peekWidth, 520)
+        XCTAssertEqual(layout.expanded.height, (982 * NotchLayout.maxScreenShare).rounded() + NotchLayout.shadowInset)
+        XCTAssertEqual(layout.maxContentHeight, (982 * NotchLayout.maxScreenShare).rounded() - 32)
+        XCTAssertLessThanOrEqual(layout.expanded.height, 982 * 0.38 + 0.5)
+        let peek = layout.expandedFrame(contentHeight: 100, peek: true)
+        XCTAssertEqual(peek.width, 520)
+        XCTAssertEqual(peek.midX, layout.notch.midX, accuracy: 0.5, "Quick Peek is centred on the notch too")
         XCTAssertFalse(layout.isFloating)
     }
 
@@ -176,8 +183,8 @@ final class NotchGeometryTests: XCTestCase {
                                      auxiliaryTopLeft: CGRect(x: 0, y: 468, width: 663.5, height: 32),
                                      auxiliaryTopRight: CGRect(x: 848.5, y: 468, width: 663.5, height: 32))
         let small = try XCTUnwrap(NotchLayout(screen: short))
-        XCTAssertEqual(small.expanded.height, 360, "at most 72 % of the display height")
-        XCTAssertEqual(small.expandedFrame(contentHeight: 2000).height, 360, "longer content scrolls inside")
+        XCTAssertEqual(small.expanded.height, 300, "a short display keeps room for the task, the answer and the actions")
+        XCTAssertEqual(small.expandedFrame(contentHeight: 2000).height, 300, "longer content scrolls inside")
 
         let external = externalScreen(origin: .zero)
         XCTAssertNil(NotchLayout(screen: external))
@@ -188,6 +195,8 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(frame.midX, 960, accuracy: 0.5)
         XCTAssertEqual(frame.height, 232)
         XCTAssertTrue(external.frame.contains(frame))
+        XCTAssertEqual(floating.expandedIslandWidth, 680, "a large display gets the wider Details")
+        XCTAssertEqual(floating.peekWidth, 560)
     }
 
     func testExpandedFrameFollowsContentAndStaysAnchored() throws {

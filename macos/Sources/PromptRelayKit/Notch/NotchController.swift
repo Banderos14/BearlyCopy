@@ -21,8 +21,10 @@ public final class NotchPresentation {
     public internal(set) var reduceMotion = false
     /// Size of the camera housing on the active display.
     public internal(set) var notchSize = CGSize(width: 185, height: 32)
-    /// Width of the expanded island on the active display.
+    /// Width of the open island now: Quick Peek's or Details'.
     public internal(set) var islandWidth = NotchLayout.expandedWidth
+    public internal(set) var peekWidth = NotchLayout.peekWidth
+    public internal(set) var detailsWidth = NotchLayout.expandedWidth
     /// Height the expanded content needs (measured by the view); the island
     /// and its window follow it, so there is never empty space below.
     public internal(set) var contentHeight: CGFloat = NotchLayout.minContentHeight
@@ -35,6 +37,8 @@ public final class NotchPresentation {
     /// Relay the bear beside the notch and in the band (Settings → Appearance).
     public internal(set) var showsMascot = false
     public let mascot = MascotState()
+    /// Relay breathes (Core Animation) while it rests visible and motion is allowed.
+    public internal(set) var breathes = false
     /// The resting island has ears: a new answer, or the mascot.
     var hasEars: Bool { showsIndicator || showsMascot }
     var onContentHeight: ((CGFloat) -> Void)?
@@ -143,6 +147,7 @@ public final class NotchController {
     let follower: PointerFollower
     private let scheduler: NotchScheduling
     var gazeTick: NotchTimer?
+    var eyesReturn: NotchTimer?
     /// The displays are asleep: Relay neither blinks nor follows the pointer.
     var screensAsleep = false
     private var resizeWork: DispatchWorkItem?
@@ -272,7 +277,9 @@ public final class NotchController {
         isYielding = yielding
         hasRestingTarget = resting
         presentation.notchSize = newLayout.notch.size
-        presentation.islandWidth = newLayout.expandedIslandWidth
+        presentation.islandWidth = presentation.surface == .peek ? newLayout.peekWidth : newLayout.expandedIslandWidth
+        presentation.peekWidth = newLayout.peekWidth
+        presentation.detailsWidth = newLayout.expandedIslandWidth
         presentation.maxContentHeight = newLayout.maxContentHeight
         presentation.isFloating = newLayout.isFloating
         let mascotChanged = presentation.showsMascot != settings.mascotEnabled
@@ -327,7 +334,7 @@ public final class NotchController {
     }
 
     private func expandedFrame(_ layout: NotchLayout) -> CGRect {
-        layout.expandedFrame(contentHeight: presentation.contentHeight)
+        layout.expandedFrame(contentHeight: presentation.contentHeight, peek: presentation.surface == .peek)
     }
 
     /// The content changed height (another view, a list grew): the window
@@ -340,14 +347,18 @@ public final class NotchController {
             presentation.contentHeight = height
             return
         }
+        // `display: false`: this runs from SwiftUI's geometry callback; forcing
+        // a synchronous display here laid the window out during its own
+        // layout (AppKit's "layout during layout"). It redraws on the next pass.
         if height >= presentation.contentHeight {
-            panel.setFrame(layout.expandedFrame(contentHeight: height), display: true)
+            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek), display: false)
             withAnimation(presentation.animation) { presentation.contentHeight = height }
         } else {
             withAnimation(presentation.animation) { presentation.contentHeight = height }
             let work = DispatchWorkItem { [weak self] in
                 guard let self, self.interaction.phase.isExpanded, let layout = self.layout else { return }
-                self.panel?.setFrame(layout.expandedFrame(contentHeight: self.presentation.contentHeight), display: true)
+                self.panel?.setFrame(layout.expandedFrame(contentHeight: self.presentation.contentHeight,
+                                                          peek: self.presentation.surface == .peek), display: true)
             }
             resizeWork = work
             DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0.12 : 0.3), execute: work)
@@ -385,10 +396,14 @@ public final class NotchController {
                 // Hover opens the peek; a click, the shortcut or the menu bar
                 // the expanded island, on Home unless a view was asked for.
                 presentation.surface = focused ? .expanded : .peek
+                presentation.islandWidth = focused ? presentation.detailsWidth : presentation.peekWidth
                 model.route = pendingRoute ?? .home
                 pendingRoute = nil
             } else if focused, presentation.surface == .peek {
-                withAnimation(presentation.animation) { presentation.surface = .expanded }
+                withAnimation(presentation.animation) {
+                    presentation.surface = .expanded
+                    presentation.islandWidth = presentation.detailsWidth
+                }
             }
             placePanel(for: phase)
             if !old.isExpanded {
@@ -527,22 +542,44 @@ extension NotchController {
     /// until they arrive; nothing runs while Relay is still.
     func setGaze(_ target: CGPoint) {
         let mascot = presentation.mascot
+        eyesReturn?.cancel(); eyesReturn = nil
         guard abs(target.x - mascot.gazeTarget.x) > 0.02 || abs(target.y - mascot.gazeTarget.y) > 0.02 || target == .zero else { return }
         mascot.gazeTarget = target
+        mascot.headTarget = target
         guard gazeTick == nil else { return }
         stepGaze()
     }
 
+    /// Two followers at 30 frames a second, only until both arrive: the eyes
+    /// ease quickly (≈ 0.15 s, no overshoot); the head is a damped spring
+    /// (≈ 0.35 s, a slight overshoot) so it trails the eyes. Nothing runs
+    /// while Relay is still.
     private func stepGaze() {
         let mascot = presentation.mascot
-        let dx = mascot.gazeTarget.x - mascot.gaze.x, dy = mascot.gazeTarget.y - mascot.gaze.y
-        if abs(dx) < 0.01, abs(dy) < 0.01 {
+        let dt: CGFloat = 1.0 / 30
+        let ex = mascot.gazeTarget.x - mascot.gaze.x, ey = mascot.gazeTarget.y - mascot.gaze.y
+        let eyesDone = abs(ex) < 0.01 && abs(ey) < 0.01
+        if eyesDone {
             if mascot.gaze != mascot.gazeTarget { mascot.gaze = mascot.gazeTarget }
-            gazeTick = nil
-            return
+        } else {
+            mascot.gaze = CGPoint(x: mascot.gaze.x + ex * 0.45, y: mascot.gaze.y + ey * 0.45)
         }
-        // Exponential easing: ≈ 90 % of the way in 0.2 s, no overshoot.
-        mascot.gaze = CGPoint(x: mascot.gaze.x + dx * 0.38, y: mascot.gaze.y + dy * 0.38)
+        let omega: CGFloat = 14, zeta: CGFloat = 0.75
+        var v = mascot.headVelocity, h = mascot.head
+        let ax = omega * omega * (mascot.headTarget.x - h.x) - 2 * zeta * omega * v.x
+        let ay = omega * omega * (mascot.headTarget.y - h.y) - 2 * zeta * omega * v.y
+        v = CGPoint(x: v.x + ax * dt, y: v.y + ay * dt)
+        h = CGPoint(x: h.x + v.x * dt, y: h.y + v.y * dt)
+        let headDone = abs(mascot.headTarget.x - h.x) < 0.005 && abs(mascot.headTarget.y - h.y) < 0.005
+            && abs(v.x) < 0.05 && abs(v.y) < 0.05
+        if headDone {
+            mascot.headVelocity = .zero
+            if mascot.head != mascot.headTarget { mascot.head = mascot.headTarget }
+        } else {
+            mascot.headVelocity = v
+            mascot.head = h
+        }
+        if eyesDone && headDone { gazeTick = nil; return }
         gazeTick = scheduler.schedule(after: 1.0 / 30) { [weak self] in
             self?.gazeTick = nil
             self?.stepGaze()
@@ -557,26 +594,47 @@ extension NotchController {
         let center: CGPoint = presentation.isExpanded
             ? CGPoint(x: IslandMetrics.of(presentation).leading + MascotView.size(notchHeight: presentation.notchSize.height) / 2,
                       y: windowHeight - presentation.notchSize.height / 2)
-            : CGPoint(x: NotchLayout.earWidth / 2, y: windowHeight / 2)
+            : CGPoint(x: RestingPose.origin.x + RestingPose.size / 2, y: windowHeight / 2)
         return CGPoint(x: tanh((point.x - center.x) / 220), y: tanh((center.y - point.y) / 160))
     }
 
-    /// The pointer rested or following stopped: Relay looks ahead again (animated).
+    /// The pointer rested or following stopped: the head returns to neutral
+    /// now, the eyes a moment later (they linger), both animated.
     func pointerLeft() {
+        let mascot = presentation.mascot
         if presentation.reduceMotion || !presentation.showsMascot {
             gazeTick?.cancel(); gazeTick = nil
-            presentation.mascot.gazeTarget = .zero
-            if presentation.mascot.gaze != .zero { presentation.mascot.gaze = .zero }
-        } else if presentation.mascot.gazeTarget != .zero || presentation.mascot.gaze != .zero {
-            setGaze(.zero)
+            eyesReturn?.cancel(); eyesReturn = nil
+            mascot.gazeTarget = .zero; mascot.headTarget = .zero; mascot.headVelocity = .zero
+            if mascot.gaze != .zero { mascot.gaze = .zero }
+            if mascot.head != .zero { mascot.head = .zero }
+            return
+        }
+        guard mascot.headTarget != .zero || mascot.head != .zero || mascot.gazeTarget != .zero || mascot.gaze != .zero else { return }
+        mascot.headTarget = .zero
+        if gazeTick == nil { stepGaze() }
+        eyesReturn?.cancel()
+        eyesReturn = scheduler.schedule(after: Self.eyesLinger) { [weak self] in
+            guard let self else { return }
+            self.eyesReturn = nil
+            self.presentation.mascot.gazeTarget = .zero
+            if self.gazeTick == nil { self.stepGaze() }
         }
     }
+
+    /// The eyes return this long after the head.
+    static let eyesLinger: TimeInterval = 0.8
 
     /// Short reactions to facts: a captured answer, a copy, a failure. A
     /// successful copy plays the happy hop; a failed one a small head shake,
     /// never the success reaction.
     func react(newAnswer: Bool, copy: AppModel.CopyFeedback, coreDown: Bool) {
         let mascot = presentation.mascot
+        if case .copied = copy, mascot.mood != .pleased, !presentation.reduceMotion {
+            // Attention: the head comes to the centre for the happy hop.
+            mascot.headTarget = .zero
+            if gazeTick == nil { stepGaze() }
+        }
         let mood: MascotState.Mood
         switch copy {
         case .copied: mood = .pleased
@@ -595,6 +653,8 @@ extension NotchController {
     func updateBlinking() {
         let visible = isRunning && presentation.showsMascot && !presentation.reduceMotion && !screensAsleep && !dialogOpen
             && (interaction.phase.isExpanded || (interaction.phase == .compact && hasRestingTarget))
+        let breathing = visible && interaction.phase == .compact
+        if presentation.breathes != breathing { presentation.breathes = breathing }
         if visible {
             follower.start()
         } else {

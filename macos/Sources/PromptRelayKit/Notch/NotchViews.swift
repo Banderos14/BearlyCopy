@@ -105,9 +105,7 @@ public struct NotchRootView: View {
         .frame(width: islandSize.width, height: islandSize.height, alignment: .top)
         .coordinateSpace(name: Self.space)
         #if DEBUG
-        .onPreferenceChange(IslandFramesKey.self) { frames in
-            MainActor.assumeIsolated { presentation.layoutFrames = frames }
-        }
+        .environment(\.islandFrameSink, { [presentation] id, rect in presentation.layoutFrames[id] = rect })
         #endif
         .clipShape(shape)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -122,9 +120,15 @@ public struct NotchRootView: View {
     private var compactContent: some View {
         HStack(spacing: 0) {
             if presentation.showsMascot {
-                // Centered in the ear, clear of the camera housing.
-                MascotView(state: presentation.mascot, size: MascotView.size(notchHeight: presentation.notchSize.height), reduceMotion: presentation.reduceMotion)
-                    .frame(width: ear)
+                // R8: at x = 8 in the ear (3.4 pt clear of the visible side
+                // and of the camera housing); its motion is bounded there.
+                let size = MascotView.size(notchHeight: presentation.notchSize.height)
+                Breathing(active: presentation.breathes) {
+                    MascotView(state: presentation.mascot, size: size, reduceMotion: presentation.reduceMotion, resting: true)
+                }
+                .frame(width: size, height: size)
+                .padding(.leading, RestingPose.origin.x)
+                .frame(width: ear, alignment: .leading)
             } else if presentation.showsIndicator {
                 Image(systemName: "text.bubble.fill")
                     .font(.system(size: 11, weight: .semibold))
@@ -163,11 +167,10 @@ public struct NotchRootView: View {
         }
         .frame(width: presentation.islandWidth, alignment: .top)
         .fixedSize(horizontal: false, vertical: true)
-        .background(GeometryReader { proxy in
-            Color.clear
-                .onAppear { presentation.reportContentHeight(proxy.size.height - presentation.notchSize.height) }
-                .onChange(of: proxy.size.height) { _, h in presentation.reportContentHeight(h - presentation.notchSize.height) }
-        })
+        // Read after layout; the window follows on the next display pass.
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { h in
+            presentation.reportContentHeight(h - presentation.notchSize.height)
+        }
         .foregroundStyle(.white)
     }
 

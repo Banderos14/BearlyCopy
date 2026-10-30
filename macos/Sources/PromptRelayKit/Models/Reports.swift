@@ -54,8 +54,40 @@ public struct ImportedReport: Codable, Identifiable, Equatable, Sendable {
     public var ref: ReportRef { .imported(id: id) }
 }
 
-/// An image the user added to a report. The file is copied into Prompt
-/// Relay's private folder; the original path is not kept.
+/// What kind of material an attachment is (ADR-016). Records written
+/// before Phase 5 have no kind and are images.
+public enum AttachmentKind: String, Codable, Sendable, CaseIterable {
+    case document, pdf, image
+    public var label: String {
+        switch self {
+        case .document: return "Document"
+        case .pdf: return "PDF"
+        case .image: return "Image"
+        }
+    }
+}
+
+/// Where an attachment came from.
+public enum AttachmentSource: String, Codable, Sendable {
+    /// The user chose the file (📎, drop).
+    case you
+    /// Claude showed it to the user (SendUserFile) or wrote it and named it
+    /// in its answer; added by the user's click.
+    case claude
+    /// The user's clipboard history.
+    case clipboard
+    public var label: String {
+        switch self {
+        case .you: return "you"
+        case .claude: return "Claude"
+        case .clipboard: return "clipboard"
+        }
+    }
+}
+
+/// A file kept with a report: a private snapshot copied into Prompt
+/// Relay's folder (SHA-256, time). Later changes to the original are not
+/// applied silently.
 public struct ReportAttachment: Codable, Identifiable, Equatable, Sendable {
     public let id: String
     /// `ReportRef.key` of the report it belongs to.
@@ -66,16 +98,79 @@ public struct ReportAttachment: Codable, Identifiable, Equatable, Sendable {
     public let byteCount: Int
     public let sha256: String
     public let addedAt: String
-    /// How it got here. Today always "added by you from a file".
+    /// How it got here, in words.
     public let provenance: String
+    // Phase 5 (optional: older records decode unchanged).
+    public var kind: AttachmentKind? = nil
+    public var source: AttachmentSource? = nil
+    /// Where the original was, for display (project-relative when possible).
+    public var originalPath: String? = nil
+    /// Included in Copy for ChatGPT and the file hand-off (default: yes).
+    public var selected: Bool? = nil
+    /// The mockup state this image shows, if any.
+    public var mockupID: String? = nil
+    public var stateID: String? = nil
+
+    public var effectiveKind: AttachmentKind { kind ?? .image }
+    public var effectiveSource: AttachmentSource { source ?? .you }
+    public var isSelected: Bool { selected ?? true }
+}
+
+/// A state of an interactive mockup: a named screen with its own image.
+public struct MockupState: Codable, Identifiable, Equatable, Sendable {
+    public enum Status: String, Codable, Sendable {
+        /// An image is stored in Prompt Relay.
+        case captured
+        /// Only the name is known (declared by the page or typed by the user).
+        case namedOnly = "named_only"
+        /// Getting an image failed; `failure` says why.
+        case failed
+    }
+    public let id: String
+    public var title: String
+    public var summary: String?
+    /// What a still image of this state cannot show (sliders, animation…).
+    public var interactive: [String]
+    public var status: Status
+    public var attachmentID: String?
+    public var failure: String?
+    public var selected: Bool
+}
+
+/// A link or an interactive mockup kept with a report. Neither is a file
+/// the reviewer can open: a link is listed with its availability, a mockup
+/// with its states and the images actually stored for them.
+public struct ReportMaterial: Codable, Identifiable, Equatable, Sendable {
+    public enum Kind: String, Codable, Sendable { case link, mockup }
+    public let id: String
+    public let reportKey: String
+    public let kind: Kind
+    public var title: String
+    public var url: String?
+    /// "owner" for a private Claude artifact.
+    public var audience: String?
+    /// The mockup's source file on this Mac, if known (display only).
+    public var sourcePath: String?
+    public var version: String?
+    public let addedAt: String
+    /// "Published by Claude (Artifact)", "Added by you".
+    public var provenance: String
+    public var selected: Bool
+    public var states: [MockupState]
+
+    /// A claude.ai link that only its owner can open.
+    public var isPrivateLink: Bool {
+        audience == "owner" || (url?.contains("claude.ai/") ?? false)
+    }
 }
 
 /// One copy the user made in Prompt Relay (Recent Copies). Only a
 /// reference: the text is fetched again when copying again.
 public struct CopyRecord: Codable, Identifiable, Equatable, Sendable {
     public enum Kind: String, Codable, Sendable {
+        /// `reviewPack` is the stored name of what is now Copy for ChatGPT.
         case response, reviewPack
-        public var title: String { self == .response ? "Response" : "Review Pack" }
+        public var title: String { self == .response ? "Response" : "Copy for ChatGPT" }
     }
 
     public let id: String

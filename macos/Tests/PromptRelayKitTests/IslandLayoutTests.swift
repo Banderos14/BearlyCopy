@@ -46,24 +46,29 @@ final class IslandLayoutTests: XCTestCase {
 
     func testContentKeepsItsDistanceFromTheIslandOutline() async throws {
         let m = await model()
-        for maxContent: CGFloat in [568, 380] {
+        // Phase 5 Details: 640 wide, at most 38 % of the display (341 pt of
+        // content on a 14-inch MacBook, 448 on a large display).
+        for maxContent: CGFloat in [448, 341] {
             let island = IslandHost(model: m, maxContentHeight: maxContent)
             let metrics = IslandMetrics.of(island.presentation)
             let f = island.presentation.layoutFrames
-            for id in ["card.task", "card.response", "home.actions", "home.footer"] {
+            for id in ["card.task", "card.response", "home.actions", "card.handoff", "card.attachments", "details.header"] {
                 let rect = try XCTUnwrap(f[id], "\(id) is laid out")
                 XCTAssertGreaterThanOrEqual(rect.minX - metrics.edge, 20, "\(id): clear of the left side (\(maxContent))")
                 XCTAssertGreaterThanOrEqual(island.width - metrics.edge - rect.maxX, 20, "\(id): clear of the right side")
                 XCTAssertTrue(island.contains(rect.insetBy(dx: -8, dy: -8)), "\(id): 8 pt inside the rounded outline")
             }
-            let footer = try XCTUnwrap(f["home.footer"])
-            XCTAssertGreaterThanOrEqual(island.height - footer.maxY, 18, "the footer sits above the rounded bottom edge")
-            XCTAssertLessThanOrEqual(island.height, 32 + maxContent, "Home fits the display without clipping")
+            let footer = try XCTUnwrap(f["home.actions"])
+            XCTAssertGreaterThanOrEqual(island.height - footer.maxY, 16, "the actions sit above the rounded bottom edge")
+            XCTAssertLessThanOrEqual(island.height, 32 + maxContent, "Details fits the display without clipping")
+            // Two columns side by side, none wider than the island allows.
+            let left = try XCTUnwrap(f["card.response"]), right = try XCTUnwrap(f["card.handoff"])
+            XCTAssertLessThan(left.maxX, right.minX, "the report left, the hand-off right")
             // With the line of copy feedback shown it still fits.
             await m.copySelectedResponse()
             island.settle()
-            let withFeedback = try XCTUnwrap(island.presentation.layoutFrames["home.footer"])
-            XCTAssertGreaterThanOrEqual(island.height - withFeedback.maxY, 16, "after a copy, the footer is not cut off (\(maxContent))")
+            let withFeedback = try XCTUnwrap(island.presentation.layoutFrames["home.actions"])
+            XCTAssertGreaterThanOrEqual(island.height - withFeedback.maxY, 16, "after a copy, the actions are not cut off (\(maxContent))")
             // One left edge for the band and the content below it.
             XCTAssertEqual(try XCTUnwrap(f["band.mascot"]).minX, try XCTUnwrap(f["card.task"]).minX, accuracy: 0.5)
             XCTAssertLessThanOrEqual(try XCTUnwrap(f["band.mascot"]).maxX, (island.width - 185) / 2 - 8,
@@ -113,19 +118,21 @@ final class IslandLayoutTests: XCTestCase {
         m.addAttachments(urls, to: try XCTUnwrap(m.currentRef))
     }
 
-    func testSeveralImagesAddOneCompactRowAndHomeStillFits() async throws {
+    func testSeveralImagesStayInsideTheAttachmentsCardAndDetailsStillFits() async throws {
         let m = await model()
         try addImages(m, names: ["Снимок экрана 2026-10-30 в 10.12.04.png", "island.png", "settings.png", "error.png"])
         XCTAssertEqual(m.attachments(for: m.currentRef).count, 4)
-        for maxContent: CGFloat in [568, 420] {
+        for maxContent: CGFloat in [448, 341] {
             let island = IslandHost(model: m, maxContentHeight: maxContent)
             let f = island.presentation.layoutFrames
-            let row = try XCTUnwrap(f["home.attachments"], "the cards are shown")
-            XCTAssertEqual(row.height, AttachmentStrip.cardHeight(compact: IslandMetrics.of(island.presentation).compact), accuracy: 0.5,
-                           "one fixed-height row, however many images")
+            let row = try XCTUnwrap(f["card.attachments"], "the attachments card is shown")
+            let columns = DetailsLayout(presentation: island.presentation).columns
+            let handoff = try XCTUnwrap(f["card.handoff"])
+            XCTAssertLessThanOrEqual(row.maxY - handoff.minY, columns + 0.5,
+                                     "any number of files scrolls inside the card; the column keeps its height")
             await m.copySelectedResponse()
             island.settle()
-            let footer = try XCTUnwrap(island.presentation.layoutFrames["home.footer"])
+            let footer = try XCTUnwrap(island.presentation.layoutFrames["home.actions"])
             XCTAssertTrue(island.contains(row.insetBy(dx: -8, dy: -8)))
             XCTAssertGreaterThanOrEqual(row.minX - IslandMetrics.of(island.presentation).edge, 20)
             XCTAssertGreaterThanOrEqual(island.height - footer.maxY, 16, "Home fits with the images and the copy line (\(maxContent))")
@@ -145,7 +152,7 @@ final class IslandLayoutTests: XCTestCase {
         let scroll = try XCTUnwrap(island.responseScrollView(), "the answer has its own scroll view")
         XCTAssertNil(island.ancestorScrollView(of: scroll), "not nested in another vertical scroll: the wheel scrolls only the answer")
         let card = try XCTUnwrap(island.presentation.layoutFrames["response.scroll"])
-        XCTAssertLessThanOrEqual(card.height, ResponseCard.scrollHeight(island.presentation, hasAttachments: false) + 0.5)
+        XCTAssertLessThanOrEqual(card.height, DetailsLayout(presentation: island.presentation).responseScroll(taskLines: 1) + 0.5)
         XCTAssertGreaterThan(scroll.documentView?.frame.height ?? 0, scroll.contentView.bounds.height * 3, "a long report scrolls")
         XCTAssertNotNil(island.presentation.layoutFrames["response.full"], "View Full Report stays")
 
@@ -336,7 +343,7 @@ final class IslandHost {
     let width: CGFloat
 
     init(model: AppModel, surface: NotchPresentation.Surface = .expanded, maxContentHeight: CGFloat = 568, mascot: Bool = true) {
-        width = NotchLayout.expandedWidth
+        width = surface == .peek ? NotchLayout.peekWidth : NotchLayout.expandedWidth
         presentation.notchSize = CGSize(width: 185, height: 32)
         presentation.islandWidth = width
         presentation.isExpanded = true

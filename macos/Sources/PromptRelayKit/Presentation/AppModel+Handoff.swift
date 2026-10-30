@@ -1,0 +1,408 @@
+import AppKit
+import Foundation
+
+/// Phase 5: typed attachments, Claude's suggested materials, interactive
+/// mockups and the two-step hand-off to ChatGPT (ADR-016).
+extension AppModel {
+    // MARK: Materials (links, mockups)
+
+    public func materials(for ref: ReportRef?) -> [ReportMaterial] {
+        _ = attachmentsVersion
+        guard let ref, let store = reportStore else { return [] }
+        return store.materials(for: ref)
+    }
+
+    /// Selected files, mockups and links of the current report: what the
+    /// Quick Peek line and the hand-off count.
+    public struct MaterialSummary: Equatable, Sendable {
+        public var documents = 0
+        public var images = 0
+        public var mockups = 0
+        public var mockupStates = 0
+        public var links = 0
+        public var needsVisualReview: Bool { mockups > 0 }
+        public var isEmpty: Bool { documents + images + mockups + links == 0 }
+
+        /// "1 document · 1 mockup (7 states) · 3 images"
+        public var line: String {
+            var parts: [String] = []
+            if documents > 0 { parts.append(documents == 1 ? "1 document" : "\(documents) documents") }
+            if mockups > 0 {
+                let states = mockupStates == 1 ? "1 state" : "\(mockupStates) states"
+                parts.append(mockups == 1 ? "1 mockup (\(states))" : "\(mockups) mockups (\(states))")
+            }
+            if images > 0 { parts.append(images == 1 ? "1 image" : "\(images) images") }
+            if links > 0 { parts.append(links == 1 ? "1 link" : "\(links) links") }
+            return parts.joined(separator: " · ")
+        }
+    }
+
+    public func materialSummary(for ref: ReportRef?) -> MaterialSummary {
+        var summary = MaterialSummary()
+        for a in attachments(for: ref) where a.isSelected && a.mockupID == nil {
+            if a.effectiveKind == .image { summary.images += 1 } else { summary.documents += 1 }
+        }
+        for m in materials(for: ref) where m.selected {
+            if m.kind == .mockup { summary.mockups += 1; summary.mockupStates += m.states.count } else { summary.links += 1 }
+        }
+        return summary
+    }
+
+    public func setSelected(_ attachment: ReportAttachment, _ selected: Bool) {
+        try? reportStore?.setSelected(attachment.id, selected)
+        attachmentsVersion += 1
+    }
+
+    public func setSelected(_ material: ReportMaterial, _ selected: Bool) {
+        var copy = material
+        copy.selected = selected
+        try? reportStore?.updateMaterial(copy)
+        attachmentsVersion += 1
+    }
+
+    public func setStateSelected(_ material: ReportMaterial, state: String, _ selected: Bool) {
+        var copy = material
+        guard let i = copy.states.firstIndex(where: { $0.id == state }) else { return }
+        copy.states[i].selected = selected
+        try? reportStore?.updateMaterial(copy)
+        attachmentsVersion += 1
+    }
+
+    public func removeMaterial(_ material: ReportMaterial) {
+        do { try reportStore?.removeMaterial(material.id); attachmentMessage = nil } catch {
+            attachmentMessage = "\(material.title) could not be removed. Try again."
+        }
+        attachmentsVersion += 1
+    }
+
+    /// Images for the states of a mockup, chosen in the file picker: each
+    /// file goes to the state whose name it carries, or the next state
+    /// without an image, or becomes a new state named after the file.
+    public func importStateImages(_ material: ReportMaterial) {
+        presentDialog(.images) { [weak self] urls in
+            guard let self, let urls, let store = self.reportStore else { return }
+            var current = store.materials(for: ReportStore.ref(forKey: material.reportKey)).first { $0.id == material.id } ?? material
+            var problems: [String] = []
+            for url in urls.sorted(by: { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }) {
+                let base = url.deletingPathExtension().lastPathComponent.lowercased()
+                var target = current.states.first { base.contains($0.id.lowercased()) || base.contains($0.title.lowercased()) }
+                    ?? current.states.first { $0.status != .captured }
+                if target == nil {
+                    let state = MockupState(id: Self.slug(url.deletingPathExtension().lastPathComponent),
+                                            title: url.deletingPathExtension().lastPathComponent, summary: nil,
+                                            interactive: [], status: .namedOnly, attachmentID: nil, failure: nil, selected: true)
+                    current.states.append(state)
+                    try? store.updateMaterial(current)
+                    target = state
+                }
+                do {
+                    current = try store.setStateImage(from: url, mockupID: current.id, stateID: target!.id)
+                } catch let error as ReportStoreError {
+                    problems.append(Self.message(for: error, file: url.lastPathComponent))
+                    current = store.allMaterials().first { $0.id == current.id } ?? current
+                } catch {
+                    problems.append("\(url.lastPathComponent) could not be read")
+                }
+            }
+            self.attachmentMessage = problems.isEmpty ? nil : problems.joined(separator: "; ")
+            self.attachmentsVersion += 1
+        }
+    }
+
+    /// One image for one state.
+    public func importStateImage(_ material: ReportMaterial, state: MockupState) {
+        presentDialog(.images) { [weak self] urls in
+            guard let self, let url = urls?.first, let store = self.reportStore else { return }
+            do {
+                _ = try store.setStateImage(from: url, mockupID: material.id, stateID: state.id)
+                self.attachmentMessage = nil
+            } catch let error as ReportStoreError {
+                self.attachmentMessage = Self.message(for: error, file: url.lastPathComponent)
+            } catch {
+                self.attachmentMessage = "\(url.lastPathComponent) could not be read"
+            }
+            self.attachmentsVersion += 1
+        }
+    }
+
+    static func slug(_ text: String) -> String {
+        let lowered = text.lowercased().unicodeScalars.map { CharacterSet.alphanumerics.contains($0) ? String($0) : "-" }.joined()
+        let collapsed = lowered.split(separator: "-").joined(separator: "-")
+        return collapsed.isEmpty ? "state" : String(collapsed.prefix(40))
+    }
+
+    // MARK: Suggestions from what Claude did in the turn
+
+    /// A material Claude prepared for the user in this turn, not added yet.
+    public struct Suggestion: Identifiable, Equatable, Sendable {
+        public enum Kind: Equatable, Sendable { case file, mockup }
+        public let id: String
+        public let kind: Kind
+        public let title: String
+        /// Why it is suggested, in plain words.
+        public let reason: String
+        /// The file on this Mac (or the mockup's source), when known.
+        public let path: String?
+        public let exists: Bool
+        public let artifact: ObservedArtifact?
+    }
+
+    /// Only what Claude showed explicitly (SendUserFile, Artifact) or wrote
+    /// this turn **and** named in its answer. Other changed files stay paths.
+    public var suggestions: [Suggestion] {
+        guard selectedImport == nil, let ref = currentRef, let show = detail.value,
+              show.turn.index == selectedTurnIndex, let observed = show.turn.observedDetail else { return [] }
+        let root = projectPath(containing: show.session.project.path) ?? show.session.project.path
+        return Self.suggestions(observed: observed, answer: show.turn.finalResponse?.text ?? "", root: root,
+                                addedPaths: Set(attachments(for: ref).compactMap(\.originalPath)),
+                                addedURLs: Set(materials(for: ref).compactMap(\.url)),
+                                exists: { FileManager.default.fileExists(atPath: $0) })
+    }
+
+    static func suggestions(observed: ObservedDetail, answer: String, root: String?, addedPaths: Set<String>,
+                            addedURLs: Set<String>, exists: (String) -> Bool) -> [Suggestion] {
+        var out: [Suggestion] = []
+        var seen = Set<String>()
+        func display(_ path: String) -> String { displayPath(path, root: root) }
+        for path in observed.shownFiles where !seen.contains(path) && !addedPaths.contains(display(path)) {
+            seen.insert(path)
+            out.append(Suggestion(id: "shown:" + path, kind: .file, title: (path as NSString).lastPathComponent,
+                                  reason: "Claude showed it to you", path: path, exists: exists(path), artifact: nil))
+        }
+        for artifact in observed.artifacts {
+            let key = artifact.url ?? artifact.sourcePath ?? ""
+            guard !key.isEmpty, !seen.contains(key), !(artifact.url.map(addedURLs.contains) ?? false) else { continue }
+            seen.insert(key)
+            let source = artifact.sourcePath
+            out.append(Suggestion(id: "artifact:" + key, kind: .mockup, title: artifact.title ?? "Claude artifact",
+                                  reason: "Claude published it as an artifact", path: source,
+                                  exists: source.map(exists) ?? false, artifact: artifact))
+        }
+        for file in observed.filesChanged where !seen.contains(file.path) && !addedPaths.contains(display(file.path)) {
+            let relative = display(file.path)
+            let name = (file.path as NSString).lastPathComponent
+            // Named in the answer: the relative path, or the file name as a whole word.
+            guard answer.contains(relative) || answer.range(of: #"(?<![\w.-])"# + NSRegularExpression.escapedPattern(for: name)
+                                                           + #"(?![\w-])"#, options: .regularExpression) != nil else { continue }
+            seen.insert(file.path)
+            out.append(Suggestion(id: "named:" + file.path, kind: .file, title: name,
+                                  reason: "Claude wrote it and named it in the answer", path: file.path,
+                                  exists: exists(file.path), artifact: nil))
+        }
+        return out
+    }
+
+    /// Project-relative path, or the last two components (no user name).
+    static func displayPath(_ path: String, root: String?) -> String {
+        if let root, path.hasPrefix(root.hasSuffix("/") ? root : root + "/") {
+            return String(path.dropFirst(root.hasSuffix("/") ? root.count : root.count + 1))
+        }
+        let parts = path.split(separator: "/")
+        return parts.count > 2 ? "…/" + parts.suffix(2).joined(separator: "/") : path
+    }
+
+    /// The user's click on a suggestion: a snapshot of the file, or a mockup
+    /// record (its declared state names are read from the source, never run).
+    public func accept(_ suggestion: Suggestion) {
+        guard let ref = currentRef, let store = reportStore else { return }
+        let root = detail.value.flatMap { projectPath(containing: $0.session.project.path) ?? $0.session.project.path }
+        switch suggestion.kind {
+        case .file:
+            guard let path = suggestion.path else { return }
+            do {
+                try store.addFile(from: URL(fileURLWithPath: path), to: ref, source: .claude,
+                                  displayPath: Self.displayPath(path, root: root))
+                attachmentMessage = nil
+            } catch let error as ReportStoreError {
+                attachmentMessage = Self.message(for: error, file: suggestion.title)
+            } catch {
+                attachmentMessage = "\(suggestion.title) could not be read"
+            }
+        case .mockup:
+            let artifact = suggestion.artifact
+            let declared = suggestion.path.flatMap { MockupStates.declared(inHTMLAt: URL(fileURLWithPath: $0)) }
+            let states = (declared?.states ?? []).map {
+                MockupState(id: $0.id, title: $0.title, summary: $0.description, interactive: $0.interactive ?? [],
+                            status: .namedOnly, attachmentID: nil, failure: nil, selected: true)
+            }
+            let material = ReportMaterial(id: UUID().uuidString.lowercased(), reportKey: ref.key, kind: .mockup,
+                                          title: declared?.title ?? suggestion.title, url: artifact?.url,
+                                          audience: artifact?.audience,
+                                          sourcePath: suggestion.path.map { Self.displayPath($0, root: root) },
+                                          version: nil, addedAt: ReportStore.now(),
+                                          provenance: "Published by Claude in this turn (Artifact tool) [Confirmed locally]",
+                                          selected: true, states: states)
+            do { try store.addMaterial(material); attachmentMessage = nil } catch {
+                attachmentMessage = "The mockup could not be saved."
+            }
+        }
+        attachmentsVersion += 1
+    }
+
+    public func acceptAll(_ suggestions: [Suggestion]) {
+        for s in suggestions where s.exists || s.kind == .mockup { accept(s) }
+    }
+
+    // MARK: Adding files
+
+    /// Documents, PDFs and images the user chose for the current report.
+    public func chooseFiles() {
+        guard let ref = currentRef, reportStore != nil else { return }
+        presentDialog(.files) { [weak self] urls in
+            guard let self, let urls, let store = self.reportStore else { return }
+            var problems: [String] = []
+            for url in urls {
+                do { try store.addFile(from: url, to: ref, source: .you, displayPath: url.lastPathComponent) }
+                catch let error as ReportStoreError { problems.append(Self.message(for: error, file: url.lastPathComponent)) }
+                catch { problems.append("\(url.lastPathComponent) could not be read") }
+            }
+            self.attachmentMessage = problems.isEmpty ? nil : problems.joined(separator: "; ")
+            self.attachmentsVersion += 1
+        }
+    }
+
+    // MARK: Clipboard images
+
+    /// Copies chosen clipboard images into the current report (or a state).
+    public func attachClipboardImages(_ items: [ClipboardImageHistory.Item], mockup: ReportMaterial? = nil) {
+        guard let ref = currentRef, let store = reportStore, let history = clipboardImages else { return }
+        var problems: [String] = []
+        for item in items {
+            let name = item.originalName ?? "Screenshot \(Self.clipboardStamp(item.capturedAt)).png"
+            do {
+                if let mockup, let state = (store.allMaterials().first { $0.id == mockup.id })?.states.first(where: { $0.status != .captured }) {
+                    _ = try store.setStateImage(from: history.url(for: item), mockupID: mockup.id, stateID: state.id)
+                } else {
+                    try store.addData(try Data(contentsOf: history.url(for: item)), name: name, to: ref, source: .clipboard)
+                }
+            } catch {
+                problems.append("\(name) could not be attached")
+            }
+        }
+        attachmentMessage = problems.isEmpty ? nil : problems.joined(separator: "; ")
+        attachmentsVersion += 1
+    }
+
+    static func clipboardStamp(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH.mm.ss"
+        return f.string(from: date)
+    }
+
+    // MARK: Hand-off names and step 2
+
+    /// Hand-off file names: documents keep their names; mockup states get
+    /// `<mockup>-NN-<state>.png` in state order. Images keep theirs.
+    func handoffNames(for ref: ReportRef) -> [String: String] {
+        var names: [String: String] = [:]
+        for m in materials(for: ref) where m.kind == .mockup && m.selected {
+            let slug = Self.slug(m.title)
+            var n = 0
+            for state in m.states where state.selected && state.status == .captured {
+                n += 1
+                guard let id = state.attachmentID else { continue }
+                let ext = attachments(for: ref).first { $0.id == id }.map { ($0.storedFilename as NSString).pathExtension } ?? "png"
+                names[id] = String(format: "%@-%02d-%@.%@", slug, n, state.id, ext)
+            }
+        }
+        return names
+    }
+
+    /// The selected files in hand-off order: documents, mockup states, images.
+    public func handoffAttachments(for ref: ReportRef?) -> [ReportAttachment] {
+        guard let ref else { return [] }
+        let all = attachments(for: ref)
+        let byID = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
+        let documents = all.filter { $0.isSelected && $0.mockupID == nil && $0.effectiveKind != .image }
+        let states = materials(for: ref).filter { $0.kind == .mockup && $0.selected }.flatMap { m in
+            m.states.filter { $0.selected && $0.status == .captured }.compactMap { $0.attachmentID.flatMap { byID[$0] } }
+        }
+        let images = all.filter { $0.isSelected && $0.mockupID == nil && $0.effectiveKind == .image }
+        return documents + states + images
+    }
+
+    func beginHandoff(ref: ReportRef, characters: Int) {
+        let count = handoffAttachments(for: ref).count
+        handoffStep = count > 0 ? HandoffStep(ref: ref, characters: characters, fileCount: count) : nil
+    }
+
+    private func preparedHandoffFiles() -> [URL] {
+        guard let step = handoffStep, let store = reportStore else { return [] }
+        do { return try store.handoffFiles(for: handoffAttachments(for: step.ref), names: handoffNames(for: step.ref)) } catch {
+            attachmentMessage = "Prompt Relay could not prepare the files."
+            return []
+        }
+    }
+
+    /// Step 2: the files on the clipboard, like ⌘C in Finder.
+    public func copyHandoffFiles() {
+        let files = preparedHandoffFiles()
+        guard !files.isEmpty else { finishCopy(.failed("The files are missing.")); return }
+        do {
+            try clipboard.copyFiles(files)
+            handoffStep?.filesCopied = true
+            finishCopy(.copied(.files, characters: files.count))
+        } catch {
+            finishCopy(.failed("The files could not be copied."))
+        }
+    }
+
+    public func revealHandoffFiles() {
+        let files = preparedHandoffFiles()
+        guard !files.isEmpty else { attachmentMessage = "The files are missing."; return }
+        NSWorkspace.shared.activateFileViewerSelecting(files)
+    }
+
+
+
+    public func endHandoff() { handoffStep = nil }
+
+    /// The prepared hand-off files (for an AppKit multi-file drag).
+    public func handoffFileURLs() -> [URL] { preparedHandoffFiles() }
+
+    public func openMockup(_ material: ReportMaterial) {
+        openMockupID = material.id
+        navigate(to: .mockup)
+    }
+
+    public var openMockupMaterial: ReportMaterial? {
+        materials(for: currentRef).first { $0.id == openMockupID }
+    }
+}
+
+/// The optional "Mockup States" declaration of a page (ADR-016 §4.4): a
+/// `<script type="application/json" id="prompt-relay-states">` block. Only
+/// read as JSON; the page is never run.
+public enum MockupStates {
+    public struct Declaration: Decodable, Equatable, Sendable {
+        public struct State: Decodable, Equatable, Sendable {
+            public let id: String
+            public let title: String
+            public let description: String?
+            public let interactive: [String]?
+        }
+        public let title: String?
+        public let states: [State]
+    }
+
+    static let maxSourceBytes = 4 * 1024 * 1024
+
+    public static func declared(inHTMLAt url: URL) -> Declaration? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = attributes[.size] as? Int, size <= maxSourceBytes,
+              let data = try? Data(contentsOf: url), let html = String(data: data, encoding: .utf8) else { return nil }
+        return declared(inHTML: html)
+    }
+
+    public static func declared(inHTML html: String) -> Declaration? {
+        guard let open = html.range(of: #"<script[^>]*id=["']prompt-relay-states["'][^>]*>"#, options: .regularExpression),
+              let close = html.range(of: "</script>", range: open.upperBound..<html.endIndex) else { return nil }
+        let json = html[open.upperBound..<close.lowerBound]
+        guard let decl = try? JSONDecoder().decode(Declaration.self, from: Data(json.utf8)) else { return nil }
+        let unique = decl.states.reduce(into: [Declaration.State]()) { acc, s in
+            if !acc.contains(where: { $0.id == s.id }), !s.id.isEmpty { acc.append(s) }
+        }
+        let limited: [Declaration.State] = Array(unique[..<min(unique.count, 30)])
+        return Declaration(title: decl.title, states: limited)
+    }
+}

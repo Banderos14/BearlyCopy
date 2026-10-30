@@ -1,6 +1,7 @@
 import Foundation
 
-/// The Review Pack: Markdown for an independent review in another chat.
+/// Copy for ChatGPT (formerly the Review Pack): Markdown for an independent
+/// review in another chat.
 ///
 /// For a report captured on this Mac the Core writes it (`context`), with
 /// read-only git state and its secret scan. For an imported report the app
@@ -29,10 +30,12 @@ public enum ReviewPack {
         return "\(f)\(info)\n\(text)\n\(f)"
     }
 
-    public static func render(imported report: ImportedReport, attachments: [ReportAttachment], exportedAt: String) -> String {
+    public static func render(imported report: ImportedReport, attachments: [ReportAttachment], exportedAt: String,
+                              materials: [ReportMaterial] = [], names: [String: String] = [:]) -> String {
         var lines: [String] = []
         func add(_ s: String = "") { lines.append(s) }
-        add("# Review Pack: Claude Code result for independent review (exported by Prompt Relay)")
+        add("# Copy for ChatGPT: Claude Code result for independent review")
+        add("Exported by Prompt Relay at \(exportedAt). No AI service was used.")
         add()
         add("Provenance labels: [\(confirmed)] = recorded on this machine by Prompt Relay; "
             + "[\(userSupplied)] = typed or pasted into Prompt Relay by the user; "
@@ -45,7 +48,6 @@ public enum ReviewPack {
         add("- Project: \(report.projectName ?? "not specified") [\(report.projectName == nil ? unavailable : userSupplied)]")
         add("- Cloud session: \(report.sessionLabel ?? "not specified") [\(report.sessionLabel == nil ? unavailable : userSupplied)]")
         add("- Imported at: \(report.importedAt) [\(confirmed)]")
-        add("- Exported at: \(exportedAt)")
         add()
         add("## Original user request")
         if let task = report.task {
@@ -61,22 +63,25 @@ public enum ReviewPack {
         add()
         add(block(report.text, info: "markdown"))
         add()
+        add("## Observed during this turn")
+        add("[\(unavailable)] Prompt Relay did not observe the cloud session: no commands, tests or files are known.")
+        add()
         add("## Git state")
         add("- [\(unavailable)] Not collected: the work happened in a cloud session, not in a folder on this Mac.")
         add()
-        appendTail(&lines, attachments: attachments)
+        appendTail(&lines, attachments: attachments, materials: materials, names: names)
         return lines.joined(separator: "\n") + "\n"
     }
 
-    /// The Core's pack for a local report, with the attachments the user
-    /// chose listed at the end (by name only, never a local path).
-    /// The section goes before "Tests and CI", like in an import's pack. The
-    /// last such heading is the Core's own: the response, which may contain
-    /// any heading, comes earlier. Without it the section is appended.
-    public static func render(local coreText: String, attachments: [ReportAttachment]) -> String {
-        guard !attachments.isEmpty else { return coreText }
-        let section = attachmentsSection(attachments) + "\n\n"
-        if let anchor = coreText.range(of: "\n## Tests and CI\n", options: .backwards) {
+    /// The Core's pack for a local report, with the materials the user
+    /// selected listed before "Not checked" (by name; files go separately).
+    /// The last such heading is the Core's own: the response, which may
+    /// contain any heading, comes earlier. Without it the section is appended.
+    public static func render(local coreText: String, attachments: [ReportAttachment],
+                              materials: [ReportMaterial] = [], names: [String: String] = [:]) -> String {
+        guard !attachments.isEmpty || !materials.isEmpty else { return coreText }
+        let section = attachmentsSection(attachments, materials: materials, names: names) + "\n\n"
+        if let anchor = coreText.range(of: "\n## Not checked\n", options: .backwards) {
             var text = coreText
             text.insert(contentsOf: section, at: text.index(after: anchor.lowerBound))
             return text
@@ -84,27 +89,112 @@ public enum ReviewPack {
         return coreText + "\n" + section
     }
 
-    static func attachmentsSection(_ attachments: [ReportAttachment]) -> String {
-        var lines = ["## Attachments (\(attachments.count), sent separately)",
-                     "[\(userSupplied)] Images the user added to this report in Prompt Relay. They are not part of this text; "
-                     + "if they are not attached to this message, they were not shared."]
-        for a in attachments {
-            lines.append("- \(a.originalFilename) — \(a.mimeType), \(ByteCountFormatter.string(fromByteCount: Int64(a.byteCount), countStyle: .file))")
+    static func size(_ bytes: Int) -> String { ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file) }
+
+    static func type(_ a: ReportAttachment) -> String {
+        let ext = (a.originalFilename as NSString).pathExtension.uppercased()
+        switch a.effectiveKind {
+        case .document: return ext.isEmpty ? "Text" : ext
+        case .pdf: return "PDF"
+        case .image: return a.mimeType.split(separator: "/").last.map { String($0).uppercased() } ?? "Image"
+        }
+    }
+
+    static func origin(_ a: ReportAttachment) -> String {
+        switch a.effectiveSource {
+        case .you: return "added by you [\(userSupplied)]"
+        case .claude: return "prepared by Claude in this turn [\(confirmed)]"
+        case .clipboard: return "from your clipboard [\(userSupplied)]"
+        }
+    }
+
+    /// The attachments section: what is selected, by group, and what is not
+    /// available. It lists files; it never says they were sent.
+    static func attachmentsSection(_ attachments: [ReportAttachment], materials: [ReportMaterial] = [],
+                                   names: [String: String] = [:]) -> String {
+        let files = attachments.filter { $0.mockupID == nil }
+        let mockups = materials.filter { $0.kind == .mockup }
+        let links = materials.filter { $0.kind == .link }
+        let stateFiles = mockups.flatMap { m in m.states.filter { $0.selected && $0.status == .captured } }.count
+        let fileCount = files.count + stateFiles
+        var lines = ["## Attachments (\(fileCount) \(fileCount == 1 ? "file" : "files"), sent separately)",
+                     "These files are part of this review only if they are attached to this message. "
+                     + "Prompt Relay does not send files; links are listed, not opened."]
+        let documents = files.filter { $0.effectiveKind != .image }
+        let images = files.filter { $0.effectiveKind == .image }
+        if !documents.isEmpty {
+            lines += ["", "### Documents"]
+            for a in documents {
+                let path = a.originalPath.map { " (\($0))" } ?? ""
+                lines.append("- \(names[a.id] ?? a.originalFilename)\(path) — \(type(a)), \(size(a.byteCount)) — \(origin(a)); "
+                             + "snapshot \(a.addedAt)")
+            }
+        }
+        if !images.isEmpty {
+            lines += ["", "### Images"]
+            for a in images {
+                lines.append("- \(names[a.id] ?? a.originalFilename) — \(type(a)), \(size(a.byteCount)) — \(origin(a))")
+            }
+        }
+        var unavailable: [String] = []
+        if !mockups.isEmpty {
+            lines += ["", "### Interactive mockups"]
+            for m in mockups {
+                lines.append("#### \(m.title) — Visual mockup, review required")
+                lines.append("- Source: \(m.provenance)")
+                if let url = m.url {
+                    lines.append("- Link: \(url) — " + (m.isPrivateLink ? "private; you probably cannot open it [\(unavailable)]"
+                                                                    : "not opened by Prompt Relay"))
+                }
+                let captured = m.states.filter { $0.selected && $0.status == .captured }
+                lines.append("- States known: \(m.states.count) · images attached: \(captured.count)")
+                if !captured.isEmpty {
+                    lines.append("| # | File | State | What it shows | Not visible on a still |")
+                    lines.append("|---|---|---|---|---|")
+                    for (n, state) in captured.enumerated() {
+                        let file = state.attachmentID.flatMap { names[$0] } ?? "\(state.id).png"
+                        let still = state.interactive.isEmpty ? "—" : state.interactive.joined(separator: ", ")
+                        lines.append("| \(n + 1) | \(file) | \(cell(state.title)) | \(cell(state.summary ?? "—")) | \(cell(still)) |")
+                    }
+                }
+                for state in m.states where state.status != .captured || !state.selected {
+                    let why: String
+                    if !state.selected { why = "excluded by you" }
+                    else if state.status == .failed { why = "failed: \(state.failure ?? "unknown reason")" }
+                    else { why = "known by name only; no image" }
+                    unavailable.append("Mockup \"\(m.title)\", state \"\(state.title)\": \(why)")
+                }
+                lines.append("Transitions, animations, pointer reactions and feel cannot be judged from still images; "
+                             + "the owner reviews them separately.")
+            }
+        }
+        if !links.isEmpty {
+            lines += ["", "### Links"]
+            for l in links {
+                lines.append("- \(l.title): \(l.url ?? "?") — " + (l.isPrivateLink ? "private; you probably cannot open it" : "not opened by Prompt Relay"))
+            }
+        }
+        if !unavailable.isEmpty {
+            lines += ["", "### Not available"]
+            lines += unavailable.map { "- " + $0 }
         }
         return lines.joined(separator: "\n")
     }
 
-    private static func appendTail(_ lines: inout [String], attachments: [ReportAttachment]) {
-        if !attachments.isEmpty {
-            lines.append(attachmentsSection(attachments))
+    private static func cell(_ text: String) -> String {
+        text.replacingOccurrences(of: "|", with: "\\|").replacingOccurrences(of: "\n", with: " ")
+    }
+
+    private static func appendTail(_ lines: inout [String], attachments: [ReportAttachment], materials: [ReportMaterial],
+                                   names: [String: String]) {
+        if !attachments.isEmpty || !materials.isEmpty {
+            lines.append(attachmentsSection(attachments, materials: materials, names: names))
             lines.append("")
         }
-        lines.append("## Tests and CI")
-        lines.append("- [\(notVerified)] Prompt Relay has no independent source of test or CI results. "
-                     + "Any statement about tests, builds or CI in Claude's response is reported by Claude only.")
-        lines.append("")
-        lines.append("## Verification status")
-        lines.append("- Claude's claims of success, passing tests or completed work: [\(notVerified)]")
+        lines.append("## Not checked")
+        lines.append("- Claude's claims of success, passing tests or completed work: [\(notVerified)]. "
+                     + "Nothing about this cloud session was observed by Prompt Relay.")
+        lines.append("- CI: no source is connected [\(unavailable)]")
         lines.append("- Completion signal: none observed by Prompt Relay; the report was imported by the user [\(unavailable)]")
         lines.append("")
         lines.append("## Request for review")

@@ -111,6 +111,15 @@ public struct SessionSummary: Decodable, Equatable, Hashable, Identifiable, Send
     public let cwds: [String]
     public let lastTurn: LastTurn?
     public let integrity: Integrity
+    /// The first captured request, one line, for display only (Core 0.3+).
+    public let title: String?
+    /// The title Claude Code gave the session (`session_title`), if any.
+    public let claudeCodeTitle: String?
+    /// Turns with a final answer.
+    public let answeredCount: Int?
+    /// A request is waiting for Claude (no Stop yet) and the session was
+    /// active in the last 30 minutes. Background tasks at a Stop do not count.
+    public let running: Bool?
 
     public var id: String { sessionKey }
 
@@ -118,7 +127,8 @@ public struct SessionSummary: Decodable, Equatable, Hashable, Identifiable, Send
         case sessionID = "session_id", sessionKey = "session_key", project
         case firstEventAt = "first_event_at", lastEventAt = "last_event_at"
         case eventCount = "event_count", turnCount = "turn_count", cwds
-        case lastTurn = "last_turn", integrity
+        case lastTurn = "last_turn", integrity, title
+        case claudeCodeTitle = "claude_code_title", answeredCount = "answered_count", running
     }
 }
 
@@ -142,7 +152,84 @@ public struct TextRef: Decodable, Equatable, Hashable, Sendable {
 
 public struct BackgroundTasks: Decodable, Equatable, Hashable, Sendable {
     public let reported: Bool
+    /// Work in flight at the Stop (monitors excluded).
     public let count: Int?
+    /// Monitors (watchers such as an artifact's live updates), not work.
+    public let watchers: Int?
+}
+
+/// Counts of the tool events observed in a turn (ADR-013). Exit codes
+/// describe single commands, never the task.
+public struct ObservedCounts: Decodable, Equatable, Hashable, Sendable {
+    public let toolEvents: Int
+    public let runsExitZero: Int
+    public let runsNonzero: Int
+    public let runsUnknown: Int
+    public let filesChanged: Int
+    public let backgroundStarted: Int
+
+    enum CodingKeys: String, CodingKey {
+        case toolEvents = "tool_events", runsExitZero = "runs_exit_zero", runsNonzero = "runs_nonzero"
+        case runsUnknown = "runs_unknown", filesChanged = "files_changed", backgroundStarted = "background_started"
+    }
+}
+
+public struct ObservedCommand: Decodable, Equatable, Hashable, Sendable {
+    public let at: String
+    public let command: String?
+    public let commandWithheld: String?
+    public let kind: String?
+    public let outcome: String?
+    public let exitCode: Int?
+    public let durationMs: Int?
+    public let compound: Bool
+    public let background: Bool
+    public let agentType: String?
+    public let afterStop: Bool
+    public let outputTail: String?
+    public let tailWithheld: String?
+
+    enum CodingKeys: String, CodingKey {
+        case at, command, kind, outcome, compound, background
+        case commandWithheld = "command_withheld", exitCode = "exit_code", durationMs = "duration_ms"
+        case agentType = "agent_type", afterStop = "after_stop", outputTail = "output_tail", tailWithheld = "tail_withheld"
+    }
+
+    /// Tests, builds, git, failures and background starts; the rest is counted.
+    public var isImportant: Bool {
+        ["test", "build", "git"].contains(kind ?? "") || outcome != "ok" || background
+    }
+}
+
+public struct ChangedFile: Decodable, Equatable, Hashable, Sendable {
+    public let path: String
+    public let tools: [String]
+    public let count: Int
+}
+
+/// What the Artifact tool returned about a page Claude published.
+public struct ObservedArtifact: Decodable, Equatable, Hashable, Sendable {
+    public let title: String?
+    public let url: String?
+    public let audience: String?
+    public let path: String?
+    public let sourcePath: String?
+    public let at: String?
+
+    enum CodingKeys: String, CodingKey { case title, url, audience, path, at, sourcePath = "source_path" }
+}
+
+public struct ObservedDetail: Decodable, Equatable, Hashable, Sendable {
+    public let commands: [ObservedCommand]
+    public let filesChanged: [ChangedFile]
+    public let shownFiles: [String]
+    public let artifacts: [ObservedArtifact]
+    public let notifications: Int
+
+    enum CodingKeys: String, CodingKey {
+        case commands, artifacts, notifications
+        case filesChanged = "files_changed", shownFiles = "shown_files"
+    }
 }
 
 public struct TurnError: Decodable, Equatable, Hashable, Sendable {
@@ -161,13 +248,19 @@ public struct Turn: Decodable, Equatable, Hashable, Identifiable, Sendable {
     public let backgroundTasks: BackgroundTasks?
     public let error: TurnError?
     public let candidateRequestTurns: [Int]
+    /// Background-task notifications and subagent hand-backs inside the turn.
+    public let notificationCount: Int?
+    public let observed: ObservedCounts?
+    /// Only in `show`.
+    public let observedDetail: ObservedDetail?
 
     public var id: Int { index }
 
     enum CodingKeys: String, CodingKey {
-        case index, status, link, request, error
+        case index, status, link, request, error, observed
         case finalResponse = "final_response", responseEventCount = "response_event_count"
         case backgroundTasks = "background_tasks", candidateRequestTurns = "candidate_request_turns"
+        case notificationCount = "notification_count", observedDetail = "observed_detail"
     }
 }
 

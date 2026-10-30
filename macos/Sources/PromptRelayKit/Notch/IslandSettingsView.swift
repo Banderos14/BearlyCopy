@@ -25,8 +25,26 @@ struct IslandSettingsView: View {
                     notifications(settings)
                 }
                 section("Capture") {
-                    rowButton("Projects", detail: "Choose which folders Prompt Relay captures.", value: captureSummary) {
-                        model.navigate(to: .projects)
+                    rowButton("Projects", detail: "Choose which folders Prompt Relay captures, and add folders.", value: captureSummary) {
+                        model.navigate(to: .capture)
+                    }
+                    Hairline()
+                    toggle("Stay on the session I choose",
+                           detail: "On: a new answer in another session shows as “New in …” and never replaces the one you are reading. Off: Prompt Relay follows the newest answer.",
+                           isOn: Binding(get: { model.sessionPinned }, set: { on in
+                               if on { model.selectSession(model.selectedSessionKey) } else { model.unpinSession() }
+                           }))
+                }
+                section("Clipboard images") {
+                    toggle("Keep the last 5 copied images",
+                           detail: "For attaching screenshots later. Only images are kept, never text; password-manager items are skipped. Kept for 24 hours. Off by default; turning it off deletes them.",
+                           isOn: Binding(get: { model.clipboardHistoryEnabled }, set: { model.clipboardHistoryEnabled = $0 }))
+                    if model.clipboardHistoryEnabled {
+                        Hairline()
+                        rowButton("Clipboard Images", detail: "See, attach or delete them.",
+                                  value: "\(model.clipboardImages?.items.count ?? 0) of \(ClipboardImageHistory.limit)") {
+                            model.navigate(to: .clipboard)
+                        }
                     }
                 }
                 privacy

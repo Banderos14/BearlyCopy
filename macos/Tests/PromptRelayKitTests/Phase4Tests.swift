@@ -116,7 +116,7 @@ final class LongReportIntegrationTests: XCTestCase {
 
         await model.copySelectedContext()
         let pack = try XCTUnwrap(board.string(forType: .string))
-        XCTAssertTrue(pack.hasPrefix("# Review Pack:"))
+        XCTAssertTrue(pack.hasPrefix("# Copy for ChatGPT:"))
         XCTAssertTrue(pack.contains("- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]"))
         let packed = try XCTUnwrap(ReviewPackReader.response(in: pack), "the pack has one response section")
         XCTAssertEqual(Data(packed.utf8), Data(report.utf8), "the response read back from the pack is the original, byte for byte")
@@ -203,14 +203,14 @@ final class ReportStoreTests: XCTestCase {
         let attachment = ReportAttachment(id: "a", reportKey: report.ref.key, originalFilename: "notch.png", storedFilename: "a.png",
                                           mimeType: "image/png", byteCount: 2048, sha256: "s", addedAt: "t", provenance: "p")
         let pack = ReviewPack.render(imported: report, attachments: [attachment], exportedAt: "2026-10-29T18:05:00.000Z")
-        XCTAssertTrue(pack.hasPrefix("# Review Pack:"))
+        XCTAssertTrue(pack.hasPrefix("# Copy for ChatGPT:"))
         XCTAssertTrue(pack.contains("Source: Claude Code cloud session, imported manually"))
         XCTAssertTrue(pack.contains("[Unavailable] The request was not supplied"), "a missing task is labeled, never invented")
         XCTAssertEqual(pack.components(separatedBy: text).count - 1, 1, "the full report once")
         XCTAssertEqual(ReviewPackReader.response(in: pack).map { Data($0.utf8) }, Data(text.utf8),
                        "the response section holds the original bytes, with no metadata inside it")
         XCTAssertGreaterThan(ReviewPack.fence(text).count, 4, "longer than the ```` fence inside the report")
-        XCTAssertTrue(pack.contains("- notch.png — image/png"))
+        XCTAssertTrue(pack.contains("- notch.png — PNG, 2 KB — added by you"))
         XCTAssertFalse(pack.contains("/Users/me"), "no local paths")
         XCTAssertTrue(pack.contains("[Not verified]"))
         XCTAssertTrue(pack.contains("Please review this result independently."))

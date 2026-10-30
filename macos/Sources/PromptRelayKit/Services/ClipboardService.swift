@@ -24,6 +24,7 @@ public final class ClipboardService {
     public func copy(_ text: String) throws -> Int {
         pasteboard.clearContents()
         guard pasteboard.setString(text, forType: .string) else { throw ClipboardError.writeFailed }
+        markOwn()
         let changeCount = pasteboard.changeCount
         // Compare scalars, not `String ==`, which treats canonically
         // equivalent strings (é vs e + U+0301) as equal.
@@ -54,6 +55,7 @@ public final class ClipboardService {
             items.append(item)
         }
         guard pasteboard.writeObjects(items) else { throw ClipboardError.writeFailed }
+        markOwn()
         guard let back = pasteboard.string(forType: .string),
               Array(back.unicodeScalars) == Array(text.unicodeScalars) else {
             throw ClipboardError.verificationFailed
@@ -73,6 +75,7 @@ public final class ClipboardService {
         }
         if let tiff = image.tiffRepresentation { item.setData(tiff, forType: .tiff) }
         item.setString(url.absoluteString, forType: .fileURL)
+        item.setData(Data([1]), forType: ClipboardImageHistory.ownType)
         guard pasteboard.writeObjects([item]) else { throw ClipboardError.writeFailed }
     }
 
@@ -80,6 +83,13 @@ public final class ClipboardService {
     public func copyFiles(_ urls: [URL]) throws {
         pasteboard.clearContents()
         guard !urls.isEmpty, pasteboard.writeObjects(urls.map { $0 as NSURL }) else { throw ClipboardError.writeFailed }
+        markOwn()
+    }
+
+    /// Marks what Prompt Relay wrote, so its own clipboard image history
+    /// never takes it back in. Added to the first item.
+    private func markOwn() {
+        pasteboard.pasteboardItems?.first?.setData(Data([1]), forType: ClipboardImageHistory.ownType)
     }
 
     var itemCount: Int { pasteboard.pasteboardItems?.count ?? 0 }

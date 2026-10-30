@@ -1,4 +1,6 @@
+import AppKit
 import Observation
+import QuartzCore
 import SwiftUI
 
 /// Prompt Relay's mascot: Relay, a small bear cub drawn in vector (SwiftUI
@@ -27,6 +29,11 @@ public final class MascotState {
     public internal(set) var gaze: CGPoint = .zero
     /// Where the pointer is, seen from Relay.
     public internal(set) var gazeTarget: CGPoint = .zero
+    /// Where the head points, each axis −1…1: a slower, slightly springy
+    /// follower of `headTarget`, so the head trails the eyes (inertia).
+    public internal(set) var head: CGPoint = .zero
+    public internal(set) var headTarget: CGPoint = .zero
+    var headVelocity: CGPoint = .zero
     /// Counts successful copies: each one plays the short happy reaction
     /// (a hop with the eyes closed).
     public internal(set) var cheers = 0
@@ -36,8 +43,8 @@ public final class MascotState {
     public init() {}
 }
 
-/// How far the head and eyes turn for a gaze: bounded, so Relay never looks
-/// unnatural, and zero when the pointer is gone.
+/// The head in the open band: tilt from the bottom, small shift. There is
+/// room above and around it.
 struct MascotPose: Equatable {
     /// Eye offset, each axis −1…1.
     var eyes: CGPoint
@@ -49,11 +56,93 @@ struct MascotPose: Equatable {
     static let maxTilt = 6.0
     static let maxShift: CGFloat = 0.03
 
-    init(gaze: CGPoint) {
+    init(gaze: CGPoint, head: CGPoint? = nil) {
         let g = CGPoint(x: max(-1, min(1, gaze.x)), y: max(-1, min(1, gaze.y)))
+        let h = head.map { CGPoint(x: max(-1, min(1, $0.x)), y: max(-1, min(1, $0.y))) } ?? g
         eyes = g
-        tilt = Double(g.x) * Self.maxTilt
-        shift = CGSize(width: g.x * Self.maxShift, height: g.y * Self.maxShift * 0.75)
+        tilt = Double(h.x) * Self.maxTilt
+        shift = CGSize(width: h.x * Self.maxShift, height: h.y * Self.maxShift * 0.75)
+    }
+}
+
+/// The head beside the camera (R8, PHASE5_PROPOSAL §7.1). The ear is 38 ×
+/// 32 pt; its visible side is 6 pt in from the window edge (the outline's
+/// top flare) and the camera housing starts at 38 pt. Relay (28 pt) sits at
+/// x = 8 so it has 3.4 pt on both sides. The head shifts up to ±1.4 pt,
+/// turns up to ±4° around its centre and moves 0.8 pt up / 1 pt down. Before
+/// a pose is drawn, its silhouette (ears and head) is checked against a safe
+/// area 1 pt inside the outline, the housing and the top of the screen; if
+/// it would leave it, shift, turn and lift shrink together by a factor `k`.
+/// The head never stops moving; the worst case computed is k ≈ 0.54.
+struct RestingPose: Equatable {
+    static let size: CGFloat = 28
+    static let origin = CGPoint(x: 8, y: 2)
+    static let maxShift: CGFloat = 1.4
+    static let maxTurn = 4.0
+    static let up: CGFloat = 0.8
+    static let down: CGFloat = 1.0
+    /// Breathing scales the height from the bottom by at most this.
+    static let breath: CGFloat = 1.015
+    /// The copy hop at rest (no scale: it would reach the top of the screen).
+    static let hop: CGFloat = 1.5
+    /// 1 pt inside the visible outline (x ≥ 6), the housing (x < 38), the
+    /// top of the screen and the bottom of the ear (32).
+    static let safe = CGRect(x: 7, y: 1, width: 30, height: 30)
+
+    var dx: CGFloat
+    var dy: CGFloat
+    var turn: Double
+    /// How much of the budget was usable (1 = all).
+    var k: CGFloat
+
+    init(head: CGPoint, mood: MascotState.Mood, lift: CGFloat = 0) {
+        let h = CGPoint(x: max(-1, min(1, head.x)), y: max(-1, min(1, head.y)))
+        let base = (dx: Self.maxShift * h.x, dy: h.y < 0 ? Self.up * h.y : Self.down * h.y, turn: Self.maxTurn * Double(h.x))
+        func pose(_ k: CGFloat) -> (CGFloat, CGFloat, Double, CGFloat) { (base.dx * k, base.dy * k, base.turn * Double(k), lift * k) }
+        let ears = mood == .curious ? 0.025 : 0
+        var k: CGFloat = 1
+        if !Self.fits(pose(1), earLift: ears) {
+            var lo: CGFloat = 0, hi: CGFloat = 1
+            for _ in 0..<8 {
+                let mid = (lo + hi) / 2
+                if Self.fits(pose(mid), earLift: ears) { lo = mid } else { hi = mid }
+            }
+            k = lo
+        }
+        let p = pose(k)
+        dx = p.0; dy = p.1 - p.3; turn = p.2; self.k = k
+    }
+
+    /// Points on the outline of both ears and the head (36 each), in ear
+    /// coordinates (y down), for a pose at the breathing peak.
+    static func silhouette(dx: CGFloat, dy: CGFloat, turn: Double, lift: CGFloat, earLift: Double) -> [CGPoint] {
+        let s = size, x0 = origin.x, y0 = origin.y
+        let cx = x0 + s / 2, cy = y0 + s / 2, by = y0 + s
+        let a = turn * .pi / 180
+        var out: [CGPoint] = []
+        func add(_ x: CGFloat, _ y: CGFloat) {
+            let y1 = by + (y - by) * breath   // breathing scales from the frame's bottom
+            let rx = cx + (x - cx) * cos(a) - (y1 - cy) * sin(a)
+            let ry = cy + (x - cx) * sin(a) + (y1 - cy) * cos(a)
+            out.append(CGPoint(x: rx + dx, y: ry + dy - lift))
+        }
+        for ex in [0.05, 0.67] {
+            for i in 0..<36 {
+                let t = Double(i) * .pi / 18
+                add(x0 + (ex + 0.14) * s + 0.14 * s * cos(t), y0 + (0.17 - earLift) * s + 0.14 * s * sin(t))
+            }
+        }
+        for i in 0..<36 {
+            let t = Double(i) * .pi / 18
+            add(x0 + 0.5 * s + 0.41 * s * cos(t), y0 + 0.53 * s + 0.4 * s * sin(t))
+        }
+        return out
+    }
+
+    static func fits(_ p: (CGFloat, CGFloat, Double, CGFloat), earLift: Double) -> Bool {
+        silhouette(dx: p.0, dy: p.1, turn: p.2, lift: p.3, earLift: earLift).allSatisfy {
+            $0.x >= safe.minX && $0.x <= safe.maxX && $0.y >= safe.minY && $0.y <= safe.maxY
+        }
     }
 }
 
@@ -61,6 +150,8 @@ struct MascotView: View {
     let state: MascotState
     var size: CGFloat = MascotView.preferredSize
     var reduceMotion = false
+    /// Beside the camera: the bounded resting pose (R8) and a hop without scale.
+    var resting = false
 
     /// Beside the camera housing (resting ear) and in the island's band: as
     /// large as the housing's height allows, 2 pt clear above and below.
@@ -68,28 +159,43 @@ struct MascotView: View {
     static func size(notchHeight: CGFloat) -> CGFloat { min(preferredSize, max(16, notchHeight - 4)) }
 
     var body: some View {
-        let pose = MascotPose(gaze: reduceMotion ? .zero : state.gaze)
+        let eyes = reduceMotion ? CGPoint.zero : state.gaze
+        let head = reduceMotion ? CGPoint.zero : state.head
         let reaction = ReactionTrigger(cheers: state.cheers, worries: state.worries)
         KeyframeAnimator(initialValue: Reaction(), trigger: reaction) { r in
-            MascotFace(gazeX: pose.eyes.x, gazeY: pose.eyes.y, eyeOpen: state.isBlinking ? 0 : 1,
-                       squint: r.squint, mood: state.mood)
-                .frame(width: size, height: size)
-                .rotationEffect(.degrees(pose.tilt + r.shake * 4), anchor: .bottom)
-                .offset(x: pose.shift.width * size, y: pose.shift.height * size + r.lift)
-                .scaleEffect(r.scale, anchor: .bottom)
+            if resting {
+                // Bounded in the ear: shift, turn around the centre, lift; the
+                // limit includes the hop, so a copy never reaches the screen top.
+                let pose = RestingPose(head: head, mood: state.mood, lift: -r.lift)
+                MascotFace(gazeX: eyes.x, gazeY: eyes.y, eyeOpen: state.isBlinking ? 0 : 1, squint: r.squint, mood: state.mood)
+                    .frame(width: size, height: size)
+                    .rotationEffect(.degrees(pose.turn + r.shake * 3), anchor: .center)
+                    .offset(x: pose.dx, y: pose.dy)
+            } else {
+                let pose = MascotPose(gaze: eyes, head: head)
+                MascotFace(gazeX: pose.eyes.x, gazeY: pose.eyes.y, eyeOpen: state.isBlinking ? 0 : 1,
+                           squint: r.squint, mood: state.mood)
+                    .frame(width: size, height: size)
+                    .rotationEffect(.degrees(pose.tilt + r.shake * 4), anchor: .bottom)
+                    .offset(x: pose.shift.width * size, y: pose.shift.height * size + r.lift)
+                    .scaleEffect(r.scale, anchor: .bottom)
+            }
         } keyframes: { _ in
             // Amplitudes are zero for the reaction that did not happen, and
             // for every movement under Reduce Motion (the closed eyes stay).
+            // At rest the hop has no scale and at most `RestingPose.hop`.
             let hop: CGFloat = state.mood == .pleased && !reduceMotion ? 1 : 0
+            let grow: CGFloat = resting ? 0 : hop
+            let lift: CGFloat = resting ? RestingPose.hop : 1.5
             let shake: CGFloat = state.mood == .concerned && !reduceMotion ? 1 : 0
             let squint: CGFloat = state.mood == .pleased ? 1 : 0
             KeyframeTrack(\.scale) {
-                SpringKeyframe(1 + 0.08 * hop, duration: 0.14)
-                SpringKeyframe(1 - 0.03 * hop, duration: 0.14)
+                SpringKeyframe(1 + 0.08 * grow, duration: 0.14)
+                SpringKeyframe(1 - 0.03 * grow, duration: 0.14)
                 SpringKeyframe(1, duration: 0.22)
             }
             KeyframeTrack(\.lift) {
-                CubicKeyframe(-1.5 * hop, duration: 0.14)
+                CubicKeyframe(-lift * hop, duration: 0.14)
                 CubicKeyframe(0, duration: 0.3)
             }
             KeyframeTrack(\.shake) {
@@ -245,6 +351,66 @@ struct MascotFace: View, Animatable {
         Canvas { context, canvas in
             MascotView.draw(in: &context, size: canvas, mood: mood, eyeOpen: eyeOpen, squint: squint,
                             gaze: CGPoint(x: gazeX, y: gazeY))
+        }
+    }
+}
+
+/// Breathing on the render server: a slow, repeating Core Animation scale of
+/// the layer that holds Relay (≤ 1.5 % of its height, from the bottom). The
+/// panel is not redrawn for it and the app's CPU stays idle; nothing runs
+/// under Reduce Motion or while it is hidden.
+struct Breathing<Content: View>: NSViewRepresentable {
+    let active: Bool
+    @ViewBuilder let content: Content
+
+    func makeNSView(context: Context) -> BreathingHost<Content> {
+        BreathingHost(rootView: content)
+    }
+
+    func updateNSView(_ view: BreathingHost<Content>, context: Context) {
+        view.hosting.rootView = content
+        view.setBreathing(active)
+    }
+}
+
+final class BreathingHost<Content: View>: NSView {
+    let hosting: NSHostingView<Content>
+    private(set) var isBreathing = false
+    static var key: String { "relay.breathing" }
+
+    init(rootView: Content) {
+        hosting = NSHostingView(rootView: rootView)
+        super.init(frame: .zero)
+        wantsLayer = true
+        hosting.wantsLayer = true
+        addSubview(hosting)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override var intrinsicContentSize: NSSize { hosting.fittingSize }
+
+    override func layout() {
+        super.layout()
+        // AppKit keeps the layer's anchor at (0, 0): its bottom edge (y up),
+        // which is where breathing scales from.
+        hosting.frame = bounds
+    }
+
+    func setBreathing(_ on: Bool) {
+        guard on != isBreathing, let layer = hosting.layer else { return }
+        isBreathing = on
+        if on {
+            let breathe = CABasicAnimation(keyPath: "transform.scale.y")
+            breathe.fromValue = 1.0
+            breathe.toValue = RestingPose.breath
+            breathe.duration = 2.25
+            breathe.autoreverses = true
+            breathe.repeatCount = .infinity
+            breathe.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            layer.add(breathe, forKey: Self.key)
+        } else {
+            layer.removeAnimation(forKey: Self.key)
         }
     }
 }

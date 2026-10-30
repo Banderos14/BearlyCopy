@@ -101,17 +101,28 @@ public struct NotchLayout: Equatable, Sendable {
     public let isFloating: Bool
     /// Tallest content below the band on this display; longer content scrolls.
     public let maxContentHeight: CGFloat
+    /// Quick Peek's width on this display.
+    public let peekWidth: CGFloat
     let screenTop: CGFloat
 
     /// Width of each ear beside the camera housing in the compact state.
     public static let earWidth: CGFloat = 38
-    /// The open island: a compact card, not a window.
-    public static let expandedWidth: CGFloat = 480
+    /// Details on a MacBook (Phase 5): wider than Phase 4's 480, but low.
+    public static let expandedWidth: CGFloat = 640
+    /// Details on a large display (≥ 1700 pt wide).
+    public static let wideExpandedWidth: CGFloat = 680
+    /// Quick Peek: compact, two copy buttons and a few facts.
+    public static let peekWidth: CGFloat = 520
+    public static let widePeekWidth: CGFloat = 560
+    /// Displays at least this wide get the wider widths.
+    public static let wideDisplay: CGFloat = 1700
     public static let minContentHeight: CGFloat = 56
     /// The open island is never taller than this (band included)…
-    public static let maxIslandHeight: CGFloat = 600
-    /// …nor than this share of the display height below it.
-    public static let maxScreenShare: CGFloat = 0.72
+    public static let maxIslandHeight: CGFloat = 480
+    /// …nor than this share of the display height below it (Phase 5: ≤ 38 %).
+    public static let maxScreenShare: CGFloat = 0.38
+    /// Short displays still get room for the task, a few answer lines and the actions.
+    public static let minIslandHeight: CGFloat = 300
     /// Gap between the menu bar and the floating island.
     public static let floatingGap: CGFloat = 6
     /// Margin around the island inside the window. Zero: the island has no
@@ -137,10 +148,14 @@ public struct NotchLayout: Equatable, Sendable {
         screenTop = top
         isFloating = floating
         compact = notch.insetBy(dx: -Self.earWidth, dy: 0)
-        let islandWidth = min(max(Self.expandedWidth, notch.width + 2 * Self.earWidth + 40), screen.width - 40)
+        let wide = screen.width >= Self.wideDisplay
+        let preferred = wide ? Self.wideExpandedWidth : Self.expandedWidth
+        let islandWidth = min(max(preferred, notch.width + 2 * Self.earWidth + 40), screen.width - 40)
+        peekWidth = min(max(wide ? Self.widePeekWidth : Self.peekWidth, notch.width + 2 * Self.earWidth + 40), islandWidth)
         let width = islandWidth + Self.shadowInset * 2
         let available = ((top - screen.minY) * Self.maxScreenShare).rounded()
-        let height = max(notch.height + Self.minContentHeight, min(Self.maxIslandHeight, available))
+        let floor = min(Self.minIslandHeight, (top - screen.minY) * 0.6)
+        let height = max(notch.height + Self.minContentHeight, min(Self.maxIslandHeight, max(available, floor)))
         maxContentHeight = height - notch.height
         var x = notch.midX - width / 2
         x = max(screen.minX, min(x, screen.maxX - width))  // stay on this display
@@ -152,9 +167,11 @@ public struct NotchLayout: Equatable, Sendable {
 
     /// Expanded window for a measured content height: as tall as the island,
     /// so no empty transparent area hangs below it.
-    public func expandedFrame(contentHeight: CGFloat) -> CGRect {
+    public func expandedFrame(contentHeight: CGFloat, peek: Bool = false) -> CGRect {
         let content = min(max(contentHeight, Self.minContentHeight), maxContentHeight)
         let height = notch.height + content + Self.shadowInset
-        return CGRect(x: expanded.minX, y: screenTop - height, width: expanded.width, height: height)
+        let width = peek ? peekWidth + Self.shadowInset * 2 : expanded.width
+        let x = expanded.midX - width / 2
+        return CGRect(x: x, y: screenTop - height, width: width, height: height)
     }
 }

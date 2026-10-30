@@ -1,3 +1,4 @@
+import CoreGraphics
 import CryptoKit
 import Foundation
 import ImageIO
@@ -14,6 +15,8 @@ public enum ReportStoreError: Error, Equatable, Sendable {
     case damagedImage(String)
     case writeFailed
     case removeFailed
+    /// Not an image, a PDF or a UTF-8 text document Prompt Relay keeps.
+    case unsupported(String)
 }
 
 /// Prompt Relay's own data, next to the Core's but separate from it:
@@ -162,6 +165,197 @@ public final class ReportStore {
         return attachment
     }
 
+    // MARK: Typed files (Phase 5, ADR-016)
+
+    public static let maxDocumentBytes = 1024 * 1024
+    /// Text formats kept as documents (the bytes must also be UTF-8).
+    static let textExtensions: Set<String> = [
+        "md", "markdown", "txt", "text", "json", "jsonl", "csv", "tsv", "yaml", "yml", "toml", "xml", "html", "htm",
+        "css", "js", "mjs", "ts", "tsx", "jsx", "swift", "py", "rb", "go", "rs", "java", "kt", "c", "h", "m", "mm",
+        "cpp", "hpp", "sh", "zsh", "bash", "sql", "log", "ini", "conf", "cfg", "plist", "diff", "patch", "rst",
+    ]
+
+    /// What a file is, from its bytes (and, for text, its extension).
+    static func classify(_ data: Data, name: String) -> (AttachmentKind, UTType)? {
+        if let type = imageType(of: data) { return (.image, type) }
+        if data.starts(with: Array("%PDF-".utf8)), let provider = CGDataProvider(data: data as CFData),
+           let pdf = CGPDFDocument(provider), pdf.numberOfPages > 0 {
+            return (.pdf, .pdf)
+        }
+        let ext = (name as NSString).pathExtension.lowercased()
+        if textExtensions.contains(ext), data.count <= maxDocumentBytes, String(data: data, encoding: .utf8) != nil {
+            return (.document, UTType(filenameExtension: ext) ?? .plainText)
+        }
+        return nil
+    }
+
+    /// Copies a document, PDF or image into the private folder as a snapshot
+    /// of this moment. The original is only read. Same bytes for the same
+    /// report (and mockup state) are kept once.
+    @discardableResult
+    public func addFile(from url: URL, to ref: ReportRef, source: AttachmentSource = .you, displayPath: String? = nil,
+                        mockupID: String? = nil, stateID: String? = nil, filename: String? = nil) throws -> ReportAttachment {
+        let name = filename ?? url.lastPathComponent
+        var isDirectory: ObjCBool = false
+        guard fm.fileExists(atPath: url.path, isDirectory: &isDirectory), !isDirectory.boolValue else {
+            throw ReportStoreError.unreadable(name)
+        }
+        let size = (try? fm.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
+        guard size <= Self.maxAttachmentBytes else { throw ReportStoreError.tooLarge(name) }
+        let data: Data
+        do { data = try Data(contentsOf: url) } catch let error as CocoaError where error.code == .fileReadNoPermission {
+            throw ReportStoreError.noPermission(name)
+        } catch {
+            throw ReportStoreError.unreadable(name)
+        }
+        return try addData(data, name: name, to: ref, source: source, displayPath: displayPath, mockupID: mockupID, stateID: stateID)
+    }
+
+    /// The same for bytes that are not a file yet (a clipboard image).
+    @discardableResult
+    public func addData(_ data: Data, name: String, to ref: ReportRef, source: AttachmentSource,
+                        displayPath: String? = nil, mockupID: String? = nil, stateID: String? = nil) throws -> ReportAttachment {
+        guard !data.isEmpty else { throw ReportStoreError.empty }
+        guard let (kind, type) = Self.classify(data, name: name) else {
+            let ext = (name as NSString).pathExtension.lowercased()
+            if let t = UTType(filenameExtension: ext), t.conforms(to: .image) { throw ReportStoreError.damagedImage(name) }
+            throw ReportStoreError.unsupported(name)
+        }
+        let digest = Self.sha256(data)
+        var index = allAttachments()
+        if let existing = index.first(where: { $0.reportKey == ref.key && $0.sha256 == digest && $0.mockupID == mockupID
+                                               && $0.stateID == stateID }) {
+            return existing
+        }
+        try ensure(attachmentsDir)
+        let id = UUID().uuidString.lowercased()
+        let ext = kind == .document ? ((name as NSString).pathExtension.isEmpty ? "txt" : (name as NSString).pathExtension.lowercased())
+            : (type.preferredFilenameExtension ?? "bin")
+        let stored = "\(id).\(ext)"
+        try write(data, to: attachmentsDir.appendingPathComponent(stored))
+        var attachment = ReportAttachment(id: id, reportKey: ref.key, originalFilename: name, storedFilename: stored,
+                                          mimeType: type.preferredMIMEType ?? (kind == .document ? "text/plain" : "application/octet-stream"),
+                                          byteCount: data.count, sha256: digest, addedAt: Self.now(),
+                                          provenance: Self.provenance(source))
+        attachment.kind = kind
+        attachment.source = source
+        attachment.originalPath = displayPath
+        attachment.mockupID = mockupID
+        attachment.stateID = stateID
+        index.append(attachment)
+        try saveIndex(index)
+        return attachment
+    }
+
+    static func provenance(_ source: AttachmentSource) -> String {
+        switch source {
+        case .you: return "Added by you from a file on this Mac"
+        case .claude: return "Prepared by Claude in this turn; added by you"
+        case .clipboard: return "Copied to your clipboard; added by you"
+        }
+    }
+
+    /// Include or exclude an attachment from Copy for ChatGPT and the hand-off.
+    public func setSelected(_ id: String, _ selected: Bool) throws {
+        var index = allAttachments()
+        guard let i = index.firstIndex(where: { $0.id == id }) else { return }
+        index[i].selected = selected
+        try saveIndex(index)
+    }
+
+    /// The original changed since the snapshot (or is gone): for display.
+    public func originalChanged(_ attachment: ReportAttachment, original: URL) -> Bool? {
+        guard let data = try? Data(contentsOf: original) else { return nil }
+        return Self.sha256(data) != attachment.sha256
+    }
+
+    // MARK: Links and mockups
+
+    private var materialsIndex: URL { root.appendingPathComponent("materials.json") }
+
+    public func allMaterials() -> [ReportMaterial] {
+        guard let data = try? Data(contentsOf: materialsIndex) else { return [] }
+        return (try? JSONDecoder().decode([ReportMaterial].self, from: data)) ?? []
+    }
+
+    public func materials(for ref: ReportRef) -> [ReportMaterial] {
+        allMaterials().filter { $0.reportKey == ref.key }.sorted { $0.addedAt < $1.addedAt }
+    }
+
+    private func saveMaterials(_ list: [ReportMaterial]) throws {
+        try ensure(root)
+        try write(try JSONEncoder().encode(list), to: materialsIndex)
+    }
+
+    /// Adds a link or mockup; the same URL (or source) for a report is kept once.
+    @discardableResult
+    public func addMaterial(_ material: ReportMaterial) throws -> ReportMaterial {
+        var list = allMaterials()
+        if let existing = list.first(where: { $0.reportKey == material.reportKey && $0.kind == material.kind
+                                              && (($0.url != nil && $0.url == material.url)
+                                                  || ($0.url == nil && $0.sourcePath != nil && $0.sourcePath == material.sourcePath)) }) {
+            return existing
+        }
+        list.append(material)
+        try saveMaterials(list)
+        return material
+    }
+
+    public func updateMaterial(_ material: ReportMaterial) throws {
+        var list = allMaterials()
+        guard let i = list.firstIndex(where: { $0.id == material.id }) else { return }
+        list[i] = material
+        try saveMaterials(list)
+    }
+
+    /// Removes a link or mockup and the state images stored for it.
+    public func removeMaterial(_ id: String) throws {
+        var list = allMaterials()
+        guard let material = list.first(where: { $0.id == id }) else { return }
+        list.removeAll { $0.id == id }
+        do { try saveMaterials(list) } catch { throw ReportStoreError.removeFailed }
+        for attachment in allAttachments() where attachment.mockupID == material.id { try? removeAttachment(attachment.id) }
+    }
+
+    /// Stores an image for one state of a mockup (replacing an earlier one).
+    @discardableResult
+    public func setStateImage(from url: URL, mockupID: String, stateID: String) throws -> ReportMaterial {
+        var list = allMaterials()
+        guard let i = list.firstIndex(where: { $0.id == mockupID }),
+              let s = list[i].states.firstIndex(where: { $0.id == stateID }) else { throw ReportStoreError.writeFailed }
+        let ref = Self.ref(forKey: list[i].reportKey)
+        let previous = list[i].states[s].attachmentID
+        let attachment: ReportAttachment
+        do {
+            attachment = try addFile(from: url, to: ref, source: .you, mockupID: mockupID, stateID: stateID)
+        } catch {
+            list[i].states[s].status = .failed
+            list[i].states[s].failure = "the image could not be read"
+            try? saveMaterials(list)
+            throw error
+        }
+        guard attachment.effectiveKind == .image else {
+            try? removeAttachment(attachment.id)
+            throw ReportStoreError.notAnImage(url.lastPathComponent)
+        }
+        list[i].states[s].attachmentID = attachment.id
+        list[i].states[s].status = .captured
+        list[i].states[s].failure = nil
+        try saveMaterials(list)
+        if let previous, previous != attachment.id { try? removeAttachment(previous) }
+        return list[i]
+    }
+
+    /// A ReportRef from its key (only the key is stored with a material).
+    static func ref(forKey key: String) -> ReportRef {
+        if key.hasPrefix("import-") { return .imported(id: String(key.dropFirst("import-".count))) }
+        let body = key.dropFirst("local-".count)
+        if let dash = body.lastIndex(of: "-"), let turn = Int(body[body.index(after: dash)...]) {
+            return .local(sessionKey: String(body[..<dash]), turn: turn)
+        }
+        return .local(sessionKey: String(body), turn: 0)
+    }
+
     /// The image type read from the bytes, when they decode as an image.
     static func imageType(of data: Data) -> UTType? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil), CGImageSourceGetCount(source) > 0,
@@ -193,14 +387,15 @@ public final class ReportStore {
     /// Copies of a report's images under their original names, for dragging,
     /// Copy File and Finder: an app receiving "3f2a….png" would show that name.
     /// Rebuilt on each call; only this folder is ever cleared.
-    public func handoffFiles(for attachments: [ReportAttachment]) throws -> [URL] {
+    public func handoffFiles(for attachments: [ReportAttachment], names: [String: String] = [:]) throws -> [URL] {
         try? fm.removeItem(at: handoffDir)
         try ensure(handoffDir)
         var used = Set<String>()
         var urls: [URL] = []
         for attachment in attachments {
             guard let source = fileURL(for: attachment) else { continue }
-            let name = Self.uniqueName(Self.safeFilename(attachment.originalFilename, fallback: attachment.storedFilename), used: &used)
+            let wanted = names[attachment.id] ?? attachment.originalFilename
+            let name = Self.uniqueName(Self.safeFilename(wanted, fallback: attachment.storedFilename), used: &used)
             let target = handoffDir.appendingPathComponent(name)
             do {
                 try fm.copyItem(at: source, to: target)

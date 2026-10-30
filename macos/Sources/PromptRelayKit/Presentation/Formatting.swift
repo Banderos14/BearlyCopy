@@ -21,7 +21,7 @@ public enum Wording {
         case .awaitingResponse: return "Waiting for Claude"
         case .noMatchedResponse: return "No response captured"
         case .stopReceived: return "Claude stopped"
-        case .stopReceivedBackgroundTasksPending: return "Stopped, background tasks running"
+        case .stopReceivedBackgroundTasksPending: return "Stopped; background work was running at the Stop"
         case .stopReceivedWithoutText: return "Stopped without text"
         case .apiError: return "API error"
         case .unknown(let raw): return "Unknown status (\(raw))"
@@ -46,9 +46,32 @@ public enum Wording {
         project.name ?? project.path.map { ($0 as NSString).lastPathComponent } ?? "Unknown project"
     }
 
+    /// The session's first captured request (one line), else its ID.
     public static func sessionTitle(_ session: SessionSummary) -> String {
+        if let title = session.title, !title.isEmpty { return title }
         guard let id = session.sessionID else { return "Session without ID" }
         return "Session " + String(id.prefix(8))
+    }
+
+    /// "2 min ago · 3 answers · captured from 14:02"
+    public static func sessionMeta(_ session: SessionSummary) -> String {
+        var parts = ["this Mac", relative(session.lastEventAt)]
+        let answers = session.answeredCount ?? session.turnCount
+        parts.append(answers == 1 ? "1 answer" : "\(answers) answers")
+        return parts.joined(separator: " · ")
+    }
+
+    /// Local time of day, "14:03:20".
+    public static func clock(_ iso: String?) -> String {
+        guard let date = date(iso) ?? iso.flatMap({ ISO8601DateFormatter().date(from: $0) }) else { return "—" }
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f.string(from: date)
+    }
+
+    public static func duration(_ ms: Int?) -> String {
+        guard let ms else { return "—" }
+        return ms >= 1000 ? String(format: "%.1f s", Double(ms) / 1000) : "\(ms) ms"
     }
 
     private static let parser: ISO8601DateFormatter = {

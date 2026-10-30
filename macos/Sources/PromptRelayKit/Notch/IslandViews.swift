@@ -64,20 +64,37 @@ struct IslandMetrics: Equatable {
 
 /// Frames of the island's main blocks and controls, in its own coordinate
 /// space: layout regression tests check them against the island outline.
-/// Debug builds only.
-struct IslandFramesKey: PreferenceKey {
-    static let defaultValue: [String: CGRect] = [:]
-    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
-        value.merge(nextValue()) { $1 }
+/// Debug builds only. Recorded after layout through a sink in the
+/// environment (a preference here was "bound … multiple times per frame"
+/// while the island resized).
+struct IslandFrameSinkKey: EnvironmentKey {
+    static let defaultValue: (@MainActor (String, CGRect) -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    var islandFrameSink: (@MainActor (String, CGRect) -> Void)? {
+        get { self[IslandFrameSinkKey.self] }
+        set { self[IslandFrameSinkKey.self] = newValue }
+    }
+}
+
+struct IslandFrameRecorder: ViewModifier {
+    let id: String
+    @Environment(\.islandFrameSink) private var sink
+
+    func body(content: Content) -> some View {
+        if let sink {
+            content.onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(NotchRootView.space)) }) { sink(id, $0) }
+        } else {
+            content
+        }
     }
 }
 
 extension View {
     @ViewBuilder func islandFrame(_ id: String) -> some View {
         #if DEBUG
-        background(GeometryReader { proxy in
-            Color.clear.preference(key: IslandFramesKey.self, value: [id: proxy.frame(in: .named(NotchRootView.space))])
-        })
+        modifier(IslandFrameRecorder(id: id))
         #else
         self
         #endif
@@ -123,8 +140,12 @@ struct IslandContent: View {
             }
             Group {
                 switch model.route {
-                case .home: HomeView(model: model, presentation: presentation, actions: actions)
-                case .projects: ProjectsView(model: model, presentation: presentation)
+                case .home: DetailsView(model: model, presentation: presentation, actions: actions)
+                case .projects: SessionSwitcherView(model: model, presentation: presentation)
+                case .capture: ProjectsView(model: model, presentation: presentation)
+                case .activity: ActivityView(model: model, presentation: presentation)
+                case .mockup: MockupStatesView(model: model, presentation: presentation)
+                case .clipboard: ClipboardImagesView(model: model, presentation: presentation)
                 case .copies: CopiesView(model: model, presentation: presentation)
                 case .history: HistoryView(model: model, presentation: presentation)
                 case .importReport: ImportView(model: model, presentation: presentation)
@@ -360,7 +381,9 @@ struct SourceLine: View {
                     .help("New answers from this project are not recorded. Turn capture on in Projects.")
             }
             if model.selectedImport == nil, let turn = model.selectedTurn, turn.status == .stopReceivedBackgroundTasksPending {
-                Text("· tasks still running").foregroundStyle(Island.warning)
+                // A fact about the Stop, not about now: the work may have ended since.
+                Text("· background work at Stop").foregroundStyle(Island.warning)
+                    .help("When Claude stopped, background tasks were still running. Monitors (such as an artifact's live updates) are not counted.")
             }
         }
         .font(.system(size: 11.5))
@@ -429,6 +452,8 @@ struct ResponseCard: View {
     let model: AppModel
     let presentation: NotchPresentation
     let facts: ReportFacts
+    /// Height of the answer's own scroll area (Details computes it).
+    var scrollHeight: CGFloat? = nil
     let openFull: () -> Void
 
     var body: some View {
@@ -447,7 +472,7 @@ struct ResponseCard: View {
                     .foregroundStyle(model.selectedTurn?.status == .apiError ? Island.error : Island.secondary)
             } else {
                 let text = facts.text ?? ""
-                BoundedScroll(maxHeight: Self.scrollHeight(presentation, hasAttachments: !model.attachments(for: model.currentRef).isEmpty || model.attachmentMessage != nil)) {
+                BoundedScroll(maxHeight: scrollHeight ?? Self.scrollHeight(presentation, hasAttachments: !model.attachments(for: model.currentRef).isEmpty || model.attachmentMessage != nil)) {
                     MarkdownBlocksView(blocks: Markdown.blocks(text), codeLineLimit: nil, fontSize: 13)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.trailing, 6)   // room for the scroller
@@ -509,7 +534,7 @@ struct ResponsePreview: View {
     }
 }
 
-/// Copy Response (the one white accent) and Review Pack.
+/// Copy Response (the one white accent) and Copy for ChatGPT.
 struct CopyActions: View {
     let model: AppModel
     let blocked: Bool
@@ -532,14 +557,14 @@ struct CopyActions: View {
             Button {
                 Task { await model.copySelectedContext() }
             } label: {
-                Label(copied(.context) ? "Copied" : "Review Pack",
+                Label(copied(.context) ? "Copied" : "Copy for ChatGPT",
                       systemImage: copied(.context) ? "checkmark" : "checklist")
             }
             .buttonStyle(IslandPillStyle(prominent: false))
             .disabled(blocked)
             .keyboardShortcut("c", modifiers: [.command, .option])
-            .accessibilityLabel("Copy Review Pack")
-            .help("Copy the task, the complete answer and what Prompt Relay knows about it, with a request for an independent review (⌥⌘C)")
+            .accessibilityLabel("Copy for ChatGPT")
+            .help("Copy the task, the complete answer, the observed work and the attachment list, with a request for an independent review (⌥⌘C)")
         }
         .animation(.easeOut(duration: 0.15), value: model.copyFeedback)
     }
@@ -558,7 +583,7 @@ struct CopyFeedbackLine: View {
         Group {
             switch model.copyFeedback {
             case .copied(.response, let n): line("Copied the complete response: \(n.formatted()) characters.", Island.accent)
-            case .copied(.context, let n): line("Copied the Review Pack: \(n.formatted()) characters.", Island.accent)
+            case .copied(.context, let n): line("Copied for ChatGPT: \(n.formatted()) characters.", Island.accent)
             case .copied(.image, _): line("Copied the image.", Island.accent)
             case .copied(.files, let n): line(n == 1 ? "Copied the file." : "Copied \(n) files.", Island.accent)
             case .copied(.responseWithImages, let n):
@@ -688,27 +713,52 @@ struct PeekContent: View {
                         expandButton
                     }
                 } else {
-                    HStack(spacing: 8) {
+                    // 1. project · session · status and time
+                    HStack(spacing: 5) {
                         Text(model.selectedImport.map { $0.projectName ?? "Cloud import" }
                              ?? model.selectedProject.map(Wording.projectName) ?? "Prompt Relay")
-                            .font(.system(size: 13.5, weight: .semibold)).foregroundStyle(Island.primary)
-                            .lineLimit(1).truncationMode(.middle)
-                        Spacer(minLength: 8)
-                        SourceLine(model: model, facts: facts)
+                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(Island.primary)
+                            .lineLimit(1).truncationMode(.middle).layoutPriority(1)
+                        if let session = model.selectedImport == nil ? model.selectedSession.map(Wording.sessionTitle) : "imported" {
+                            Text("· " + session).font(.system(size: 12)).foregroundStyle(Island.secondary).lineLimit(1)
+                        }
+                        Spacer(minLength: 6)
+                        Text(statusLine).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1).layoutPriority(1)
                     }
-                    if case .linked(let task) = facts.task {
+                    // 2. the task, 3. the start of Claude's own answer
+                    switch facts.task {
+                    case .linked(let task), .inferred(let task), .supplied(let task):
                         Text(task.trimmingCharacters(in: .whitespacesAndNewlines))
-                            .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                            .font(.system(size: 12)).foregroundStyle(Island.primary).lineLimit(1)
+                    case .unavailable: EmptyView()
                     }
                     if let blocker = facts.blocker {
-                        Text(model.selectedTurn?.error?.message ?? blocker).font(.system(size: 12.5)).foregroundStyle(Island.secondary)
+                        Text(model.selectedTurn?.error?.message ?? blocker).font(.system(size: 11.5)).foregroundStyle(Island.secondary)
+                            .lineLimit(1)
                     } else {
-                        ResponsePreview(text: facts.text ?? "", lines: NotchRootView.previewLines).islandFrame("peek.preview")
+                        Text(Self.firstLine(facts.text ?? "")).font(.system(size: 11.5)).foregroundStyle(Island.secondary)
+                            .lineLimit(1).islandFrame("peek.preview")
                     }
+                    // 4. facts and materials, one line each at most
+                    let summary = model.materialSummary(for: model.currentRef)
+                    if model.selectedImport == nil || !summary.isEmpty {
+                        HStack(spacing: 5) {
+                            if model.selectedImport == nil { ObservedChips(observed: model.selectedTurn?.observed) }
+                            if !summary.isEmpty {
+                                Text(summary.line).font(.system(size: 10.5)).foregroundStyle(Island.secondary).lineLimit(1)
+                            }
+                            if summary.needsVisualReview {
+                                Text("Visual review required").font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(Color(red: 0.73, green: 0.65, blue: 1)).lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    // 5. the two copies and Details
                     HStack(spacing: 8) {
                         CopyActions(model: model, blocked: facts.blocker != nil)
                         Spacer(minLength: 0)
-                        expandButton
+                        detailsButton
                     }
                     .islandFrame("peek.actions")
                     CopyFeedbackLine(model: model)
@@ -716,6 +766,40 @@ struct PeekContent: View {
             }
             .islandPadding(presentation)
         }
+    }
+
+    private var statusLine: String {
+        if let report = model.selectedImport { return "imported " + Wording.relative(report.importedAt) }
+        guard let turn = model.selectedTurn else { return "" }
+        let when = Wording.relative(turn.finalResponse?.receivedAt ?? turn.request?.receivedAt)
+        switch turn.status {
+        case .awaitingResponse: return "working"
+        case .apiError: return "API error · " + when
+        default: return "Stopped " + when
+        }
+    }
+
+    /// The first non-empty line of the answer, without Markdown markers. Display only.
+    static func firstLine(_ text: String) -> String {
+        let line = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty && !$0.hasPrefix("```") } ?? ""
+        return line.replacingOccurrences(of: #"^[#>*\-\s]+"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: "**", with: "")
+    }
+
+    private var detailsButton: some View {
+        Button { interaction.focus() } label: {
+            HStack(spacing: 4) {
+                Text("Details")
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+            }
+            .font(.system(size: 12, weight: .semibold))
+            .padding(.horizontal, 11).frame(height: 28)
+            .background(Capsule().fill(Island.control))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Island.primary)
+        .accessibilityLabel("Details")
+        .help("Open Details: the whole answer, observed work, attachments, sessions and settings")
     }
 
     private var expandButton: some View {
@@ -885,24 +969,24 @@ struct BoundedScroll<Content: View>: View {
     @State private var height: CGFloat = 0
 
     var body: some View {
+        // The content's height is read after layout (no preference: a
+        // preference that changes the frame it measures updated several
+        // times per frame). The scroller does not depend on the measurement:
+        // with legacy scrollers (a mouse attached) showing it only when
+        // "too tall" narrowed the content, which changed its height again.
         ScrollView {
-            content.background(GeometryReader { proxy in
-                Color.clear.preference(key: BoundedScrollHeight.self, value: proxy.size.height)
-            })
+            content.onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { new in
+                if abs(new - height) >= 0.5 { height = new }
+            }
         }
-        .scrollIndicators(height > maxHeight ? .automatic : .never)
+        .scrollIndicators(.automatic)
+        .scrollBounceBehavior(.basedOnSize)
         .frame(height: min(max(height, 1), maxHeight))
-        .onPreferenceChange(BoundedScrollHeight.self) { height = $0 }
         .mask(LinearGradient(stops: [.init(color: .black, location: 0),
                                      .init(color: .black, location: height > maxHeight ? 0.9 : 1),
                                      .init(color: height > maxHeight ? .clear : .black, location: 1)],
                              startPoint: .top, endPoint: .bottom))
     }
-}
-
-private struct BoundedScrollHeight: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 /// A grouped list card: rows separated by hairlines, like a macOS form.
