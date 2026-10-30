@@ -504,5 +504,11 @@ GitHub Actions run 40910039983 (`ab57b74`) failed on Linux / Python 3.13:
   real Mac and reported "All good"; committed on the branch, not pushed.
 
 ## Next agreed stage
-Push the branch when the owner asks. ADR-012 waits for approval. No next
-phase is approved.
+Push the branch when the owner asks. ADR-012 waits for approval.
+
+Phase 5 is **approved** (`docs/PHASE5_PROPOSAL.md`, revision 3.1, R1–R11;
+ADR-013…016). Work follows the stages in its §9, starting with 5.0 (docs)
+and 5.1 (real PostToolUse/PostToolUseFailure payloads in a sandbox; the
+plugin is not changed before the results are approved). R8 (Relay at rest:
+eyes and head follow the pointer within computed bounds, breathing, copy
+joy) is implemented in stage 5.4. Backup refs: `refs/backup/phase5-*`.
