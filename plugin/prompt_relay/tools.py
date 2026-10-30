@@ -178,6 +178,10 @@ def observed_counts(t: Any) -> Dict[str, int]:
         "runs_exit_zero": sum(1 for r in runs if r.get("exit_code") == 0),
         "runs_nonzero": sum(1 for r in runs if isinstance(r.get("exit_code"), int) and r.get("exit_code") != 0),
         "runs_unknown": sum(1 for r in runs if not isinstance(r.get("exit_code"), int)),
+        # Every shell command that exited non-zero, of any kind (Phase 5.11):
+        # a failure outside tests and builds must not read as all clear.
+        "commands_nonzero": sum(1 for e in t.tools if e.tool and e.tool.get("tool_name") == "Bash"
+                                and isinstance(e.tool.get("exit_code"), int) and e.tool.get("exit_code") != 0),
         "files_changed": len(unique_paths(t.tools)),
         "background_started": sum(1 for e in t.tools if e.tool and e.tool.get("background") == 1),
     }

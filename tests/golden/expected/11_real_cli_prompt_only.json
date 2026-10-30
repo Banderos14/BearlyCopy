@@ -111,6 +111,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -119,6 +120,7 @@
             },
             "request": {
               "char_count": 105,
+              "display_preview": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python code block that prints 1.",
               "preview": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python code block that prints 1.",
               "prompt_id": "6e338ad9-ac6a-43f4-bd36-6fc5a026e136",
               "received_at": "2026-01-01T00:00:00.000000Z",

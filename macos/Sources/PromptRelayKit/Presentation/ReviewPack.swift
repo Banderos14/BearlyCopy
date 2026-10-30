@@ -103,7 +103,8 @@ public enum ReviewPack {
     static func origin(_ a: ReportAttachment) -> String {
         switch a.effectiveSource {
         case .you: return "added by you [\(userSupplied)]"
-        case .claude: return "prepared by Claude in this turn [\(confirmed)]"
+        case .claude: return "shown or written by Claude in this turn [\(confirmed)]"
+        case .named: return "named in Claude's answer and found in the project; not seen being written in this turn [\(reported)]"
         case .clipboard: return "from your clipboard [\(userSupplied)]"
         }
     }

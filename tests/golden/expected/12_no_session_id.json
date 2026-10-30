@@ -94,6 +94,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -102,6 +103,7 @@
             },
             "request": {
               "char_count": 15,
+              "display_preview": "question from X",
               "preview": "question from X",
               "prompt_id": null,
               "received_at": "2026-01-01T00:00:00.000000Z",
@@ -134,6 +136,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,

@@ -289,15 +289,15 @@ struct ReportFacts {
         guard let turn = model.selectedTurn else { return .unavailable("") }
         switch turn.requestOrigin {
         case .automated?:
-            return .automated(earlier: turn.earlierUserRequest.map { Wording.requestForDisplay($0.preview).text },
+            return .automated(earlier: turn.earlierUserRequest.map { $0.displayPreview ?? Wording.requestForDisplay($0.preview).text },
                               turn: turn.earlierUserRequest?.turn)
         case .unknown? where turn.request != nil:
-            return .unknownSource(Wording.requestForDisplay(turn.request!.preview).text)
+            return .unknownSource(turn.request!.readablePreview)
         default: break
         }
         switch (turn.link, turn.request) {
-        case (.promptID, let request?): return .linked(Wording.requestForDisplay(request.preview).text)
-        case (_, let request?): return .inferred(Wording.requestForDisplay(request.preview).text)
+        case (.promptID, let request?): return .linked(request.readablePreview)
+        case (_, let request?): return .inferred(request.readablePreview)
         default: return .unavailable((Wording.link(turn.link) ?? "not captured").lowercased())
         }
     }

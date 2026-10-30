@@ -59,6 +59,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -74,6 +75,7 @@
           },
           "request": {
             "char_count": 6,
+            "display_preview": "second",
             "preview": "second",
             "prompt_id": "doc-2",
             "received_at": "2026-01-01T00:00:02.000000Z",
@@ -155,6 +157,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -170,6 +173,7 @@
           },
           "request": {
             "char_count": 55,
+            "display_preview": "Write a function to calculate the factorial of a number",
             "preview": "Write a function to calculate the factorial of a number",
             "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
             "received_at": "2026-01-01T00:00:00.000000Z",
@@ -252,6 +256,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -260,6 +265,7 @@
             },
             "request": {
               "char_count": 55,
+              "display_preview": "Write a function to calculate the factorial of a number",
               "preview": "Write a function to calculate the factorial of a number",
               "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
               "received_at": "2026-01-01T00:00:00.000000Z",
@@ -292,6 +298,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -300,6 +307,7 @@
             },
             "request": {
               "char_count": 6,
+              "display_preview": "second",
               "preview": "second",
               "prompt_id": "doc-2",
               "received_at": "2026-01-01T00:00:02.000000Z",

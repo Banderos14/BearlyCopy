@@ -59,6 +59,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -74,6 +75,7 @@
           },
           "request": {
             "char_count": 2,
+            "display_preview": "q2",
             "preview": "q2",
             "prompt_id": null,
             "received_at": "2026-01-01T00:00:02.000000Z",
@@ -151,6 +153,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -159,6 +162,7 @@
             },
             "request": {
               "char_count": 2,
+              "display_preview": "q1",
               "preview": "q1",
               "prompt_id": null,
               "received_at": "2026-01-01T00:00:00.000000Z",
@@ -191,6 +195,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -199,6 +204,7 @@
             },
             "request": {
               "char_count": 2,
+              "display_preview": "q2",
               "preview": "q2",
               "prompt_id": null,
               "received_at": "2026-01-01T00:00:02.000000Z",

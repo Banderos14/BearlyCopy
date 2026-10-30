@@ -12,6 +12,8 @@ import SwiftUI
 @MainActor
 struct DetailsLayout {
     let presentation: NotchPresentation
+    /// Step 2 of the hand-off replaces the action row with a taller bar.
+    var handoff = false
 
     var metrics: IslandMetrics { IslandMetrics.of(presentation) }
     /// Content width inside the island's visible sides.
@@ -22,7 +24,9 @@ struct DetailsLayout {
     /// Height for the columns: the island's content height minus the header,
     /// the action row, the feedback line and paddings.
     var columns: CGFloat {
-        let chrome: CGFloat = 22 + 32 + 16 + metrics.top + metrics.bottom + 3 * metrics.spacing
+        // Header, action row (or the step-2 bar: message, buttons, hint), feedback line.
+        let actions: CGFloat = handoff ? 32 + 52 : 32
+        let chrome: CGFloat = 22 + actions + 16 + metrics.top + metrics.bottom + 3 * metrics.spacing
         return max(170, presentation.maxContentHeight - chrome)
     }
     /// The answer's scroll area inside the left column.
@@ -44,7 +48,7 @@ struct DetailsView: View {
     enum Pane: String, CaseIterable { case report = "Response", handoff = "Handoff" }
 
     var body: some View {
-        let layout = DetailsLayout(presentation: presentation)
+        let layout = DetailsLayout(presentation: presentation, handoff: model.handoffStep != nil)
         let facts = ReportFacts(model: model)
         VStack(alignment: .leading, spacing: layout.metrics.spacing) {
             if let error = model.projects.error, model.projects.value == nil, model.selectedImport == nil {
@@ -268,7 +272,7 @@ struct HandoffContentsCard: View {
                         Image(systemName: "terminal").frame(width: 14).foregroundStyle(Island.tertiary)
                         Text("Observed work").foregroundStyle(Island.primary).lineLimit(1).fixedSize()
                         Spacer(minLength: 2)
-                        ObservedChips(observed: observed)
+                        ObservedChips(observed: observed, compact: true)
                         Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary)
                     }
                     .font(.system(size: 11.5))
@@ -302,13 +306,19 @@ struct HandoffContentsCard: View {
 /// "2 runs exit 0 · 1 run exit 1": facts about single commands, never a verdict.
 struct ObservedChips: View {
     let observed: ObservedCounts?
+    /// One chip only (a narrow row): failures first.
+    var compact = false
 
     var body: some View {
         HStack(spacing: 4) {
             if let o = observed, o.toolEvents > 0 {
-                if o.runsExitZero > 0 { chip("\(o.runsExitZero)× exit 0", Island.accent) }
-                if o.runsNonzero > 0 { chip("\(o.runsNonzero)× exit ≠ 0", Island.error) }
-                if o.runsExitZero + o.runsNonzero == 0 { chip("\(o.toolEvents) events", Island.secondary) }
+                // A failure of any command shows; exit 0 is counted for tests and builds only.
+                let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
+                if failed > 0 { chip("\(failed)× exit ≠ 0", Island.error).help("Shell commands that exited non-zero") }
+                if o.runsExitZero > 0 && !(compact && failed > 0) {
+                    chip("\(o.runsExitZero)× exit 0", Island.accent).help("Test and build commands that exited 0")
+                }
+                if failed + o.runsExitZero == 0 { chip("\(o.toolEvents) events", Island.secondary) }
             } else {
                 chip("none", Island.tertiary)
             }
@@ -316,7 +326,7 @@ struct ObservedChips: View {
     }
 
     private func chip(_ text: String, _ tint: Color) -> some View {
-        Text(text).font(.system(size: 10, weight: .medium)).foregroundStyle(tint)
+        Text(text).font(.system(size: 10, weight: .medium)).foregroundStyle(tint).lineLimit(1).fixedSize()
             .padding(.horizontal, 6).frame(height: 17).background(Capsule().fill(Island.cardRaised))
     }
 }
@@ -353,7 +363,7 @@ struct AttachmentsCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     if !suggestions.isEmpty {
                         HStack {
-                            Text("Prepared by Claude").font(.system(size: 10, weight: .semibold)).foregroundStyle(Island.tertiary)
+                            Text("From this turn").font(.system(size: 10, weight: .semibold)).foregroundStyle(Island.tertiary)
                             Spacer()
                             if suggestions.count > 1 {
                                 Button("Add all") { model.acceptAll(suggestions) }.buttonStyle(.plain)
@@ -720,7 +730,7 @@ struct CommandRow: View {
     }
 
     private func tag(_ text: String, _ tint: Color) -> some View {
-        Text(text).font(.system(size: 10, weight: .medium)).foregroundStyle(tint)
+        Text(text).font(.system(size: 10, weight: .medium)).foregroundStyle(tint).lineLimit(1).fixedSize()
             .padding(.horizontal, 6).frame(height: 17).background(Capsule().fill(Island.cardRaised))
     }
 }

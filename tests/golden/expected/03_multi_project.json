@@ -220,6 +220,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -235,6 +236,7 @@
           },
           "request": {
             "char_count": 9,
+            "display_preview": "A request",
             "preview": "A request",
             "prompt_id": "pa",
             "received_at": "2026-01-01T00:00:00.000000Z",
@@ -314,6 +316,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -329,6 +332,7 @@
           },
           "request": {
             "char_count": 9,
+            "display_preview": "B request",
             "preview": "B request",
             "prompt_id": "pb",
             "received_at": "2026-01-01T00:00:01.000000Z",

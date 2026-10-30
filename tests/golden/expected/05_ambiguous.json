@@ -62,6 +62,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -135,6 +136,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -143,6 +145,7 @@
             },
             "request": {
               "char_count": 5,
+              "display_preview": "first",
               "preview": "first",
               "prompt_id": null,
               "received_at": "2026-01-01T00:00:00.000000Z",
@@ -164,6 +167,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -172,6 +176,7 @@
             },
             "request": {
               "char_count": 6,
+              "display_preview": "second",
               "preview": "second",
               "prompt_id": null,
               "received_at": "2026-01-01T00:00:01.000000Z",
@@ -207,6 +212,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,

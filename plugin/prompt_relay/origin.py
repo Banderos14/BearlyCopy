@@ -48,6 +48,24 @@ def classify(text: Optional[str]) -> str:
     return UNKNOWN
 
 
+def strip_harness(text: str) -> str:
+    """The text without harness blocks, for one-line titles only."""
+    return _HARNESS.sub(" ", text)
+
+
+_WRAPPER = re.compile(r"</?pasted_content\b[^>]*>")
+
+
+def display_preview(text: Optional[str], limit: int) -> Optional[str]:
+    """The start of a request as a person would read it: harness blocks and
+    paste wrappers removed. None when nothing but harness blocks remains.
+    For display only; exports keep the verbatim text."""
+    if not text:
+        return None
+    rest = _WRAPPER.sub("", strip_harness(text)).strip()
+    return rest[:limit] if rest else None
+
+
 def is_user(origin: str) -> bool:
     return origin in (USER, USER_PASTED)
 

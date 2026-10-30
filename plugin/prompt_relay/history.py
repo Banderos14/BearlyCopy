@@ -170,9 +170,10 @@ _WRAPPER = re.compile(r"</?pasted_content\b[^>]*>")
 
 
 def display_title(text: str) -> Optional[str]:
-    """One line for display: wrapper tags dropped, whitespace collapsed,
-    at most TITLE_CHARS characters. The stored request stays verbatim."""
-    line = " ".join(_WRAPPER.sub(" ", text).split())
+    """One line for display: automated blocks (origin.HARNESS_TAGS) and
+    wrapper tags dropped, whitespace collapsed, at most TITLE_CHARS
+    characters. The stored request stays verbatim."""
+    line = " ".join(_WRAPPER.sub(" ", origin.strip_harness(text)).split())
     if not line:
         return None
     return line if len(line) <= TITLE_CHARS else line[: TITLE_CHARS - 1] + "…"

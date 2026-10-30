@@ -306,6 +306,21 @@ final class SuggestionTests: XCTestCase {
         XCTAssertEqual(again.map(\.title), ["red.png"], "what was added is not suggested again")
     }
 
+    /// Phase 5.11 e2e (real turn): `blue.png` was made by a Bash script, so no
+    /// Edit/Write event names it; the answer does, and the file is in the project.
+    func testNamedProjectFileMadeByAScriptIsSuggestedWithAnHonestReason() throws {
+        let root = "/Users/me/e2e"
+        let detail = try observed(changed: ["\(root)/calc.py", "\(root)/REPORT.md"])
+        let answer = "5. I wrote `blue.png`, a valid 8×8 PNG.\n6. I wrote `REPORT.md`.\nSee also ../outside.png, /etc/x.png, missing.pdf and v1.2."
+        let present: Set<String> = ["\(root)/blue.png", "\(root)/REPORT.md", "/Users/me/outside.png", "/etc/x.png"]
+        let out = AppModel.suggestions(observed: detail, answer: answer, root: root, addedPaths: [], addedURLs: [],
+                                       exists: present.contains)
+        XCTAssertEqual(out.map(\.title), ["REPORT.md", "blue.png"], "outside the project and missing files are not offered")
+        XCTAssertEqual(out[1].reason, "Named in the answer; in the project, not seen being written")
+        XCTAssertEqual(AppModel.suggestions(observed: detail, answer: answer, root: root, addedPaths: ["blue.png"],
+                                            addedURLs: [], exists: present.contains).map(\.title), ["REPORT.md"])
+    }
+
     func testPathsAreShownWithoutTheUserName() {
         XCTAssertEqual(AppModel.displayPath("/Users/me/p/docs/a.md", root: "/Users/me/p"), "docs/a.md")
         XCTAssertEqual(AppModel.displayPath("/private/tmp/claude-501/x/scratchpad/island.html", root: "/Users/me/p"), "…/scratchpad/island.html")
@@ -442,5 +457,32 @@ final class RequestOriginTests: XCTestCase {
         XCTAssertNil(old.requestOrigin)
         XCTAssertEqual(old.userRequestPreview, "<system-reminder>A session finished</system-reminder>")
         XCTAssertEqual(try turn(["request_origin": "from_the_future"]).requestOrigin, .unknown)
+    }
+
+    func testDisplayDropsAutomatedBlocksButKeepsTheText() throws {
+        XCTAssertEqual(Wording.requestForDisplay("<system-reminder>\nLinked sessions\n</system-reminder>\n\nRun it").text, "Run it")
+        XCTAssertEqual(Wording.requestForDisplay("Explain `<system-reminder>` tags").text, "Explain `<system-reminder>` tags")
+        var request = try turn(["request_origin": "unknown"]).request
+        XCTAssertEqual(request?.readablePreview, "<system-reminder>A session finished</system-reminder>",
+                       "only automated blocks: the raw text is shown rather than nothing")
+        request = try turn(["request": ["preview": "<system-reminder>cut off", "display_preview": "Run the e2e steps",
+                                        "truncated": true, "char_count": 900, "utf8_bytes": 900]]).request
+        XCTAssertEqual(request?.readablePreview, "Run the e2e steps", "the Core's cleaned start wins over a cut-off preview")
+    }
+
+    /// Real e2e (2026-10-30): a file named in the answer but made by a script
+    /// was labelled "prepared by Claude in this turn [Confirmed locally]".
+    func testNamedFileIsNotClaimedAsConfirmed() {
+        var a = ReportAttachment(id: "a", reportKey: "k", originalFilename: "blue.png", storedFilename: "a.png", mimeType: "image/png",
+                                 byteCount: 73, sha256: "s", addedAt: "t", provenance: "p")
+        a.source = .named
+        XCTAssertEqual(ReviewPack.origin(a), "named in Claude's answer and found in the project; not seen being written in this turn [Reported by Claude]")
+        a.source = .claude
+        XCTAssertTrue(ReviewPack.origin(a).hasSuffix("[Confirmed locally]"))
+    }
+
+    func testFailedCommandCountDecodes() throws {
+        let json = #"{"tool_events":6,"runs_exit_zero":1,"runs_nonzero":0,"runs_unknown":0,"files_changed":2,"background_started":0,"commands_nonzero":1}"#
+        XCTAssertEqual(try JSONDecoder().decode(ObservedCounts.self, from: Data(json.utf8)).commandsNonzero, 1)
     }
 }

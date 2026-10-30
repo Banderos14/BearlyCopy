@@ -250,7 +250,8 @@ public final class ReportStore {
     static func provenance(_ source: AttachmentSource) -> String {
         switch source {
         case .you: return "Added by you from a file on this Mac"
-        case .claude: return "Prepared by Claude in this turn; added by you"
+        case .claude: return "Shown or written by Claude in this turn; added by you"
+        case .named: return "Named in Claude's answer and found in the project (not seen being written); added by you"
         case .clipboard: return "Copied to your clipboard; added by you"
         }
     }

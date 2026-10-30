@@ -309,6 +309,17 @@
         },
         "received_at": {
           "$ref": "#/$defs/timestamp_or_null"
+        },
+        "display_preview": {
+          "description": "Requests only (Phase 5.11): the start of the request without automated blocks and paste wrappers, for display; null when nothing else remains.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -350,6 +361,17 @@
         },
         "text": {
           "type": "string"
+        },
+        "display_preview": {
+          "description": "Requests only (Phase 5.11): the start of the request without automated blocks and paste wrappers, for display; null when nothing else remains.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -1458,6 +1480,11 @@
         "background_started": {
           "type": "integer",
           "minimum": 0
+        },
+        "commands_nonzero": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Shell commands of any kind that exited non-zero (Phase 5.11)."
         }
       }
     },
@@ -1646,6 +1673,17 @@
         "turn": {
           "type": "integer",
           "minimum": 1
+        },
+        "display_preview": {
+          "description": "Requests only (Phase 5.11): the start of the request without automated blocks and paste wrappers, for display; null when nothing else remains.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "description": "A request from an earlier turn of the same session, with that turn's number."
@@ -1693,6 +1731,17 @@
         "turn": {
           "type": "integer",
           "minimum": 1
+        },
+        "display_preview": {
+          "description": "Requests only (Phase 5.11): the start of the request without automated blocks and paste wrappers, for display; null when nothing else remains.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "description": "A request from an earlier turn of the same session, with that turn's number."

@@ -93,6 +93,43 @@ class ExportOriginTests(IsolatedTestCase):
         self.assertIn("Claude Code marked it as pasted text", second)
         self.assertNotIn("Automated message", second)
 
+    def test_title_drops_automated_blocks(self):
+        # Observed 2026-10-30: a session started from another one begins with
+        # a <system-reminder> listing linked sessions, then the brief.
+        self.turn(1, "<system-reminder>\nLinked sessions now: x (idle).\n</system-reminder>\n\nRun the e2e steps", "ok")
+        session = json.loads(self.cli("sessions", "--json").stdout)["data"]["sessions"][0]
+        self.assertEqual(session["title"], "Run the e2e steps")
+
+    def test_display_preview_skips_a_long_leading_reminder(self):
+        # The real reminder (257 chars) was longer than the 200-char preview.
+        reminder = "<system-reminder>\n" + "Linked sessions now: x (idle). " * 9 + "\n</system-reminder>\n\n"
+        self.turn(1, reminder + "Run the e2e steps in order", "ok")
+        turn = json.loads(self.cli("turns", "--json", "--session", "s-origin").stdout)["data"]["turns"][0]
+        self.assertTrue(turn["request"]["preview"].startswith("<system-reminder>"), "the preview stays verbatim")
+        self.assertEqual(turn["request"]["display_preview"], "Run the e2e steps in order")
+        self.assertEqual(turn["request_origin"], "unknown")
+
+    def test_failed_command_of_any_kind_is_counted(self):
+        # Real e2e turn, 2026-10-30: `python3 -c "...sys.exit(4)"` is kind
+        # "other", so runs_nonzero stayed 0 and the app showed only "exit 0".
+        base = {"session_id": "s-origin", "cwd": self.project, "transcript_path": "/x.jsonl", "prompt_id": "p1"}
+        self.assertHookOk(self.hook({**base, "hook_event_name": "UserPromptSubmit", "prompt": "run"}))
+        for payload in (
+            {"hook_event_name": "PostToolUseFailure", "tool_name": "Bash", "tool_use_id": "t1",
+             "tool_input": {"command": 'python3 -c "import sys; sys.exit(4)"'}, "error": "Exit code 4\n"},
+            {"hook_event_name": "PostToolUse", "tool_name": "Bash", "tool_use_id": "t2",
+             "tool_input": {"command": "python3 -m unittest -v test_calc"},
+             "tool_response": {"stdout": "OK", "stderr": "", "interrupted": False}},
+        ):
+            self.assertHookOk(self.hook({**base, **payload}))
+        self.assertHookOk(self.hook({**base, "hook_event_name": "Stop", "stop_hook_active": False,
+                                     "last_assistant_message": "done"}))
+        observed = json.loads(self.cli("turns", "--json", "--session", "s-origin").stdout)["data"]["turns"][0]["observed"]
+        self.assertEqual(observed["commands_nonzero"], 1)
+        self.assertEqual(observed["runs_nonzero"], 0)
+        self.assertEqual(observed["runs_exit_zero"], 1)
+        self.assertIn("exit 4", self.context(1))
+
     def test_mixed_request_says_source_not_established(self):
         self.turn(1, "Please continue\n" + AUTOMATED, "Continued.")
         text = self.context(1)

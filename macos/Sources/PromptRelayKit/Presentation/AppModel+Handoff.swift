@@ -189,6 +189,26 @@ extension AppModel {
                                   reason: "Claude wrote it and named it in the answer", path: file.path,
                                   exists: exists(file.path), artifact: nil))
         }
+        // Named in the answer and present in the project, but not written by
+        // an observed Edit/Write (a script made it, Phase 5.11). Only
+        // documents and images inside the project; only existing files.
+        guard let root else { return out }
+        let base = root.hasSuffix("/") ? root : root + "/"
+        let pattern = #"(?<![\w.-])((?:/|\./)?[\w][\w./-]*\.(?:png|jpe?g|gif|webp|heic|pdf|md|txt|html?|svg|csv|json))(?![\w-])"#
+        let ns = answer as NSString
+        let matches = (try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]))?
+            .matches(in: answer, range: NSRange(location: 0, length: ns.length)) ?? []
+        for match in matches where out.count < 12 {
+            let token = ns.substring(with: match.range(at: 1))
+            let path = token.hasPrefix("/") ? token : base + (token.hasPrefix("./") ? String(token.dropFirst(2)) : token)
+            let standard = (path as NSString).standardizingPath
+            guard standard.hasPrefix(base), !seen.contains(standard), !addedPaths.contains(display(standard)),
+                  exists(standard) else { continue }
+            seen.insert(standard)
+            out.append(Suggestion(id: "found:" + standard, kind: .file, title: (standard as NSString).lastPathComponent,
+                                  reason: "Named in the answer; in the project, not seen being written", path: standard,
+                                  exists: true, artifact: nil))
+        }
         return out
     }
 
@@ -210,7 +230,8 @@ extension AppModel {
         case .file:
             guard let path = suggestion.path else { return }
             do {
-                try store.addFile(from: URL(fileURLWithPath: path), to: ref, source: .claude,
+                try store.addFile(from: URL(fileURLWithPath: path), to: ref,
+                                  source: suggestion.id.hasPrefix("found:") ? .named : .claude,
                                   displayPath: Self.displayPath(path, root: root))
                 attachmentMessage = nil
             } catch let error as ReportStoreError {

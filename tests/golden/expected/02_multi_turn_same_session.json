@@ -59,6 +59,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -74,6 +75,7 @@
           },
           "request": {
             "char_count": 14,
+            "display_preview": "second request",
             "preview": "second request",
             "prompt_id": "p-2",
             "received_at": "2026-01-01T00:00:02.000000Z",
@@ -155,6 +157,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -170,6 +173,7 @@
           },
           "request": {
             "char_count": 13,
+            "display_preview": "first request",
             "preview": "first request",
             "prompt_id": "p-1",
             "received_at": "2026-01-01T00:00:00.000000Z",
@@ -247,6 +251,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -255,6 +260,7 @@
             },
             "request": {
               "char_count": 13,
+              "display_preview": "first request",
               "preview": "first request",
               "prompt_id": "p-1",
               "received_at": "2026-01-01T00:00:00.000000Z",
@@ -287,6 +293,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -295,6 +302,7 @@
             },
             "request": {
               "char_count": 14,
+              "display_preview": "second request",
               "preview": "second request",
               "prompt_id": "p-2",
               "received_at": "2026-01-01T00:00:02.000000Z",

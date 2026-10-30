@@ -142,6 +142,26 @@ final class IslandLayoutTests: XCTestCase {
         }
     }
 
+    /// Phase 5.11 (real e2e render): with step 2 open, the taller bar pushed
+    /// the copy line out of the island; the columns now give it room.
+    func testStepTwoBarAndCopyLineFitInsideDetails() async throws {
+        let m = await model()
+        try addImages(m, names: ["blue.png", "island.png", "settings.png"])
+        for maxContent: CGFloat in [448, 341] {
+            let island = IslandHost(model: m, maxContentHeight: maxContent)
+            await m.copySelectedContext()
+            XCTAssertNotNil(m.handoffStep)
+            m.copyHandoffFiles()
+            island.settle()
+            let bar = try XCTUnwrap(island.presentation.layoutFrames["details.handoff"], "the step-2 bar is shown")
+            XCTAssertTrue(island.contains(bar), "the step-2 bar is inside the island (\(maxContent))")
+            XCTAssertGreaterThanOrEqual(island.height - bar.maxY, 16 + 6, "the copy line below the bar fits (\(maxContent))")
+            XCTAssertLessThanOrEqual(island.height, 32 + maxContent)
+            m.endHandoff()
+            island.close()
+        }
+    }
+
     // MARK: Response scrolling
 
     func testTheResponseScrollsInsideItsCardAndCopyAlwaysTakesTheWholeText() async throws {

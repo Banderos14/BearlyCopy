@@ -142,9 +142,16 @@ public struct TextRef: Decodable, Equatable, Hashable, Sendable {
     public let promptID: String?
     public let receivedAt: String?
     public let text: String?
+    /// Requests only (Core 0.3, Phase 5.11): the start without automated
+    /// blocks and paste wrappers; nil when nothing else remains.
+    public let displayPreview: String?
+
+    /// What to show for a request: the Core's cleaned start when present.
+    public var readablePreview: String { displayPreview ?? Wording.requestForDisplay(preview).text }
 
     enum CodingKeys: String, CodingKey {
         case preview, truncated, text
+        case displayPreview = "display_preview"
         case charCount = "char_count", utf8Bytes = "utf8_bytes"
         case promptID = "prompt_id", receivedAt = "received_at"
     }
@@ -167,9 +174,12 @@ public struct ObservedCounts: Decodable, Equatable, Hashable, Sendable {
     public let runsUnknown: Int
     public let filesChanged: Int
     public let backgroundStarted: Int
+    /// Shell commands of any kind that exited non-zero (Core 0.3, Phase 5.11).
+    public let commandsNonzero: Int?
 
     enum CodingKeys: String, CodingKey {
         case toolEvents = "tool_events", runsExitZero = "runs_exit_zero", runsNonzero = "runs_nonzero"
+        case commandsNonzero = "commands_nonzero"
         case runsUnknown = "runs_unknown", filesChanged = "files_changed", backgroundStarted = "background_started"
     }
 }
@@ -262,7 +272,8 @@ public struct Turn: Decodable, Equatable, Hashable, Identifiable, Sendable {
 
     /// The request to show as the user's: never an automated message.
     public var userRequestPreview: String? {
-        requestOrigin == .automated ? earlierUserRequest?.preview : request?.preview
+        requestOrigin == .automated ? earlierUserRequest.map { $0.displayPreview ?? $0.preview }
+                                    : request.map(\.readablePreview)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -288,11 +299,12 @@ public enum RequestOrigin: String, Decodable, Equatable, Hashable, Sendable {
 public struct EarlierRequest: Decodable, Equatable, Hashable, Sendable {
     public let turn: Int
     public let preview: String
+    public let displayPreview: String?
     public let receivedAt: String?
 
     enum CodingKeys: String, CodingKey {
         case turn, preview
-        case receivedAt = "received_at"
+        case displayPreview = "display_preview", receivedAt = "received_at"
     }
 }
 

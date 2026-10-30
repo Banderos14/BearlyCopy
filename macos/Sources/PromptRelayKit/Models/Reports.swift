@@ -74,12 +74,16 @@ public enum AttachmentSource: String, Codable, Sendable {
     /// Claude showed it to the user (SendUserFile) or wrote it and named it
     /// in its answer; added by the user's click.
     case claude
+    /// Named in Claude's answer and found in the project, but no Edit/Write
+    /// of it was observed (a script made it, or it is older). Phase 5.11.
+    case named
     /// The user's clipboard history.
     case clipboard
     public var label: String {
         switch self {
         case .you: return "you"
         case .claude: return "Claude"
+        case .named: return "named by Claude"
         case .clipboard: return "clipboard"
         }
     }

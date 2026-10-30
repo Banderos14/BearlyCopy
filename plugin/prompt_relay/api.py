@@ -158,7 +158,7 @@ def turn_object(t: c.Turn, full: bool = False, turns: Optional[List[c.Turn]] = N
         # The turn's own prompt. A turn holds a prompt only when it is that
         # prompt's turn; how firmly the response belongs to it is ``link``.
         # Ambiguous responses get a turn without a prompt (candidates counted).
-        "request": _text_ref(t.prompt, full) if t.prompt is not None else None,
+        "request": _request_ref(t.prompt, full) if t.prompt is not None else None,
         # user | user_pasted | automated | unknown (origin.py); null without a request.
         "request_origin": origin.classify(t.prompt.text) if t.prompt is not None else None,
         "earlier_user_request": _earlier(t, turns, full),
@@ -177,7 +177,13 @@ def _earlier(t: c.Turn, turns: Optional[List[c.Turn]], full: bool) -> Optional[D
     if turns is None or t.prompt is None or origin.classify(t.prompt.text) != origin.AUTOMATED:
         return None
     found = origin.earlier_user_prompt(turns, t.index)
-    return None if found is None else {"turn": found[0], **_text_ref(found[1], full)}
+    return None if found is None else {"turn": found[0], **_request_ref(found[1], full)}
+
+
+def _request_ref(ev: Event, full: bool) -> Dict[str, Any]:
+    """A request's text ref plus ``display_preview``: its start without
+    automated blocks or paste wrappers (Phase 5.11), for display only."""
+    return {**_text_ref(ev, full), "display_preview": origin.display_preview(ev.text, PREVIEW_CHARS)}
 
 
 def turn_warnings(sess: Session, t: c.Turn, selection_warnings: List[str]) -> List[Dict[str, str]]:

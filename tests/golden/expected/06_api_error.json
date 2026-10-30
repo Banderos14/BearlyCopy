@@ -62,6 +62,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -70,6 +71,7 @@
           },
           "request": {
             "char_count": 58,
+            "display_preview": "Add input validation to the signup form and run the tests.",
             "preview": "Add input validation to the signup form and run the tests.",
             "prompt_id": "11111111-1111-4111-8111-111111111111",
             "received_at": "2026-01-01T00:00:00.000000Z",
@@ -138,6 +140,7 @@
           "notification_count": 0,
           "observed": {
             "background_started": 0,
+            "commands_nonzero": 0,
             "files_changed": 0,
             "runs_exit_zero": 0,
             "runs_nonzero": 0,
@@ -153,6 +156,7 @@
           },
           "request": {
             "char_count": 58,
+            "display_preview": "Add input validation to the signup form and run the tests.",
             "preview": "Add input validation to the signup form and run the tests.",
             "prompt_id": "11111111-1111-4111-8111-111111111111",
             "received_at": "2026-01-01T00:00:00.000000Z",
@@ -226,6 +230,7 @@
             "notification_count": 0,
             "observed": {
               "background_started": 0,
+              "commands_nonzero": 0,
               "files_changed": 0,
               "runs_exit_zero": 0,
               "runs_nonzero": 0,
@@ -234,6 +239,7 @@
             },
             "request": {
               "char_count": 58,
+              "display_preview": "Add input validation to the signup form and run the tests.",
               "preview": "Add input validation to the signup form and run the tests.",
               "prompt_id": "11111111-1111-4111-8111-111111111111",
               "received_at": "2026-01-01T00:00:00.000000Z",
