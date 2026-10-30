@@ -55,6 +55,27 @@ Output semantics that matter for safety:
 - `decision: "block"` would stop the prompt. Prompt Relay never emits a decision.
 - The default timeout is lowered to 30 s for this event.
 
+Observed 2026-10-30 (Claude Desktop, CLI 2.1.309), stage 5.11:
+- The payload has **no field that says who wrote the prompt**. Claude Code
+  also fires the event for turns it starts itself: when a side session
+  finishes, the parent's next turn begins with a prompt made only of
+  `<system-reminder>` and `<side-sessions-event>` blocks, with a new
+  `prompt_id`. Phase 5's whole implementation ran in such a turn, so its pack
+  showed that text as the user's request. Prompt Relay now classifies the
+  origin from the text's structure (ADR-017).
+- A session started from another one (`start_session`) receives as its first
+  prompt a `<system-reminder>` listing linked sessions, then
+  "Background (from the session that started this one): …" and the brief.
+  Its origin is `unknown`: neither the user nor provably automated.
+- `session_title` is absent on a session's first prompt; it appears on later
+  prompts once Claude Code has named the session.
+- With a marketplace of type `directory` (this repository), Claude Desktop
+  ran the hooks of the working tree's `plugin/` (0.3.0: `PostToolUse
+  via=plugin` was stored) while `claude plugin list` still showed the
+  installed 0.2.0 and its cache had no tool hooks. A branch switch in this
+  checkout therefore changes the hooks that run. `claude plugin update`
+  then recorded 0.3.0 (`~/.claude/settings.json` unchanged).
+
 ### Stop — used (main source of the final text)
 Input: common fields + `stop_hook_active`, `last_assistant_message`,
 `background_tasks`, `session_crons`.

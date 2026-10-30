@@ -570,3 +570,30 @@ not a private link or a local path.
    only on an explicit click.
 
 **Status.** Items 1–5 approved 2026-10-30 (R10, R11); item 6 proposed.
+
+## ADR-017: A request's origin is read from its structure
+
+**Context.** UserPromptSubmit carries no author. Claude Code fires it for
+turns it starts itself (a side session reporting back, a CI monitor) and
+for sessions started from another session; those prompts are harness
+blocks or text written by another Claude session. Copy for ChatGPT showed
+such text as "Original user request" (observed 2026-10-30, HOOKS_RESEARCH §3).
+
+**Decision.**
+1. `origin.classify` reads the text: no harness block outside pasted text →
+   `user` (`user_pasted` with a `<pasted_content>` block); nothing but harness
+   blocks (`system-reminder`, `side-sessions-event`, `ci-monitor-event`,
+   `task-notification`) → `automated`; both → `unknown`. Blocks quoted inside
+   pasted text never count.
+2. Stored events are never changed. Exports keep the verbatim text:
+   an automated turn shows the latest earlier user request of the same
+   session (labelled with its turn) and the automated message under its own
+   heading; `unknown` is exported as "Request (source not established)".
+3. Titles and previews drop harness blocks (display only); a session whose
+   first request is not the user's takes Claude Code's `session_title` when
+   there is one.
+4. If Claude Code adds a field naming the prompt's source, it replaces the
+   heuristic.
+
+**Consequences.** A user who types a harness tag literally (outside a paste)
+gets `unknown`, never a false "automated"; nothing is hidden, only labelled.

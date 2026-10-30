@@ -553,11 +553,79 @@ console is the check.
 | Paste of text and files into ChatGPT Desktop / Safari / Chrome (V8) | **Not verified**: the owner's matrix |
 | Local rendering of mockup states (5.10) | **Not implemented** (needs approval) |
 
-## Next agreed stage
-Push the branch when the owner asks. ADR-012 waits for approval.
+## Phase 5.11 stabilization (2026-10-30; committed on the branch, not pushed)
+Commits `564740b`, `44be234`, `44891a3`, `d573218`, `8b9b97b` and this
+documentation commit. Backup ref `refs/backup/phase5.11-start` (= `ee9d359`).
 
-The owner's steps for Phase 5 are in the final report of the session:
-install plugin 0.3.0, open the Debug build, check the island on the real
-screen (Quick Peek, Details, sessions, Relay, attachments), run the V8 paste
-matrix, try the clipboard mode once (V6). Stage 5.10 needs a separate
-approval.
+**Plugin 0.3.0.** The `prompt-relay` marketplace is a `directory` source
+pointing at this checkout. Claude Desktop already ran the working tree's
+0.3.0 hooks (tool events stored `via=plugin`) while the registry still said
+0.2.0; `claude plugin update prompt-relay@prompt-relay` recorded 0.3.0
+(`Hooks (5)`), `~/.claude/settings.json` unchanged (SHA prefix 49269c3b).
+Registry backup: `~/Library/Application Support/PromptRelay/backups/`.
+
+**End-to-end on this Mac (real Claude Code, two sessions of project
+`~/prompt-relay-validation/e2e-511`).** The worker session ran `echo`
+(exit 0), a failing command (exit 4), `unittest` (exit 0), an Edit, a
+script that wrote `blue.png` and a Write of `REPORT.md`; the viewer session
+only answered. Stored: 4 commands with the right exit codes, 2 files
+changed, each session separate. Copy Response = stored answer byte for
+byte; Copy for ChatGPT holds the answer once, `exit 4`, the files and Git
+state. `RealHandoffE2ETests` (opt-in) on that turn: suggestions for all
+three files with their real source, pack, and step 2 — the three files on
+a private pasteboard are byte-identical to the originals. Pasting into
+ChatGPT was **not** verified (owner, `docs/OWNER_CHECKS_5_11.md`).
+
+**Defects found and fixed (each with a regression test):**
+1. A turn Claude Code starts itself (side session reporting back) was
+   exported as "Original user request" with `<system-reminder>` /
+   `<side-sessions-event>` text. Origin classification, ADR-017.
+2. Titles and the Task card showed a leading `<system-reminder>`; requests
+   carry `display_preview`; titles drop harness blocks; a session not
+   started by the user takes Claude Code's title when one exists.
+3. A failed non-test command left the chip at "1× exit 0":
+   `observed.commands_nonzero`, failures shown first.
+4. A file made by a script and named in the answer was not suggested; now it
+   is, labelled "named in Claude's answer … not seen being written
+   [Reported by Claude]" (never "Confirmed").
+5. The step-2 bar pushed the copy line out of Details.
+6. "layout during layout": traced with lldb (`_NSDetectedLayoutRecursion`)
+   to `NotchController.resize` changing the window frame inside SwiftUI's
+   layout pass; now done right after the pass. `scripts/check-layout-recursion.sh`: 0 hits.
+7. "Invalid frame dimension": negative resting size without a notch.
+8. Relay CPU while the pointer moves (below).
+
+**Xcode warnings, real app log (`log show`, owner's Xcode runs).** Runs at
+11:23 and 15:00 (before Phase 5) logged `Bound preference IslandFramesKey /
+BoundedScrollHeight … multiple times per frame` and the layout recursion.
+The Phase 5 Debug build started 16:02 ran 4.5 hours with **no**
+preference warnings; it still logged the layout recursion once (fixed in
+`d573218`, needs a rebuild to confirm on screen).
+
+**Relay CPU** (same harness for Phase 4 `f72a8ce` and Phase 5, optimized
+`-c release` test build with DEBUG test hooks, pointer at 120 Hz, medians of
+4 alternating runs): moving minus the harness loop — Phase 4 4.50, Phase 5
+before 6.05, after 5.15 percentage points; at rest 1.04 vs 1.07 %; RSS 57 MB
+both. Frames published while moving fell from ≈ 19 to 11–12 per second
+(gaze/head published only for steps ≥ 0.07 pt or on arrival). A main-thread
+sample at rest shows no periodic work. Breathing runs in WindowServer; its
+cost could not be separated from the system's (≈ 44 % WindowServer
+background). The Release app itself was not profiled.
+
+| Item | Status |
+|---|---|
+| Python suite (3.11+ and 3.9.6), `scripts/check.sh` | **Automated: 168 tests OK** on both (1 skipped); hook median 40 ms |
+| Swift `swift test` | **Automated: 172 tests, 0 failures** (7 opt-in skipped); `plugin validate --strict` passed |
+| Xcode Debug and Release (`Prompt Relay` scheme) | **BUILD SUCCEEDED**, 0 compiler warnings |
+| Tool events, two sessions, Copy Response / Copy for ChatGPT | **Verified on this Mac** (real Claude Code turn) |
+| Files to the clipboard (step 2) | **Verified** on a private pasteboard, byte-identical |
+| Paste into ChatGPT Desktop / Safari / Chrome (V8) | **Not verified** (owner) |
+| Relay feel on the real screen, Reduce Motion | **Not verified** (owner) |
+| Clipboard image history vs macOS 27 paste prompt (V6) | **Not verified** (owner) |
+| Local rendering of mockup states (5.10) | **Not implemented** (deferred) |
+
+## Next agreed stage
+Phase 5.11 is committed locally. The owner's checks are in
+`docs/OWNER_CHECKS_5_11.md` (rebuild, Xcode console, island, V8 paste
+matrix, V6, Release CPU). Push only when the owner asks. Stage 5.10 and
+ADR-012 wait for separate decisions.

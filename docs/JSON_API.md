@@ -87,6 +87,19 @@ stable file key; pass it to `--session` to address any session),
   exit code, duration, kind, compound/background/after-Stop flags, a failed run's tail; files changed;
   files shown; artifacts).
 
+### Phase 5.11 additions (compatible)
+- Turn: `request_origin` — `user`, `user_pasted`, `automated` (a turn Claude Code started itself:
+  only `<system-reminder>`, `<side-sessions-event>`, `<ci-monitor-event>`, `<task-notification>`
+  blocks) or `unknown` (such blocks mixed with other text); read from the text's structure, `null`
+  without a request. `earlier_user_request` — for an `automated` turn, the latest earlier request from
+  the user in the same session (`turn` plus the text reference), else `null`.
+- Request text references: `display_preview` — the start of the request without those blocks and
+  paste wrappers, for display only (`preview` stays verbatim); `null` when nothing else remains.
+- `observed.commands_nonzero` — shell commands of any kind that exited non-zero (`runs_*` count only
+  tests and builds).
+- Session `title`: Claude Code's `session_title` when the first request is not the user's and a
+  title exists.
+
 ### Turn
 | Field | Meaning |
 |---|---|
