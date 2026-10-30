@@ -43,9 +43,15 @@ final class RealSessionAuditTests: XCTestCase {
 
         await model.copySelectedContext()
         let pack = try XCTUnwrap(board.string(forType: .string))
-        XCTAssertEqual(pack.components(separatedBy: shown).count - 1, 1, "Review Pack: the full report exactly once")
+        // The pack is the response plus metadata; what must equal the
+        // transcript is the response read back out of it, not the whole pack.
+        let packed = try XCTUnwrap(ReviewPackReader.response(in: pack), "Review Pack: one response section")
+        XCTAssertEqual(Data(packed.utf8), expected, "Review Pack: the response extracted from it is byte-identical")
+        XCTAssertEqual(pack.components(separatedBy: shown).count - 1, 1, "Review Pack: the report appears exactly once")
         XCTAssertTrue(pack.contains("- Source: Claude Code on this Mac"))
-        XCTAssertTrue(Data(pack.utf8).range(of: expected) != nil, "Review Pack contains the expected bytes")
+        if let dir = env["PROMPT_RELAY_AUDIT_RENDER"] {
+            try Data(pack.utf8).write(to: URL(fileURLWithPath: "\(dir)/real-review-pack.md"))
+        }
 
         // The formatted reader drops no line of the report.
         let missing = MarkdownCoverage.missingLines(shown)
@@ -55,8 +61,70 @@ final class RealSessionAuditTests: XCTestCase {
             try AuditRender.island(model, route: .home, to: "\(dir)/real-home.png")
             try AuditRender.island(model, route: .reader, to: "\(dir)/real-reader.png")
             try AuditRender.island(model, route: .copies, to: "\(dir)/real-copies.png")
+            try AuditRender.island(model, route: .history, to: "\(dir)/real-history.png")
+            try AuditRender.island(model, route: .projects, to: "\(dir)/real-projects.png")
+            try AuditRender.island(model, route: .importReport, to: "\(dir)/real-import.png")
             try AuditRender.island(model, route: .settings, to: "\(dir)/real-settings-full.png", unbounded: true)
+
+            // The same real answer with three images, kept in a temporary
+            // store: the user's own attachments are neither read nor changed.
+            let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("pr-audit-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: scratch) }
+            let withImages = AppModel(core: CoreClient.live(locator: locator), clipboard: ClipboardService(pasteboard: board),
+                                      dataDirectory: nil, reportStore: ReportStore(root: scratch.appendingPathComponent("app")))
+            await withImages.refreshNow()
+            withImages.open(.local(sessionKey: key, turn: turnIndex))
+            while withImages.selectedResponseText == nil, Date() < deadline.addingTimeInterval(20) { try await Task.sleep(nanoseconds: 50_000_000) }
+            try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+            let images = try ["Снимок экрана 2026-10-30 в 10.12.04.png", "island-before.png", "chatgpt-paste.png"].enumerated().map { i, name -> URL in
+                let drawing = NSImage(size: NSSize(width: 1440, height: 900), flipped: false) { rect in
+                    [NSColor.systemTeal, .systemOrange, .systemPurple][i].setFill(); rect.fill(); return true
+                }
+                let url = scratch.appendingPathComponent(name)
+                try NSBitmapImageRep(data: drawing.tiffRepresentation!)!.representation(using: .png, properties: [:])!.write(to: url)
+                return url
+            }
+            withImages.addAttachments(images, to: .local(sessionKey: key, turn: turnIndex))
+            XCTAssertEqual(withImages.attachments(for: withImages.currentRef).count, 3)
+            try AuditRender.island(withImages, route: .home, to: "\(dir)/real-home-images.png")
+            await withImages.copySelectedContext()
+            let packWithImages = try XCTUnwrap(board.string(forType: .string))
+            XCTAssertEqual(ReviewPackReader.response(in: packWithImages).map { Data($0.utf8) }, expected,
+                           "with images listed, the response in the pack is still the original")
+            XCTAssertTrue(packWithImages.contains("## Attachments (3, sent separately)"))
+            try Data(packWithImages.utf8).write(to: URL(fileURLWithPath: "\(dir)/real-review-pack-images.md"))
         }
+    }
+}
+
+/// Reads the response back out of a Review Pack: the fenced block under
+/// "## Claude final response", skipping fenced blocks elsewhere (a task may
+/// quote anything). Nil unless there is exactly one such section.
+enum ReviewPackReader {
+    static func response(in pack: String) -> String? {
+        let lines = pack.components(separatedBy: "\n")
+        var fence: String?
+        var inSection = false, sections = 0
+        var body: [String]?, result: String?
+        for line in lines {
+            if let open = fence {
+                if line == open {
+                    fence = nil
+                    if let lines = body { result = result == nil ? lines.joined(separator: "\n") : result; body = nil; inSection = false }
+                } else {
+                    body?.append(line)
+                }
+                continue
+            }
+            if line == "## Claude final response" { sections += 1; inSection = true; continue }
+            if line.hasPrefix("## ") { inSection = false }
+            let run = line.prefix { $0 == "`" }
+            if run.count >= 3 {
+                fence = String(run)
+                if inSection, line.dropFirst(run.count) == "markdown" { body = [] }
+            }
+        }
+        return sections == 1 ? result : nil
     }
 }
 

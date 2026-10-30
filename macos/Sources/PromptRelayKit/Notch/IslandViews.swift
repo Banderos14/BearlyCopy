@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -26,9 +27,67 @@ enum Island {
     static let accent = Color(red: 0.45, green: 0.85, blue: 0.72)
     static let warning = Color(red: 1.0, green: 0.74, blue: 0.38)
     static let error = Color(red: 1.0, green: 0.47, blue: 0.43)
-    /// Horizontal inset of content from the island's sides.
-    static let inset: CGFloat = 18
     static let cardRadius: CGFloat = 14
+    /// Inner padding of a card: its text never runs into the rounded edge.
+    static let cardPadding = EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
+}
+
+/// One spacing rule for the open island. The notch outline's sides stand
+/// `edge` points in from the window (its top corners flare out above them),
+/// so content is measured from that visible side: `inset` from it
+/// horizontally, `bottom` above the rounded bottom edge. Short displays get
+/// slightly tighter values so more of the report stays visible.
+struct IslandMetrics: Equatable {
+    var edge: CGFloat
+    var inset: CGFloat
+    var top: CGFloat
+    var bottom: CGFloat
+    /// Between the blocks of a view (header, Task, Response, actions, footer).
+    var spacing: CGFloat
+    /// A short display: one line of the task, smaller image cards.
+    var compact = false
+    /// Window edge → content.
+    var leading: CGFloat { edge + inset }
+
+    @MainActor static func of(_ p: NotchPresentation) -> IslandMetrics {
+        make(width: p.islandWidth, maxContentHeight: p.maxContentHeight, floating: p.isFloating, peek: p.surface == .peek)
+    }
+
+    static func make(width: CGFloat, maxContentHeight: CGFloat, floating: Bool, peek: Bool) -> IslandMetrics {
+        let edge = floating ? 0 : NotchRootView.expandedTopRadius
+        if peek { return IslandMetrics(edge: edge, inset: 20, top: 4, bottom: 18, spacing: 10) }
+        let roomy = maxContentHeight >= 460
+        return IslandMetrics(edge: edge, inset: width >= 520 ? 24 : 22, top: roomy ? 6 : 4,
+                             bottom: roomy ? 22 : 18, spacing: roomy ? 12 : 10, compact: !roomy)
+    }
+}
+
+/// Frames of the island's main blocks and controls, in its own coordinate
+/// space: layout regression tests check them against the island outline.
+/// Debug builds only.
+struct IslandFramesKey: PreferenceKey {
+    static let defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
+extension View {
+    @ViewBuilder func islandFrame(_ id: String) -> some View {
+        #if DEBUG
+        background(GeometryReader { proxy in
+            Color.clear.preference(key: IslandFramesKey.self, value: [id: proxy.frame(in: .named(NotchRootView.space))])
+        })
+        #else
+        self
+        #endif
+    }
+
+    /// The island's content padding (see `IslandMetrics`).
+    @MainActor func islandPadding(_ presentation: NotchPresentation, horizontal: Bool = true) -> some View {
+        let m = IslandMetrics.of(presentation)
+        return padding(.horizontal, horizontal ? m.leading : 0).padding(.top, m.top).padding(.bottom, m.bottom)
+    }
 }
 
 // MARK: - Expanded island
@@ -46,7 +105,8 @@ struct IslandContent: View {
             IslandBand(presentation: presentation) {
                 HStack(spacing: 7) {
                     if presentation.showsMascot {
-                        MascotView(state: presentation.mascot, size: 18, reduceMotion: presentation.reduceMotion)
+                        MascotView(state: presentation.mascot, size: MascotView.size(notchHeight: presentation.notchSize.height), reduceMotion: presentation.reduceMotion)
+                            .islandFrame("band.mascot")
                     }
                     if model.route != .home { BackButton(model: model) }
                 }
@@ -87,15 +147,16 @@ struct IslandBand<Leading: View, Trailing: View>: View {
     @ViewBuilder let trailing: Trailing
 
     var body: some View {
-        let corner: CGFloat = presentation.isFloating ? 4 : 14
+        // Same left edge as the content below; clear of the camera housing.
+        let leadingInset = IslandMetrics.of(presentation).leading
         let gap: CGFloat = presentation.notchSize.width > 0 ? 12 : 0
-        let side = max(0, (presentation.islandWidth - presentation.notchSize.width) / 2 - corner - Island.inset - gap)
+        let side = max(0, (presentation.islandWidth - presentation.notchSize.width) / 2 - leadingInset - gap)
         HStack(spacing: 0) {
             leading.frame(width: side, alignment: .leading)
             Spacer(minLength: 0)
             trailing.frame(width: side, alignment: .trailing)
         }
-        .padding(.horizontal, corner + Island.inset)
+        .padding(.horizontal, leadingInset)
         .frame(height: presentation.notchSize.height)
     }
 }
@@ -188,14 +249,20 @@ struct ReportFacts {
 
     enum TaskText { case linked(String), inferred(String), supplied(String), unavailable(String) }
 
+    /// The request was pasted into Claude Code (shown without its wrapper).
+    var taskWasPasted: Bool {
+        guard model.selectedImport == nil, let request = model.selectedTurn?.request else { return false }
+        return Wording.requestForDisplay(request.preview).pasted
+    }
+
     var task: TaskText {
         if let report = model.selectedImport {
             return report.task.map(TaskText.supplied) ?? .unavailable("not supplied when importing")
         }
         guard let turn = model.selectedTurn else { return .unavailable("") }
         switch (turn.link, turn.request) {
-        case (.promptID, let request?): return .linked(request.preview)
-        case (_, let request?): return .inferred(request.preview)
+        case (.promptID, let request?): return .linked(Wording.requestForDisplay(request.preview).text)
+        case (_, let request?): return .inferred(Wording.requestForDisplay(request.preview).text)
         default: return .unavailable((Wording.link(turn.link) ?? "not captured").lowercased())
         }
     }
@@ -229,13 +296,11 @@ struct HomeView: View {
     @State private var taskExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             content
-            HomeFooter(model: model, actions: actions)
+            HomeFooter(model: model, actions: actions).islandFrame("home.footer")
         }
-        .padding(.horizontal, Island.inset)
-        .padding(.top, 4)
-        .padding(.bottom, 16)
+        .islandPadding(presentation)
     }
 
     @ViewBuilder
@@ -263,14 +328,16 @@ struct HomeView: View {
                 Spacer(minLength: 8)
                 SourceLine(model: model, facts: facts)
             }
-            TaskCard(facts: facts, expanded: $taskExpanded)
-            ResponseCard(model: model, facts: facts, lines: 7) { model.navigate(to: .reader) }
-            AttachmentStrip(model: model)
+            TaskCard(facts: facts, expanded: $taskExpanded, lines: IslandMetrics.of(presentation).compact ? 1 : 2)
+                .islandFrame("card.task")
+            ResponseCard(model: model, presentation: presentation, facts: facts) { model.navigate(to: .reader) }
+            AttachmentStrip(model: model, compact: IslandMetrics.of(presentation).compact)
             HStack(spacing: 8) {
                 CopyActions(model: model, blocked: facts.blocker != nil)
                 Spacer(minLength: 0)
                 AttachButton(model: model)
             }
+            .islandFrame("home.actions")
             CopyFeedbackLine(model: model)
         }
     }
@@ -305,6 +372,7 @@ struct SourceLine: View {
 struct TaskCard: View {
     let facts: ReportFacts
     @Binding var expanded: Bool
+    var lines = 2
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -315,6 +383,7 @@ struct TaskCard: View {
                 case .supplied: Tag("entered by you", tint: Island.secondary)
                 default: EmptyView()
                 }
+                if facts.taskWasPasted { Tag("pasted text", tint: Island.secondary) }
                 Spacer(minLength: 0)
                 if canExpand {
                     Button { expanded.toggle() } label: {
@@ -331,14 +400,14 @@ struct TaskCard: View {
                 Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.system(size: 12.5))
                     .foregroundStyle(Island.secondary)
-                    .lineLimit(expanded ? 12 : 2)
+                    .lineLimit(expanded ? 12 : lines)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
             case .unavailable(let why):
                 Text(why.isEmpty ? "Unavailable" : "Unavailable: \(why)").font(.system(size: 12)).foregroundStyle(Island.tertiary)
             }
         }
-        .padding(.horizontal, 12).padding(.vertical, 9)
+        .padding(Island.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
         .accessibilityElement(children: .contain)
@@ -352,16 +421,18 @@ struct TaskCard: View {
     }
 }
 
-/// The opening of Claude's answer, rendered from Markdown, with how much
-/// there is in total. Clicking it opens the Full Report.
+/// Claude's answer, rendered from Markdown, scrolling inside the card: the
+/// pointer over it scrolls only the answer. A different answer starts at its
+/// top again. View Full Report opens the reader; every copy uses the
+/// original text, never what is drawn here.
 struct ResponseCard: View {
     let model: AppModel
+    let presentation: NotchPresentation
     let facts: ReportFacts
-    let lines: Int
     let openFull: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Caption("Response")
                 if let n = facts.characters, n > 0 {
@@ -375,24 +446,49 @@ struct ResponseCard: View {
                     .font(.system(size: 12.5))
                     .foregroundStyle(model.selectedTurn?.status == .apiError ? Island.error : Island.secondary)
             } else {
+                let text = facts.text ?? ""
+                BoundedScroll(maxHeight: Self.scrollHeight(presentation, hasAttachments: !model.attachments(for: model.currentRef).isEmpty || model.attachmentMessage != nil)) {
+                    MarkdownBlocksView(blocks: Markdown.blocks(text), codeLineLimit: nil, fontSize: 13)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.trailing, 6)   // room for the scroller
+                        .textSelection(.enabled)
+                }
+                .id(Self.scrollIdentity(ref: model.currentRef, text: text))
+                .islandFrame("response.scroll")
+                .accessibilityLabel("Response")
                 Button(action: openFull) {
-                    VStack(alignment: .leading, spacing: 7) {
-                        ResponsePreview(text: facts.text ?? "", lines: lines)
-                        HStack(spacing: 4) {
-                            Text("View full report").font(.system(size: 11.5, weight: .medium))
-                            Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold))
-                        }
-                        .foregroundStyle(Island.secondary)
+                    HStack(spacing: 4) {
+                        Text("View Full Report").font(.system(size: 11.5, weight: .medium))
+                        Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold))
                     }
+                    .foregroundStyle(Island.secondary)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Response preview. Open the full report")
+                .islandFrame("response.full")
+                .accessibilityLabel("View Full Report")
+                .help("Read the complete report with more room")
             }
         }
-        .padding(.horizontal, 12).padding(.vertical, 10)
+        .padding(Island.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+        .islandFrame("card.response")
+    }
+
+    /// Height of the answer's scroll area: what Home has left on this display
+    /// after its other rows (measured: about 290 pt, plus a line of copy
+    /// feedback and the image strip when shown), within a comfortable range.
+    @MainActor static func scrollHeight(_ presentation: NotchPresentation, hasAttachments: Bool) -> CGFloat {
+        let compact = IslandMetrics.of(presentation).compact
+        let chrome: CGFloat = (compact ? 290 : 322) + (hasAttachments ? AttachmentStrip.rowHeight(compact: compact) : 0)
+        return min(max(presentation.maxContentHeight - chrome, 60), 260)
+    }
+
+    /// Changes with the answer shown, so a different answer starts at its top
+    /// (and again once its full text replaces the preview).
+    static func scrollIdentity(ref: ReportRef?, text: String) -> String {
+        "\(ref.map { String(describing: $0) } ?? "none")#\(text.utf8.count)"
     }
 }
 
@@ -464,6 +560,7 @@ struct CopyFeedbackLine: View {
             case .copied(.response, let n): line("Copied the complete response: \(n.formatted()) characters.", Island.accent)
             case .copied(.context, let n): line("Copied the Review Pack: \(n.formatted()) characters.", Island.accent)
             case .copied(.image, _): line("Copied the image.", Island.accent)
+            case .copied(.files, let n): line(n == 1 ? "Copied the file." : "Copied \(n) files.", Island.accent)
             case .copied(.responseWithImages, let n):
                 line("Copied \(n.formatted()) characters and the images. Check that the images arrive where you paste.", Island.accent)
             case .failed(let reason): line(reason, Island.error)
@@ -576,12 +673,13 @@ struct PeekContent: View {
         VStack(alignment: .leading, spacing: 0) {
             IslandBand(presentation: presentation) {
                 if presentation.showsMascot {
-                    MascotView(state: presentation.mascot, size: 18, reduceMotion: presentation.reduceMotion)
+                    MascotView(state: presentation.mascot, size: MascotView.size(notchHeight: presentation.notchSize.height), reduceMotion: presentation.reduceMotion)
+                            .islandFrame("band.mascot")
                 }
             } trailing: {
                 BandStatus(model: model)
             }
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
                 if facts.source == nil {
                     HStack(alignment: .center) {
                         Text(model.projects.value?.isEmpty == true ? "Click to choose a project to capture." : "No answer yet.")
@@ -605,19 +703,18 @@ struct PeekContent: View {
                     if let blocker = facts.blocker {
                         Text(model.selectedTurn?.error?.message ?? blocker).font(.system(size: 12.5)).foregroundStyle(Island.secondary)
                     } else {
-                        ResponsePreview(text: facts.text ?? "", lines: NotchRootView.previewLines)
+                        ResponsePreview(text: facts.text ?? "", lines: NotchRootView.previewLines).islandFrame("peek.preview")
                     }
                     HStack(spacing: 8) {
                         CopyActions(model: model, blocked: facts.blocker != nil)
                         Spacer(minLength: 0)
                         expandButton
                     }
+                    .islandFrame("peek.actions")
                     CopyFeedbackLine(model: model)
                 }
             }
-            .padding(.horizontal, Island.inset)
-            .padding(.top, 4)
-            .padding(.bottom, 16)
+            .islandPadding(presentation)
         }
     }
 
@@ -683,7 +780,7 @@ struct MessageCard: View {
                 Button(action.0, action: action.1).buttonStyle(IslandPillStyle(prominent: false)).padding(.leading, 30)
             }
         }
-        .padding(12)
+        .padding(Island.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
     }
@@ -830,101 +927,154 @@ struct AttachButton: View {
     let model: AppModel
 
     var body: some View {
-        Button { pick() } label: {
+        Button { model.chooseAttachments() } label: {
             Image(systemName: "paperclip").font(.system(size: 12, weight: .medium))
                 .frame(width: 30, height: 30).background(Circle().fill(Island.control))
         }
         .buttonStyle(.plain)
         .foregroundStyle(Island.primary)
-        .disabled(model.reportStore == nil || model.currentRef == nil)
+        .disabled(model.reportStore == nil || model.currentRef == nil || model.isPresentingSystemDialog)
+        .islandFrame("home.attach")
         .accessibilityLabel("Add images to this report")
         .help("Add screenshots or other images to this report. They are copied into Prompt Relay's private folder.")
     }
-
-    private func pick() {
-        model.isPresentingSystemDialog = true
-        NSApp.activate(ignoringOtherApps: true)
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = true
-        panel.allowedContentTypes = [.image]
-        panel.prompt = "Add"
-        panel.message = "Choose images to keep with this report."
-        panel.begin { response in
-            MainActor.assumeIsolated {
-                if response == .OK { model.addAttachments(panel.urls) }
-                model.isPresentingSystemDialog = false
-            }
-        }
-    }
 }
 
-/// Thumbnails of the report's images: click for Copy Image, Show in Finder,
-/// Remove; drag one straight into another app.
+/// The report's images as compact file cards (thumbnail, name, type and
+/// size, actions, ×), in one row that scrolls sideways: any number of images
+/// adds one fixed-height row to Home. Images are never inside the text.
 struct AttachmentStrip: View {
     let model: AppModel
+    var compact = false
+
+    static func cardHeight(compact: Bool) -> CGFloat { compact ? 40 : 52 }
+    /// Home's extra height when a report has images (caption + row + spacing).
+    static func rowHeight(compact: Bool) -> CGFloat { compact ? 70 : 86 }
 
     var body: some View {
         let attachments = model.attachments(for: model.currentRef)
         if !attachments.isEmpty || model.attachmentMessage != nil {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 7) {
                 if !attachments.isEmpty {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 10) {
                         Caption("Images · \(attachments.count)")
-                        Text("separate from the text").font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
                         Spacer(minLength: 0)
+                        Button("Show in Finder") { model.revealAttachmentsForHandoff(attachments) }
+                            .help("Opens the images under their original names, selected: drag them into ChatGPT after pasting the text.")
                         Button("Copy Text + Images") { Task { await model.copyResponseWithImages() } }
-                            .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
-                            .help("Puts the complete text and the images on the clipboard together. Some apps paste only the text; check where you paste.")
+                            .help("The complete text and the images in one copy. Some apps paste only the text; then paste the text and drag the images.")
                     }
+                    .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(attachments) { AttachmentThumb(model: model, attachment: $0) }
+                            ForEach(attachments) { AttachmentCard(model: model, attachment: $0, compact: compact) }
                         }
                     }
+                    .frame(height: Self.cardHeight(compact: compact))
+                    .mask(HStack(spacing: 0) {
+                        Color.black
+                        LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 18)
+                    })
+                    .islandFrame("home.attachments")
                 }
                 if let message = model.attachmentMessage {
                     Text(message).font(.system(size: 11)).foregroundStyle(Island.warning)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
     }
 }
 
-struct AttachmentThumb: View {
+/// One image: a small thumbnail, its original name, type and size; the ⋯
+/// menu (Open, Copy Image, Copy File, Show in Finder) and × to remove it from
+/// the report. Drag the card into another app to give it the file.
+struct AttachmentCard: View {
     let model: AppModel
     let attachment: ReportAttachment
+    var compact = false
+    @State private var hovering = false
 
     var body: some View {
         let url = model.attachmentURL(attachment)
-        Menu {
-            Button("Copy Image") { model.copyAttachment(attachment) }.disabled(url == nil)
-            Button("Show in Finder") { if let url { NSWorkspace.shared.activateFileViewerSelecting([url]) } }.disabled(url == nil)
-            Divider()
-            Button("Remove from Report") { model.removeAttachment(attachment) }
-        } label: {
-            ZStack {
-                if let url, let image = NSImage(contentsOf: url) {
-                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+        HStack(spacing: 9) {
+            Group {
+                if let url, let thumb = Thumbnails.image(for: url) {
+                    Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fill)
                 } else {
-                    VStack(spacing: 2) {
-                        Image(systemName: "exclamationmark.triangle")
-                        Text("Missing").font(.system(size: 9))
-                    }
-                    .foregroundStyle(Island.warning)
+                    Image(systemName: "exclamationmark.triangle").foregroundStyle(Island.warning)
                 }
             }
-            .frame(width: 64, height: 44)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Island.hairline))
+            .frame(width: compact ? 30 : 40, height: compact ? 30 : 40)
+            .background(Island.code)
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).stroke(Island.hairline))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(attachment.originalFilename)
+                    .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
+                    .lineLimit(1).truncationMode(.middle)
+                if !compact || url == nil {
+                    Text(url == nil ? "Missing" : Self.detail(attachment))
+                        .font(.system(size: 10.5)).foregroundStyle(url == nil ? Island.warning : Island.tertiary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(width: 104, alignment: .leading)
+            Menu {
+                Button("Open") { if let url { NSWorkspace.shared.open(url) } }.disabled(url == nil)
+                Button("Copy Image") { model.copyAttachment(attachment) }.disabled(url == nil)
+                Button("Copy File") { model.copyAttachmentFiles([attachment]) }.disabled(url == nil)
+                Button("Show in Finder") { model.revealAttachmentsForHandoff([attachment]) }.disabled(url == nil)
+            } label: {
+                Image(systemName: "ellipsis").font(.system(size: 11, weight: .semibold))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel("Actions for \(attachment.originalFilename)")
+            Button { model.removeAttachment(attachment) } label: {
+                Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                    .frame(width: 18, height: 18).background(Circle().fill(Island.control))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Island.secondary)
+            .accessibilityLabel("Remove \(attachment.originalFilename) from this report")
+            .help("Remove from this report (the text stays as it is)")
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .onDrag { url.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
-        .help("\(attachment.originalFilename) · \(ByteCountFormatter.string(fromByteCount: Int64(attachment.byteCount), countStyle: .file))")
+        .padding(.leading, 6).padding(.trailing, 8)
+        .frame(height: AttachmentStrip.cardHeight(compact: compact))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(hovering ? Island.cardRaised : Island.card))
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .onHover { hovering = $0 }
+        .onTapGesture(count: 2) { if let url { NSWorkspace.shared.open(url) } }
+        .onDrag { model.dragFile(for: attachment).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
+        .help("\(attachment.originalFilename) · drag into another app, double-click to open")
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Image \(attachment.originalFilename)")
+    }
+
+    static func detail(_ a: ReportAttachment) -> String {
+        let type = a.mimeType.split(separator: "/").last.map { String($0).uppercased() } ?? "IMAGE"
+        return "\(type) · \(ByteCountFormatter.string(fromByteCount: Int64(a.byteCount), countStyle: .file))"
+    }
+}
+
+/// Small thumbnails decoded once at display size (never the full image).
+@MainActor
+enum Thumbnails {
+    private static var cache: [URL: NSImage] = [:]
+
+    static func image(for url: URL, maxPixels: Int = 96) -> NSImage? {
+        if let hit = cache[url] { return hit }
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                                                         kCGImageSourceCreateThumbnailWithTransform: true,
+                                                                         kCGImageSourceThumbnailMaxPixelSize: maxPixels] as CFDictionary)
+        else { return nil }
+        let image = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+        if cache.count > 64 { cache.removeAll() }
+        cache[url] = image
+        return image
     }
 }
 
@@ -943,13 +1093,13 @@ struct ProjectsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             Text("Capture keeps Claude Code's final answers from a folder. New projects start with capture off; turning it off keeps their history.")
                 .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             if let error = model.projects.error, model.projects.value == nil {
                 MessageCard(title: error.title, detail: error.detail, symbol: "exclamationmark.triangle", tint: Island.warning, action: nil)
             } else if !rows.isEmpty {
-                BoundedScroll(maxHeight: presentation.listHeight(chrome: 140)) {
+                BoundedScroll(maxHeight: presentation.listHeight(chrome: 120)) {
                     GroupCard {
                         ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
                             if i > 0 { Hairline() }
@@ -959,15 +1109,13 @@ struct ProjectsView: View {
                 }
             }
             HStack(spacing: 10) {
-                Button { addProject() } label: { Label("Add Project…", systemImage: "plus") }
+                Button { model.chooseProjects() } label: { Label("Add Project…", systemImage: "plus") }
                     .buttonStyle(IslandPillStyle(prominent: rows.isEmpty))
                 feedback
                 Spacer(minLength: 0)
             }
         }
-        .padding(.horizontal, Island.inset)
-        .padding(.top, 4)
-        .padding(.bottom, 16)
+        .islandPadding(presentation)
     }
 
     @ViewBuilder
@@ -977,25 +1125,6 @@ struct ProjectsView: View {
         case .failed(_, let message): Text(message).font(.system(size: 11)).foregroundStyle(Island.warning).lineLimit(2)
         case .done(_, let message): Text(message).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(2)
         case nil: EmptyView()
-        }
-    }
-
-    /// The folder picker. Only the chosen path is used; nothing inside the
-    /// folder is read. The island stays open while it is up.
-    private func addProject() {
-        model.isPresentingSystemDialog = true
-        NSApp.activate(ignoringOtherApps: true)
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = true
-        panel.prompt = "Add"
-        panel.message = "Choose project folders. Capture stays off until you turn it on."
-        panel.begin { response in
-            MainActor.assumeIsolated {
-                if response == .OK { panel.urls.forEach(model.addProject) }
-                model.isPresentingSystemDialog = false
-            }
         }
     }
 }
@@ -1068,7 +1197,7 @@ struct CopiesView: View {
     let presentation: NotchPresentation
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             Text("The last \(AppModel.copyHistoryLimit) copies you made here. Copy Again fetches the original text again; nothing outside Prompt Relay is watched.")
                 .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             if model.copyHistory.isEmpty {
@@ -1084,9 +1213,7 @@ struct CopiesView: View {
             }
             CopyFeedbackLine(model: model)
         }
-        .padding(.horizontal, Island.inset)
-        .padding(.top, 4)
-        .padding(.bottom, 16)
+        .islandPadding(presentation)
     }
 
     private func row(_ record: CopyRecord) -> some View {
@@ -1123,17 +1250,15 @@ struct HistoryView: View {
     let presentation: NotchPresentation
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             searchField
-            BoundedScroll(maxHeight: presentation.listHeight(chrome: 110)) {
+            BoundedScroll(maxHeight: presentation.listHeight(chrome: 90)) {
                 VStack(alignment: .leading, spacing: 8) {
                     if model.historyQuery.trimmingCharacters(in: .whitespaces).isEmpty { browse } else { results }
                 }
             }
         }
-        .padding(.horizontal, Island.inset)
-        .padding(.top, 4)
-        .padding(.bottom, 16)
+        .islandPadding(presentation)
     }
 
     private var searchField: some View {
@@ -1320,8 +1445,8 @@ struct ImportView: View {
     @State private var outcome: AppModel.ImportOutcome?
 
     var body: some View {
-        BoundedScroll(maxHeight: presentation.listHeight(chrome: 40)) {
-            VStack(alignment: .leading, spacing: 10) {
+        BoundedScroll(maxHeight: presentation.listHeight(chrome: 20)) {
+            VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
                 Text("Cloud sessions run on Anthropic's servers, so the capture on this Mac can't see them. Copy Claude's final report there, then paste it here. It is saved on this Mac exactly as pasted and marked as imported.")
                     .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                 reportCard
@@ -1340,10 +1465,9 @@ struct ImportView: View {
                     Spacer(minLength: 0)
                 }
             }
-            .padding(.horizontal, Island.inset)
+            .padding(.horizontal, IslandMetrics.of(presentation).leading)
         }
-        .padding(.top, 4)
-        .padding(.bottom, 16)
+        .islandPadding(presentation, horizontal: false)
     }
 
     private func save() {
@@ -1430,7 +1554,7 @@ struct ReaderView: View {
 
     var body: some View {
         let facts = ReportFacts(model: model)
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             HStack(spacing: 8) {
                 Text([facts.source?.label, facts.characters.map { "\($0.formatted()) characters" }]
                         .compactMap { $0 }.joined(separator: " · "))
@@ -1450,9 +1574,9 @@ struct ReaderView: View {
                     if plain {
                         VerbatimTextView(text, textColor: NSColor.white.withAlphaComponent(0.92), fontSize: 12.5)
                             .padding(6)
-                            .frame(height: presentation.listHeight(chrome: 112))
+                            .frame(height: presentation.listHeight(chrome: 92))
                     } else {
-                        BoundedScroll(maxHeight: presentation.listHeight(chrome: 112)) {
+                        BoundedScroll(maxHeight: presentation.listHeight(chrome: 92)) {
                             MarkdownBlocksView(blocks: Markdown.blocks(text), codeLineLimit: nil, fontSize: 13)
                                 .padding(12)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1474,9 +1598,7 @@ struct ReaderView: View {
                             symbol: "doc.text", tint: Island.secondary, action: nil)
             }
         }
-        .padding(.horizontal, Island.inset)
-        .padding(.top, 4)
-        .padding(.bottom, 16)
+        .islandPadding(presentation)
     }
 
     /// The complete text: the import, or the Core's full `final_response.text`.

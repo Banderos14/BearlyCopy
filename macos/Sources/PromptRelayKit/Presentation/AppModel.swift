@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Observation
+import UniformTypeIdentifiers
 
 /// The single presentation model. The menu-bar panel, the main window and the
 /// notch surface all observe this one object, so there is one source of truth
@@ -10,6 +11,7 @@ import Observation
 public final class AppModel {
     public enum CopyKind: String, Sendable {
         case response = "Response", context = "Review Pack", image = "Image", responseWithImages = "Response and images"
+        case files = "Files"
     }
 
     public enum CopyFeedback: Equatable {
@@ -544,9 +546,46 @@ public final class AppModel {
         route = target
     }
 
-    /// A system dialog started from the island (folder picker) is open: the
-    /// island must not fold while it is.
-    public var isPresentingSystemDialog = false
+    /// A system dialog started from the island (a file or folder picker) is
+    /// open. The island steps aside for it and keeps its state meanwhile.
+    public private(set) var isPresentingSystemDialog = false {
+        didSet { if oldValue != isPresentingSystemDialog { onSystemDialog?(isPresentingSystemDialog) } }
+    }
+    /// Called synchronously when a dialog opens or closes, before it shows,
+    /// so the island is out of the way first (set by `NotchController`).
+    @ObservationIgnored var onSystemDialog: ((Bool) -> Void)?
+    /// Shows the system file picker; calls back with the chosen files, or
+    /// nil for Cancel or Esc. Replaceable in tests.
+    @ObservationIgnored public var filePicker: @MainActor (FilePickRequest, @escaping @MainActor ([URL]?) -> Void) -> Void
+        = LiveFilePicker.present
+    /// Brings an open picker forward (the shortcut or the menu bar while it is up).
+    @ObservationIgnored public var bringFilePickerForward: @MainActor () -> Void = LiveFilePicker.bringForward
+
+    /// Images for the report shown now. The report is remembered when the
+    /// picker opens, so the images go to it even if the island changes
+    /// meanwhile. One dialog at a time.
+    public func chooseAttachments() {
+        guard let ref = currentRef, reportStore != nil else { return }
+        presentFilePicker(.images) { [weak self] urls in
+            if let urls { self?.addAttachments(urls, to: ref) }
+        }
+    }
+
+    /// Project folders for the list (capture stays off). Only the paths are used.
+    public func chooseProjects() {
+        presentFilePicker(.folders) { [weak self] urls in
+            urls?.forEach { self?.addProject($0) }
+        }
+    }
+
+    private func presentFilePicker(_ request: FilePickRequest, completion: @escaping @MainActor ([URL]?) -> Void) {
+        guard !isPresentingSystemDialog else { return }
+        isPresentingSystemDialog = true
+        filePicker(request) { [weak self] urls in
+            completion(urls)
+            self?.isPresentingSystemDialog = false
+        }
+    }
 
     /// Projects → a project: show its newest answer on Home.
     public func openProject(_ path: String) {
@@ -713,6 +752,7 @@ public final class AppModel {
     }
 
     static func oneLine(_ text: String) -> String {
+        let text = Wording.requestForDisplay(text).text
         let line = text.split(whereSeparator: \.isNewline).first { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? ""
         return String(line.prefix(160))
     }
@@ -799,13 +839,16 @@ public final class AppModel {
     /// Images the user chose in the file picker, copied into Prompt Relay's
     /// private folder for the current report. Nothing else is read.
     public func addAttachments(_ urls: [URL]) {
-        guard let ref = currentRef, let store = reportStore else { return }
+        guard let ref = currentRef else { return }
+        addAttachments(urls, to: ref)
+    }
+
+    public func addAttachments(_ urls: [URL], to ref: ReportRef) {
+        guard let store = reportStore else { return }
         var problems: [String] = []
         for url in urls {
-            do { try store.addAttachment(from: url, to: ref) } catch ReportStoreError.notAnImage(let name) {
-                problems.append("\(name) is not an image")
-            } catch ReportStoreError.tooLarge(let name) {
-                problems.append("\(name) is larger than 50 MB")
+            do { try store.addAttachment(from: url, to: ref) } catch let error as ReportStoreError {
+                problems.append(Self.message(for: error, file: url.lastPathComponent))
             } catch {
                 problems.append("\(url.lastPathComponent) could not be read")
             }
@@ -814,19 +857,72 @@ public final class AppModel {
         attachmentsVersion += 1
     }
 
+    static func message(for error: ReportStoreError, file: String) -> String {
+        switch error {
+        case .notAnImage(let name): return "\(name) is not an image"
+        case .tooLarge(let name): return "\(name) is larger than 50 MB"
+        case .noPermission(let name): return "\(name) could not be read: no permission"
+        case .damagedImage(let name): return "\(name) is damaged or not a readable image"
+        case .unreadable(let name): return "\(name) could not be read"
+        case .writeFailed: return "\(file) could not be saved in Prompt Relay's folder"
+        case .removeFailed: return "The image could not be removed"
+        case .empty: return "\(file) is empty"
+        }
+    }
+
+    /// Unlinks one image from the report. The report's text and its other
+    /// images stay as they are.
     public func removeAttachment(_ attachment: ReportAttachment) {
-        reportStore?.removeAttachment(attachment.id)
+        do {
+            try reportStore?.removeAttachment(attachment.id)
+            attachmentMessage = nil
+        } catch {
+            attachmentMessage = "\(attachment.originalFilename) could not be removed. Try again."
+        }
         attachmentsVersion += 1
     }
 
-    /// Copies one attachment as an image.
+    /// Copies one attachment as an image (PNG/TIFF data and its file).
     public func copyAttachment(_ attachment: ReportAttachment) {
-        guard let url = attachmentURL(attachment) else { finishCopy(.failed("The image file is missing.")); return }
+        guard let file = handoffFiles([attachment]).first else { finishCopy(.failed("The image file is missing.")); return }
         do {
-            try clipboard.copyImage(at: url)
+            try clipboard.copyImage(at: file)
             finishCopy(.copied(.image, characters: 0))
         } catch {
             finishCopy(.failed("The image could not be copied."))
+        }
+    }
+
+    /// Copies attachments as files (like ⌘C in Finder), under their original
+    /// names: for apps that take pasted files rather than image data.
+    public func copyAttachmentFiles(_ attachments: [ReportAttachment]) {
+        let files = handoffFiles(attachments)
+        guard !files.isEmpty else { finishCopy(.failed("The image files are missing.")); return }
+        do {
+            try clipboard.copyFiles(files)
+            finishCopy(.copied(.files, characters: files.count))
+        } catch {
+            finishCopy(.failed("The files could not be copied."))
+        }
+    }
+
+    /// The report's images in a Finder window, selected, under their
+    /// original names: drag them into ChatGPT after pasting the text.
+    public func revealAttachmentsForHandoff(_ attachments: [ReportAttachment]) {
+        let files = handoffFiles(attachments)
+        guard !files.isEmpty else { attachmentMessage = "The image files are missing."; return }
+        NSWorkspace.shared.activateFileViewerSelecting(files)
+    }
+
+    /// A file URL for dragging one image out (original name), or nil.
+    public func dragFile(for attachment: ReportAttachment) -> URL? { handoffFiles([attachment]).first }
+
+    /// Hand-off copies under the original names; missing images are skipped.
+    func handoffFiles(_ attachments: [ReportAttachment]) -> [URL] {
+        guard let store = reportStore else { return [] }
+        do { return try store.handoffFiles(for: attachments) } catch {
+            attachmentMessage = "Prompt Relay could not prepare the files."
+            return []
         }
     }
 
@@ -834,8 +930,8 @@ public final class AppModel {
     /// images depends on the destination app (see docs/MACOS_APP.md).
     public func copyResponseWithImages() async {
         guard let ref = currentRef else { return }
-        let urls = attachments(for: ref).compactMap(attachmentURL)
         guard let text = await fullText(for: ref) else { return }
+        let urls = handoffFiles(attachments(for: ref))
         do {
             try clipboard.copy(text, images: urls)
             finishCopy(.copied(.responseWithImages, characters: text.unicodeScalars.count))
@@ -1129,5 +1225,56 @@ public final class AppModel {
         }
         let core = coreError(error)
         return core.title + ": " + core.detail
+    }
+}
+
+/// What the system file picker offers.
+public enum FilePickRequest: Equatable, Sendable {
+    /// Images to keep with a report.
+    case images
+    /// Project folders (only their paths are used).
+    case folders
+}
+
+/// The system `NSOpenPanel`, as its own window with the keyboard: the island
+/// is out of the way while it is up (see `NotchController`).
+@MainActor
+public enum LiveFilePicker {
+    /// The dialog on screen, if any.
+    private static weak var current: NSOpenPanel?
+
+    /// Brings the open dialog to the front again (it may have gone behind
+    /// another app's windows meanwhile).
+    public static func bringForward() {
+        guard let current, current.isVisible else { return }
+        NSApp.activate()
+        current.makeKeyAndOrderFront(nil)
+    }
+
+    public static func present(_ request: FilePickRequest, completion: @escaping @MainActor ([URL]?) -> Void) {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.prompt = "Add"
+        switch request {
+        case .images:
+            panel.canChooseFiles = true
+            panel.canChooseDirectories = false
+            panel.allowedContentTypes = [.image]
+            panel.message = "Choose images to keep with this report."
+        case .folders:
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.message = "Choose project folders. Capture stays off until you turn it on."
+        }
+        // Prompt Relay is an agent app whose island is a non-activating
+        // panel: the click on 📎 did not make it the active app. The dialog
+        // needs an active app to get the keyboard; activating in response to
+        // that click is allowed under cooperative activation.
+        current = panel
+        NSApp.activate()
+        panel.begin { response in
+            MainActor.assumeIsolated { completion(response == .OK ? panel.urls : nil) }
+        }
+        panel.makeKeyAndOrderFront(nil)
     }
 }

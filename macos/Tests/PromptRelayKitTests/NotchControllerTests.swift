@@ -56,11 +56,12 @@ final class NotchControllerTests: XCTestCase {
     }
 
     var neighbors = FakeNeighbors()
+    var pointer = FakePointerEvents()
 
     func makeController() -> NotchController {
         NotchController(model: model, settings: settings, actions: SurfaceActions(openWindow: {}, openStatus: {}, quit: {}),
                         screens: screens, scheduler: clock, center: center, workspaceCenter: workspace, makeHotKey: { nil },
-                        neighbors: neighbors)
+                        neighbors: neighbors, pointerEvents: pointer)
     }
 
     func testStepsAsideWhileAnotherNotchAppRuns() async {
@@ -132,7 +133,7 @@ final class NotchControllerTests: XCTestCase {
         let layout = try XCTUnwrap(controller.layout)
         assertFrame(controller.panelFrame, layout.notch, "no indicator: exactly the notch, nothing else covered")
         XCTAssertEqual(notchPanels().count, 1)
-        XCTAssertEqual(controller.observerCount, 8, "screens, wake ×2, space, app launch/quit, menu begin/end")
+        XCTAssertEqual(controller.observerCount, 10, "screens, wake ×2, space, app launch/quit, display sleep/wake, menu begin/end")
         controller.stop()
     }
 
@@ -258,23 +259,245 @@ final class NotchControllerTests: XCTestCase {
         controller.stop()
     }
 
-    func testTheFolderPickerKeepsTheIslandOpen() async throws {
+    func testTheFilePickerHasTheScreenToItselfAndTheIslandComesBackAsItWas() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-picker-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        model = AppModel(core: core, clipboard: ClipboardService(pasteboard: pasteboard), dataDirectory: nil,
+                         stateDefaults: defaults, reportStore: ReportStore(root: root))
+        var requests: [FilePickRequest] = []
+        var finish: (([URL]?) -> Void)?
+        model.filePicker = { request, completion in requests.append(request); finish = completion }
         let controller = makeController()
         controller.start()
-        controller.interaction.pointerEntered()
-        clock.advance(0.2)
-        model.isPresentingSystemDialog = true
+        await model.refreshNow()
+        controller.present(.home)
         await settle()
-        XCTAssertTrue(controller.interaction.isPinned)
+        let ref = try XCTUnwrap(model.currentRef)
+        let top = controller.panelFrame?.maxY
+        XCTAssertTrue(controller.panelIsVisible)
+
+        model.chooseAttachments()
+        XCTAssertEqual(requests, [.images])
+        XCTAssertFalse(controller.panelIsVisible, "the island is out of the way before the dialog shows")
+        XCTAssertTrue(controller.isSteppingAsideForDialog)
+        XCTAssertTrue(controller.interaction.isPinned, "nothing folds the island meanwhile")
+        model.chooseAttachments()                          // a second click: no second dialog
+        model.chooseProjects()
+        XCTAssertEqual(requests.count, 1, "one dialog at a time")
+        var broughtForward = 0
+        model.bringFilePickerForward = { broughtForward += 1 }
+        controller.present(.settings)                      // the menu bar meanwhile
+        controller.toggleFromKeyboard()                    // ⌃⌥⌘P meanwhile
+        XCTAssertEqual(broughtForward, 2, "brings the dialog forward instead")
+        XCTAssertFalse(controller.panelIsVisible)
+        XCTAssertEqual(model.route, .home)
         controller.interaction.pointerExited()
-        controller.interaction.focusLost()                 // the picker takes the keyboard
+        controller.interaction.focusLost()                 // the dialog takes the keyboard
         clock.advance(1)
+        controller.relayout()                              // a display change does not bring it back early
+        XCTAssertFalse(controller.panelIsVisible)
         XCTAssertTrue(controller.interaction.phase.isExpanded)
-        model.isPresentingSystemDialog = false
-        await settle()
+
+        finish?(nil)                                       // Cancel or Esc
+        XCTAssertTrue(controller.panelIsVisible, "back where it was")
+        XCTAssertEqual(controller.interaction.phase, .expanded(focused: true), "with the keyboard")
+        XCTAssertEqual(controller.panelFrame?.maxY, top)
+        XCTAssertEqual(model.route, .home)
+        XCTAssertEqual(model.currentRef, ref, "the same answer")
         XCTAssertFalse(controller.interaction.isPinned)
-        XCTAssertEqual(controller.interaction.phase, .expanded(focused: true), "the island takes the keyboard back")
+        XCTAssertTrue(model.attachments(for: ref).isEmpty)
+
+        // Again: an image and a file that is gone by then; meanwhile another
+        // report is selected. The images go to the report the picker was for.
+        let image = root.appendingPathComponent("src/shot.png")
+        try FileManager.default.createDirectory(at: image.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let drawing = NSImage(size: NSSize(width: 8, height: 8), flipped: false) { NSColor.systemTeal.setFill(); $0.fill(); return true }
+        try NSBitmapImageRep(data: drawing.tiffRepresentation!)!.representation(using: .png, properties: [:])!.write(to: image)
+        model.chooseAttachments()
+        XCTAssertEqual(requests.count, 2, "the picker opens again after Cancel")
+        _ = model.importReport(text: "Another report", task: nil, projectPath: nil, sessionLabel: nil)
+        XCTAssertNotEqual(model.currentRef, ref)
+        finish?([image, root.appendingPathComponent("src/gone.png")])
+        XCTAssertEqual(model.attachments(for: ref).map(\.originalFilename), ["shot.png"])
+        XCTAssertTrue(model.attachments(for: model.currentRef).isEmpty)
+        XCTAssertEqual(model.attachmentMessage, "gone.png could not be read", "an unreadable file is reported, not dropped silently")
+        XCTAssertTrue(controller.panelIsVisible)
+        XCTAssertFalse(model.isPresentingSystemDialog)
         controller.stop()
+    }
+
+    /// Scroll-wheel events go through the real panel as AppKit routes them:
+    /// the window hit-tests the pointer location and the view under it passes
+    /// the event up to its scroll view. Over the answer only the answer
+    /// moves; the island keeps its frame and stays open; a copy keeps the
+    /// position; another answer starts at its top.
+    func testScrollWheelOverTheAnswerScrollsOnlyTheAnswerInTheRealPanel() async throws {
+        let long = ReportFixture.report(sections: 10)
+        core.showResult = { [core] key, i in
+            .success(CoreResult(data: ShowData(session: try! core!.session(key), turn: turn(i, chars: long.unicodeScalars.count, text: long)),
+                                warnings: []))
+        }
+        core.turnsBySession["s"] = [turn(1, preview: "Первый", chars: long.unicodeScalars.count),
+                                    turn(2, preview: "Второй", chars: long.unicodeScalars.count)]
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        controller.present(.home)
+        let panel = try XCTUnwrap(notchPanels().first)
+        let content = try XCTUnwrap(panel.contentView)
+        var scroll: NSScrollView?
+        for _ in 0..<40 where scroll == nil {
+            await settle(0.1)
+            content.layoutSubtreeIfNeeded()
+            scroll = Self.answerScrollView(in: content)
+        }
+        let answer = try XCTUnwrap(scroll, "the answer scrolls inside its card")
+        let frame = panel.frame, start = answer.contentView.bounds.origin.y
+
+        // Over the answer: route as NSWindow does for a wheel event.
+        let point = answer.convert(NSPoint(x: answer.bounds.midX, y: answer.bounds.midY), to: nil)
+        let hit = try XCTUnwrap(content.hitTest(content.convert(point, from: nil)))
+        XCTAssertTrue(hit === answer || hit.isDescendant(of: answer), "the pointer over the answer hits the answer")
+        for _ in 0..<6 { hit.scrollWheel(with: try Self.wheel(-60, at: point, in: panel)) }
+        await settle(0.3)
+        let scrolled = answer.contentView.bounds.origin.y
+        XCTAssertGreaterThan(abs(scrolled - start), 100, "the answer scrolled")
+        XCTAssertEqual(panel.frame, frame, "the island did not move or resize")
+        XCTAssertTrue(controller.interaction.phase.isExpanded, "and did not close")
+
+        // Over the Task card: nothing scrolls, nothing moves.
+        let task = try XCTUnwrap(controller.presentation.layoutFrames["card.task"])
+        let taskPoint = NSPoint(x: task.midX, y: panel.frame.height - task.midY)
+        if let other = content.hitTest(content.convert(taskPoint, from: nil)) {
+            other.scrollWheel(with: try Self.wheel(-60, at: taskPoint, in: panel))
+        }
+        await settle(0.2)
+        XCTAssertEqual(answer.contentView.bounds.origin.y, scrolled, accuracy: 0.5)
+        XCTAssertEqual(panel.frame, frame)
+
+        await model.copySelectedResponse()
+        await settle(0.3)
+        XCTAssertEqual(pasteboard.string(forType: .string), long, "the original, whatever is in view")
+        XCTAssertEqual(Self.answerScrollView(in: content)?.contentView.bounds.origin.y ?? -1, scrolled, accuracy: 0.5,
+                       "copying keeps the position")
+
+        let shown = try XCTUnwrap(model.selectedTurnIndex)
+        model.selectTurn(shown == 1 ? 2 : 1)
+        for _ in 0..<20 { await settle(0.1); content.layoutSubtreeIfNeeded() }
+        XCTAssertNotEqual(model.selectedTurnIndex, shown)
+        XCTAssertEqual(Self.answerScrollView(in: content)?.contentView.bounds.origin.y ?? -1, start, accuracy: 0.5,
+                       "another answer starts at its top")
+        controller.stop()
+    }
+
+    static func answerScrollView(in view: NSView) -> NSScrollView? {
+        func all(_ v: NSView) -> [NSScrollView] { ((v as? NSScrollView).map { [$0] } ?? []) + v.subviews.flatMap(all) }
+        return all(view).filter { ($0.documentView?.frame.height ?? 0) > $0.contentView.bounds.height * 2 }
+            .max { ($0.documentView?.frame.height ?? 0) < ($1.documentView?.frame.height ?? 0) }
+    }
+
+    /// A pixel scroll-wheel event at `point` (window coordinates) in `window`.
+    static func wheel(_ delta: Int32, at point: NSPoint, in window: NSWindow) throws -> NSEvent {
+        let cg = try XCTUnwrap(CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: delta, wheel2: 0, wheel3: 0))
+        let screenPoint = window.convertPoint(toScreen: point)
+        let top = NSScreen.screens.first?.frame.maxY ?? 0
+        cg.location = CGPoint(x: screenPoint.x, y: top - screenPoint.y)
+        cg.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: Int64(window.windowNumber))
+        cg.setIntegerValueField(.mouseEventWindowUnderMousePointerThatCanHandleThisEvent, value: Int64(window.windowNumber))
+        return try XCTUnwrap(NSEvent(cgEvent: cg))
+    }
+
+    /// Opt-in (PROMPT_RELAY_REAL_DIALOG=1): the real NSOpenPanel. It appears
+    /// on screen for a moment and is cancelled by the test (Esc, then the
+    /// Cancel button); nothing is chosen.
+    func testTheRealOpenPanelGetsTheScreenAndTheIslandComesBack() async throws {
+        guard ProcessInfo.processInfo.environment["PROMPT_RELAY_REAL_DIALOG"] == "1" else {
+            throw XCTSkip("set PROMPT_RELAY_REAL_DIALOG=1 to open a real file dialog")
+        }
+        // Like the app (LSUIElement): an agent app, not a command-line tool
+        // (the test runner's default policy cannot activate at all).
+        let policy = NSApp.activationPolicy()
+        NSApp.setActivationPolicy(.accessory)
+        defer { NSApp.setActivationPolicy(policy) }
+        print("REAL-DIALOG policy before: \(policy.rawValue)")
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-real-dialog-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        model = AppModel(core: core, clipboard: ClipboardService(pasteboard: pasteboard), dataDirectory: nil,
+                         stateDefaults: defaults, reportStore: ReportStore(root: root))
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        controller.present(.home)
+        await settle(0.3)
+        let ref = model.currentRef
+        let island = try XCTUnwrap(notchPanels().first)
+        for (round, close) in [("Esc", { (p: NSSavePanel) in p.cancelOperation(nil) }), ("Cancel", { (p: NSSavePanel) in p.cancel(nil) })] {
+            model.chooseAttachments()
+            var dialog: NSOpenPanel?
+            for _ in 0..<30 where dialog == nil {
+                await settle(0.1)
+                dialog = NSApp.windows.compactMap { $0 as? NSOpenPanel }.first { $0.isVisible }
+            }
+            let open = try XCTUnwrap(dialog, "\(round): the dialog is on screen")
+            XCTAssertFalse(island.isVisible, "\(round): the island is out of its way")
+            // Keyboard focus needs the app to be activated, which macOS grants
+            // in response to the user's click on 📎; this test has no real
+            // click, so it only records it (the owner checks it on the Mac).
+            XCTAssertLessThan(open.level.rawValue, island.level.rawValue, "a normal window: only the hidden island was above it")
+            print("REAL-DIALOG \(round): key=\(open.isKeyWindow) active=\(NSApp.isActive) level=\(open.level.rawValue) island=\(island.level.rawValue)")
+            close(open)
+            for _ in 0..<20 where model.isPresentingSystemDialog { await settle(0.1) }
+            XCTAssertFalse(model.isPresentingSystemDialog, "\(round): the dialog finished")
+            XCTAssertTrue(island.isVisible, "\(round): the island is back")
+            XCTAssertEqual(controller.interaction.phase, .expanded(focused: true))
+            XCTAssertEqual(model.currentRef, ref)
+            XCTAssertFalse(open.isVisible)
+        }
+        controller.stop()
+    }
+
+    func testRelayFollowsThePointerAnywhereOnlyWhileVisible() async throws {
+        settings.mascotEnabled = true
+        settings.animation = .full
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        XCTAssertTrue(controller.isFollowingPointer, "resting with the bear: following the pointer")
+        let ear = try XCTUnwrap(controller.panelFrame)
+        // The pointer far below-left, on the external display (left of the built-in one).
+        pointer.move(to: CGPoint(x: -900, y: 300))
+        let mascot = controller.presentation.mascot
+        XCTAssertLessThan(mascot.gazeTarget.x, -0.95, "looks left toward the other display")
+        XCTAssertGreaterThan(mascot.gazeTarget.y, 0.9, "and down")
+        XCTAssertGreaterThan(mascot.gaze.x, -0.5, "eased, not a jump")
+        clock.run(0.5)
+        XCTAssertEqual(mascot.gaze, mascot.gazeTarget, "arrives within half a second")
+        XCTAssertEqual(clock.liveTimers(matching: 1.0 / 30), 0, "and the easing stops: nothing runs while still")
+        pointer.move(to: CGPoint(x: ear.minX + NotchLayout.earWidth / 2 + 30, y: ear.midY))
+        clock.run(0.5)
+        XCTAssertEqual(mascot.gaze.x, tanh(30 / 220), accuracy: 0.05, "just right of the bear")
+        clock.advance(PointerFollower.restAfter + 1)
+        clock.run(0.5)
+        XCTAssertEqual(mascot.gaze, .zero, "after a long stillness, neutral again (eased)")
+
+        workspace.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
+        XCTAssertFalse(controller.isFollowingPointer, "display asleep: nothing runs")
+        XCTAssertFalse(controller.isBlinkLoopRunning)
+        workspace.post(name: NSWorkspace.screensDidWakeNotification, object: nil)
+        await settle()
+        XCTAssertTrue(controller.isFollowingPointer)
+        settings.animation = .reduced
+        controller.relayout()
+        XCTAssertFalse(controller.isFollowingPointer, "Reduce Motion: no following")
+        pointer.move(to: CGPoint(x: -900, y: 300))
+        clock.advance(0.5)
+        XCTAssertEqual(mascot.gaze, .zero)
+        settings.animation = .full
+        settings.notchEnabled = false
+        controller.relayout()
+        XCTAssertFalse(controller.isFollowingPointer, "bear not on screen: no monitors")
+        controller.stop()
+        XCTAssertFalse(pointer.isMonitoring)
     }
 
     func testMascotSitsInTheLeftEarBlinksOnlyWhileVisibleAndReactsToFacts() async throws {
@@ -288,16 +511,26 @@ final class NotchControllerTests: XCTestCase {
         XCTAssertTrue(controller.isBlinkLoopRunning, "blinks while the resting island is on screen")
 
         controller.look(at: CGPoint(x: 200, y: 16))       // pointer far right of the left ear
-        XCTAssertGreaterThan(controller.presentation.mascot.gaze.x, 0.5)
+        XCTAssertGreaterThan(controller.presentation.mascot.gazeTarget.x, 0.5)
         controller.pointerLeft()
-        XCTAssertEqual(controller.presentation.mascot.gaze, .zero, "no pointer outside the island is followed")
+        clock.run(0.5)
+        XCTAssertEqual(controller.presentation.mascot.gaze, .zero, "back to neutral")
 
+        let mascot = controller.presentation.mascot
         controller.react(newAnswer: false, copy: .copied(.response, characters: 3), coreDown: false)
-        XCTAssertEqual(controller.presentation.mascot.mood, .pleased)
+        XCTAssertEqual(mascot.mood, .pleased)
+        XCTAssertEqual(mascot.cheers, 1, "a copy plays the happy reaction once")
+        controller.react(newAnswer: false, copy: .copied(.response, characters: 3), coreDown: false)
+        XCTAssertEqual(mascot.cheers, 1, "not again while the same feedback is shown")
         controller.react(newAnswer: false, copy: .failed("x"), coreDown: false)
-        XCTAssertEqual(controller.presentation.mascot.mood, .concerned)
+        XCTAssertEqual(mascot.mood, .concerned)
+        XCTAssertEqual(mascot.worries, 1, "a failed copy shakes its head instead")
+        XCTAssertEqual(mascot.cheers, 1, "a failure never plays the success reaction")
+        controller.react(newAnswer: false, copy: .idle, coreDown: true)
+        controller.react(newAnswer: false, copy: .idle, coreDown: false)
+        XCTAssertEqual(mascot.worries, 1, "the Core being down is a mood, not a failed copy")
         controller.react(newAnswer: true, copy: .idle, coreDown: false)
-        XCTAssertEqual(controller.presentation.mascot.mood, .curious, "a captured answer, not a claim of success")
+        XCTAssertEqual(mascot.mood, .curious, "a captured answer, not a claim of success")
 
         settings.notchEnabled = false                      // hidden at rest: no animation work at all
         controller.relayout()
@@ -507,7 +740,7 @@ final class NotchAppearanceTests: XCTestCase {
         p.contentHeight = 150
         p.surface = full ? .expanded : .peek
         let height: CGFloat = 32 + 150
-        let size = expanded ? NSSize(width: NotchLayout.expandedWidth, height: height) : NSSize(width: 185 + 52, height: 32)
+        let size = expanded ? NSSize(width: NotchLayout.expandedWidth, height: height) : NSSize(width: 185 + 2 * NotchLayout.earWidth, height: 32)
         let host = NSHostingView(rootView: NotchRootView(model: model, presentation: p,
                                                          interaction: NotchInteraction(scheduler: MainQueueScheduler()),
                                                          actions: PreviewFixtures.actions)
@@ -550,10 +783,11 @@ final class NotchAppearanceTests: XCTestCase {
 
     func testRestingIslandStaysInsideTheCameraHousing() throws {
         let rep = try render(expanded: false, indicator: false)
-        // Window is 237 px wide here; the resting island (183 px) is centered:
+        // Window is 245 px wide here; the resting island (183 px) is centered:
         // the ear areas and the notch's outermost columns stay transparent.
-        let scale = CGFloat(rep.pixelsWide) / (185 + 52)
-        for x in [0, Int(26 * scale) - 1, rep.pixelsWide - Int(26 * scale)] {
+        let ear = NotchLayout.earWidth
+        let scale = CGFloat(rep.pixelsWide) / (185 + 2 * ear)
+        for x in [0, Int(ear * scale) - 1, rep.pixelsWide - Int(ear * scale)] {
             XCTAssertLessThan(rep.colorAt(x: x, y: rep.pixelsHigh / 2)?.alphaComponent ?? 1, 0.02, "column \(x)")
         }
     }

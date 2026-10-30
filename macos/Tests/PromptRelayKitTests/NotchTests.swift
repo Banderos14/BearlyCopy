@@ -30,6 +30,17 @@ final class ManualScheduler: NotchScheduling {
     }
 
     var liveTimers: Int { items.filter { !$0.cancelled }.count }
+    /// Advances in small steps, so timers that reschedule themselves (the
+    /// 30 fps gaze easing) run as they would in real time.
+    func run(_ seconds: TimeInterval, step: TimeInterval = 1.0 / 120) {
+        var left = seconds
+        while left > 1e-9 { let d = min(step, left); advance(d); left -= d }
+    }
+
+    /// Live timers due within `delay` seconds (short repeating ticks).
+    func liveTimers(matching delay: TimeInterval) -> Int {
+        items.filter { !$0.cancelled && $0.due - now <= delay + 1e-9 }.count
+    }
 }
 
 @MainActor
@@ -148,12 +159,12 @@ final class NotchGeometryTests: XCTestCase {
         let screen = builtInScreen()
         XCTAssertEqual(screen.notchRect, CGRect(x: 663.5, y: 950, width: 185, height: 32))
         let layout = try XCTUnwrap(NotchLayout(screen: screen))
-        XCTAssertEqual(layout.compact, CGRect(x: 663.5 - 26, y: 950, width: 185 + 52, height: 32),
+        XCTAssertEqual(layout.compact, CGRect(x: 663.5 - NotchLayout.earWidth, y: 950, width: 185 + 2 * NotchLayout.earWidth, height: 32),
                        "collapsed, it covers only the notch and two small ears")
         XCTAssertEqual(layout.expanded.maxY, screen.frame.maxY, "hangs from the top edge")
         XCTAssertEqual(layout.expanded.midX, layout.notch.midX, accuracy: 0.5)
         XCTAssertTrue(screen.frame.contains(layout.expanded))
-        XCTAssertEqual(layout.expandedIslandWidth, 460, "a compact card, not a window")
+        XCTAssertEqual(layout.expandedIslandWidth, 480, "a compact card, not a window")
         XCTAssertEqual(layout.expanded.height, NotchLayout.maxIslandHeight + NotchLayout.shadowInset)
         XCTAssertEqual(layout.maxContentHeight, NotchLayout.maxIslandHeight - 32)
         XCTAssertFalse(layout.isFloating)

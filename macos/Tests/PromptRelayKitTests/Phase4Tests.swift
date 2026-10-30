@@ -118,7 +118,9 @@ final class LongReportIntegrationTests: XCTestCase {
         let pack = try XCTUnwrap(board.string(forType: .string))
         XCTAssertTrue(pack.hasPrefix("# Review Pack:"))
         XCTAssertTrue(pack.contains("- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]"))
-        XCTAssertEqual(pack.components(separatedBy: report).count - 1, 1, "the complete report, once, unchanged")
+        let packed = try XCTUnwrap(ReviewPackReader.response(in: pack), "the pack has one response section")
+        XCTAssertEqual(Data(packed.utf8), Data(report.utf8), "the response read back from the pack is the original, byte for byte")
+        XCTAssertEqual(pack.components(separatedBy: report).count - 1, 1, "the report appears once")
         XCTAssertTrue(pack.contains(task), "the linked task")
         XCTAssertTrue(pack.contains("[Not verified]"), "Claude's claims are not presented as verified")
 
@@ -205,7 +207,8 @@ final class ReportStoreTests: XCTestCase {
         XCTAssertTrue(pack.contains("Source: Claude Code cloud session, imported manually"))
         XCTAssertTrue(pack.contains("[Unavailable] The request was not supplied"), "a missing task is labeled, never invented")
         XCTAssertEqual(pack.components(separatedBy: text).count - 1, 1, "the full report once")
-        XCTAssertTrue(pack.contains(ReviewPack.fence(text) + "markdown\n" + text + "\n" + ReviewPack.fence(text)))
+        XCTAssertEqual(ReviewPackReader.response(in: pack).map { Data($0.utf8) }, Data(text.utf8),
+                       "the response section holds the original bytes, with no metadata inside it")
         XCTAssertGreaterThan(ReviewPack.fence(text).count, 4, "longer than the ```` fence inside the report")
         XCTAssertTrue(pack.contains("- notch.png — image/png"))
         XCTAssertFalse(pack.contains("/Users/me"), "no local paths")

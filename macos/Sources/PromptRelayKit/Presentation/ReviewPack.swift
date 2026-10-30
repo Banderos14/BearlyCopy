@@ -70,11 +70,18 @@ public enum ReviewPack {
 
     /// The Core's pack for a local report, with the attachments the user
     /// chose listed at the end (by name only, never a local path).
+    /// The section goes before "Tests and CI", like in an import's pack. The
+    /// last such heading is the Core's own: the response, which may contain
+    /// any heading, comes earlier. Without it the section is appended.
     public static func render(local coreText: String, attachments: [ReportAttachment]) -> String {
         guard !attachments.isEmpty else { return coreText }
-        var lines: [String] = []
-        lines.append(attachmentsSection(attachments))
-        return coreText + "\n" + lines.joined(separator: "\n") + "\n"
+        let section = attachmentsSection(attachments) + "\n\n"
+        if let anchor = coreText.range(of: "\n## Tests and CI\n", options: .backwards) {
+            var text = coreText
+            text.insert(contentsOf: section, at: text.index(after: anchor.lowerBound))
+            return text
+        }
+        return coreText + "\n" + section
     }
 
     static func attachmentsSection(_ attachments: [ReportAttachment]) -> String {

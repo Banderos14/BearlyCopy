@@ -61,11 +61,25 @@ public final class ClipboardService {
         return pasteboard.changeCount
     }
 
-    /// One image alone (for apps that take one pasted image at a time).
+    /// One image alone, as image data (its own type, e.g. PNG, plus TIFF)
+    /// and as its file, in one pasteboard item: apps that take a pasted
+    /// image read the data, apps that take files read the file URL.
     public func copyImage(at url: URL) throws {
-        guard let image = NSImage(contentsOf: url) else { throw ClipboardError.writeFailed }
+        guard let data = try? Data(contentsOf: url), let image = NSImage(data: data) else { throw ClipboardError.writeFailed }
         pasteboard.clearContents()
-        guard pasteboard.writeObjects([image, url as NSURL]) else { throw ClipboardError.writeFailed }
+        let item = NSPasteboardItem()
+        if let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image) {
+            item.setData(data, forType: NSPasteboard.PasteboardType(type.identifier))
+        }
+        if let tiff = image.tiffRepresentation { item.setData(tiff, forType: .tiff) }
+        item.setString(url.absoluteString, forType: .fileURL)
+        guard pasteboard.writeObjects([item]) else { throw ClipboardError.writeFailed }
+    }
+
+    /// Files, like ⌘C in Finder: one file URL per item.
+    public func copyFiles(_ urls: [URL]) throws {
+        pasteboard.clearContents()
+        guard !urls.isEmpty, pasteboard.writeObjects(urls.map { $0 as NSURL }) else { throw ClipboardError.writeFailed }
     }
 
     var itemCount: Int { pasteboard.pasteboardItems?.count ?? 0 }

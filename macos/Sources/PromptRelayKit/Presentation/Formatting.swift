@@ -3,6 +3,19 @@ import Foundation
 /// User-facing wording for API values. It follows the product invariants:
 /// `Stop` means "Claude stopped", never "succeeded"; an inferred link says so.
 public enum Wording {
+    /// A request as shown in the island (display only; every copy and the
+    /// Review Pack keep it verbatim). Text pasted into Claude Code arrives
+    /// wrapped in `<pasted_content id="…">` tags: they are dropped here, so
+    /// the Task card and History show the words, not the wrapper.
+    public static func requestForDisplay(_ text: String) -> (text: String, pasted: Bool) {
+        let opening = #"<pasted_content(\s[^>]*)?>"#, closing = #"</pasted_content(\s[^>]*)?>"#
+        guard text.range(of: opening, options: .regularExpression) != nil else { return (text, false) }
+        let cleaned = text.replacingOccurrences(of: opening, with: "", options: .regularExpression)
+            .replacingOccurrences(of: closing, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (cleaned.isEmpty ? text : cleaned, true)
+    }
+
     public static func status(_ status: TurnStatus) -> String {
         switch status {
         case .awaitingResponse: return "Waiting for Claude"

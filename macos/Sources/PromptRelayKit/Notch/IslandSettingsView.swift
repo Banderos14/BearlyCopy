@@ -17,7 +17,7 @@ struct IslandSettingsView: View {
     static let repository = URL(string: "https://github.com/Banderos14/prompt-relay")!
 
     var body: some View {
-        BoundedScroll(maxHeight: presentation.listHeight(chrome: 36)) {
+        BoundedScroll(maxHeight: presentation.listHeight(chrome: 16)) {
             VStack(alignment: .leading, spacing: 8) {
                 if let settings {
                     notch(settings)
@@ -36,10 +36,9 @@ struct IslandSettingsView: View {
                     Text(note).font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 }
             }
-            .padding(.horizontal, Island.inset)
+            .padding(.horizontal, IslandMetrics.of(presentation).leading)
         }
-        .padding(.top, 4)
-        .padding(.bottom, 16)
+        .islandPadding(presentation, horizontal: false)
         .onAppear {
             screens = NSScreen.screens.map(ScreenDescriptor.init)
             if model.doctor.value == nil, !model.doctor.isLoading { model.loadDoctor() }

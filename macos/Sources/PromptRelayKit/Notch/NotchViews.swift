@@ -59,9 +59,13 @@ public struct NotchRootView: View {
     /// Lines of the answer in Quick Peek; Home shows more, the reader all of
     /// it, and Copy Response always copies the full text.
     static let previewLines = 4
+    /// The island's own coordinate space (origin: its top-left corner).
+    static let space = "island"
     private var ear: CGFloat { NotchLayout.earWidth }
     private var expanded: Bool { presentation.isExpanded }
-    private var topRadius: CGFloat { expanded ? 14 : 6 }
+    /// The open island's top flare: its sides stand this far in from the window.
+    static let expandedTopRadius: CGFloat = 14
+    private var topRadius: CGFloat { expanded ? Self.expandedTopRadius : 6 }
 
     private var islandSize: CGSize {
         let notch = presentation.notchSize
@@ -99,6 +103,12 @@ public struct NotchRootView: View {
             }
         }
         .frame(width: islandSize.width, height: islandSize.height, alignment: .top)
+        .coordinateSpace(name: Self.space)
+        #if DEBUG
+        .onPreferenceChange(IslandFramesKey.self) { frames in
+            MainActor.assumeIsolated { presentation.layoutFrames = frames }
+        }
+        #endif
         .clipShape(shape)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .environment(\.colorScheme, .dark)
@@ -112,9 +122,9 @@ public struct NotchRootView: View {
     private var compactContent: some View {
         HStack(spacing: 0) {
             if presentation.showsMascot {
-                MascotView(state: presentation.mascot, size: 17, reduceMotion: presentation.reduceMotion)
+                // Centered in the ear, clear of the camera housing.
+                MascotView(state: presentation.mascot, size: MascotView.size(notchHeight: presentation.notchSize.height), reduceMotion: presentation.reduceMotion)
                     .frame(width: ear)
-                    .padding(.leading, 3)
             } else if presentation.showsIndicator {
                 Image(systemName: "text.bubble.fill")
                     .font(.system(size: 11, weight: .semibold))

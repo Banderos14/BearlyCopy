@@ -104,9 +104,9 @@ public struct NotchLayout: Equatable, Sendable {
     let screenTop: CGFloat
 
     /// Width of each ear beside the camera housing in the compact state.
-    public static let earWidth: CGFloat = 26
+    public static let earWidth: CGFloat = 38
     /// The open island: a compact card, not a window.
-    public static let expandedWidth: CGFloat = 460
+    public static let expandedWidth: CGFloat = 480
     public static let minContentHeight: CGFloat = 56
     /// The open island is never taller than this (band included)…
     public static let maxIslandHeight: CGFloat = 600
