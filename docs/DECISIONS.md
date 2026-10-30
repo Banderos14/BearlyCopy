@@ -403,3 +403,42 @@ captured reports sees only the Core's previews.
 
 **Status.** Accepted (Phase 4).
 
+
+## ADR-012: Earlier requests of the same session in the Review Pack (proposal)
+
+**Context.** Requests like «продолжи где остановился» ("continue where you
+stopped") are common. The Review Pack then shows that sentence as the
+original request; the reviewer cannot tell what was asked. Seen on the
+real store (2026-10-30): turn 2 of this repository's session, linked by
+`prompt_id`, request "продолжи где остановился". The Core already stores
+every captured request of a session verbatim, with its link type. The same
+audit found that the local pack's "Project" line includes the absolute
+path (`/Users/<name>/…`), which reveals the user name to the reviewer.
+
+**Proposal.**
+1. `prompt-relay context|copy-context --earlier N` (N ≤ 3, default 0) and a
+   Review Pack option in the app, off by default, "Include earlier requests
+   of this session".
+2. A section "Earlier requests in this Claude Code session" before
+   "Original user request": the up to N previous turns of the **same**
+   session whose request is linked by `prompt_id`, newest last, each
+   complete and fenced (never truncated), labeled [Confirmed locally] with
+   turn number and time. A request over 4,000 characters is left out and
+   counted ("1 earlier request omitted: too long"), not cut.
+3. Always an [Unavailable] line: turns before capture was turned on, turns
+   summarized by `/compact`, and other sessions are not known to Prompt
+   Relay. Nothing is inferred, no other session is ever used, no
+   transcript or project file is read.
+4. Earlier requests go through the same secret scan as the request.
+5. The "Project" line shows the project name; the full path only with
+   `--with-paths` (diagnostics).
+
+**Alternatives.** (a) Detect short "continue" prompts and add context
+automatically: a guess, rejected. (b) Read the Claude Code transcript:
+the Core must not read transcripts (invariant 1). (c) Include earlier
+responses too: makes the pack long; the reviewer can ask for them.
+
+**Consequences.** + useful packs for follow-up prompts; + no inference.
+− a Core change (export, CLI, JSON API, goldens) and a new app option.
+
+**Status.** Proposed; waits for the owner's approval (Core change).

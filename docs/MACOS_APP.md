@@ -172,15 +172,34 @@ text and task again shows the existing record instead of a second copy.
 
 Relay, a small bear cub: original vector art drawn with SwiftUI `Canvas`
 (`Notch/Mascot.swift`), nothing from Coucou/Mochi or other assets. It sits
-in the left ear at rest and at the left of the band when open. Moods map to
-facts only: *curious* when a new answer was captured, *pleased* after a
-copy, *concerned* after a failed copy or when the Core is unavailable,
-*idle* otherwise; none suggests that work or tests succeeded. Its eyes follow
-the pointer only from mouse-moved events inside the island's own window (no
-global monitoring, nothing stored; the gaze resets when the pointer leaves).
-It blinks every 3.5–7 s only while it is on screen and motion is allowed;
-with Reduce Motion it neither blinks nor moves its eyes; with the setting off
-it is gone and the resting island returns inside the camera housing.
+in the left ear at rest and at the left of the band when open, 28 pt. Moods
+map to facts only: *curious* when a new answer was captured, *pleased* after
+a copy (hop, happy closed eyes), *concerned* after a failed copy (head
+shake) or when the Core is unavailable, *idle* otherwise; none suggests
+that work or tests succeeded.
+
+**Following the pointer** (`Notch/PointerFollower.swift`). A global
+`NSEvent` monitor for mouse movement (other apps' windows; mouse events need
+no Accessibility permission, key events are never monitored) plus a local
+one (the island's own window). Each event reads `NSEvent.mouseLocation`;
+at most 30 updates a second reach the controller, always ending on the
+latest position; only that position is kept. The controller turns it into
+a gaze toward the bear's place on screen (`tanh` per axis, one coordinate
+space for every display) and eases the face toward it at 30 fps only until
+it arrives. Monitors run only while the bear is on screen, motion is
+allowed, the displays are awake and no dialog is up.
+
+*Compared with Coucou* (MIT; read for principles only, no code or art
+taken): Coucou reads `NSEvent.mouseLocation` in a 30 Hz timer and draws its
+mascot every display frame in a `TimelineView` + `Canvas`, pausing while
+the screen sleeps. Prompt Relay is event-driven instead: no timer while the
+pointer is still. A SwiftUI spring on the gaze first redrew the panel at
+the display's full rate (≈ 26 % CPU while moving in the benchmark); the
+30 fps easing costs ≈ 2 %.
+
+Measured (opt-in `RelayPerformanceTests`, `PROMPT_RELAY_PERF=1`: the real
+panel, pointer events at 120 Hz for 10 s; the loop alone 2.5 %): still ≈ 0 %
+over the loop, moving ≈ 2.2 %, 29–30 gaze updates a second.
 
 ## 8. Finding the Core and Python; updating data
 
@@ -229,6 +248,20 @@ Real-session audit (2026-10-30): a real answer of this Claude Code session,
 captured by the installed plugin, is byte-identical to the transcript, to
 Copy Response and inside the Review Pack (`RealSessionAuditTests`, opt-in:
 `PROMPT_RELAY_AUDIT_SESSION`, `_TURN`, `_EXPECTED`). Release idle ≈91 MB.
+
+UI polish (2026-10-30): visual examples of Home (top and scrolled), a
+short display, Quick Peek, the Full Report and Relay's states:
+`PROMPT_RELAY_VISUALS=<dir> swift test --package-path macos --filter IslandLayoutTests/testWriteVisualExamples`.
+The real-session audit also writes the real Review Pack
+(`real-review-pack.md`) when `PROMPT_RELAY_AUDIT_RENDER` is set, and checks
+the response *extracted* from the pack, not the whole pack, against the
+transcript.
+
+Real AppKit checks (opt-in): `PROMPT_RELAY_REAL_DIALOG=1` opens the real
+`NSOpenPanel` from the island twice (closed with Esc, then Cancel) and checks
+that the island steps aside and comes back; keyboard focus needs a real
+click and is checked on the Mac. Always on: scroll-wheel events routed
+through the real `NotchPanel` (hit test → the answer's scroll view).
 
 Manual image-paste check (`PasteInteropKit`, opt-in): it overwrites the
 general clipboard with a test text and image, then you paste into ChatGPT:

@@ -407,6 +407,102 @@ GitHub Actions run 40910039983 (`ab57b74`) failed on Linux / Python 3.13:
 - Not verifiable by the agent: real pointer hover and the mascot's eye
   movement, image paste into ChatGPT, a real cloud import.
 
+## UI/UX polish, Review Pack and mascot (2026-10-30)
+- **Spacing:** the content was laid out from the window edge, but the notch
+  outline's sides stand 14 pt in from it, so cards sat ≈4 pt from the
+  visible side. One rule now (`IslandMetrics`, measured from the visible
+  side): 22 pt sides, 22 pt bottom, 12 pt between blocks; tighter on short
+  displays and in Quick Peek; band and cards share one left edge; island
+  480 pt wide. Regression tests render the real views and check blocks and
+  buttons against the outline (also with the copy line shown, on a 380 pt
+  display).
+- **Response scrolls inside its card** (76–260 pt by display height), Home
+  never clips; the wheel scrolls only the answer (no nested scroll); a
+  different answer starts at its top; View Full Report kept; Copy Response
+  copies the original whatever is scrolled. Tested with real scroll-wheel
+  events on the rendered view.
+- **File picker:** it opened under the island (the panel is above normal
+  windows). Now the island steps aside synchronously before `NSOpenPanel`
+  shows and returns as it was (view, report, frame, keyboard) on a choice,
+  Cancel or Esc; one dialog at a time; images go to the report the picker
+  was opened for; unreadable files are named. Same path for Add Project.
+  Tested with an injected picker; the real dialog needs the owner.
+- **Relay:** 22/24 pt (≈ +25 %), redrawn eyes with highlights, ears perk
+  when curious; smooth eye and head movement toward the pointer (tilt ≤ 7°),
+  back to neutral on exit; copy: hop + happy closed eyes; failure: worried
+  brows + head shake (no success reaction). Reduce Motion respected.
+- **Review Pack tests:** the response is now read back out of the pack
+  (`ReviewPackReader`) and compared byte for byte; the whole pack is not.
+  Real data: this session's turn 2 (request «продолжи где остановился»,
+  linked by `prompt_id`): captured 5253 bytes, SHA-256 `528b4684…`, equal to
+  the transcript, to Full Report, to Copy Response and to the response
+  extracted from the Review Pack; appears once; reader drops no line.
+- "Continue where you stopped": proposal only (PRODUCT_UX_SPEC §12); needs a
+  Core change, not made.
+- Swift 125 tests (4 opt-in skipped), `scripts/check.sh` OK, Xcode Debug and
+  Release build. Release idle, island not drawn (yields to the running Debug
+  build), same conditions: before 20 MB footprint / 87 MB RSS, after 21 MB /
+  91 MB; 0 % CPU both.
+- Not verified by the agent: real pointer hover, eye/head following and the
+  copy reaction in the running app; the real NSOpenPanel above/under the
+  island; memory with the island open on a long real report.
+
+## UX polish 2: attachments, file picker, Relay, Review Pack audit (2026-10-30)
+- Context: the owner's real-Mac check ran the Debug build started 12 h
+  earlier from `2c7249d`, i.e. without the first polish. Both rounds are in
+  the working copy; backup ref `refs/backup/ui-polish-1` (first round).
+- **Defects found and fixed:**
+  1. Images showed nearly island-wide: a `Menu` with an image label is drawn
+     by AppKit at the image's own size. Now compact file cards (thumbnail
+     decoded at 96 px, name, type, size, ⋯, ×) in one sideways row.
+  2. NSOpenPanel under the island (the panel's level is above normal
+     windows). The island steps aside before the dialog shows and returns
+     after it; the shortcut and the menu bar bring an open dialog forward.
+  3. Attachments were typed by file extension and a damaged PNG was
+     accepted; now typed by content, damaged and permission-denied files
+     are named. Removal could leave a record pointing at a deleted file and
+     never reported failures; now index first, file only when unused,
+     errors shown. A stored name in the index could point outside the
+     folder; now refused.
+  4. Copy Image / file drags used the private name ("3f2a….png"); now
+     hand-off copies under the original names (`<data dir>/app/handoff/`,
+     rebuilt on each use).
+  5. Pasted prompts showed `<pasted_content id="…">` in the Task card and
+     History (seen on the real store); display now drops the wrapper (copies
+     and the Review Pack stay verbatim).
+  6. A spring animation on Relay's gaze redrew the panel at the display
+     rate: ≈ 26 % CPU while the pointer moved. Now eased at 30 fps until it
+     arrives: ≈ 2 %.
+  7. Home overflowed on short displays (≈ 420 pt, "Larger Text") with
+     images: compact cards and a one-line task there.
+  8. The local Review Pack listed images after "Request for review"; now
+     before "Tests and CI" (anchored on the Core's own last heading).
+- **Relay** follows the pointer anywhere on screen (global + local mouse
+  monitors, no permission, no key events, ≤ 30 updates/s, no stored
+  positions; stops when hidden, asleep, under Reduce Motion or a dialog),
+  28 pt, ears 38 pt.
+- **Review Pack audit** (real turns 2 and 3 of this session): Copy Response
+  = transcript bytes (5253 B `528b4684…`; 8573 B `df3b8dbe…`); the response
+  read back from the pack is identical, once, fenced longer than its own
+  fences; source, project, session, turn, status and git state correct and
+  labeled; Claude's claims [Not verified]; imports labeled as pasted by the
+  user; images listed by name/type/size, "sent separately", no claim they
+  were sent. Finding: the Project line includes the absolute path (user
+  name) — Core change proposed in ADR-012 with earlier requests of the
+  session for «продолжи где остановился»; not implemented (Core change).
+- Tests: Swift 142 (6 opt-in skipped), Python 141 (`scripts/check.sh` OK),
+  Xcode Debug and Release build. Real AppKit checks: scroll-wheel routing
+  through the real panel; the real NSOpenPanel (opt-in, Esc and Cancel).
+  Release idle (island yields to the running Debug build): 19 MB footprint,
+  89 MB RSS, 0 % CPU.
+- **Not verified by the agent (needs the owner):** keyboard focus of the
+  real dialog after a real click on 📎; trackpad scrolling by hand; Relay
+  following the real pointer; pasting or dropping images into ChatGPT (app
+  and web) by each method.
+
+- **Owner check (2026-10-30):** the owner checked both polish rounds on the
+  real Mac and reported "All good"; committed on the branch, not pushed.
+
 ## Next agreed stage
-Phase 4 waits for the owner's validation on the real Mac (the checks
-above). After it: push the branch. No next phase is approved.
+Push the branch when the owner asks. ADR-012 waits for approval. No next
+phase is approved.

@@ -40,7 +40,15 @@ or the secrets alert is open; Reduce Motion uses short fades.
   Content sits on deep graphite cards (`white 0.115`), code on a darker well.
 - Text at three readable levels (94 %, 70 %, 52 % white); captions in small
   caps; SF Symbols; native typography; 14 pt card radius, 26 pt island
-  radius; 18 pt side insets; nothing within 16 pt of a rounded corner.
+  radius.
+- One spacing rule (`IslandMetrics`), measured from the island's *visible*
+  side (the notch outline stands 14 pt in from the window under its top
+  flares), not from the window: 22 pt side inset (24 pt on islands ≥ 520 pt
+  wide), 22 pt above the rounded bottom edge, 12 pt between blocks; short
+  displays (< 460 pt of content) use 20/18/10, Quick Peek 20/18/10. The band
+  (Relay, Back) starts on the same left edge as the cards. Cards pad their
+  text 14 × 12 pt. The island is 480 pt wide. Layout tests render the real
+  views and check every main block and button against the outline.
 - One white primary button (**Copy Response**); secondary actions are
   graphite capsules. One restrained accent, mint, only for meaningful states
   (new answer, capture on, copied); amber for warnings, coral for errors.
@@ -58,9 +66,12 @@ or the secrets alert is open; Reduce Motion uses short fades.
    "inferred from order"; an import's task → "entered by you"; otherwise
    "Unavailable: …" with the reason. Never invented.
 3. **What did Claude answer?** — the Response card: "N characters", ‹ n/m ›
-   for earlier answers of the session, the opening of the answer rendered
-   from Markdown (headings, lists, code, links), fading out, and **View full
-   report ›**. API errors and missing answers say so instead.
+   for earlier answers of the session, then the whole answer rendered from
+   Markdown (headings, lists, code, links) in its own scroll area: the
+   pointer over it scrolls only the answer, the island stays put, and a
+   different answer starts at its top. The area is as tall as the display
+   allows (76–260 pt) so Home never clips. **View Full Report ›** stays for
+   reading with more room. API errors and missing answers say so instead.
 4. **Which button?** — **Copy Response** (white): the complete original
    text. **Review Pack**: the task, the complete answer and what Prompt
    Relay knows, for an independent review. 📎 adds images. After a copy one
@@ -177,18 +188,51 @@ MACOS_APP.md §6). The supported path is the explicit **Import**.
 
 Attachments are images the user adds with 📎: copied into Prompt Relay's
 private folder with name, type, size, SHA-256 and provenance ("Added by you
-from a file on this Mac"). Nothing scans folders or follows paths mentioned
-in a report. Missing files are labeled "Missing". Images are never inside
-the copied text; "Copy Text + Images" is best effort until a real paste test
-in ChatGPT confirms it; Copy Image and drag-and-drop are the dependable
-paths.
+from a file on this Mac"). The bytes must decode as an image; the type comes
+from the content (a JPEG named .png is stored as JPEG); unreadable,
+permission-denied and damaged files are named in a message. The original is
+only read. Nothing scans folders or follows paths mentioned in a report.
+
+On Home they are **compact file cards** in one row that scrolls sideways
+(52 pt, 40 pt on short displays): a 40 pt thumbnail (decoded at display
+size), the original name, type and size, ⋯ (Open, Copy Image, Copy File,
+Show in Finder) and × (remove). Drag a card into another app to give it the
+file; double-click opens it. Removing unlinks only that image from that
+report; the text and other images stay; the stored file is deleted only
+when no other record uses it; failures are shown.
+
+While the file picker is up, the island steps aside (it sits above normal
+windows and would cover the dialog) and keeps its view, report and phase;
+after a choice, Cancel or Esc it returns as it was, with the keyboard. One
+picker at a time; the shortcut or the menu bar bring an open picker
+forward; images go to the report the picker was opened for.
+
+**Handing images to ChatGPT.** A path in text gives ChatGPT nothing; it
+needs the image itself. Dependable: paste the text (Copy Response or Review
+Pack), then drag the cards, or **Show in Finder** (all images under their
+original names, selected) and drag them. Also offered: **Copy Image** (PNG
+and TIFF data plus the file in one item), **Copy File** (file URLs, like ⌘C
+in Finder) and **Copy Text + Images** (the text and each image as separate
+items in one copy) — whether a paste carries images is up to the receiving
+app and is not promised until tested on the owner's Mac. The Review Pack
+lists images by name, type and size and says they are sent separately; it
+never claims they were sent.
 
 ## 10. Mascot
 
-Relay, an original bear cub in vector (SwiftUI Canvas). Idle with
-occasional blinks; eyes follow the pointer within the island only; curious
-when an answer is captured, pleased after a copy, concerned after a failure;
-no flashing; Reduce Motion stops blinking and eye movement; Settings turns
+Relay, an original bear cub in vector (SwiftUI Canvas), 28 pt (as large as
+the camera housing's height allows, 2 pt clear above and below) in the
+38 pt ear at rest and in the band, clear of the housing even with the head
+turned. While it is on screen, its eyes and head follow the pointer
+**anywhere on the screen**, on any display (soft saturation: near the bear
+the eyes move most, far away they rest at the edge); the head tilts at most
+6°. After 12 s without movement it looks ahead again. It blinks every
+3.5–7 s. Curious (ears up, wider eyes) when an answer is captured. A
+successful copy: a short hop with happy closed eyes, then a smile and
+blush. A failed copy: worried brows and a small head shake, never the
+success reaction. Reduce Motion stops blinking, gaze and movement
+(expressions still change). Nothing runs while it is hidden, the displays
+sleep or a dialog is up; positions are never stored or sent. Settings turns
 it off. Details: MACOS_APP.md §7.
 
 ## 11. Debug and Release
@@ -198,6 +242,18 @@ Debug build, the Release build steps aside at the notch while Debug runs,
 and a warning with a user-initiated "Quit …" only when both run.
 
 ## 12. Future scope
+
+**Earlier requests of the same session (proposal, not implemented).** A
+request like "continue where you stopped" tells a reviewer nothing. The
+Core already keeps every captured request of a session verbatim. An opt-in
+Review Pack option, off by default, could add a section "Earlier requests
+in this Claude Code session" with up to 3 previous requests of the *same*
+session, only those linked by `prompt_id`, each complete and fenced (never
+truncated; one that does not fit the limit is left out and counted),
+labeled [Confirmed locally] with turn number and time, plus an
+[Unavailable] note that turns before capture was on, or summarized away by
+`/compact`, are unknown. Nothing is inferred and no other session is used.
+It needs a Core change (`context --earlier N`), so it waits for approval.
 
 ChatGPT API or any automatic AI-to-AI exchange; automatic cloud capture
 (only if Anthropic documents an interface for it); other agents; system
