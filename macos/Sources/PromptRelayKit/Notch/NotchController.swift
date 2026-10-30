@@ -151,6 +151,8 @@ public final class NotchController {
     /// The displays are asleep: Relay neither blinks nor follows the pointer.
     var screensAsleep = false
     private var resizeWork: DispatchWorkItem?
+    private var pendingHeight: CGFloat?
+    private var resizePending = false
     /// The view `present(_:)` asked for, applied when the island opens.
     private var pendingRoute: AppModel.IslandRoute?
 
@@ -343,15 +345,36 @@ public final class NotchController {
     /// the island animates first and the window follows.
     private func resize(to height: CGFloat) {
         resizeWork?.cancel()
+        guard interaction.phase.isExpanded, panel != nil, layout != nil else {
+            presentation.contentHeight = height
+            return
+        }
+        // This runs from SwiftUI's geometry callback, inside the layout pass.
+        // Changing the window's frame there made AppKit lay the window out
+        // during its own layout ("It's not legal to call
+        // -layoutSubtreeIfNeeded on a view which is already being laid out";
+        // traced with a breakpoint on _NSDetectedLayoutRecursion, Phase 5.11).
+        // The frame changes right after the pass, on the next turn of the main
+        // queue (no timer); several reports in one pass use the last height.
+        pendingHeight = height
+        guard !resizePending else { return }
+        resizePending = true
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.resizePending = false
+                if let height = self.pendingHeight { self.pendingHeight = nil; self.applyResize(to: height) }
+            }
+        }
+    }
+
+    private func applyResize(to height: CGFloat) {
         guard interaction.phase.isExpanded, let panel, let layout else {
             presentation.contentHeight = height
             return
         }
-        // `display: false`: this runs from SwiftUI's geometry callback; forcing
-        // a synchronous display here laid the window out during its own
-        // layout (AppKit's "layout during layout"). It redraws on the next pass.
         if height >= presentation.contentHeight {
-            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek), display: false)
+            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek), display: true)
             withAnimation(presentation.animation) { presentation.contentHeight = height }
         } else {
             withAnimation(presentation.animation) { presentation.contentHeight = height }

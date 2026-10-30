@@ -458,6 +458,13 @@ final class NotchControllerTests: XCTestCase {
         controller.stop()
     }
 
+    /// Phase 5.11: with no notch the resting size was −2 × −1, and SwiftUI
+    /// logged "Invalid frame dimension (negative or non-finite)".
+    func testRestingSizeIsNeverNegative() {
+        XCTAssertEqual(NotchRootView.restingSize(notch: .zero), .zero)
+        XCTAssertEqual(NotchRootView.restingSize(notch: CGSize(width: 185, height: 32)), CGSize(width: 183, height: 31))
+    }
+
     /// Phase 5.11: Relay is redrawn only for changes that can be seen
     /// (≥ MascotState.step ≈ 0.07 pt); the exact target is still reached.
     func testInvisibleGazeChangesDoNotRedrawRelay() async throws {

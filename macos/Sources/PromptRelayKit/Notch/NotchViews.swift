@@ -71,9 +71,15 @@ public struct NotchRootView: View {
         let notch = presentation.notchSize
         if expanded { return CGSize(width: presentation.islandWidth, height: notch.height + presentation.contentHeight) }
         if presentation.hasEars { return CGSize(width: notch.width + ear * 2, height: notch.height) }
-        // Resting: a little smaller than the camera housing and more rounded,
-        // so it always stays hidden behind it (no black edge can peek out).
-        return CGSize(width: notch.width - 2, height: notch.height - 1)
+        return Self.restingSize(notch: notch)
+    }
+
+    /// Resting: a little smaller than the camera housing and more rounded,
+    /// so it always stays hidden behind it (no black edge can peek out).
+    /// Never negative: without a notch (size zero) SwiftUI warned "Invalid
+    /// frame dimension" on every layout (Phase 5.11).
+    static func restingSize(notch: CGSize) -> CGSize {
+        CGSize(width: max(0, notch.width - 2), height: max(0, notch.height - 1))
     }
 
     /// Bottom corner radius: generous at rest (inside the hardware curve).
