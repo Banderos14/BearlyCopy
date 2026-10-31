@@ -356,7 +356,8 @@ final class IslandHost {
     let host: NSView
     let width: CGFloat
 
-    init(model: AppModel, surface: NotchPresentation.Surface = .expanded, maxContentHeight: CGFloat = 568, mascot: Bool = true) {
+    init(model: AppModel, surface: NotchPresentation.Surface = .expanded, maxContentHeight: CGFloat = 568, mascot: Bool = true,
+         theme: IslandTheme = .softSpectrum) {
         width = surface == .peek ? NotchLayout.peekWidth : NotchLayout.expandedWidth
         presentation.notchSize = CGSize(width: 185, height: 32)
         presentation.islandWidth = width
@@ -366,6 +367,7 @@ final class IslandHost {
         presentation.maxContentHeight = maxContentHeight
         let size = NSSize(width: width, height: 32 + maxContentHeight)
         let settings = NotchSettings(defaults: UserDefaults(suiteName: "PromptRelayLayout-\(UUID().uuidString)")!)
+        settings.theme = theme
         host = NSHostingView(rootView: NotchRootView(model: model, presentation: presentation,
                                                      interaction: NotchInteraction(scheduler: MainQueueScheduler()),
                                                      actions: SurfaceActions(quit: {}), settings: settings)

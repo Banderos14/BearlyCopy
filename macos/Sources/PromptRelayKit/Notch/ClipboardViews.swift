@@ -19,7 +19,7 @@ struct ClipboardView: View {
                     ForEach(AppModel.ClipboardTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented).labelsHidden().frame(width: 180)
-                .help("Text: your copies in Prompt Relay · Images: images you copied anywhere")
+                .islandHelp("Text: your copies in Prompt Relay · Images: images you copied anywhere")
                 Spacer(minLength: 0)
                 Text(model.clipboardTab == .text ? "Last \(AppModel.copyHistoryLimit) copies made here"
                      : "Last \(ClipboardImageHistory.limit) images · kept 24 h on this Mac")
@@ -41,12 +41,11 @@ struct ClipboardView: View {
 
 struct ClipboardTextList: View {
     let model: AppModel
-    @State private var copiedID: String?
 
     var body: some View {
         if model.copyHistory.isEmpty {
             MessageCard(title: "Nothing copied yet",
-                        detail: "Copy Response and Copy for ChatGPT appear here, so you can copy them again.",
+                        detail: "Copy Answer and Copy for Review appear here, so you can copy them again.",
                         symbol: "doc.on.clipboard", tint: Island.secondary, action: nil)
         } else {
             BoundedScroll(minHeight: 60) {
@@ -61,7 +60,7 @@ struct ClipboardTextList: View {
                 Spacer()
                 Button("Clear All") { model.clearCopyHistory() }
                     .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
-                    .help("Forget this list (nothing else is deleted)")
+                    .islandHelp("Forget this list (nothing else is deleted)")
             }
         }
     }
@@ -87,37 +86,26 @@ struct ClipboardTextList: View {
             }
             .buttonStyle(IslandRowStyle())
             .disabled(!available)
-            .help("Open this report · \(record.characters.formatted()) characters copied")
-            Button {
-                Task {
-                    await model.copyAgain(record)
-                    if case .copied = model.copyFeedback { flash(record.id) }
-                }
-            } label: {
-                Label(copiedID == record.id ? "Copied!" : "Copy Again", systemImage: copiedID == record.id ? "checkmark" : "doc.on.doc")
+            .islandHelp("Open this report · \(record.characters.formatted()) characters copied")
+            let copied = model.isCopied(record.kind == .response ? AppModel.answerToken(record.ref) : AppModel.reviewToken(record.ref))
+            Button { Task { await model.copyAgain(record) } } label: {
+                Label(copied ? Labels.copied : "Copy Again", systemImage: copied ? "checkmark" : "doc.on.doc")
             }
             .buttonStyle(IslandPillStyle(prominent: false))
             .disabled(!available)
-            .help("Copy the same thing again, read fresh from its source")
+            .islandHelp("Copy the same thing again, read fresh from its source")
             Button { model.removeCopyRecord(record) } label: {
                 Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).frame(width: 22, height: 22).contentShape(Rectangle())
             }
             .buttonStyle(.plain).foregroundStyle(Island.tertiary)
             .accessibilityLabel("Remove from this list")
-            .help("Remove from this list")
+            .islandHelp("Remove from this list")
             .padding(.trailing, 8)
         }
         .padding(.horizontal, 2)
-        .animation(.easeOut(duration: 0.15), value: copiedID)
+        .animation(.easeOut(duration: 0.15), value: model.copiedToken)
     }
 
-    private func flash(_ id: String) {
-        copiedID = id
-        Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            if copiedID == id { copiedID = nil }
-        }
-    }
 }
 
 // MARK: - Images
@@ -126,7 +114,6 @@ struct ClipboardImagesPane: View {
     let model: AppModel
     @State private var chosen: [String] = []
     @State private var preview: String?
-    @State private var copied = false
 
     var body: some View {
         if let history = model.clipboardImages, history.isEnabled {
@@ -175,24 +162,24 @@ struct ClipboardImagesPane: View {
         return HStack(spacing: Island.Space.m) {
             Button {
                 model.copyClipboardImages(selected)
-                if case .copied = model.copyFeedback { flashCopied() }
             } label: {
-                Label(copied ? "Copied!" : "Copy\(suffix)", systemImage: copied ? "checkmark" : "doc.on.doc")
+                Label(copied ? Labels.copied : "Copy\(suffix)", systemImage: copied ? "checkmark" : "doc.on.doc")
             }
             .buttonStyle(IslandPillStyle(prominent: true)).disabled(n == 0)
-            .help("Put the chosen images on the clipboard as files (readable names), like ⌘C in Finder")
-            FileDragButton(title: "Drag\(suffix)", help: "Drag the chosen images into another app, such as ChatGPT") {
+            .islandHelp("Put the chosen images on the clipboard as files (readable names), like ⌘C in Finder")
+            FileDragButton(title: "Drag\(suffix)", help: "Drag the chosen images into another app, such as ChatGPT or Gemini") {
                 history.exportFiles(selected)
             }
             .disabled(n == 0).opacity(n == 0 ? 0.45 : 1)
-            Button("Add\(suffix) to Report") {
+            Button(n > 1 ? "Attach \(n) to Current Answer" : Labels.attachToCurrentAnswer) {
                 model.attachClipboardImages(selected, mockup: model.backRoute == .mockup ? model.openMockupMaterial : nil)
                 chosen = []
                 preview = nil
             }
             .buttonStyle(IslandPillStyle(prominent: false))
             .disabled(n == 0 || model.currentRef == nil)
-            .help(model.currentRef == nil ? "No report is open" : "Copy the chosen images into the report shown in Details, as its attachments")
+            .islandHelp(attachTarget.map { "Attach the chosen images to: \($0). Nothing is attached without this click." }
+                        ?? "No answer is selected: open one in Details first, then come back")
             Spacer(minLength: 0)
             Menu {
                 Button(n > 0 ? "Remove \(n == 1 ? "Image" : "\(n) Images")" : "Remove") {
@@ -210,7 +197,7 @@ struct ClipboardImagesPane: View {
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("Remove images")
-            .help("Remove the chosen images, clear all, or turn the history off")
+            .islandHelp("Remove the chosen images, clear all, or turn the history off")
         }
         .islandFrame("clipboard.actions")
     }
@@ -242,12 +229,13 @@ struct ClipboardImagesPane: View {
         }
     }
 
-    private func flashCopied() {
-        copied = true
-        Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            copied = false
-        }
+    private var copied: Bool { model.isCopied(AppModel.clipboardImagesToken) }
+
+    /// The answer the images would go to, named, so they never land in another session by surprise.
+    private var attachTarget: String? {
+        guard let ref = model.currentRef else { return nil }
+        let (project, label) = model.describe(ref)
+        return "\(project) · \(label)"
     }
 }
 
@@ -275,10 +263,10 @@ struct ClipboardThumb: View {
                 }
                 .buttonStyle(.plain)
                 .onHover { hovering = $0 }
-                .help("Preview · drag it into another app")
+                .islandHelp("Preview · drag it into another app")
                 .accessibilityLabel("Preview \(ClipboardImageHistory.exportName(item))")
                 SelectBox(selected: chosen, action: toggle).padding(4)
-                    .help(chosen ? "Chosen" : "Choose for Copy, Drag or Add")
+                    .islandHelp(chosen ? "Chosen" : "Choose for Copy, Drag or Add")
             }
             .onDrag { history.exportFiles([item]).first.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
             Text(item.displayName).font(.system(size: 10)).foregroundStyle(Island.secondary).lineLimit(1)
@@ -300,7 +288,7 @@ struct ClipboardNotice: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Clipboard keeps your last 5 copied images").font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Island.primary)
-                    Text("Screenshots and image files you copy are saved on this Mac for 24 hours, to copy or drag into ChatGPT later. Nothing leaves this Mac; text is never read.")
+                    Text("Screenshots and image files you copy are saved on this Mac for 24 hours, to copy or drag into another app later. Nothing leaves this Mac; text is never read.")
                         .font(.system(size: 11)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)

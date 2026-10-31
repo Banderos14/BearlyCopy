@@ -84,6 +84,10 @@ struct IslandSettingsView: View {
     private func appearance(_ settings: NotchSettings) -> some View {
         @Bindable var settings = settings
         section("Appearance") {
+            picker("Theme", detail: "Colors of the island. Classic is Phase 6's first look; the camera area stays black in all.",
+                   current: settings.theme.title,
+                   options: IslandTheme.allCases.map { ($0.title, $0) }) { settings.theme = $0 }
+            Hairline()
             notchRows(settings)
             Hairline()
             toggle("Show Relay the bear", detail: "A small companion beside the notch. It reacts to new answers and copies.",

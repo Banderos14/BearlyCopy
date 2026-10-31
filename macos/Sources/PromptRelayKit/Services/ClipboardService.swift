@@ -84,6 +84,9 @@ public final class ClipboardService {
         pasteboard.clearContents()
         guard !urls.isEmpty, pasteboard.writeObjects(urls.map { $0 as NSURL }) else { throw ClipboardError.writeFailed }
         markOwn()
+        // Read back: success only when the clipboard holds exactly these files.
+        let back = (pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
+        guard back.map(\.standardizedFileURL) == urls.map(\.standardizedFileURL) else { throw ClipboardError.verificationFailed }
     }
 
     /// Marks what Prompt Relay wrote, so its own clipboard image history

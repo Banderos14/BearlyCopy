@@ -35,7 +35,7 @@ struct DetailsView: View {
     @State private var taskExpanded = false
     @State private var pane: Pane = .report
     @Environment(\.islandReduceMotion) private var reduceMotion
-    enum Pane: String, CaseIterable { case report = "Response", handoff = "For ChatGPT" }
+    enum Pane: String, CaseIterable { case report = "Answer", handoff = "For Review" }
 
     var body: some View {
         let layout = DetailsLayout(presentation: presentation)
@@ -62,6 +62,9 @@ struct DetailsView: View {
         }
         .islandPadding(presentation)
         .animation(Island.geometry(reduceMotion: reduceMotion), value: model.activeHandoff)
+        // Another answer: the Task, Answer and Attachments cards move to their
+        // new sizes together with the island (same curve and duration).
+        .animation(Island.geometry(reduceMotion: reduceMotion), value: model.currentRef)
         .onChange(of: model.currentRef) { taskExpanded = false }
     }
 
@@ -137,7 +140,7 @@ struct SessionHeader: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Project \(projectTitle), session \(sessionTitle ?? "none"). Choose project and session")
-            .help("Choose a project and a Claude Code session")
+            .islandHelp("Choose a project and a Claude Code session")
             Spacer(minLength: 6)
             if let other = model.newAnswerElsewhere {
                 NewElsewhereChip(model: model, answer: other)
@@ -176,14 +179,14 @@ struct NewElsewhereChip: View {
                 .background(Capsule().fill(Island.accent.opacity(0.14)))
             }
             .buttonStyle(.plain)
-            .help("Another session finished. Open its answer; this one stays in History.")
+            .islandHelp("Another session finished. Open its answer; this one stays in History.")
             Button { model.dismissNewAnswerElsewhere() } label: {
                 Image(systemName: "xmark").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary)
                     .frame(width: 16, height: 16).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Dismiss")
-            .help("Dismiss")
+            .islandHelp("Dismiss")
         }
         .frame(maxWidth: 240, alignment: .trailing)
     }
@@ -242,7 +245,7 @@ struct NavigationIcons: View {
             }
             .keyboardShortcut(",", modifiers: .command)
             Menu {
-                Button("Import Report…") { model.navigate(to: .importReport) }
+                Button(Labels.importSavedResult + "…") { model.navigate(to: .importReport) }
                 Divider()
                 Button("Quit Prompt Relay") { actions.quit() }
             } label: {
@@ -251,7 +254,7 @@ struct NavigationIcons: View {
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("More")
-            .help("More: Import Report, Quit")
+            .islandHelp("More: \(Labels.importSavedResult) (one result saved elsewhere, such as a cloud session), Quit")
         }
         .foregroundStyle(Island.secondary)
     }
@@ -278,7 +281,7 @@ struct IconLink: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .accessibilityLabel(label)
-        .help(help)
+        .islandHelp(help)
     }
 }
 
@@ -298,110 +301,124 @@ struct CopyFailureLine: View {
 
 // MARK: - What goes to ChatGPT
 
-/// What Copy for ChatGPT puts together for this report, one row per part,
-/// with a short fact each. "Not captured" and "no tools used" are told apart.
+/// What Copy for Review puts together for this report, one row per part
+/// with a short plain fact. "Show details" explains each part and its
+/// limits in place (no second screen, no second formatter): the package
+/// itself is built only when you copy.
 struct HandoffContentsCard: View {
     let model: AppModel
+    @State private var explained = false
+    @Environment(\.islandReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Caption("Copy for ChatGPT")
-            row(symbol: "text.quote", title: "Task & Response", detail: taskDetail, help: "Your request and Claude's complete answer, verbatim, once")
-            if model.selectedImport != nil {
-                row(symbol: "terminal", title: "Commands & Checks", detail: "not observed",
-                    help: "Imported reports come from cloud sessions that Prompt Relay cannot observe")
-            } else if let turn = model.selectedTurn {
-                Button { model.navigate(to: .activity) } label: {
-                    rowLabel(symbol: "terminal", title: "Commands & Checks", detail: Self.commands(turn.observed, captureOn: captureOn),
-                             tint: failed(turn.observed) > 0 ? Island.error : Island.tertiary, chevron: true)
+            HStack(spacing: 6) {
+                Caption(Labels.copyForReview, role: Island.accent)
+                Spacer(minLength: 0)
+                Button {
+                    withAnimation(Island.geometry(reduceMotion: reduceMotion)) { explained.toggle() }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(explained ? "Hide" : "What's in it").font(.system(size: 10.5, weight: .medium))
+                        Image(systemName: explained ? "chevron.up" : "chevron.down").font(.system(size: 8, weight: .bold))
+                    }
+                    .foregroundStyle(Island.secondary).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help(turn.observed == nil
-                      ? "No tool events were captured for this turn (plugin before 0.3.0, or capture was off then). This is not the same as Claude using no tools."
-                      : "The commands, exit codes and durations Prompt Relay observed in this turn. An exit code describes one command, not the task.")
-                if let observed = turn.observed {
-                    row(symbol: "doc.badge.ellipsis", title: "Changed Files",
-                        detail: observed.filesChanged == 0 ? "none observed" : (observed.filesChanged == 1 ? "1 file" : "\(observed.filesChanged) files"),
-                        help: "Files Claude edited or wrote, as observed by the tool hooks")
-                }
-                row(symbol: "arrow.triangle.branch", title: "Git State", detail: "read when you copy",
-                    help: "Branch and uncommitted changes, read locally at the moment of the copy (read-only)")
+                .accessibilityLabel(explained ? "Hide what Copy for Review contains" : "Explain what Copy for Review contains")
+                .islandHelp("What will be copied, and what it cannot prove")
             }
-            let n = model.handoffAttachments(for: model.currentRef).count
-            row(symbol: "paperclip", title: "Attachments", detail: n == 0 ? "none selected" : "\(n) selected",
-                help: "The files you selected below; their names are listed in the text, the files follow in step 2")
+            ForEach(Self.rows(model: model), id: \.title) { row in
+                if row.opensActivity {
+                    Button { model.navigate(to: .activity) } label: { label(row) }
+                        .buttonStyle(.plain)
+                        .islandHelp("Open the commands, exit codes and durations")
+                } else {
+                    label(row)
+                }
+                if explained {
+                    Text(row.explanation).font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                        .fixedSize(horizontal: false, vertical: true).padding(.leading, 20).padding(.bottom, 2)
+                        .transition(.opacity)
+                }
+            }
         }
         .padding(Island.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
     }
 
-    private var captureOn: Bool { model.selectedProject?.captureEnabled ?? true }
-
-    private var taskDetail: String {
-        switch ReportFacts(model: model).task {
-        case .unavailable: return "answer only"
-        case .automated: return "automatic turn"
-        default: return "verbatim"
-        }
+    struct Row: Equatable {
+        let symbol: String
+        let title: String
+        let detail: String
+        var alert = false
+        var opensActivity = false
+        let explanation: String
     }
 
-    private func failed(_ o: ObservedCounts?) -> Int { o.map { max($0.commandsNonzero ?? 0, $0.runsNonzero) } ?? 0 }
+    /// The parts of the package for the report shown, as plain facts.
+    @MainActor static func rows(model: AppModel) -> [Row] {
+        var rows: [Row] = []
+        let task = ReportFacts(model: model).task
+        let taskDetail: String = {
+            switch task {
+            case .unavailable: return "answer only"
+            case .automated: return "automatic turn"
+            default: return "original text"
+            }
+        }()
+        rows.append(Row(symbol: "text.quote", title: "Request & answer", detail: taskDetail,
+                        explanation: "Your request and Claude's complete answer, unchanged and included once. What Claude says it did is marked “Reported by Claude”."))
+        if model.selectedImport != nil {
+            rows.append(Row(symbol: "terminal", title: "Commands", detail: "not available",
+                            explanation: "Imported results come from places Prompt Relay could not watch, so no commands are listed."))
+        } else if let turn = model.selectedTurn {
+            let captureOn = model.selectedProject?.captureEnabled ?? true
+            let failed = turn.observed.map { max($0.commandsNonzero ?? 0, $0.runsNonzero) } ?? 0
+            rows.append(Row(symbol: "terminal", title: "Commands", detail: commands(turn.observed, captureOn: captureOn),
+                            alert: failed > 0, opensActivity: true,
+                            explanation: turn.observed == nil
+                                ? (captureOn ? "No command events were recorded for this answer (plugin before 0.3.0, or recorded before tool capture). This does not mean Claude ran none."
+                                             : "Capture is off for this project, so nothing was recorded.")
+                                : "Each command Prompt Relay saw, with its exit code and duration. An exit code describes one command, not whether the task is done."))
+            if let observed = turn.observed {
+                rows.append(Row(symbol: "doc.badge.ellipsis", title: "Files changed",
+                                detail: observed.filesChanged == 0 ? "none seen" : Labels.filesChanged(observed.filesChanged).replacingOccurrences(of: " changed", with: ""),
+                                explanation: "Files Claude edited or wrote, as seen by the tool events (not by comparing the disk)."))
+            }
+            rows.append(Row(symbol: "arrow.triangle.branch", title: "Git status", detail: "checked when you copy",
+                            explanation: "Branch and uncommitted changes, read on this Mac at the moment of the copy, read-only. If the folder is not a Git repository, the package says so."))
+        }
+        let n = model.handoffAttachments(for: model.currentRef).count
+        rows.append(Row(symbol: "paperclip", title: "Attachments", detail: n == 0 ? "none chosen" : "\(n) chosen",
+                        explanation: n == 0 ? "No files are chosen. Tick files below to name them in the text and hand them over after it."
+                                            : "The chosen files are named in the text; after the copy you hand them over as files (Copy Files, Drag or Finder)."))
+        return rows
+    }
 
-    /// A fact, never a verdict. Distinguishes: no tool events captured for
-    /// this turn (older plugin, or capture off) from tools not used at all.
+    /// One fact, failures first. Distinguishes nothing recorded (older
+    /// plugin, capture off) from no tools used.
     static func commands(_ o: ObservedCounts?, captureOn: Bool) -> String {
-        guard let o else { return captureOn ? "not captured" : "capture off" }
-        if o.toolEvents == 0 { return "no tools used" }
+        guard let o else { return captureOn ? "not recorded" : "capture off" }
+        if o.toolEvents == 0 { return "none run" }
         let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
-        // One fact fits the row; failures come first. The rest is in Observed Work.
         if failed > 0 { return "\(failed) failed" }
-        if o.runsExitZero > 0 { return "\(o.runsExitZero)× exit 0" }
+        if o.runsExitZero > 0 { return "\(o.runsExitZero) completed" }
         return o.toolEvents == 1 ? "1 event" : "\(o.toolEvents) events"
     }
 
-    private func row(symbol: String, title: String, detail: String, help: String) -> some View {
-        rowLabel(symbol: symbol, title: title, detail: detail, tint: Island.tertiary, chevron: false).help(help)
-    }
-
-    private func rowLabel(symbol: String, title: String, detail: String, tint: Color, chevron: Bool) -> some View {
+    private func label(_ row: Row) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: symbol).font(.system(size: 10.5)).frame(width: 14).foregroundStyle(Island.tertiary)
-            Text(title).foregroundStyle(Island.primary).lineLimit(1).fixedSize()
+            Image(systemName: row.symbol).font(.system(size: 10.5)).frame(width: 14).foregroundStyle(Island.tertiary)
+            Text(row.title).foregroundStyle(Island.primary).lineLimit(1).fixedSize()
             Spacer(minLength: 4)
-            Text(detail).font(.system(size: 10.5)).foregroundStyle(tint).lineLimit(1).truncationMode(.tail)
-            if chevron { Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary) }
+            Text(row.detail).font(.system(size: 10.5)).foregroundStyle(row.alert ? Island.error : Island.tertiary)
+                .lineLimit(1).truncationMode(.tail)
+            if row.opensActivity { Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary) }
         }
         .font(.system(size: 11.5))
         .contentShape(Rectangle())
-    }
-}
-
-/// "1× exit ≠ 0 · 2× exit 0": facts about single commands, never a verdict.
-/// Nothing at all when no command was observed (no "none" that reads like
-/// an error).
-struct ObservedChips: View {
-    let observed: ObservedCounts?
-    /// One chip only (a narrow row): failures first.
-    var compact = false
-
-    var body: some View {
-        if let o = observed, o.toolEvents > 0 {
-            HStack(spacing: 4) {
-                // A failure of any command shows; exit 0 is counted for tests and builds only.
-                let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
-                if failed > 0 { chip(failed == 1 ? "1 failed run" : "\(failed) failed runs", Island.error).help("Shell commands that exited non-zero") }
-                if o.runsExitZero > 0 && !(compact && failed > 0) {
-                    chip("\(o.runsExitZero)× exit 0", Island.success).help("Test and build commands that exited 0 (not proof that the task is done)")
-                }
-                if failed + o.runsExitZero == 0 { chip("\(o.toolEvents) tool events", Island.secondary) }
-            }
-        }
-    }
-
-    private func chip(_ text: String, _ tint: Color) -> some View {
-        Text(text).font(.system(size: 10, weight: .medium)).foregroundStyle(tint).lineLimit(1).fixedSize()
-            .padding(.horizontal, 6).frame(height: 17).background(Capsule().fill(Island.cardRaised))
     }
 }
 
@@ -417,7 +434,7 @@ struct AttachmentsCard: View {
         let suggestions = model.suggestions
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
-                Caption("Attachments")
+                Caption("Attachments", role: Island.review)
                 let summary = model.materialSummary(for: ref)
                 if !summary.isEmpty { Text("\(summary.documents + summary.images + summary.mockups + summary.links) selected")
                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary) }
@@ -431,7 +448,7 @@ struct AttachmentsCard: View {
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .disabled(model.reportStore == nil || ref == nil || model.isPresentingSystemDialog)
                 .accessibilityLabel("Add attachments")
-                .help("Add documents, PDFs or images to this report (copied as snapshots)")
+                .islandHelp("Add documents, PDFs or images to this report (copied as snapshots)")
             }
             BoundedScroll(minHeight: 34) {
                 VStack(alignment: .leading, spacing: 3) {
@@ -479,7 +496,7 @@ struct SelectBox: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(selected ? "Included in the hand-off" : "Not included")
-        .help(selected ? "Included in Copy for ChatGPT and the files" : "Not included")
+        .islandHelp(selected ? "Included in Copy for Review and handed over as a file" : "Not included")
     }
 }
 
@@ -511,7 +528,7 @@ struct AttachmentRow: View {
         }
         .frame(height: 30)
         .onDrag { model.dragFile(for: attachment).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
-        .help(attachment.originalPath.map { "\(attachment.provenance) · \($0)" } ?? attachment.provenance)
+        .islandHelp(attachment.originalPath.map { "\(attachment.provenance) · \($0)" } ?? attachment.provenance)
     }
 }
 
@@ -553,11 +570,11 @@ struct SuggestionRow: View {
             Button("Add") { model.accept(suggestion) }
                 .buttonStyle(.plain).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Island.accent)
                 .disabled(!(suggestion.exists || suggestion.kind == .mockup))
-                .help(suggestion.kind == .mockup ? "Keep it as a mockup: its declared states are listed; images are added by you"
+                .islandHelp(suggestion.kind == .mockup ? "Keep it as a mockup: its declared states are listed; images are added by you"
                       : "Copy a snapshot of this file into Prompt Relay")
         }
         .frame(height: 30)
-        .help(suggestion.path ?? suggestion.title)
+        .islandHelp(suggestion.path ?? suggestion.title)
     }
 }
 
@@ -583,7 +600,7 @@ struct MockupRow: View {
             .buttonStyle(.plain).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Island.secondary)
         }
         .frame(height: 30)
-        .help("Visual mockup — review required. \(material.provenance)")
+        .islandHelp("Visual mockup — review required. \(material.provenance)")
     }
 }
 
@@ -625,7 +642,7 @@ struct HandoffFooter: View {
                     .foregroundStyle(changed ? Island.warning : Island.success)
                 Text(changed
                      ? "The chosen files changed after the text was copied."
-                     : "Text copied. Paste it in ChatGPT, then add " + (step.fileCount == 1 ? "the file." : "the \(step.fileCount) files."))
+                     : "Text copied. Paste it in the assistant, then add " + (step.fileCount == 1 ? "the file." : "the \(step.fileCount) files."))
                     .foregroundStyle(Island.primary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
@@ -633,36 +650,33 @@ struct HandoffFooter: View {
             HStack(spacing: Island.Space.m) {
                 if changed {
                     Button { Task { await model.copySelectedContext() } } label: {
-                        Label("Copy for ChatGPT Again", systemImage: "arrow.clockwise")
+                        Label(Labels.copyForReview + " Again", systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(IslandPillStyle(prominent: true))
-                    .help("Copy the text again with the files chosen now")
+                    .islandHelp("Copy the text again with the files chosen now")
                 } else {
                     Button { model.copyHandoffFiles() } label: {
                         Label(filesCopied ? "Copied!" : (step.fileCount == 1 ? "Copy File" : "Copy \(step.fileCount) Files"),
                               systemImage: filesCopied ? "checkmark" : "doc.on.doc")
                     }
                     .buttonStyle(IslandPillStyle(prominent: true))
-                    .help("Put the files on the clipboard, like ⌘C in Finder")
+                    .islandHelp("Put the files on the clipboard, like ⌘C in Finder")
                     FileDragButton(title: step.fileCount == 1 ? "Drag" : "Drag \(step.fileCount)",
-                                   help: "Drag the files into ChatGPT") { model.handoffFileURLs() }
+                                   help: "Drag the files into ChatGPT, Gemini or another app") { model.handoffFileURLs() }
                     IconLink(symbol: "folder", label: "Show in Finder", help: "Show the files in Finder") { model.revealHandoffFiles() }
                 }
                 Spacer(minLength: 0)
                 Button("Done") { model.endHandoff() }
                     .buttonStyle(IslandPillStyle(prominent: false))
-                    .help("Close step 2; the clipboard keeps what you copied")
+                    .islandHelp("Close step 2; the clipboard keeps what you copied")
             }
         }
         .padding(.horizontal, Island.Space.l).padding(.vertical, Island.Space.m)
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
-        .animation(.easeOut(duration: 0.15), value: model.copyFeedback)
+        .animation(.easeOut(duration: 0.15), value: model.copiedToken)
     }
 
-    private var filesCopied: Bool {
-        if case .copied(.files, _) = model.copyFeedback { return true }
-        return false
-    }
+    private var filesCopied: Bool { model.isCopied(AppModel.handoffToken) }
 }
 
 /// Drag several files at once (in order) into another app.
@@ -679,7 +693,7 @@ struct FileDragButton: View {
             .foregroundStyle(Island.primary)
             .fixedSize()
             .overlay(FileDragSource(urls: urls))
-            .help(help)
+            .islandHelp(help)
             .accessibilityLabel(title)
     }
 }
@@ -805,7 +819,7 @@ struct CommandRow: View {
         .padding(.horizontal, 10).padding(.vertical, 7)
         .contentShape(Rectangle())
         .onTapGesture { if command.outputTail != nil { expanded.toggle() } }
-        .help(command.command ?? "")
+        .islandHelp(command.command ?? "")
     }
 
     @ViewBuilder private var result: some View {
@@ -895,7 +909,7 @@ struct SessionSwitcherView: View {
                                                 subtitle: session.claudeCodeTitle.map { "Claude Code: \($0)" })
                             }
                             .buttonStyle(.plain)
-                            .help("Open the newest answer of this session")
+                            .islandHelp("Open the newest answer of this session")
                         }
                     } else {
                         Text("No sessions captured yet.").font(.system(size: 11.5)).foregroundStyle(Island.tertiary).padding(10)
@@ -956,7 +970,7 @@ struct MockupStatesView: View {
                     }
                     Spacer()
                     Text("Visual mockup — review required").font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.73, green: 0.65, blue: 1)).padding(.horizontal, 7).frame(height: 18)
+                        .foregroundStyle(Island.review).padding(.horizontal, 7).frame(height: 18)
                         .background(Capsule().fill(Island.cardRaised))
                 }
                 HStack(spacing: 8) {
@@ -1036,7 +1050,7 @@ struct StateCard: View {
         }
         .padding(6)
         .background(RoundedRectangle(cornerRadius: 9).fill(Island.cardRaised))
-        .help(state.summary ?? state.title)
+        .islandHelp(state.summary ?? state.title)
     }
 
     private var statusText: String {

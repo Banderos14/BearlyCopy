@@ -45,6 +45,7 @@ public struct NotchRootView: View {
     let actions: SurfaceActions
     let settings: NotchSettings?
     let notifier: ReadyNotifier?
+    @State private var tips = IslandTooltips()
 
     public init(model: AppModel, presentation: NotchPresentation, interaction: NotchInteraction, actions: SurfaceActions,
                 settings: NotchSettings? = nil, notifier: ReadyNotifier? = nil) {
@@ -95,7 +96,7 @@ public struct NotchRootView: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .topLeading) {
             // No shadow: the island must not show a grey halo on light desktops.
             shape.fill(Color.black)
             if expanded {
@@ -107,7 +108,14 @@ public struct NotchRootView: View {
                 compactContent
                     .transition(.opacity.animation(.easeOut(duration: 0.1)))
             }
+            if expanded { IslandTooltipOverlay(tips: tips, size: islandSize) }
         }
+        .environment(\.islandTooltips, tips)
+        // A theme change redraws the island with the new roles.
+        .id(settings?.theme)
+        .onChange(of: presentation.isExpanded) { tips.hideAll() }
+        .onChange(of: model.route) { tips.hideAll() }
+        .onChange(of: presentation.surface) { tips.hideAll() }
         .frame(width: islandSize.width, height: islandSize.height, alignment: .top)
         .coordinateSpace(name: Self.space)
         #if DEBUG

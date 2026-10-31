@@ -28,6 +28,7 @@ public final class NotchSettings {
         static let display = "notch.displayID"
         static let yield = "notch.yieldToOtherNotchApps"
         static let mascot = "mascot.enabled"
+        static let theme = "appearance.theme"
     }
 
     private let defaults: UserDefaults
@@ -43,6 +44,11 @@ public final class NotchSettings {
     public var yieldToOtherNotchApps: Bool { didSet { defaults.set(yieldToOtherNotchApps, forKey: Key.yield) } }
     /// Relay the bear beside the notch (on by default; Settings → Appearance).
     public var mascotEnabled: Bool { didSet { defaults.set(mascotEnabled, forKey: Key.mascot) } }
+    /// The island's colors (Settings → Appearance). Soft Spectrum by
+    /// default; Classic keeps Phase 6's first look.
+    public var theme: IslandTheme {
+        didSet { defaults.set(theme.rawValue, forKey: Key.theme); Island.palette = theme.palette }
+    }
     public var display: DisplayChoice {
         didSet {
             switch display {
@@ -59,11 +65,14 @@ public final class NotchSettings {
         animation = defaults.string(forKey: Key.animation).flatMap(Animation.init(rawValue:)) ?? .system
         yieldToOtherNotchApps = defaults.object(forKey: Key.yield) as? Bool ?? true   // default: yield
         mascotEnabled = defaults.object(forKey: Key.mascot) as? Bool ?? true
+        let theme = defaults.string(forKey: Key.theme).flatMap(IslandTheme.init(rawValue:)) ?? .softSpectrum
+        self.theme = theme
         if let id = defaults.object(forKey: Key.display) as? Int, id > 0 {
             display = .display(UInt32(id))
         } else {
             display = .automatic
         }
+        Island.palette = theme.palette
     }
 
     /// Whether motion should be reduced, given the system setting.

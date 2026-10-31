@@ -80,7 +80,7 @@ public final class NotchPresentation {
     /// The island taking a new height while open (another answer, a card
     /// growing): 240 ms, no bounce, so the footer moves with the content.
     var resizeAnimation: Animation? {
-        reduceMotion ? .easeOut(duration: 0.1) : .smooth(duration: 0.24)
+        reduceMotion ? .easeOut(duration: 0.1) : .smooth(duration: Island.geometryDuration)
     }
 }
 
@@ -400,7 +400,7 @@ public final class NotchController {
                                                           peek: self.presentation.surface == .peek), display: true)
             }
             resizeWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0.1 : 0.26), execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0.1 : Island.geometryDuration + 0.02), execute: work)
         }
     }
 

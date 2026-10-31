@@ -19,10 +19,6 @@ final class AppServices {
     /// Started once, after launch, so the island exists before anything is clicked.
     func startNotch() {
         guard coordinator == nil else { return }
-        // Tooltips after 200 ms instead of AppKit's default (about 1 s).
-        // The registration domain lives only in this process: nothing is
-        // written to the user's defaults, other apps are unaffected.
-        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 200])
         let model = self.model, settings = self.settings, notifier = self.notifier
         coordinator = NotchCoordinator(model: model, settings: settings, notifier: notifier) {
             NotchController(model: model, settings: settings, actions: Actions.current, notifier: notifier)
@@ -62,7 +58,7 @@ struct PromptRelayApp: App {
             Button("Open Prompt Relay  \(HotKeyRegistration.displayString)") { services.present(.home) }
             Button("Clipboard") { services.present(.copies) }
             Button("History") { services.present(.history) }
-            Button("Import Cloud Report…") { services.present(.importReport) }
+            Button("Import Saved Result…") { services.present(.importReport) }
             Divider()
             Button("Settings…") { services.present(.settings) }
                 .keyboardShortcut(",")

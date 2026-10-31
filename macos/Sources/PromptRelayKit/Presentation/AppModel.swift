@@ -10,7 +10,7 @@ import UniformTypeIdentifiers
 @Observable
 public final class AppModel {
     public enum CopyKind: String, Sendable {
-        case response = "Response", context = "Copy for ChatGPT", image = "Image", responseWithImages = "Response and images"
+        case response = "Answer", context = "Copy for Review", image = "Image", responseWithImages = "Response and images"
         case files = "Files"
     }
 
@@ -220,7 +220,7 @@ public final class AppModel {
         guard urls.count == items.count, !urls.isEmpty else { finishCopy(.failed("The images could not be prepared.")); return }
         do {
             try clipboard.copyFiles(urls)
-            finishCopy(.copied(.files, characters: urls.count))
+            finishCopy(.copied(.files, characters: urls.count), token: Self.clipboardImagesToken)
         } catch {
             finishCopy(.failed("The images could not be copied."))
         }
@@ -674,7 +674,7 @@ public final class AppModel {
             case .clipboard: return "Clipboard"
             case .copies: return "Recent Copies"
             case .history: return "History"
-            case .importReport: return "Import Report"
+            case .importReport: return Labels.importSavedResult
             case .settings: return "Settings"
             case .reader: return "Full Report"
             }
@@ -685,6 +685,8 @@ public final class AppModel {
         didSet {
             // Recent Copies is the Text tab of Clipboard now (Phase 6).
             if route == .copies { clipboardTab = .text; route = .clipboard }
+            // History opens with the session being read expanded.
+            if route == .history, oldValue != .history { historyExpandedKey = selectedImportID == nil ? selectedSessionKey : nil }
             if route == .home { backRoute = .home }
         }
     }
@@ -868,6 +870,23 @@ public final class AppModel {
         public let title: String
         public let at: String?
         public var id: String { ref.key }
+    }
+
+    /// The session whose answers History shows; nil: all collapsed. Kept by
+    /// session key (never a row index), so a refresh of the list neither
+    /// opens nor closes anything.
+    public private(set) var historyExpandedKey: String?
+
+    /// A click on a session row in History: a closed row opens (and closes
+    /// the one open before), the open row closes. Opening also shows that
+    /// session, as before.
+    public func toggleHistorySession(_ session: SessionSummary) {
+        if historyExpandedKey == session.sessionKey {
+            historyExpandedKey = nil
+        } else {
+            historyExpandedKey = session.sessionKey
+            focusSession(session)
+        }
     }
 
     public var historyQuery = "" {
@@ -1088,7 +1107,7 @@ public final class AppModel {
         guard let file = handoffFiles([attachment]).first else { finishCopy(.failed("The image file is missing.")); return }
         do {
             try clipboard.copyImage(at: file)
-            finishCopy(.copied(.image, characters: 0))
+            finishCopy(.copied(.image, characters: 0), token: Self.attachmentToken(attachment.id))
         } catch {
             finishCopy(.failed("The image could not be copied."))
         }
@@ -1101,7 +1120,7 @@ public final class AppModel {
         guard !files.isEmpty else { finishCopy(.failed("The image files are missing.")); return }
         do {
             try clipboard.copyFiles(files)
-            finishCopy(.copied(.files, characters: files.count))
+            finishCopy(.copied(.files, characters: files.count), token: attachments.count == 1 ? Self.attachmentToken(attachments[0].id) : nil)
         } catch {
             finishCopy(.failed("The files could not be copied."))
         }
@@ -1135,7 +1154,7 @@ public final class AppModel {
         let urls = handoffFiles(attachments(for: ref))
         do {
             try clipboard.copy(text, images: urls)
-            finishCopy(.copied(.responseWithImages, characters: text.unicodeScalars.count))
+            finishCopy(.copied(.responseWithImages, characters: text.unicodeScalars.count), token: Self.answerToken(ref))
             record(.response, ref: ref, characters: text.unicodeScalars.count)
         } catch {
             finishCopy(.failed(Self.message(for: error)))
@@ -1344,7 +1363,7 @@ public final class AppModel {
         guard let text = await fullText(for: ref) else { return }
         do {
             try clipboard.copy(text)
-            finishCopy(.copied(.response, characters: text.unicodeScalars.count))
+            finishCopy(.copied(.response, characters: text.unicodeScalars.count), token: Self.answerToken(ref))
             record(.response, ref: ref, characters: text.unicodeScalars.count)
         } catch {
             finishCopy(.failed(Self.message(for: error)))
@@ -1392,7 +1411,7 @@ public final class AppModel {
         }
         do {
             try clipboard.copy(text)
-            finishCopy(.copied(.context, characters: text.unicodeScalars.count))
+            finishCopy(.copied(.context, characters: text.unicodeScalars.count), token: Self.reviewToken(ref))
             record(.reviewPack, ref: ref, characters: text.unicodeScalars.count)
             beginHandoff(ref: ref, characters: text.unicodeScalars.count)
         } catch {
@@ -1408,7 +1427,7 @@ public final class AppModel {
         pendingSensitiveContext = nil
         do {
             try clipboard.copy(pending.text)
-            finishCopy(.copied(.context, characters: pending.text.unicodeScalars.count))
+            finishCopy(.copied(.context, characters: pending.text.unicodeScalars.count), token: Self.reviewToken(pending.ref))
             beginHandoff(ref: pending.ref, characters: pending.text.unicodeScalars.count)
         } catch {
             finishCopy(.failed(Self.message(for: error)))
@@ -1419,8 +1438,22 @@ public final class AppModel {
         pendingSensitiveContext = nil
     }
 
-    func finishCopy(_ feedback: CopyFeedback) {
+    /// What the last successful copy was ("answer|<report>", "review|…",
+    /// "files|…"): each button shows "Copied!" only for its own copy, and
+    /// only after the clipboard read-back confirmed it.
+    public private(set) var copiedToken: String?
+
+    public func isCopied(_ token: String) -> Bool { copiedToken == token }
+
+    public static func answerToken(_ ref: ReportRef?) -> String { "answer|\(ref?.key ?? "-")" }
+    public static func reviewToken(_ ref: ReportRef?) -> String { "review|\(ref?.key ?? "-")" }
+    static let handoffToken = "files|handoff"
+    static let clipboardImagesToken = "files|clipboard"
+    static func attachmentToken(_ id: String) -> String { "files|\(id)" }
+
+    func finishCopy(_ feedback: CopyFeedback, token: String? = nil) {
         copyFeedback = feedback
+        if case .copied = feedback { copiedToken = token } else { copiedToken = nil }
         feedbackReset?.cancel()
         // "Copied!" for 2 s; a failure stays long enough to be read.
         let seconds: UInt64 = { if case .failed = feedback { return 6 } else { return 2 } }()
@@ -1428,6 +1461,7 @@ public final class AppModel {
             try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
             guard !Task.isCancelled else { return }
             self?.copyFeedback = .idle
+            self?.copiedToken = nil
         }
     }
 

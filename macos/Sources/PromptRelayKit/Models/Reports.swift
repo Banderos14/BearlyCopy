@@ -174,7 +174,7 @@ public struct CopyRecord: Codable, Identifiable, Equatable, Sendable {
     public enum Kind: String, Codable, Sendable {
         /// `reviewPack` is the stored name of what is now Copy for ChatGPT.
         case response, reviewPack
-        public var title: String { self == .response ? "Response" : "Copy for ChatGPT" }
+        public var title: String { self == .response ? "Answer" : "Copy for Review" }
     }
 
     public let id: String

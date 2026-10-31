@@ -366,7 +366,7 @@ extension AppModel {
     /// Step 2: the files on the clipboard, like ⌘C in Finder.
     public func copyHandoffFiles() {
         guard !handoffSelectionChanged else {
-            finishCopy(.failed("The chosen files changed. Use Copy for ChatGPT again."))
+            finishCopy(.failed("The chosen files changed. Use Copy for Review again."))
             return
         }
         let files = preparedHandoffFiles()
@@ -374,7 +374,7 @@ extension AppModel {
         do {
             try clipboard.copyFiles(files)
             handoffStep?.filesCopied = true
-            finishCopy(.copied(.files, characters: files.count))
+            finishCopy(.copied(.files, characters: files.count), token: Self.handoffToken)
         } catch {
             finishCopy(.failed("The files could not be copied."))
         }
