@@ -366,7 +366,7 @@ extension AppModel {
     /// Step 2: the files on the clipboard, like ⌘C in Finder.
     public func copyHandoffFiles() {
         guard !handoffSelectionChanged else {
-            finishCopy(.failed("The chosen files changed. Use Copy for Review again."))
+            finishCopy(.failed("The chosen files changed. Use Copy with Context again."))
             return
         }
         let files = preparedHandoffFiles()
@@ -392,6 +392,28 @@ extension AppModel {
 
     /// The prepared hand-off files (for an AppKit multi-file drag).
     public func handoffFileURLs() -> [URL] { preparedHandoffFiles() }
+
+    // MARK: Attachment preview
+
+    /// Opens one attachment of the report shown, read-only. Nothing about the
+    /// selection (session, answer, chosen files) changes.
+    public func openAttachmentPreview(_ attachment: ReportAttachment) {
+        previewAttachmentID = attachment.id
+        navigate(to: .attachmentPreview)
+    }
+
+    /// The attachment being previewed, only while it belongs to the report shown.
+    public var previewedAttachment: ReportAttachment? {
+        attachments(for: currentRef).first { $0.id == previewAttachmentID }
+    }
+
+    /// The text of a document attachment for reading (at most 1 MB, UTF-8);
+    /// nil for binary or unreadable files. The stored copy is only read.
+    public func previewText(_ attachment: ReportAttachment) -> String? {
+        guard attachment.effectiveKind == .document, let url = attachmentURL(attachment),
+              let data = try? Data(contentsOf: url, options: .mappedIfSafe), data.count <= 1024 * 1024 else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
 
     public func openMockup(_ material: ReportMaterial) {
         openMockupID = material.id

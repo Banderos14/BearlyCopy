@@ -19,8 +19,67 @@ struct DetailsLayout {
     var metrics: IslandMetrics { IslandMetrics.of(presentation) }
     /// Content width inside the island's visible sides.
     var contentWidth: CGFloat { presentation.islandWidth - 2 * metrics.leading }
-    var twoColumns: Bool { contentWidth >= 520 && presentation.maxContentHeight >= 300 }
+    /// Two paired rows need about 330 pt (both rows at their smallest plus
+    /// the step-2 footer); shorter displays switch between the two columns.
+    var twoColumns: Bool { contentWidth >= 520 && presentation.maxContentHeight >= 330 }
     var rightColumn: CGFloat { contentWidth >= 600 ? 276 : 264 }
+}
+
+/// Details' two columns as two rows: Task | Copy with Context, then
+/// Answer | Attachments. Each row is as tall as the taller of its two cards'
+/// natural heights, so the cards of a row end on the same line; the rows
+/// share the height the island offers (`HeightBudget`). Nothing is a fixed
+/// height: a short answer without files gives a short row; long content
+/// scrolls inside its card. The top row never takes the room the bottom row
+/// needs for a readable Answer (`minBottom`).
+struct PairedRows: Layout {
+    var rightWidth: CGFloat
+    var columnSpacing: CGFloat
+    var rowSpacing: CGFloat
+    var minBottom: CGFloat = 140
+
+    struct Rows { let left: CGFloat; let top: CGFloat; let bottom: CGFloat }
+
+    func rows(_ proposal: ProposedViewSize, _ subviews: Subviews) -> Rows {
+        let width = proposal.width ?? 600
+        let left = max(0, width - rightWidth - columnSpacing)
+        func natural(_ i: Int, _ w: CGFloat) -> CGFloat {
+            i < subviews.count ? subviews[i].sizeThatFits(ProposedViewSize(width: w, height: nil)).height : 0
+        }
+        let topNatural = max(natural(0, left), natural(1, rightWidth))
+        let bottomNatural = max(natural(2, left), natural(3, rightWidth))
+        let budget = proposal.height ?? .infinity
+        // The Answer matters most: when space is short the top row is only
+        // as tall as Task needs (or 42 % of the space); the context rows
+        // then scroll inside their card.
+        let topCap = max(natural(0, left), budget * 0.42)
+        // Never below what the two top cards need at their smallest (their
+        // fixed rows and padding): a smaller slot let a card draw past it.
+        func smallest(_ i: Int, _ w: CGFloat) -> CGFloat {
+            i < subviews.count ? subviews[i].sizeThatFits(ProposedViewSize(width: w, height: 0)).height : 0
+        }
+        let topMin = max(smallest(0, left), smallest(1, rightWidth))
+        let top = max(topMin, min(topNatural, topCap, max(0, budget - rowSpacing - min(bottomNatural, minBottom))))
+        let bottom = min(bottomNatural, max(0, budget - rowSpacing - top))
+        return Rows(left: left, top: top, bottom: bottom)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let r = rows(proposal, subviews)
+        return CGSize(width: proposal.width ?? r.left + columnSpacing + rightWidth, height: r.top + rowSpacing + r.bottom)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let r = rows(ProposedViewSize(width: bounds.width, height: bounds.height), subviews)
+        let x2 = bounds.minX + r.left + columnSpacing, y2 = bounds.minY + r.top + rowSpacing
+        let frames = [CGRect(x: bounds.minX, y: bounds.minY, width: r.left, height: r.top),
+                      CGRect(x: x2, y: bounds.minY, width: rightWidth, height: r.top),
+                      CGRect(x: bounds.minX, y: y2, width: r.left, height: r.bottom),
+                      CGRect(x: x2, y: y2, width: rightWidth, height: r.bottom)]
+        for (view, frame) in zip(subviews, frames) {
+            view.place(at: frame.origin, anchor: .topLeading, proposal: ProposedViewSize(frame.size))
+        }
+    }
 }
 
 // MARK: - Details
@@ -32,7 +91,6 @@ struct DetailsView: View {
     let model: AppModel
     let presentation: NotchPresentation
     let actions: SurfaceActions
-    @State private var taskExpanded = false
     @State private var pane: Pane = .report
     @Environment(\.islandReduceMotion) private var reduceMotion
     enum Pane: String, CaseIterable { case report = "Answer", handoff = "For Review" }
@@ -65,7 +123,6 @@ struct DetailsView: View {
         // Another answer: the Task, Answer and Attachments cards move to their
         // new sizes together with the island (same curve and duration).
         .animation(Island.geometry(reduceMotion: reduceMotion), value: model.currentRef)
-        .onChange(of: model.currentRef) { taskExpanded = false }
     }
 
     @ViewBuilder
@@ -85,12 +142,13 @@ struct DetailsView: View {
     @ViewBuilder
     private func content(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
         if layout.twoColumns {
-            HStack(alignment: .top, spacing: Island.Space.l) {
-                reportColumn(layout, facts: facts)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                handoffColumn
-                    .frame(width: layout.rightColumn, alignment: .topLeading)
+            PairedRows(rightWidth: layout.rightColumn, columnSpacing: Island.Space.l, rowSpacing: layout.metrics.spacing) {
+                TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2).islandFrame("card.task")
+                HandoffContentsCard(model: model).islandFrame("card.handoff")
+                ResponseCard(model: model, facts: facts) { model.navigate(to: .reader) }
+                AttachmentsCard(model: model).islandFrame("card.attachments")
             }
+            .environment(\.cardFillsRow, true)
         } else {
             VStack(alignment: .leading, spacing: layout.metrics.spacing) {
                 Picker("", selection: $pane) {
@@ -104,7 +162,7 @@ struct DetailsView: View {
 
     private func reportColumn(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
         VStack(alignment: .leading, spacing: layout.metrics.spacing) {
-            TaskCard(facts: facts, expanded: $taskExpanded, lines: layout.metrics.compact ? 1 : 2).islandFrame("card.task")
+            TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2).islandFrame("card.task")
             ResponseCard(model: model, facts: facts) { model.navigate(to: .reader) }
         }
     }
@@ -301,51 +359,74 @@ struct CopyFailureLine: View {
 
 // MARK: - What goes to ChatGPT
 
-/// What Copy for Review puts together for this report, one row per part
+/// What Copy with Context puts together for this report, one row per part
 /// with a short plain fact. "Show details" explains each part and its
 /// limits in place (no second screen, no second formatter): the package
 /// itself is built only when you copy.
 struct HandoffContentsCard: View {
     let model: AppModel
-    @State private var explained = false
+    /// The one part whose explanation is open (one at a time).
+    @State private var explained: String?
     @Environment(\.islandReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
-                Caption(Labels.copyForReview, role: Island.accent)
+                Caption(Labels.copyWithContext, role: Island.accent)
                 Spacer(minLength: 0)
-                Button {
-                    withAnimation(Island.geometry(reduceMotion: reduceMotion)) { explained.toggle() }
-                } label: {
+                Button { Task { await model.openPackPreview() } } label: {
                     HStack(spacing: 3) {
-                        Text(explained ? "Hide" : "What's in it").font(.system(size: 10.5, weight: .medium))
-                        Image(systemName: explained ? "chevron.up" : "chevron.down").font(.system(size: 8, weight: .bold))
+                        Image(systemName: "eye").font(.system(size: 9.5, weight: .semibold))
+                        Text("Preview").font(.system(size: 10.5, weight: .medium))
                     }
                     .foregroundStyle(Island.secondary).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(explained ? "Hide what Copy for Review contains" : "Explain what Copy for Review contains")
-                .islandHelp("What will be copied, and what it cannot prove")
+                .disabled(model.currentRef == nil)
+                .accessibilityLabel("Preview the text Copy with Context will copy")
+                .islandHelp("See the exact text before copying")
             }
-            ForEach(Self.rows(model: model), id: \.title) { row in
-                if row.opensActivity {
-                    Button { model.navigate(to: .activity) } label: { label(row) }
-                        .buttonStyle(.plain)
-                        .islandHelp("Open the commands, exit codes and durations")
-                } else {
-                    label(row)
+            .islandFrame("handoff.header")
+            let rows = Self.rows(model: model)
+            BoundedScroll(minHeight: 34) {
+            VStack(alignment: .leading, spacing: 5) {
+            ForEach(rows, id: \.title) { row in
+                HStack(spacing: 4) {
+                    if row.opensActivity {
+                        Button { model.navigate(to: .activity) } label: { label(row) }
+                            .buttonStyle(.plain)
+                            .islandHelp("Open the commands, exit codes and durations")
+                    } else {
+                        label(row)
+                    }
+                    Button {
+                        withAnimation(Island.geometry(reduceMotion: reduceMotion)) { explained = explained == row.title ? nil : row.title }
+                    } label: {
+                        Image(systemName: explained == row.title ? "info.circle.fill" : "info.circle")
+                            .font(.system(size: 10)).foregroundStyle(explained == row.title ? Island.accent : Island.tertiary)
+                            .frame(width: 16, height: 16).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(explained == row.title ? "Hide explanation" : "Explain \(row.title)")
                 }
-                if explained {
-                    Text(row.explanation).font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
-                        .fixedSize(horizontal: false, vertical: true).padding(.leading, 20).padding(.bottom, 2)
-                        .transition(.opacity)
+            }
+            if let open = rows.first(where: { $0.title == explained }) {
+                BoundedScroll(maxHeight: 64) {
+                    Text(open.explanation).font(.system(size: 10.5)).foregroundStyle(Island.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+                        .padding(.trailing, 4)
                 }
+                .padding(7)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Island.cardRaised))
+                .transition(.opacity)
+                .islandFrame("handoff.explanation")
+            }
+            }
+            .padding(.trailing, 2)
             }
         }
-        .padding(Island.cardPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+        .islandCard()
+        .onChange(of: model.currentRef) { explained = nil }
     }
 
     struct Row: Equatable {
@@ -478,9 +559,7 @@ struct AttachmentsCard: View {
                 .padding(.trailing, 4)
             }
         }
-        .padding(Island.cardPadding)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+        .islandCard()
     }
 }
 
@@ -496,7 +575,7 @@ struct SelectBox: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(selected ? "Included in the hand-off" : "Not included")
-        .islandHelp(selected ? "Included in Copy for Review and handed over as a file" : "Not included")
+        .islandHelp(selected ? "Included in Copy with Context and handed over as a file" : "Not included")
     }
 }
 
@@ -508,16 +587,25 @@ struct AttachmentRow: View {
         let url = model.attachmentURL(attachment)
         HStack(spacing: 6) {
             SelectBox(selected: attachment.isSelected) { model.setSelected(attachment, !attachment.isSelected) }
-            KindIcon(kind: attachment.effectiveKind, url: url)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(attachment.originalFilename).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
-                    .lineLimit(1).truncationMode(.middle)
-                Text(url == nil ? "Missing" : "\(ReviewPack.type(attachment)) · \(ReviewPack.size(attachment.byteCount)) · \(attachment.effectiveSource.label)")
-                    .font(.system(size: 10)).foregroundStyle(url == nil ? Island.warning : Island.tertiary).lineLimit(1)
+            Button { model.openAttachmentPreview(attachment) } label: {
+                HStack(spacing: 6) {
+                    KindIcon(kind: attachment.effectiveKind, url: url)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(attachment.originalFilename).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
+                            .lineLimit(1).truncationMode(.middle)
+                        Text(url == nil ? "Missing" : "\(ReviewPack.type(attachment)) · \(ReviewPack.size(attachment.byteCount)) · \(attachment.effectiveSource.label)")
+                            .font(.system(size: 10)).foregroundStyle(url == nil ? Island.warning : Island.tertiary).lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
             }
-            Spacer(minLength: 0)
+            .buttonStyle(.plain)
+            .disabled(url == nil)
+            .accessibilityLabel("Preview \(attachment.originalFilename)")
             Menu {
-                Button("Open") { if let url { NSWorkspace.shared.open(url) } }.disabled(url == nil)
+                Button("Preview") { model.openAttachmentPreview(attachment) }.disabled(url == nil)
+                Button("Open in Default App") { if let url { NSWorkspace.shared.open(url) } }.disabled(url == nil)
                 Button("Show in Finder") { model.revealAttachmentsForHandoff([attachment]) }.disabled(url == nil)
                 Button("Copy File") { model.copyAttachmentFiles([attachment]) }.disabled(url == nil)
                 Divider()
@@ -527,8 +615,10 @@ struct AttachmentRow: View {
             .accessibilityLabel("Actions for \(attachment.originalFilename)")
         }
         .frame(height: 30)
+        .padding(.horizontal, 3)
+        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(attachment.isSelected ? Island.selected : .clear))
         .onDrag { model.dragFile(for: attachment).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
-        .islandHelp(attachment.originalPath.map { "\(attachment.provenance) · \($0)" } ?? attachment.provenance)
+        .islandHelp("Click to preview · " + (attachment.originalPath.map { "\(attachment.provenance) · \($0)" } ?? attachment.provenance))
     }
 }
 
@@ -635,45 +725,61 @@ struct HandoffFooter: View {
     let step: AppModel.HandoffStep
 
     var body: some View {
-        let changed = model.handoffSelectionChanged
-        VStack(alignment: .leading, spacing: Island.Space.s) {
-            HStack(spacing: 6) {
-                Image(systemName: changed ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                    .foregroundStyle(changed ? Island.warning : Island.success)
-                Text(changed
-                     ? "The chosen files changed after the text was copied."
-                     : "Text copied. Paste it in the assistant, then add " + (step.fileCount == 1 ? "the file." : "the \(step.fileCount) files."))
-                    .foregroundStyle(Island.primary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-            }
-            .font(.system(size: 11.5))
+        // One row when it fits (it saves a line on short displays), else two.
+        ViewThatFits(in: .horizontal) {
             HStack(spacing: Island.Space.m) {
-                if changed {
-                    Button { Task { await model.copySelectedContext() } } label: {
-                        Label(Labels.copyForReview + " Again", systemImage: "arrow.clockwise")
-                    }
-                    .buttonStyle(IslandPillStyle(prominent: true))
-                    .islandHelp("Copy the text again with the files chosen now")
-                } else {
-                    Button { model.copyHandoffFiles() } label: {
-                        Label(filesCopied ? "Copied!" : (step.fileCount == 1 ? "Copy File" : "Copy \(step.fileCount) Files"),
-                              systemImage: filesCopied ? "checkmark" : "doc.on.doc")
-                    }
-                    .buttonStyle(IslandPillStyle(prominent: true))
-                    .islandHelp("Put the files on the clipboard, like ⌘C in Finder")
-                    FileDragButton(title: step.fileCount == 1 ? "Drag" : "Drag \(step.fileCount)",
-                                   help: "Drag the files into ChatGPT, Gemini or another app") { model.handoffFileURLs() }
-                    IconLink(symbol: "folder", label: "Show in Finder", help: "Show the files in Finder") { model.revealHandoffFiles() }
-                }
-                Spacer(minLength: 0)
-                Button("Done") { model.endHandoff() }
-                    .buttonStyle(IslandPillStyle(prominent: false))
-                    .islandHelp("Close step 2; the clipboard keeps what you copied")
+                status(short: true).fixedSize()
+                buttons
+            }
+            VStack(alignment: .leading, spacing: Island.Space.s) {
+                status(short: false)
+                HStack(spacing: Island.Space.m) { buttons }
             }
         }
         .padding(.horizontal, Island.Space.l).padding(.vertical, Island.Space.m)
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
         .animation(.easeOut(duration: 0.15), value: model.copiedToken)
+    }
+
+    private func status(short: Bool) -> some View {
+        let changed = model.handoffSelectionChanged
+        let files = step.fileCount == 1 ? "the file" : "the \(step.fileCount) files"
+        return HStack(spacing: 6) {
+            Image(systemName: changed ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+                .foregroundStyle(changed ? Island.warning : Island.success)
+            Text(changed
+                 ? (short ? "Files changed" : "The chosen files changed after the text was copied.")
+                 : (short ? "Text copied · now \(files):" : "Text copied. Paste it in the assistant, then add \(files)."))
+                .foregroundStyle(Island.primary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            if !short { Spacer(minLength: 0) }
+        }
+        .font(.system(size: 11.5))
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        if model.handoffSelectionChanged {
+            Button { Task { await model.copySelectedContext() } } label: {
+                Label(Labels.copyWithContext + " Again", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(IslandPillStyle(prominent: true))
+            .islandHelp("Copy the text again with the files chosen now")
+        } else {
+            Button { model.copyHandoffFiles() } label: {
+                Label(filesCopied ? Labels.copied : (step.fileCount == 1 ? "Copy File" : "Copy \(step.fileCount) Files"),
+                      systemImage: filesCopied ? "checkmark" : "doc.on.doc")
+            }
+            .buttonStyle(IslandPillStyle(prominent: true))
+            .islandHelp("Put the files on the clipboard, like ⌘C in Finder")
+            FileDragButton(title: step.fileCount == 1 ? "Drag" : "Drag \(step.fileCount)",
+                           help: "Drag the files into ChatGPT, Gemini or another app") { model.handoffFileURLs() }
+            IconLink(symbol: "folder", label: "Show in Finder", help: "Show the files in Finder") { model.revealHandoffFiles() }
+        }
+        Spacer(minLength: 0)
+        Button("Done") { model.endHandoff() }
+            .buttonStyle(IslandPillStyle(prominent: false))
+            .islandHelp("Close step 2; the clipboard keeps what you copied")
     }
 
     private var filesCopied: Bool { model.isCopied(AppModel.handoffToken) }

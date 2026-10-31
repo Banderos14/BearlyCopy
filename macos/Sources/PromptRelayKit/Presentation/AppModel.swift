@@ -10,7 +10,7 @@ import UniformTypeIdentifiers
 @Observable
 public final class AppModel {
     public enum CopyKind: String, Sendable {
-        case response = "Answer", context = "Copy for Review", image = "Image", responseWithImages = "Response and images"
+        case response = "Answer", context = "Copy with Context", image = "Image", responseWithImages = "Response and images"
         case files = "Files"
     }
 
@@ -663,6 +663,10 @@ public final class AppModel {
         case mockup
         /// The optional clipboard image history.
         case clipboard
+        /// The real Copy with Context text, before copying.
+        case packagePreview
+        /// One attachment (image, text document, PDF) opened from Details.
+        case attachmentPreview
         public var id: String { rawValue }
         public var title: String {
             switch self {
@@ -672,6 +676,8 @@ public final class AppModel {
             case .activity: return "Observed Work"
             case .mockup: return "Mockup States"
             case .clipboard: return "Clipboard"
+            case .packagePreview: return "Preview"
+            case .attachmentPreview: return "Attachment"
             case .copies: return "Recent Copies"
             case .history: return "History"
             case .importReport: return Labels.importSavedResult
@@ -1020,6 +1026,10 @@ public final class AppModel {
         public var filesCopied = false
     }
     public internal(set) var handoffStep: HandoffStep?
+    /// The Task card is expanded (Details); collapses for another answer.
+    public var taskExpanded = false
+    /// The attachment open in the attachment preview.
+    public internal(set) var previewAttachmentID: String?
 
     /// The hand-off of the report shown now; nil for any other report.
     public var activeHandoff: HandoffStep? {
@@ -1037,7 +1047,11 @@ public final class AppModel {
     /// Ends a hand-off that no longer belongs to the report shown.
     func dropStaleHandoff() {
         if let step = handoffStep, step.ref != currentRef { handoffStep = nil }
+        if let preview = packPreview, preview.ref != currentRef { packPreview = nil }
+        if taskExpanded, lastShownRef != currentRef { taskExpanded = false }
+        lastShownRef = currentRef
     }
+    @ObservationIgnored private var lastShownRef: ReportRef?
     /// The mockup whose states are open (route `.mockup`).
     public internal(set) var openMockupID: String?
 
@@ -1381,42 +1395,118 @@ public final class AppModel {
     /// until the user confirms (the same rule as `copy-context`).
     public func copyReviewPack(_ ref: ReportRef) async {
         copyFeedback = .working(.context)
+        switch await buildPack(ref) {
+        case .success(let pack): deliver(pack)
+        case .failure(let failure): finishCopy(.failed(failure.message))
+        }
+    }
+
+    /// Copy with Context, built once: the same text is what Preview shows and
+    /// what the copy puts on the clipboard. Git state and the export time are
+    /// read when it is built (the Core's `context`), so a copy from Preview
+    /// copies that snapshot, not a newer one.
+    public struct BuiltPack: Equatable, Sendable {
+        public let ref: ReportRef
+        public let text: String
+        public let findings: [SensitiveFinding]
+        public let builtAt: String
+        /// The attachments chosen when it was built (their names are in the text).
+        public let attachmentIDs: [String]
+    }
+
+    public struct PackFailure: Error, Equatable { public let message: String }
+
+    /// The one builder for Copy with Context: the Core's packet for a local
+    /// report (or the app's for an import) plus the chosen attachments.
+    public func buildPack(_ ref: ReportRef) async -> Result<BuiltPack, PackFailure> {
         let attached = attachments(for: ref).filter(\.isSelected)
         let selectedMaterials = materials(for: ref).filter(\.selected)
         let names = handoffNames(for: ref)
-        let text: String, findings: [SensitiveFinding]
+        let ids = handoffAttachments(for: ref).map(\.id)
+        let builtAt = ReportStore.now()
         switch ref {
         case .imported(let id):
             guard let report = imports.first(where: { $0.id == id }) else {
-                finishCopy(.failed("This report is no longer in Prompt Relay's history."))
-                return
+                return .failure(PackFailure(message: "This report is no longer in Prompt Relay's history."))
             }
-            text = ReviewPack.render(imported: report, attachments: attached, exportedAt: ReportStore.now(),
-                                     materials: selectedMaterials, names: names)
-            findings = SecretScanner.scan(report.task ?? "", section: "request") + SecretScanner.scan(report.text, section: "response")
+            let text = ReviewPack.render(imported: report, attachments: attached, exportedAt: builtAt,
+                                         materials: selectedMaterials, names: names)
+            let findings = SecretScanner.scan(report.task ?? "", section: "request") + SecretScanner.scan(report.text, section: "response")
+            return .success(BuiltPack(ref: ref, text: text, findings: findings, builtAt: builtAt, attachmentIDs: ids))
         case .local(let key, let index):
             do {
                 let result = try await core.context(sessionKey: key, turn: index)
-                text = ReviewPack.render(local: result.data.text, attachments: attached, materials: selectedMaterials, names: names)
-                findings = result.data.sensitiveFindings
+                let text = ReviewPack.render(local: result.data.text, attachments: attached, materials: selectedMaterials, names: names)
+                return .success(BuiltPack(ref: ref, text: text, findings: result.data.sensitiveFindings, builtAt: builtAt, attachmentIDs: ids))
             } catch {
-                finishCopy(.failed(Self.message(for: error)))
-                return
+                return .failure(PackFailure(message: Self.message(for: error)))
             }
         }
-        if !findings.isEmpty {
-            pendingSensitiveContext = PendingSensitiveCopy(text: text, sensitiveFindings: findings, ref: ref)
+    }
+
+    /// Puts a built package on the clipboard under the same rules for every
+    /// path: likely secrets wait for confirmation, then step 2 for the files.
+    func deliver(_ pack: BuiltPack) {
+        if !pack.findings.isEmpty {
+            pendingSensitiveContext = PendingSensitiveCopy(text: pack.text, sensitiveFindings: pack.findings, ref: pack.ref)
             copyFeedback = .idle
             return
         }
         do {
-            try clipboard.copy(text)
-            finishCopy(.copied(.context, characters: text.unicodeScalars.count), token: Self.reviewToken(ref))
-            record(.reviewPack, ref: ref, characters: text.unicodeScalars.count)
-            beginHandoff(ref: ref, characters: text.unicodeScalars.count)
+            try clipboard.copy(pack.text)
+            finishCopy(.copied(.context, characters: pack.text.unicodeScalars.count), token: Self.reviewToken(pack.ref))
+            record(.reviewPack, ref: pack.ref, characters: pack.text.unicodeScalars.count)
+            beginHandoff(ref: pack.ref, characters: pack.text.unicodeScalars.count)
         } catch {
             finishCopy(.failed(Self.message(for: error)))
         }
+    }
+
+    // MARK: Preview of Copy with Context
+
+    public enum PackPreview: Equatable {
+        case loading(ReportRef)
+        case ready(BuiltPack)
+        case failed(ReportRef, String)
+        var ref: ReportRef {
+            switch self { case .loading(let r), .failed(let r, _): return r; case .ready(let p): return p.ref }
+        }
+    }
+    /// The preview of the report shown; dropped when another report is shown.
+    public internal(set) var packPreview: PackPreview?
+
+    /// Builds the package for the report shown and opens its preview.
+    public func openPackPreview() async {
+        guard let ref = currentRef else { return }
+        packPreview = .loading(ref)
+        navigate(to: .packagePreview)
+        switch await buildPack(ref) {
+        case .success(let pack): if packPreview?.ref == ref { packPreview = .ready(pack) }
+        case .failure(let f): if packPreview?.ref == ref { packPreview = .failed(ref, f.message) }
+        }
+    }
+
+    /// The chosen files changed since the preview was built.
+    public var previewSelectionChanged: Bool {
+        guard case .ready(let pack)? = packPreview else { return false }
+        return handoffAttachments(for: pack.ref).map(\.id) != pack.attachmentIDs
+    }
+
+    /// Copies exactly the previewed text (one snapshot). If the chosen files
+    /// changed since, it is built again so the text and the files agree.
+    public func copyPreviewedPack() async {
+        guard case .ready(let pack)? = packPreview, pack.ref == currentRef else { await copySelectedContext(); return }
+        if previewSelectionChanged {
+            await copyReviewPack(pack.ref)
+            if let ref = currentRef { packPreview = nil; await reopenPreviewSilently(ref) }
+            return
+        }
+        copyFeedback = .working(.context)
+        deliver(pack)
+    }
+
+    private func reopenPreviewSilently(_ ref: ReportRef) async {
+        if case .success(let pack) = await buildPack(ref), currentRef == ref { packPreview = .ready(pack) }
     }
 
     /// The user reviewed the findings and still wants the pack copied. It is

@@ -357,7 +357,7 @@ final class IslandHost {
     let width: CGFloat
 
     init(model: AppModel, surface: NotchPresentation.Surface = .expanded, maxContentHeight: CGFloat = 568, mascot: Bool = true,
-         theme: IslandTheme = .softSpectrum) {
+         theme: IslandTheme = .warmCocoa) {
         width = surface == .peek ? NotchLayout.peekWidth : NotchLayout.expandedWidth
         presentation.notchSize = CGSize(width: 185, height: 32)
         presentation.islandWidth = width

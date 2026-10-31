@@ -194,7 +194,7 @@ final class AttachmentHandoffTests: XCTestCase {
     func testALocalPackListsImagesBeforeNotCheckedWithoutTouchingTheResponse() throws {
         // The response itself contains the anchor heading: only the Core's own counts.
         let response = "Done.\n\n## Not checked\nAll green (Claude says).\n"
-        let core = "# Copy for ChatGPT: x\n\n## Claude final response\n[Reported by Claude] x\n\n```markdown\n\(response)\n```\n\n"
+        let core = "# Copy with Context: x\n\n## Claude final response\n[Reported by Claude] x\n\n```markdown\n\(response)\n```\n\n"
             + "## Git state\n- x\n\n## Not checked\n- [Not verified] y\n\n## Request for review\nPlease review.\n"
         let a = ReportAttachment(id: "a", reportKey: "k", originalFilename: "screen.png", storedFilename: "a.png", mimeType: "image/png",
                                  byteCount: 2048, sha256: "s", addedAt: "t", provenance: "p")

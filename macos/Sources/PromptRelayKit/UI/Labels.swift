@@ -3,15 +3,15 @@ import Foundation
 /// User-facing names of the actions, in one place. The two copies are named
 /// for what they copy, not for one destination: the package is plain
 /// Markdown for any assistant (ChatGPT, Gemini, Claude…). Stored record
-/// kinds and the Core's packet are unchanged.
+/// kinds are unchanged ("reviewPack" is Copy with Context).
 enum Labels {
     static let copyAnswer = "Copy Answer"
-    static let copyForReview = "Copy for Review"
+    static let copyWithContext = "Copy with Context"
     static let copied = "Copied!"
 
     static let copyAnswerHelp = "Copy Answer: only Claude's answer, exactly as written (⇧⌘C)"
-    static let copyForReviewHelp = "Copy for Review: your request, the full answer, the commands Prompt Relay saw, "
-        + "changed files, Git status and the chosen attachments, as Markdown for another assistant to check (⌥⌘C)"
+    static let copyWithContextHelp = "Copy with Context: Claude's full answer plus your request, the commands Prompt Relay saw, "
+        + "changed files, Git status and the chosen attachments, as Markdown for another assistant (⌥⌘C)"
 
     static let importSavedResult = "Import Saved Result"
     static let importSavedResultHelp = "Paste one result saved elsewhere (for example a Claude Code cloud session), "

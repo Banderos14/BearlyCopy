@@ -3,7 +3,7 @@
 Mode A, Copy Response: ``response_text`` returns Claude's final message
 exactly as captured. Nothing is added, removed or re-encoded.
 
-Mode B, Copy for ChatGPT (formerly Review Pack): ``render_context`` builds a
+Mode B, Copy with Context (formerly Copy for ChatGPT, Review Pack): ``render_context`` builds a
 structured packet for an independent review in ChatGPT. Each fact carries a provenance label:
 
 - Confirmed locally   read by Prompt Relay on this machine (hook metadata
@@ -267,7 +267,7 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
     final = turn.final_response
     lines: List[str] = []
     add = lines.append
-    add("# Copy for ChatGPT: Claude Code result for independent review")
+    add("# Copy with Context: Claude Code result for an independent check")
     add(f"Exported by Prompt Relay at {exported_at}. No AI service was used.")
     add("")
     add("Provenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; "

@@ -15,7 +15,7 @@ import UniformTypeIdentifiers
 /// a light theme replaces the color roles here and nothing else.
 enum Island {
     /// The active theme's roles; set by `NotchSettings.theme` (main thread).
-    nonisolated(unsafe) static var palette: IslandPalette = IslandTheme.softSpectrum.palette
+    nonisolated(unsafe) static var palette: IslandPalette = IslandTheme.warmCocoa.palette
 
     // Text
     static var primary: Color { palette.primary.color }
@@ -94,6 +94,32 @@ struct HeightBudget: Layout {
         subviews.first?.place(at: bounds.origin, anchor: .topLeading,
                               proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
     }
+}
+
+/// In Details' paired rows a card fills its row (so the two cards of a row
+/// end at the same line); elsewhere it is as tall as its content.
+struct CardFillsRowKey: EnvironmentKey { static let defaultValue = false }
+
+extension EnvironmentValues {
+    var cardFillsRow: Bool {
+        get { self[CardFillsRowKey.self] }
+        set { self[CardFillsRowKey.self] = newValue }
+    }
+}
+
+/// The one card style: padding, width, row filling, surface.
+struct IslandCardModifier: ViewModifier {
+    @Environment(\.cardFillsRow) private var fills
+    func body(content: Content) -> some View {
+        content
+            .padding(Island.cardPadding)
+            .frame(maxWidth: .infinity, maxHeight: fills ? .infinity : nil, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+    }
+}
+
+extension View {
+    func islandCard() -> some View { modifier(IslandCardModifier()) }
 }
 
 struct BudgetModifier: ViewModifier {
@@ -220,6 +246,8 @@ struct IslandContent: View {
                 case .settings: IslandSettingsView(model: model, presentation: presentation, settings: settings, notifier: notifier,
                                                    actions: actions)
                 case .reader: ReaderView(model: model, presentation: presentation)
+                case .packagePreview: PackagePreviewView(model: model, presentation: presentation)
+                case .attachmentPreview: AttachmentPreviewView(model: model, presentation: presentation)
                 }
             }
             .transition(.opacity)
@@ -404,7 +432,7 @@ struct TaskCard: View {
     @Binding var expanded: Bool
     @Environment(\.islandReduceMotion) private var reduceMotion
     var lines = 2
-    static let expandedHeight: CGFloat = 132
+    static let expandedHeight: CGFloat = 168
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -446,28 +474,30 @@ struct TaskCard: View {
                 Text(why.isEmpty ? "Unavailable" : "Unavailable: \(why)").font(.system(size: 12)).foregroundStyle(Island.tertiary)
             }
         }
-        .padding(Island.cardPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+        .islandCard()
         .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder
+    /// One scroll view for both states (Phase 6 visual pass): collapsed it
+    /// shows `lines` lines, expanded the whole text scrolling inside at most
+    /// `expandedHeight`. Swapping a Text for a new scroll view made the card
+    /// snap to 0 pt first and only then animate.
     private func body(text: String) -> some View {
-        let shown = Text(text).font(.system(size: 12.5)).foregroundStyle(Island.secondary)
-        if expanded {
-            BoundedScroll(maxHeight: Self.expandedHeight, minHeight: 36) {
-                shown.frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                    .padding(.trailing, 6)
-            }
-            .islandFrame("task.scroll")
-        } else {
-            shown.lineLimit(lines).truncationMode(.tail)
+        BoundedScroll(maxHeight: expanded ? Self.expandedHeight : .infinity, minHeight: expanded ? 36 : 0) {
+            Text(text).font(.system(size: 12.5)).foregroundStyle(Island.secondary)
+                .lineLimit(expanded ? nil : lines).truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+                .padding(.trailing, expanded ? 6 : 0)
+                // A new identity for the text only: inside a scroll view a
+                // changed line limit alone was not measured again (stayed at
+                // 2 lines). The scroll view, and its animated height, stay.
+                .id(expanded)
         }
+        .scrollDisabled(!expanded)
+        .islandFrame("task.body")
     }
 
     private var canExpand: Bool {
@@ -515,7 +545,8 @@ struct ResponseCard: View {
             HStack(spacing: 6) {
                 Caption("Answer")
                 if let n = facts.characters, n > 0 {
-                    Text("\(n.formatted()) characters").font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    Text("\(n.formatted()) characters" + (facts.at.map { " · " + Wording.clock($0) } ?? ""))
+                        .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 if model.selectedImport == nil, let turn = model.selectedTurn { AnswerStepper(model: model, turn: turn) }
@@ -527,7 +558,7 @@ struct ResponseCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 let display = self.display
-                BoundedScroll(minHeight: 48, resetID: display.ref) {
+                BoundedScroll(minHeight: 32, resetID: display.ref) {
                     MarkdownBlocksView(blocks: Markdown.blocks(display.text), codeLineLimit: nil, fontSize: 13)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.trailing, 6)   // room for the scroller
@@ -554,9 +585,7 @@ struct ResponseCard: View {
                 .islandHelp("Open Full Report: the complete answer, formatted or as plain text")
             }
         }
-        .padding(Island.cardPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+        .islandCard()
         .islandFrame("card.response")
     }
 }
@@ -575,7 +604,7 @@ struct ResponsePreview: View {
     }
 }
 
-/// Copy Answer (the one white button) and Copy for Review. A copy that the
+/// Copy Answer (the one white button) and Copy with Context. A copy that the
 /// clipboard read-back confirmed shows "Copied!" with a check on its own
 /// button for 2 s, and the size of what was copied beside it when there is
 /// room (never widening the row). A failure is never shown as a success
@@ -602,13 +631,13 @@ struct CopyActions: View {
             Button {
                 Task { await model.copySelectedContext() }
             } label: {
-                Label(review ? Labels.copied : Labels.copyForReview, systemImage: review ? "checkmark" : "checklist")
+                Label(review ? Labels.copied : Labels.copyWithContext, systemImage: review ? "checkmark" : "checklist")
             }
             .buttonStyle(IslandPillStyle(prominent: false))
             .disabled(blocked)
             .keyboardShortcut("c", modifiers: [.command, .option])
-            .accessibilityLabel(Labels.copyForReview)
-            .islandHelp(Labels.copyForReviewHelp)
+            .accessibilityLabel(Labels.copyWithContext)
+            .islandHelp(Labels.copyWithContextHelp)
 
             if answer || review, case .copied(_, let n) = model.copyFeedback, n > 0 {
                 ViewThatFits(in: .horizontal) {
@@ -689,6 +718,11 @@ struct PeekContent: View {
                 Text("· " + session).font(.system(size: 12)).foregroundStyle(Island.secondary).lineLimit(1)
             }
             Spacer(minLength: 6)
+            if let turn = model.selectedTurn, model.selectedImport == nil,
+               let (position, count) = AnswerStepper.position(model, turn: turn.index), count > 1 {
+                Text("\(position)/\(count)").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Island.tertiary)
+                    .accessibilityLabel("Answer \(position) of \(count)")
+            }
             let (label, tint) = status
             if !label.isEmpty { Tag(label, tint: tint).layoutPriority(1) }
         }

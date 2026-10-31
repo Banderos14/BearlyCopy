@@ -194,13 +194,17 @@ final class Phase6Tests: XCTestCase {
         let short = try importReport(m, "Коротко: готово.", files: [])
         for maxContent: CGFloat in [448, 341, 300] {
             let island = IslandHost(model: m, maxContentHeight: maxContent)
+            // Below 330 pt Details shows one column at a time (Answer / For Review).
+            let ids = maxContent >= 330 ? ["details.header", "card.task", "card.response", "card.handoff", "card.attachments", "details.footer"]
+                                        : ["details.header", "card.task", "card.response", "details.footer"]
             for ref in [long, short, long] {
                 m.open(ref)
-                island.assertNoOverlap(["details.header", "card.task", "card.response", "card.handoff", "card.attachments", "details.footer"])
+                island.assertNoOverlap(ids)
                 XCTAssertLessThanOrEqual(island.height, 32 + maxContent)
             }
             await m.copySelectedContext()
-            island.assertNoOverlap(["details.header", "card.task", "card.response", "card.attachments", "details.footer"])
+            island.assertNoOverlap(maxContent >= 330 ? ["details.header", "card.task", "card.response", "card.attachments", "details.footer"]
+                                                     : ["details.header", "card.task", "card.response", "details.footer"])
             let handoff = try XCTUnwrap(island.presentation.layoutFrames["details.handoff"], "step 2 is the footer")
             XCTAssertEqual(handoff.minY, try XCTUnwrap(island.presentation.layoutFrames["details.footer"]).minY, accuracy: 0.5)
             m.endHandoff()
@@ -232,7 +236,7 @@ final class Phase6Tests: XCTestCase {
         let host = NSHostingView(rootView: view)
         host.frame = NSRect(x: 0, y: 0, width: 400, height: 600)
         for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
-        let scroll = try XCTUnwrap(frames["task.scroll"], "the expanded task scrolls")
+        let scroll = try XCTUnwrap(frames["task.body"], "the expanded task scrolls")
         XCTAssertLessThanOrEqual(scroll.height, TaskCard.expandedHeight + 0.5, "80 lines never grow the card past its limit")
         XCTAssertGreaterThan(scroll.height, 60)
     }

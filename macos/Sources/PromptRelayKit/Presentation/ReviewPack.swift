@@ -34,7 +34,7 @@ public enum ReviewPack {
                               materials: [ReportMaterial] = [], names: [String: String] = [:]) -> String {
         var lines: [String] = []
         func add(_ s: String = "") { lines.append(s) }
-        add("# Copy for ChatGPT: Claude Code result for independent review")
+        add("# Copy with Context: Claude Code result for an independent check")
         add("Exported by Prompt Relay at \(exportedAt). No AI service was used.")
         add()
         add("Provenance labels: [\(confirmed)] = recorded on this machine by Prompt Relay; "

@@ -44,8 +44,8 @@ public final class NotchSettings {
     public var yieldToOtherNotchApps: Bool { didSet { defaults.set(yieldToOtherNotchApps, forKey: Key.yield) } }
     /// Relay the bear beside the notch (on by default; Settings → Appearance).
     public var mascotEnabled: Bool { didSet { defaults.set(mascotEnabled, forKey: Key.mascot) } }
-    /// The island's colors (Settings → Appearance). Soft Spectrum by
-    /// default; Classic keeps Phase 6's first look.
+    /// The island's colors (Settings → Appearance). Warm Cocoa by default;
+    /// Soft Spectrum, Material Calm and Classic stay available.
     public var theme: IslandTheme {
         didSet { defaults.set(theme.rawValue, forKey: Key.theme); Island.palette = theme.palette }
     }
@@ -65,7 +65,9 @@ public final class NotchSettings {
         animation = defaults.string(forKey: Key.animation).flatMap(Animation.init(rawValue:)) ?? .system
         yieldToOtherNotchApps = defaults.object(forKey: Key.yield) as? Bool ?? true   // default: yield
         mascotEnabled = defaults.object(forKey: Key.mascot) as? Bool ?? true
-        let theme = defaults.string(forKey: Key.theme).flatMap(IslandTheme.init(rawValue:)) ?? .softSpectrum
+        // An explicit choice is kept; without one (new installs, and anyone who
+        // never picked a theme) Warm Cocoa.
+        let theme = defaults.string(forKey: Key.theme).flatMap(IslandTheme.init(rawValue:)) ?? .warmCocoa
         self.theme = theme
         if let id = defaults.object(forKey: Key.display) as? Int, id > 0 {
             display = .display(UInt32(id))

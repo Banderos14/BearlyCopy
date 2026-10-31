@@ -116,7 +116,7 @@ final class LongReportIntegrationTests: XCTestCase {
 
         await model.copySelectedContext()
         let pack = try XCTUnwrap(board.string(forType: .string))
-        XCTAssertTrue(pack.hasPrefix("# Copy for ChatGPT:"))
+        XCTAssertTrue(pack.hasPrefix("# Copy with Context:"))
         XCTAssertTrue(pack.contains("- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]"))
         let packed = try XCTUnwrap(ReviewPackReader.response(in: pack), "the pack has one response section")
         XCTAssertEqual(Data(packed.utf8), Data(report.utf8), "the response read back from the pack is the original, byte for byte")
@@ -203,7 +203,7 @@ final class ReportStoreTests: XCTestCase {
         let attachment = ReportAttachment(id: "a", reportKey: report.ref.key, originalFilename: "notch.png", storedFilename: "a.png",
                                           mimeType: "image/png", byteCount: 2048, sha256: "s", addedAt: "t", provenance: "p")
         let pack = ReviewPack.render(imported: report, attachments: [attachment], exportedAt: "2026-10-29T18:05:00.000Z")
-        XCTAssertTrue(pack.hasPrefix("# Copy for ChatGPT:"))
+        XCTAssertTrue(pack.hasPrefix("# Copy with Context:"))
         XCTAssertTrue(pack.contains("Source: Claude Code cloud session, imported manually"))
         XCTAssertTrue(pack.contains("[Unavailable] The request was not supplied"), "a missing task is labeled, never invented")
         XCTAssertEqual(pack.components(separatedBy: text).count - 1, 1, "the full report once")

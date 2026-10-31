@@ -25,7 +25,7 @@ final class Phase6PolishTests: XCTestCase {
         board.releaseGlobally()
         defaults.removePersistentDomain(forName: suite)
         try? FileManager.default.removeItem(at: root)
-        Island.palette = IslandTheme.softSpectrum.palette
+        Island.palette = IslandTheme.warmCocoa.palette
     }
 
     /// Two sessions in one project, each with answers.
@@ -89,7 +89,7 @@ final class Phase6PolishTests: XCTestCase {
         XCTAssertFalse(m.isCopied(AppModel.answerToken(ref)))
         await m.copySelectedResponse()
         XCTAssertTrue(m.isCopied(AppModel.answerToken(ref)), "Copy Answer confirms itself")
-        XCTAssertFalse(m.isCopied(AppModel.reviewToken(ref)), "and not Copy for Review")
+        XCTAssertFalse(m.isCopied(AppModel.reviewToken(ref)), "and not Copy with Context")
         if case .copied(_, let n) = m.copyFeedback {
             XCTAssertEqual(n, board.string(forType: .string)?.unicodeScalars.count, "the count is what is on the clipboard")
         } else { XCTFail("copied") }
@@ -215,7 +215,7 @@ final class Phase6PolishTests: XCTestCase {
 
     func testThemeChoicePersistsAndClassicStaysAvailable() {
         let settings = NotchSettings(defaults: defaults)
-        XCTAssertEqual(settings.theme, .softSpectrum, "the default candidate")
+        XCTAssertEqual(settings.theme, .warmCocoa, "the default for new installs")
         settings.theme = .classic
         XCTAssertEqual(Island.palette, IslandTheme.classic.palette)
         XCTAssertEqual(NotchSettings(defaults: defaults).theme, .classic, "kept across launches")

@@ -78,8 +78,9 @@ struct IslandHelp: ViewModifier {
                 .onDisappear { tips.leave(owner) }
                 .accessibilityHint(text)
         } else {
-            // Outside the island (previews, other hosts): the system tooltip.
-            content.help(text)
+            // Outside the island (previews, tests): no AppKit tooltip. Its
+            // window can reach past the island onto other apps.
+            content.accessibilityHint(text)
         }
     }
 }
@@ -94,29 +95,38 @@ extension View {
 struct IslandTooltipOverlay: View {
     let tips: IslandTooltips
     let size: CGSize
+    /// Long text wraps; the tip never grows wider than this.
+    static let maxWidth: CGFloat = 220
 
     var body: some View {
         if let tip = tips.tip {
             Text(tip.text)
-                .font(.system(size: 11))
-                .foregroundStyle(Island.primary)
+                .font(.system(size: 10.5))
+                .foregroundStyle(Island.primary.opacity(0.92))
                 .multilineTextAlignment(.leading)
-                .frame(maxWidth: 280, alignment: .leading)
+                .frame(maxWidth: Self.maxWidth, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 9).padding(.vertical, 6)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Island.cardRaised))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Island.hairline))
-                .alignmentGuide(.leading) { d in
-                    -min(max(8, tip.anchor.midX - d.width / 2), size.width - d.width - 8)
-                }
-                .alignmentGuide(.top) { d in
-                    let below = tip.anchor.maxY + 6
-                    return -(below + d.height <= size.height - 8 ? below : max(4, tip.anchor.minY - 6 - d.height))
-                }
+                .padding(.horizontal, 6).padding(.vertical, 3)
+                .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.black.opacity(0.82)))
+                .alignmentGuide(.leading) { d in -Self.x(anchor: tip.anchor, width: d.width, in: size) }
+                .alignmentGuide(.top) { d in -Self.y(anchor: tip.anchor, height: d.height, in: size) }
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
                 .transition(.opacity)
                 .id(tip.owner)
         }
+    }
+
+    /// Centred on the control, shifted left or right to stay 8 pt inside
+    /// the island's sides (which are inside the screen).
+    static func x(anchor: CGRect, width: CGFloat, in size: CGSize) -> CGFloat {
+        min(max(8, anchor.midX - width / 2), max(8, size.width - width - 8))
+    }
+
+    /// Below the control; above it when there is no room below.
+    static func y(anchor: CGRect, height: CGFloat, in size: CGSize) -> CGFloat {
+        let below = anchor.maxY + 4
+        if below + height <= size.height - 6 { return below }
+        return max(4, anchor.minY - 4 - height)
     }
 }

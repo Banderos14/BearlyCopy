@@ -303,7 +303,7 @@ class ExportTests(IsolatedTestCase):
         out = self.cli("context")
         self.assertEqual(out.returncode, 0)
         text = out.stdout.decode("utf-8")
-        self.assertTrue(text.startswith("# Copy for ChatGPT:"))
+        self.assertTrue(text.startswith("# Copy with Context:"))
         self.assertIn("- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]", text)
         self.assertEqual(text.count(report), 1, "the full report, unmodified, once")
         fence = export.fence(report)

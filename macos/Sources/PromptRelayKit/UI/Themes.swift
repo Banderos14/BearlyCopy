@@ -4,6 +4,9 @@ import SwiftUI
 /// the roles in `Island` (never a hex value). The camera band and the
 /// resting island stay black in every theme.
 public enum IslandTheme: String, CaseIterable, Identifiable, Sendable {
+    /// Built around Relay: warm graphite cards, caramel accent and main
+    /// button, sand for materials. The default for new installs.
+    case warmCocoa
     /// Phase 6: graphite with one teal accent (kept to compare and to go back to).
     case classic
     /// Lavender interactive accent, mint for success, amber, coral and lilac
@@ -16,6 +19,7 @@ public enum IslandTheme: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     public var title: String {
         switch self {
+        case .warmCocoa: return "Warm Cocoa"
         case .classic: return "Classic"
         case .softSpectrum: return "Soft Spectrum"
         case .materialCalm: return "Material Calm"
@@ -24,6 +28,7 @@ public enum IslandTheme: String, CaseIterable, Identifiable, Sendable {
 
     public var palette: IslandPalette {
         switch self {
+        case .warmCocoa: return .warmCocoa
         case .classic: return .classic
         case .softSpectrum: return .softSpectrum
         case .materialCalm: return .materialCalm
@@ -71,6 +76,12 @@ public struct IslandPalette: Equatable, Sendable {
     let prominent: RGB, onProminent: RGB
     /// Card captions take their role's color (Review: accent, Attachments: review).
     var tintedCaptions = false
+
+    static let warmCocoa = IslandPalette(
+        primary: RGB(0xF4EEE5), secondary: RGB(0xC9BEB0), tertiary: RGB(0xA59A8C),
+        card: RGB(0x292725), cardRaised: RGB(0x34312D), code: RGB(0x1D1B19), control: RGB(0x3B3733),
+        accent: RGB(0xC59468), success: RGB(0x93C79F), warning: RGB(0xE8C077), error: RGB(0xEC968E), review: RGB(0xE9D7BC),
+        prominent: RGB(0xC59468), onProminent: RGB(0x1E140B), tintedCaptions: true)
 
     static let classic = IslandPalette(
         primary: RGB(0xF2F4F7), secondary: RGB(0xB5BAC4), tertiary: RGB(0x8D95A0),

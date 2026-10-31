@@ -45,7 +45,7 @@ struct ClipboardTextList: View {
     var body: some View {
         if model.copyHistory.isEmpty {
             MessageCard(title: "Nothing copied yet",
-                        detail: "Copy Answer and Copy for Review appear here, so you can copy them again.",
+                        detail: "Copy Answer and Copy with Context appear here, so you can copy them again.",
                         symbol: "doc.on.clipboard", tint: Island.secondary, action: nil)
         } else {
             BoundedScroll(minHeight: 60) {
