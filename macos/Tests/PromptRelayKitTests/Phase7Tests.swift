@@ -261,3 +261,105 @@ final class FullTaskTests: XCTestCase {
         XCTAssertEqual(AppModel.IslandRoute.taskReader.title, "Full Task")
     }
 }
+
+// MARK: - Standard / Full context
+
+@MainActor
+final class SmartContextTests: XCTestCase {
+    var board: NSPasteboard!
+    var defaults: UserDefaults!
+    var suite: String!
+
+    override func setUp() async throws {
+        board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7s-\(UUID().uuidString)"))
+        suite = "PromptRelayTests.p7s.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suite)
+    }
+
+    override func tearDown() async throws {
+        board.releaseGlobally()
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    static let packText = """
+    # Copy with Context: Claude Code result for an independent check
+    ## Session
+    - Turn: 1 of 1
+    ## Original user request
+    ```text
+    ## not a heading inside a fence
+    ```
+    ## Claude final response
+    ````markdown
+    ```swift
+    ## also not a heading
+    ```
+    ````
+    ## Observed during this turn [Confirmed locally]
+    ## Not checked
+    """
+
+    func core() throws -> FakeCore {
+        let core = FakeCore(projects: [project("/p", sessions: 1, last: "2026-10-31T00:00:00.000000Z")])
+        core.sessionsByProject["/p"] = [sessionSummary("s", project: "/p", last: "2026-10-31T00:00:00.000000Z")]
+        core.turnsBySession["s"] = [turn(1, request: "Do it")]
+        core.showResult = { key, i in .success(CoreResult(data: ShowData(session: try! core.session(key), turn: turn(i, text: "answer")), warnings: [])) }
+        let json = try JSONEncoder().encode(Self.packText)
+        let context = try JSONDecoder().decode(ContextData.self, from: Data("""
+        {"session":\(String(data: try JSONEncoder.sessionJSON("s"), encoding: .utf8)!),
+         "turn":{"index":1,"status":"stop_received","link":"prompt_id","request":null,"final_response":null,"response_event_count":1,"background_tasks":null,"error":null,"candidate_request_turns":[]},
+         "exported_at":"2026-10-31T00:00:00.000000Z","text":\(String(data: json, encoding: .utf8)!),
+         "sensitive_findings":[],
+         "git":{"available":false,"reason":"not a git repository","branch":null,"head":null,"changed_file_count":0,"changed_files_truncated":false}}
+        """.utf8))
+        core.contextResult = .success(CoreResult(data: context, warnings: []))
+        return core
+    }
+
+    func testStandardIsTheDefaultAndTheChoiceIsRemembered() async throws {
+        let core = try core()
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        await m.refreshNow()
+        XCTAssertEqual(m.contextDetail, .standard)
+        await m.copySelectedContext()
+        XCTAssertEqual(core.contextDetails.last, .standard, "Copy asks the Core for the chosen level")
+        m.contextDetail = .full
+        let again = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        XCTAssertEqual(again.contextDetail, .full)
+    }
+
+    /// Preview shows the chosen level; Copy copies that very snapshot; a
+    /// level changed after building is built again, never copied stale.
+    func testPreviewAndCopyUseOneSnapshotOfTheChosenLevel() async throws {
+        let core = try core()
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        await m.refreshNow()
+        await m.openPackPreview()
+        guard case .ready(let pack)? = m.packPreview else { return XCTFail("preview built") }
+        XCTAssertEqual(pack.detail, .standard)
+        await m.copyPreviewedPack()
+        XCTAssertEqual(board.string(forType: .string), pack.text, "exactly the previewed text")
+        let calls = core.contextDetails.count
+        m.contextDetail = .full
+        try await waitUntil { if case .ready(let p)? = m.packPreview { return p.detail == .full } else { return false } }
+        XCTAssertEqual(core.contextDetails.count, calls + 1, "the open preview was built again at Full")
+        XCTAssertEqual(core.contextDetails.last, .full)
+    }
+
+    private func waitUntil(_ condition: @MainActor () -> Bool, timeout: TimeInterval = 2) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition() {
+            if Date() > deadline { return XCTFail("condition not met in time") }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+
+    func testSectionsComeFromTheTextAndSkipFencedLines() {
+        let sections = PackSection.sections(in: Self.packText)
+        XCTAssertEqual(sections.map(\.title), ["Session", "Original user request", "Claude final response",
+                                               "Observed during this turn [Confirmed locally]", "Not checked"])
+        XCTAssertEqual(sections.map(\.short), ["Session", "Request", "Answer", "Evidence & commands", "Limitations"])
+        let ns = Self.packText as NSString
+        for s in sections { XCTAssertEqual(ns.substring(with: NSRange(location: s.offset, length: 3)), "## ") }
+    }
+}

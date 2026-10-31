@@ -376,6 +376,7 @@ struct HandoffContentsCard: View {
             HStack(spacing: 6) {
                 Caption(Labels.copyWithContext, role: Island.accent)
                 Spacer(minLength: 0)
+                ContextDetailPicker(model: model)
                 Button { Task { await model.openPackPreview() } } label: {
                     HStack(spacing: 3) {
                         Image(systemName: "eye").font(.system(size: 9.5, weight: .semibold))

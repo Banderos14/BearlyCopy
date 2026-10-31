@@ -11,13 +11,15 @@ import SwiftUI
 struct PackagePreviewView: View {
     let model: AppModel
     let presentation: NotchPresentation
+    /// The section to scroll to (Preview navigation); the token repeats a jump.
+    @State private var jump: (offset: Int, token: Int)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             switch model.packPreview {
             case .ready(let pack)?:
                 header(pack)
-                VerbatimTextView(pack.text, textColor: NSColor(Island.primary), fontSize: 12)
+                VerbatimTextView(pack.text, textColor: NSColor(Island.primary), fontSize: 12, jump: jump)
                     .padding(6)
                     .frame(maxWidth: .infinity, minHeight: 120, maxHeight: .infinity)
                     .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
@@ -40,8 +42,10 @@ struct PackagePreviewView: View {
             HStack(spacing: 6) {
                 Caption(Labels.copyWithContext, role: Island.accent)
                 Text("\(pack.text.unicodeScalars.count.formatted()) characters · built \(Wording.clock(pack.builtAt))")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
                 Spacer(minLength: 0)
+                sectionMenu(pack)
+                ContextDetailPicker(model: model)
             }
             Text("Exactly this text is copied. Git status and the time were read when it was built; Copy uses this snapshot.")
                 .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
@@ -54,6 +58,27 @@ struct PackagePreviewView: View {
                     .font(.system(size: 11)).foregroundStyle(Island.warning)
             }
         }
+    }
+
+    /// Jumps inside the built text to one of its own `## ` sections; nothing
+    /// is shown twice and nothing is rebuilt.
+    private func sectionMenu(_ pack: AppModel.BuiltPack) -> some View {
+        let sections = PackSection.sections(in: pack.text)
+        return Menu {
+            ForEach(sections) { section in
+                Button("\(section.short) — \(section.title)") { jump = (section.offset, (jump?.token ?? 0) + 1) }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "list.bullet").font(.system(size: 9.5, weight: .semibold))
+                Text("Sections").font(.system(size: 10.5, weight: .medium))
+            }
+            .foregroundStyle(Island.secondary)
+        }
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+        .disabled(sections.isEmpty)
+        .accessibilityLabel("Go to a section")
+        .islandHelp("Go to a section of this text: request, answer, evidence, files, Git, attachments, limitations")
     }
 
     private func footer(_ pack: AppModel.BuiltPack) -> some View {
@@ -71,6 +96,25 @@ struct PackagePreviewView: View {
         }
         .islandFrame("preview.actions")
         .animation(.easeOut(duration: 0.15), value: model.copiedToken)
+    }
+}
+
+/// Standard / Full for Copy with Context; the same choice in the card and
+/// in Preview, remembered.
+struct ContextDetailPicker: View {
+    let model: AppModel
+
+    var body: some View {
+        Picker("Detail", selection: Binding(get: { model.contextDetail }, set: { model.contextDetail = $0 })) {
+            ForEach(ContextDetail.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .controlSize(.mini)
+        .fixedSize()
+        .disabled(model.selectedImport != nil)
+        .islandHelp(model.selectedImport != nil ? "An imported result has no commands or Git state: Standard and Full are the same"
+                                                : model.contextDetail.help)
     }
 }
 

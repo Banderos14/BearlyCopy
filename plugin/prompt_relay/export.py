@@ -161,7 +161,16 @@ def _result_cell(cmd: dict) -> str:
     return text
 
 
-def _observed_section(add, session: Session, turn: c.Turn) -> None:
+# Detail levels of Copy with Context (Phase 7). FULL is the package as it
+# was before; STANDARD keeps the request and the response whole and leaves
+# out output tails, routine commands and the full `git status` list, saying
+# so in the package. One renderer for both, so the parts never diverge.
+FULL = "full"
+STANDARD = "standard"
+DETAILS = (STANDARD, FULL)
+
+
+def _observed_section(add, session: Session, turn: c.Turn, level: str = FULL) -> None:
     detail = tools.observed_detail(turn)
     commands = detail["commands"]
     add(f"## Observed during this turn [{CONFIRMED}]")
@@ -174,6 +183,8 @@ def _observed_section(add, session: Session, turn: c.Turn) -> None:
     main = [x for x in commands if not x["agent_type"]]
     sub = [x for x in commands if x["agent_type"]]
     important = [x for x in main if x["kind"] in ("test", "build", "git") or x["outcome"] != "ok" or x["background"]]
+    if level == STANDARD:
+        important = [x for x in important if x["kind"] in ("test", "build") or x["outcome"] != "ok" or x["background"]]
     others = len(main) - len(important)
     if important:
         add("")
@@ -184,7 +195,8 @@ def _observed_section(add, session: Session, turn: c.Turn) -> None:
             mark = " (after Stop)" if x["after_stop"] else ""
             add(f"| {when}{mark} | `{_command_cell(x)}` | {_result_cell(x)} | {_duration(x['duration_ms'])} |")
     add("")
-    add(f"- Commands: {len(main)} observed; {len(important)} listed (tests, builds, git, failures, background); "
+    listed = "tests, builds, failures, background" if level == STANDARD else "tests, builds, git, failures, background"
+    add(f"- Commands: {len(main)} observed; {len(important)} listed ({listed}); "
         f"{others} other commands counted, not listed.")
     if sub:
         failed_sub = sum(1 for x in sub if x["outcome"] != "ok")
@@ -192,7 +204,10 @@ def _observed_section(add, session: Session, turn: c.Turn) -> None:
         add(f"- Subagents ({', '.join(kinds)}): {len(sub)} commands, {failed_sub} not successful; not in the counts above.")
     if any(x["compound"] for x in important):
         add("- ¹ The command has a pipe, `||`, `;` or `&`: the exit code is the last process's and may hide a failure.")
-    for x in important:
+    tails = [x for x in important if x.get("output_tail") or x.get("tail_withheld")]
+    if level == STANDARD and tails:
+        add(f"- Output of {len(tails)} listed command(s): left out in Standard; Copy with Context → Full includes it.")
+    for x in important if level == FULL else []:
         if x.get("output_tail"):
             add(f"- Last lines of `{_command_cell(x)}` ({_result_cell(x)}), secret-scanned:")
             add(_block(x["output_tail"]))
@@ -263,12 +278,17 @@ def _request_section(add, session: Session, turn: c.Turn) -> None:
     add("")
 
 
-def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: str) -> str:
+def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: str, detail: str = FULL) -> str:
+    if detail not in DETAILS:
+        raise ValueError(f"unknown detail level {detail!r}")
     final = turn.final_response
     lines: List[str] = []
     add = lines.append
     add("# Copy with Context: Claude Code result for an independent check")
     add(f"Exported by Prompt Relay at {exported_at}. No AI service was used.")
+    if detail == STANDARD:
+        add("Detail: Standard. The request and the response are complete. Left out: command output, routine and "
+            "git commands (counted below) and the list of uncommitted files; Full Context has them.")
     add("")
     add("Provenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; "
         "[Reported by Claude] = Claude's own words, not checked; "
@@ -307,13 +327,16 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
             add(f"- API error type: {err.error or UNAVAILABLE} [{CONFIRMED}]")
     add("")
 
-    _observed_section(add, session, turn)
+    _observed_section(add, session, turn, detail)
 
     add(f"## Git state (read-only, collected at export time {exported_at})")
     if git.available:
         add(f"- Branch: {git.branch or UNAVAILABLE} [{CONFIRMED if git.branch else UNAVAILABLE}]")
         add(f"- HEAD commit: {git.head or UNAVAILABLE + ' (no commits yet)'} [{CONFIRMED if git.head else UNAVAILABLE}]")
-        if git.changed_files:
+        if git.changed_files and detail == STANDARD:
+            add(f"- Uncommitted changes: {len(git.changed_files)}{'+' if git.changed_files_truncated else ''} entries "
+                f"(`git status --porcelain`; the list is in Full Context) [{CONFIRMED}]")
+        elif git.changed_files:
             add(f"- Uncommitted changes ({len(git.changed_files)}{'+' if git.changed_files_truncated else ''} entries, `git status --porcelain`) [{CONFIRMED}]:")
             add(_block("\n".join(git.changed_files)))
         else:

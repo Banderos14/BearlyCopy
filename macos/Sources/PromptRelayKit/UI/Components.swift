@@ -41,12 +41,19 @@ public struct VerbatimTextView: NSViewRepresentable {
     let text: String
     let textColor: NSColor
     let fontSize: CGFloat
+    /// Scrolls so this UTF-16 offset is at the top; a new `token` repeats the jump.
+    var jump: (offset: Int, token: Int)?
 
-    public init(_ text: String, textColor: NSColor = .labelColor, fontSize: CGFloat = NSFont.systemFontSize) {
+    public init(_ text: String, textColor: NSColor = .labelColor, fontSize: CGFloat = NSFont.systemFontSize,
+                jump: (offset: Int, token: Int)? = nil) {
         self.text = text
         self.textColor = textColor
         self.fontSize = fontSize
+        self.jump = jump
     }
+
+    public final class Coordinator { var token: Int? }
+    public func makeCoordinator() -> Coordinator { Coordinator() }
 
     public func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSTextView.scrollableTextView()
@@ -71,9 +78,21 @@ public struct VerbatimTextView: NSViewRepresentable {
     }
 
     public func updateNSView(_ scroll: NSScrollView, context: Context) {
-        guard let view = scroll.documentView as? NSTextView, view.string != text else { return }
-        view.string = text
-        view.scrollToBeginningOfDocument(nil)
+        guard let view = scroll.documentView as? NSTextView else { return }
+        if view.string != text {
+            view.string = text
+            view.scrollToBeginningOfDocument(nil)
+        }
+        guard let jump, jump.token != context.coordinator.token,
+              let layout = view.layoutManager, let container = view.textContainer else { return }
+        context.coordinator.token = jump.token
+        let offset = min(max(0, jump.offset), (view.string as NSString).length)
+        layout.ensureLayout(for: container)
+        let glyph = layout.glyphIndexForCharacter(at: offset)
+        let rect = layout.lineFragmentRect(forGlyphAt: min(glyph, max(0, layout.numberOfGlyphs - 1)), effectiveRange: nil)
+        let y = max(0, min(rect.minY, view.frame.height - scroll.contentView.bounds.height))
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: y))
+        scroll.reflectScrolledClipView(scroll.contentView)
     }
 }
 

@@ -90,6 +90,11 @@ def _add_json(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true", help="machine-readable output (docs/JSON_API.md)")
 
 
+def _add_detail(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--detail", choices=export.DETAILS, default=export.FULL,
+                   help="Copy with Context detail: standard (no command output, short Git) or full (default)")
+
+
 def _write_stdout(text: str) -> None:
     sys.stdout.buffer.write(text.encode("utf-8", "surrogatepass"))
     sys.stdout.flush()
@@ -301,7 +306,8 @@ def _context(args: argparse.Namespace):
     sess, turn, warnings = _select(args)
     git = gitinfo.collect(sess.project_dir)
     exported_at = _now()
-    return sess, turn, warnings, git, exported_at, export.render_context(sess, turn, git, exported_at)
+    detail = getattr(args, "detail", None) or export.FULL
+    return sess, turn, warnings, git, exported_at, export.render_context(sess, turn, git, exported_at, detail)
 
 
 def cmd_context(args: argparse.Namespace) -> int:
@@ -646,10 +652,12 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--verify", action="store_true", help="read the clipboard back and compare bytes")
         if name == "copy-context":
             p.add_argument("--allow-sensitive", action="store_true", help="copy even if secrets are suspected")
+            _add_detail(p)
         p.set_defaults(func=func)
 
     p = sub.add_parser("context", help="preview the Copy Context text without copying")
     _add_selectors(p)
+    _add_detail(p)
     _add_json(p)
     p.set_defaults(func=cmd_context)
 

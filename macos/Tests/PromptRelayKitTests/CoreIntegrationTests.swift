@@ -78,6 +78,12 @@ final class CoreIntegrationTests: XCTestCase {
         XCTAssertEqual(show.data.turn.finalResponse?.text.map { Array($0.unicodeScalars) }, Array(answer.unicodeScalars))
         let context = try await core.context(sessionKey: "s-1", turn: 1)
         XCTAssertTrue(context.data.text.contains("print(1)"))
+        // Phase 7: both detail levels from the real Core; the answer is whole in each.
+        let standard = try await core.context(sessionKey: "s-1", turn: 1, detail: .standard)
+        let full = try await core.context(sessionKey: "s-1", turn: 1, detail: .full)
+        XCTAssertTrue(standard.data.text.contains("Detail: Standard"))
+        XCTAssertFalse(full.data.text.contains("Detail: Standard"))
+        for text in [standard.data.text, full.data.text] { XCTAssertTrue(text.contains("print(1)")) }
         let doctor = try await core.doctor()
         XCTAssertEqual(doctor.data.storage.dataDir, home.path)
         XCTAssertEqual(doctor.data.capture.enabledProjects.count, 1)

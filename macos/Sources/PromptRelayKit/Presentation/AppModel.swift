@@ -132,6 +132,7 @@ public final class AppModel {
         self.stateDefaults = stateDefaults
         self.reportStore = reportStore
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
+        contextDetail = stateDefaults?.string(forKey: Self.contextDetailKey).flatMap(ContextDetail.init(rawValue:)) ?? .standard
         imports = reportStore?.imports() ?? []
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
         pinned = Self.decode([ReportRef].self, stateDefaults?.data(forKey: Self.pinsKey)) ?? []
@@ -1415,6 +1416,8 @@ public final class AppModel {
         public let builtAt: String
         /// The attachments chosen when it was built (their names are in the text).
         public let attachmentIDs: [String]
+        /// The detail level it was built at.
+        public var detail: ContextDetail = .full
     }
 
     public struct PackFailure: Error, Equatable { public let message: String }
@@ -1422,6 +1425,10 @@ public final class AppModel {
     /// The one builder for Copy with Context: the Core's packet for a local
     /// report (or the app's for an import) plus the chosen attachments.
     public func buildPack(_ ref: ReportRef) async -> Result<BuiltPack, PackFailure> {
+        await buildPack(ref, detail: contextDetail)
+    }
+
+    public func buildPack(_ ref: ReportRef, detail: ContextDetail) async -> Result<BuiltPack, PackFailure> {
         let attached = attachments(for: ref).filter(\.isSelected)
         let selectedMaterials = materials(for: ref).filter(\.selected)
         let names = handoffNames(for: ref)
@@ -1435,12 +1442,14 @@ public final class AppModel {
             let text = ReviewPack.render(imported: report, attachments: attached, exportedAt: builtAt,
                                          materials: selectedMaterials, names: names)
             let findings = SecretScanner.scan(report.task ?? "", section: "request") + SecretScanner.scan(report.text, section: "response")
-            return .success(BuiltPack(ref: ref, text: text, findings: findings, builtAt: builtAt, attachmentIDs: ids))
+            // An import has no commands or Git state: both levels are the same text.
+            return .success(BuiltPack(ref: ref, text: text, findings: findings, builtAt: builtAt, attachmentIDs: ids, detail: detail))
         case .local(let key, let index):
             do {
-                let result = try await core.context(sessionKey: key, turn: index)
+                let result = try await core.context(sessionKey: key, turn: index, detail: detail)
                 let text = ReviewPack.render(local: result.data.text, attachments: attached, materials: selectedMaterials, names: names)
-                return .success(BuiltPack(ref: ref, text: text, findings: result.data.sensitiveFindings, builtAt: builtAt, attachmentIDs: ids))
+                return .success(BuiltPack(ref: ref, text: text, findings: result.data.sensitiveFindings, builtAt: builtAt,
+                                          attachmentIDs: ids, detail: detail))
             } catch {
                 return .failure(PackFailure(message: Self.message(for: error)))
             }
@@ -1478,6 +1487,27 @@ public final class AppModel {
     /// The preview of the report shown; dropped when another report is shown.
     public internal(set) var packPreview: PackPreview?
 
+    static let contextDetailKey = "contextDetail.v1"
+    /// Standard (the default) or Full; remembered, used by Copy and Preview alike.
+    public var contextDetail: ContextDetail = .standard {
+        didSet {
+            guard oldValue != contextDetail else { return }
+            stateDefaults?.set(contextDetail.rawValue, forKey: Self.contextDetailKey)
+            // An open preview shows the chosen level: built again, never a stale text.
+            if packPreview != nil, route == .packagePreview, let ref = currentRef {
+                Task { await self.rebuildPreview(ref) }
+            }
+        }
+    }
+
+    private func rebuildPreview(_ ref: ReportRef) async {
+        packPreview = .loading(ref)
+        switch await buildPack(ref) {
+        case .success(let pack): if packPreview?.ref == ref { packPreview = .ready(pack) }
+        case .failure(let f): if packPreview?.ref == ref { packPreview = .failed(ref, f.message) }
+        }
+    }
+
     /// Builds the package for the report shown and opens its preview.
     public func openPackPreview() async {
         guard let ref = currentRef else { return }
@@ -1499,7 +1529,7 @@ public final class AppModel {
     /// changed since, it is built again so the text and the files agree.
     public func copyPreviewedPack() async {
         guard case .ready(let pack)? = packPreview, pack.ref == currentRef else { await copySelectedContext(); return }
-        if previewSelectionChanged {
+        if previewSelectionChanged || pack.detail != contextDetail {
             await copyReviewPack(pack.ref)
             if let ref = currentRef { packPreview = nil; await reopenPreviewSilently(ref) }
             return

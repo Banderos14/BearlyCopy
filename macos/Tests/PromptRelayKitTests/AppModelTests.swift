@@ -35,6 +35,11 @@ final class FakeCore: CoreProviding, @unchecked Sendable {
         return try showResult(sessionKey, turn).get()
     }
     func context(sessionKey: String, turn: Int) async throws -> CoreResult<ContextData> { try contextResult.get() }
+    private(set) var contextDetails: [ContextDetail] = []
+    func context(sessionKey: String, turn: Int, detail: ContextDetail) async throws -> CoreResult<ContextData> {
+        contextDetails.append(detail)
+        return try contextResult.get()
+    }
     var doctorResult: Result<CoreResult<DoctorData>, CoreError> = .failure(.api(code: "internal_error", message: "n/a"))
     func doctor() async throws -> CoreResult<DoctorData> { try doctorResult.get() }
 

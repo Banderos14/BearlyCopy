@@ -180,3 +180,52 @@ class SessionTitleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ContextDetailTests(IsolatedTestCase):
+    """Phase 7: Copy with Context in two detail levels from one renderer.
+    Standard keeps the request and the response whole and says what it
+    leaves out; Full is the package as it was (golden files unchanged)."""
+
+    def setUp(self):
+        super().setUp()
+        for payload in real_turn():
+            self.assertHookOk(self.hook(dict(payload, cwd=self.project, session_id="tool-turn")))
+
+    def context(self, *extra):
+        proc = self.cli("context", "--session", "tool-turn", *extra)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return proc.stdout.decode("utf-8")
+
+    def test_full_is_the_default_and_standard_is_shorter(self):
+        full, explicit, standard = self.context(), self.context("--detail", "full"), self.context("--detail", "standard")
+        strip = lambda t: "\n".join(l for l in t.splitlines() if not l.startswith(("Exported by", "## Git state")))
+        self.assertEqual(strip(full), strip(explicit), "full is the default")
+        self.assertNotIn("Detail: Standard", full)
+        self.assertIn("Detail: Standard", standard)
+        note = next(l for l in standard.splitlines() if l.startswith("Detail: Standard")) + "\n"
+        self.assertLessEqual(len(standard) - len(note), len(full), "never longer than Full apart from its note")
+
+    def test_standard_keeps_request_and_response_verbatim(self):
+        show = json.loads(self.cli("show", "--json", "--session", "tool-turn").stdout)["data"]["turn"]
+        standard = self.context("--detail", "standard")
+        self.assertIn(show["final_response"]["text"], standard, "the response is never shortened")
+        if show["request"] and show["request"].get("text"):
+            self.assertIn(show["request"]["text"], standard)
+        for section in ("## Session", "## Claude final response", "## Observed during this turn", "## Files Claude changed",
+                        "## Git state", "## Not checked", "## Request for review"):
+            self.assertIn(section, standard)
+
+    def test_standard_says_what_it_left_out_and_keeps_failures(self):
+        full, standard = self.context(), self.context("--detail", "standard")
+        self.assertIn("exit 3", full)
+        self.assertIn("exit 3", standard, "a failed command is always listed")
+        observed = lambda t: t.split("## Observed during this turn", 1)[1].split("## Files", 1)[0]
+        self.assertIn("observed;", observed(standard))
+        if "Last lines of" in observed(full):
+            self.assertNotIn("Last lines of", observed(standard))
+            self.assertIn("left out in Standard", observed(standard))
+
+    def test_unknown_detail_is_a_usage_error(self):
+        proc = self.cli("context", "--session", "tool-turn", "--detail", "tiny")
+        self.assertEqual(proc.returncode, 2)

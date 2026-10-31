@@ -73,10 +73,19 @@ public protocol CoreProviding: Sendable {
     func turns(sessionKey: String) async throws -> CoreResult<TurnsData>
     func show(sessionKey: String, turn: Int) async throws -> CoreResult<ShowData>
     func context(sessionKey: String, turn: Int) async throws -> CoreResult<ContextData>
+    /// Copy with Context at a detail level (Phase 7); Full is `context` as before.
+    func context(sessionKey: String, turn: Int, detail: ContextDetail) async throws -> CoreResult<ContextData>
     func doctor() async throws -> CoreResult<DoctorData>
     /// `prompt-relay enable|disable <dir>` (text commands): returns the Core's
     /// one-line confirmation. The folder's contents are never read.
     func setCapture(_ enabled: Bool, path: String) async throws -> String
+}
+
+extension CoreProviding {
+    /// Doubles without detail levels build the Full package.
+    public func context(sessionKey: String, turn: Int, detail: ContextDetail) async throws -> CoreResult<ContextData> {
+        try await context(sessionKey: sessionKey, turn: turn)
+    }
 }
 
 /// Adapter over the CLI JSON API v1. It never reads the JSONL store and never
@@ -117,6 +126,10 @@ public struct CoreClient: CoreProviding {
 
     public func context(sessionKey: String, turn: Int) async throws -> CoreResult<ContextData> {
         try await call(["context", "--session", sessionKey, "--turn", String(turn)])
+    }
+
+    public func context(sessionKey: String, turn: Int, detail: ContextDetail) async throws -> CoreResult<ContextData> {
+        try await call(["context", "--session", sessionKey, "--turn", String(turn), "--detail", detail.rawValue])
     }
 
     public func doctor() async throws -> CoreResult<DoctorData> {
