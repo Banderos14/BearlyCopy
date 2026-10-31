@@ -125,3 +125,30 @@ with its documented events only, labelled as such in every package
   Core's `context` output and the attachment store.
 - Other notch apps (Vibe Notch, Agent Island, boring.notch): coexistence
   still to be tested on a real Mac.
+
+## Phase 8 analysis (2026-10-31): what to build next
+
+Neighbours read from their public READMEs (2026-10-31): **Agent Notch** (MIT,
+Swift; reads `~/.claude` / `~/.codex` logs; per-agent status marks, sounds,
+allow/deny from the notch via optional hooks, usage and cost, saved prompts),
+**ClaudeNotch** (PolyForm Noncommercial; hooks POST to a localhost server;
+blocking approvals with diff preview, Touch ID for risky commands, cost caps,
+composer), **Coucou** (MIT code, assets not; mascot and frame pacing, studied
+in 7.2). All three are *control and monitoring* surfaces for running agents.
+None found exports a verifiable, provenance-labelled hand-off. Prompt Relay's
+lane stays: local, verbatim, checkable context transfer. Approvals, cost
+meters and sounds are not copied (they need blocking hooks or log scraping,
+which conflict with invariants 1 and 9).
+
+| Idea | Developer problem | Reuses | Difference from neighbours | Security risk | Size | Priority |
+|---|---|---|---|---|---|---|
+| D. Verification Timeline | "It failed, then what?" in one view: failure → edits → re-run → answer | Failure Inspector (Phase 8), `ObservedCommand` order, files changed, Stop time | none show a failure's follow-up with honest limits | low (stored facts only) | S–M | **1** |
+| C. Multi-turn Export | hand over a whole session, not one answer | Core `context` per turn, Preview, one snapshot | none export | medium (more text → more secrets; scan per turn) | M | **2** |
+| B. Target Profiles | ChatGPT / Gemini / Claude / Codex want different framing | the pack text is one immutable snapshot; a profile is a pure transform over it (Preview shows the result) | none | low if transforms never drop content silently | S–M | 3 |
+| E. Developer Checkpoint | a local "state at this answer": answer + git + attachments in one folder | Export Bundle (Phase 7) + Git summary | none | medium (writes files; path safety exists) | S | 4 |
+| A. Source Adapters (Codex, Gemini CLI, OpenCode) | the same hand-off from other agents | Core store and JSON API v1; needs ADR-012 and per-source hooks/log readers | Agent Notch/ClaudeNotch read Codex status, not answers | high (new capture paths; log reading conflicts with invariant 1 for the hook) | L | 5 (ADR first) |
+
+Format check (B): Copy with Context is built once per snapshot (`BuiltPack`),
+and Preview's Formatted / Source views already read that one text, so a
+target profile can be added later as a view over the snapshot without
+changing capture or the stored data.

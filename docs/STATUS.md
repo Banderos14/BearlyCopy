@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-31, local Mac session (Phase 7.2 committed on the branch, owner validation pending),
+Last updated: 2026-10-31, local Mac session (Phase 8 committed on the branch, owner validation pending),
 branch `claude/loving-mccarthy-ossw3q`.
 
 ## Completed
@@ -686,8 +686,16 @@ Coucou studied (MIT techniques, no artwork). Copy with Context always Full,
 header fixed, audit fixes, display choice and Reduce Motion observer.
 Details and measurements: `docs/PHASE7.md` § Phase 7.2.
 
+## Phase 8 (2026-10-31; committed on the branch, not pushed)
+Audit, tooltip/Answer/footer layout fixes, the black box in Observed Work
+(a blank tooltip), Living Relay 2.0 (vertical tracking), Failure Inspector,
+Report Ready indicator (working / unseen / automated / count), Preview
+Formatted + Markdown Source, structured ⓘ explanations, product analysis in
+`PRODUCT_ROADMAP.md`. Details, measurements and owner checks:
+`docs/PHASE8.md`. Core unchanged (Python 172 OK ×2). Backup ref
+`refs/backup/phase8-start`.
+
 ## Next agreed stage
-Phase 7, 7.1 and 7.2 are committed locally; the owner checks `docs/PHASE7.md` § Owner
-checks and § Phase 7.1 → Owner checks (first: quit old copies).
-Push only when the owner asks. Stage 5.10, ADR-012, source adapters and
-Phase 8 wait for approval.
+Phases 7–8 are committed locally; the owner checks `docs/PHASE8.md` § 8 (first:
+quit old copies). Push only when the owner asks. Verification Timeline,
+multi-turn export, Target Profiles, ADR-012 and source adapters wait for approval.
