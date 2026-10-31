@@ -6,6 +6,7 @@ import XCTest
 @MainActor
 final class FakeNeighbors: NotchNeighbors {
     var running: [String] = []
+    var promptRelayCopies: [String] = []
 }
 
 @MainActor
@@ -470,6 +471,7 @@ final class NotchControllerTests: XCTestCase {
     func testInvisibleGazeChangesDoNotRedrawRelay() async throws {
         settings.mascotEnabled = true
         settings.animation = .full
+        settings.relayMotion = .expressive   // the head follows the whole target (Subtle: 65 %)
         let controller = makeController()
         controller.start()
         await model.refreshNow()
@@ -827,5 +829,58 @@ final class NotchAppearanceTests: XCTestCase {
         for x in [0, Int(ear * scale) - 1, rep.pixelsWide - Int(ear * scale)] {
             XCTAssertLessThan(rep.colorAt(x: x, y: rep.pixelsHigh / 2)?.alphaComponent ?? 1, 0.02, "column \(x)")
         }
+    }
+}
+
+// MARK: - Phase 7.1: Relay without a notch, one Relay
+
+extension NotchControllerTests {
+    /// On a display without a notch Relay rests in a small pill under the
+    /// menu bar (one panel), and nothing rests there when the option is off.
+    func testRelayRestsInAPillOnADisplayWithoutANotch() async {
+        screens.screens = [externalScreen()]
+        settings.mascotEnabled = true
+        let controller = makeController()
+        controller.start()
+        XCTAssertTrue(controller.hasRestingTarget, "a resting Relay on the external display")
+        XCTAssertEqual(notchPanels().count, 1, "exactly one panel, so one bear")
+        let frame = controller.panelFrame ?? .zero
+        let screen = externalScreen().frame
+        XCTAssertEqual(frame.midX, screen.midX, accuracy: 1, "centred")
+        XCTAssertLessThan(frame.maxY, screen.maxY, "below the menu bar, not over it")
+        XCTAssertEqual(frame.width, 2 * NotchLayout.earWidth, accuracy: 1)
+        settings.relayWithoutNotch = false
+        controller.relayout()
+        XCTAssertFalse(controller.hasRestingTarget)
+        XCTAssertEqual(notchPanels().count, 0, "off: nothing rests on that display")
+        controller.stop()
+    }
+
+    func testAnotherCopyKeepsTheNotchSoOnlyOneRelayShows() async {
+        settings.mascotEnabled = true
+        neighbors.promptRelayCopies = ["Prompt Relay (Debug) (PID 42)"]
+        let controller = makeController()
+        controller.start()
+        XCTAssertTrue(controller.isYielding)
+        XCTAssertEqual(notchPanels().count, 0, "the newer copy shows the only Relay")
+        controller.stop()
+    }
+
+    func testOffKeepsRelayStillAndStopsIdleTimers() async {
+        settings.mascotEnabled = true
+        settings.animation = .full
+        settings.relayMotion = .off
+        let controller = makeController()
+        controller.start()
+        XCTAssertTrue(controller.presentation.mascot.still)
+        XCTAssertFalse(controller.life.isRunning, "no idle beats when Off")
+        XCTAssertFalse(controller.presentation.breathes)
+        settings.relayMotion = .subtle
+        controller.relayout()
+        XCTAssertTrue(controller.life.isRunning)
+        settings.animation = .reduced
+        controller.relayout()
+        XCTAssertFalse(controller.life.isRunning, "Reduce Motion: no idle beats")
+        controller.stop()
     }
 }

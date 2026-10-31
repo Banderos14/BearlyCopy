@@ -27,7 +27,8 @@ public final class NotchCoordinator {
     private func observe() {
         let snapshot = withObservationTracking {
             (settings.notchEnabled, settings.notifyWhenReady, settings.display, settings.animation,
-             settings.yieldToOtherNotchApps, settings.mascotEnabled)
+             settings.yieldToOtherNotchApps, settings.mascotEnabled, settings.relayMotion, settings.relayIdle,
+             settings.relayFollowsPointer, settings.relayWithoutNotch)
         } onChange: { [weak self] in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.observe() } }
         }

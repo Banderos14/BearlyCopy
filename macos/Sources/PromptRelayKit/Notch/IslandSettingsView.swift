@@ -92,6 +92,21 @@ struct IslandSettingsView: View {
             Hairline()
             toggle("Show Relay the bear", detail: "A small companion beside the notch. It reacts to new answers and copies.",
                    isOn: $settings.mascotEnabled)
+            if settings.mascotEnabled {
+                Hairline()
+                picker("Relay", detail: "Subtle: calm head turns and rare moments of its own. Expressive: livelier. Off: a still bear. Reduce Motion always keeps it still.",
+                       current: settings.relayMotion.title,
+                       options: NotchSettings.RelayMotion.allCases.map { ($0.title, $0) }) { settings.relayMotion = $0 }
+                Hairline()
+                toggle("Idle moments", detail: "Now and then a glance, a look around, a smile; sleepy after a long quiet time. Never while you move the pointer.",
+                       isOn: $settings.relayIdle)
+                Hairline()
+                toggle("Follow the pointer", detail: "Relay's eyes and head turn toward the pointer near the island.",
+                       isOn: $settings.relayFollowsPointer)
+                Hairline()
+                toggle("Relay on displays without a notch", detail: "A small pill under the menu bar, centred; hover opens Quick Peek. One Relay at a time, on the display Prompt Relay uses.",
+                       isOn: $settings.relayWithoutNotch)
+            }
             Hairline()
             picker("Motion", detail: "Reduced: short fades instead of moving and resizing (also follows the system's Reduce Motion).",
                    current: settings.animation.title,

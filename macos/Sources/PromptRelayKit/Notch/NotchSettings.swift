@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Observation
 
@@ -21,6 +22,27 @@ public final class NotchSettings {
         }
     }
 
+    /// How lively Relay is (Phase 7.1).
+    public enum RelayMotion: String, CaseIterable, Identifiable, Sendable {
+        /// Calm, natural movement: small head turns, rare idle moments.
+        case subtle
+        /// Livelier: larger turns, more frequent idle moments.
+        case expressive
+        /// A still bear: no head movement, no idle moments, no reactions in motion.
+        case off
+
+        public var id: String { rawValue }
+        public var title: String {
+            switch self {
+            case .subtle: return "Subtle"
+            case .expressive: return "Expressive"
+            case .off: return "Off"
+            }
+        }
+        /// Scale of head turns (1 = the bounded maximum).
+        public var amplitude: CGFloat { self == .expressive ? 1 : self == .subtle ? 0.65 : 0 }
+    }
+
     enum Key {
         static let notchEnabled = "notch.enabled"
         static let notifyWhenReady = "notify.whenReady"
@@ -29,6 +51,10 @@ public final class NotchSettings {
         static let yield = "notch.yieldToOtherNotchApps"
         static let mascot = "mascot.enabled"
         static let theme = "appearance.theme"
+        static let relayMotion = "relay.motion"
+        static let relayIdle = "relay.idle"
+        static let relayFollows = "relay.followsPointer"
+        static let relayWithoutNotch = "relay.withoutNotch"
     }
 
     private let defaults: UserDefaults
@@ -49,6 +75,14 @@ public final class NotchSettings {
     public var theme: IslandTheme {
         didSet { defaults.set(theme.rawValue, forKey: Key.theme); Island.palette = theme.palette }
     }
+    public var relayMotion: RelayMotion { didSet { defaults.set(relayMotion.rawValue, forKey: Key.relayMotion) } }
+    /// Rare moments of its own at rest (a glance, a look around, a smile, sleepy after a long quiet time).
+    public var relayIdle: Bool { didSet { defaults.set(relayIdle, forKey: Key.relayIdle) } }
+    /// The eyes and head follow the pointer near the island.
+    public var relayFollowsPointer: Bool { didSet { defaults.set(relayFollowsPointer, forKey: Key.relayFollows) } }
+    /// On a display without a notch, Relay rests in a small pill under the
+    /// menu bar (hover opens Quick Peek). Off: nothing rests there.
+    public var relayWithoutNotch: Bool { didSet { defaults.set(relayWithoutNotch, forKey: Key.relayWithoutNotch) } }
     public var display: DisplayChoice {
         didSet {
             switch display {
@@ -65,6 +99,10 @@ public final class NotchSettings {
         animation = defaults.string(forKey: Key.animation).flatMap(Animation.init(rawValue:)) ?? .system
         yieldToOtherNotchApps = defaults.object(forKey: Key.yield) as? Bool ?? true   // default: yield
         mascotEnabled = defaults.object(forKey: Key.mascot) as? Bool ?? true
+        relayMotion = defaults.string(forKey: Key.relayMotion).flatMap(RelayMotion.init(rawValue:)) ?? .subtle
+        relayIdle = defaults.object(forKey: Key.relayIdle) as? Bool ?? true
+        relayFollowsPointer = defaults.object(forKey: Key.relayFollows) as? Bool ?? true
+        relayWithoutNotch = defaults.object(forKey: Key.relayWithoutNotch) as? Bool ?? true
         // An explicit choice is kept; without one (new installs, and anyone who
         // never picked a theme) Warm Cocoa.
         let theme = defaults.string(forKey: Key.theme).flatMap(IslandTheme.init(rawValue:)) ?? .warmCocoa

@@ -167,6 +167,8 @@ public final class NotchController {
     private var sensitivePending = false
     private var dialogOpen = false
     var blinkTask: Task<Void, Never>?
+    /// Relay's idle moments (Phase 7.1); one timer, only while visible.
+    let life: RelayLife
     let follower: PointerFollower
     private let scheduler: NotchScheduling
     var gazeTick: NotchTimer?
@@ -198,6 +200,7 @@ public final class NotchController {
         self.notifier = notifier ?? ReadyNotifier()
         let scheduler = scheduler ?? MainQueueScheduler()
         self.scheduler = scheduler
+        life = RelayLife(scheduler: scheduler)
         interaction = NotchInteraction(scheduler: scheduler)
         follower = PointerFollower(events: pointerEvents ?? LivePointerEvents(), scheduler: scheduler)
         interaction.onChange = { [weak self] phase, old in self?.apply(phase, from: old) }
@@ -246,6 +249,9 @@ public final class NotchController {
         hotKey = makeHotKey()
         hotKey?.onPress = { [weak self] in self?.toggleFromKeyboard() }
         model.onSystemDialog = { [weak self] open in self?.systemDialog(open) }
+        life.apply = { [weak self] pose in self?.applyLife(pose) }
+        // The user finished a transfer: a short satisfied hop, then calm.
+        model.onHandoffDone = { [weak self] in self?.celebrate() }
         model.startBackgroundObservation()
         observeModel()
         relayout()
@@ -254,6 +260,7 @@ public final class NotchController {
     public func stop() {
         guard isRunning else { return }
         isRunning = false
+        life.stop()
         for (nc, token) in observers { nc.removeObserver(token) }
         observers.removeAll()
         hotKey?.unregister()
@@ -301,7 +308,9 @@ public final class NotchController {
         // ID to verify), so stepping aside for them stays under the same user
         // setting as other notch apps; Settings names who the island yields to.
         let yielding = settings.yieldToOtherNotchApps && !(neighbors.running.isEmpty && copies.isEmpty)
-        let resting = !newLayout.isFloating && settings.notchEnabled && !yielding
+        // Without a notch (Phase 7.1) Relay rests in the floating layout's
+        // small pill under the menu bar, when the mascot and that option are on.
+        let resting = (newLayout.isFloating ? settings.mascotEnabled && settings.relayWithoutNotch : settings.notchEnabled) && !yielding
         let yieldChanged = yielding != isYielding || resting != hasRestingTarget
         isYielding = yielding
         hasRestingTarget = resting
@@ -580,13 +589,25 @@ extension NotchController {
     /// `PointerFollower`): only the newest position is used, nothing is stored.
     func follow(globalPoint point: CGPoint) {
         guard let panel, panel.isVisible else { return }
+        life.activity()
+        guard settings.relayFollowsPointer, settings.relayMotion != .off else { return }
         look(at: CGPoint(x: point.x - panel.frame.minX, y: point.y - panel.frame.minY))
+    }
+
+    /// Applies an idle beat's pose: head and eyes ease there (the same
+    /// followers as the pointer), the tilt and the face change animate.
+    func applyLife(_ pose: RelayLife.Pose) {
+        let mascot = presentation.mascot
+        if mascot.expression != pose.expression { mascot.expression = pose.expression }
+        let roll = pose.roll * Double(settings.relayMotion.amplitude)
+        if mascot.roll != roll { mascot.roll = roll }
+        setGaze(pose.look)
     }
 
     /// `point` in the panel's coordinates (origin bottom-left).
     func look(at point: CGPoint) {
         guard presentation.showsMascot, !presentation.reduceMotion, let panel else { return }
-        setGaze(Self.gaze(toward: point, windowHeight: panel.frame.height, presentation: presentation))
+        setGaze(Self.gaze(toward: point, windowHeight: panel.frame.height, presentation: presentation, windowWidth: panel.frame.width))
     }
 
     /// Eases the eyes and head toward `target`, 30 frames a second, only
@@ -596,7 +617,9 @@ extension NotchController {
         eyesReturn?.cancel(); eyesReturn = nil
         guard abs(target.x - mascot.gazeTarget.x) > 0.02 || abs(target.y - mascot.gazeTarget.y) > 0.02 || target == .zero else { return }
         mascot.gazeTarget = target
-        mascot.headTarget = target
+        // Subtle turns the head less than Expressive; the eyes still look.
+        let a = settings.relayMotion.amplitude
+        mascot.headTarget = CGPoint(x: target.x * a, y: target.y * a)
         guard gazeTick == nil else { return }
         stepGaze()
     }
@@ -655,11 +678,14 @@ extension NotchController {
     /// origin bottom-left): the left ear at rest, the band's leading edge when
     /// open. Soft saturation (tanh): near the bear the eyes move most, far
     /// away they settle at the edge, on any display.
-    static func gaze(toward point: CGPoint, windowHeight: CGFloat, presentation: NotchPresentation) -> CGPoint {
+    static func gaze(toward point: CGPoint, windowHeight: CGFloat, presentation: NotchPresentation,
+                     windowWidth: CGFloat? = nil) -> CGPoint {
         let center: CGPoint = presentation.isExpanded
             ? CGPoint(x: IslandMetrics.of(presentation).leading + MascotView.size(notchHeight: presentation.notchSize.height) / 2,
                       y: windowHeight - presentation.notchSize.height / 2)
-            : CGPoint(x: RestingPose.origin.x + RestingPose.size / 2, y: windowHeight / 2)
+            : presentation.isFloating
+                ? CGPoint(x: (windowWidth ?? 76) / 2, y: windowHeight / 2)   // the pill's middle, no notch
+                : CGPoint(x: RestingPose.origin.x + RestingPose.size / 2, y: windowHeight / 2)
         return CGPoint(x: tanh((point.x - center.x) / 220), y: tanh((center.y - point.y) / 160))
     }
 
@@ -696,6 +722,7 @@ extension NotchController {
     /// never the success reaction.
     func react(newAnswer: Bool, copy: AppModel.CopyFeedback, coreDown: Bool) {
         let mascot = presentation.mascot
+        if newAnswer || copy != .idle || coreDown { life.activity() }
         if case .copied = copy, mascot.mood != .pleased, !presentation.reduceMotion {
             // Attention: the head comes to the centre for the happy hop.
             mascot.headTarget = .zero
@@ -713,14 +740,30 @@ extension NotchController {
         mascot.mood = mood
     }
 
+    func celebrate() {
+        let mascot = presentation.mascot
+        life.activity()
+        guard presentation.showsMascot, mascot.mood == .idle else { return }
+        mascot.mood = .pleased
+        mascot.cheers += 1
+        _ = scheduler.schedule(after: 1.2) { [weak self] in
+            guard let self, self.presentation.mascot.mood == .pleased, self.model.copyFeedback == .idle else { return }
+            self.presentation.mascot.mood = .idle
+        }
+    }
+
     /// Occasional blinks and following the pointer, only while the mascot is
     /// on screen, the displays are awake, no dialog is up and motion is
     /// allowed; nothing runs otherwise.
     func updateBlinking() {
         let visible = isRunning && presentation.showsMascot && !presentation.reduceMotion && !screensAsleep && !dialogOpen
             && (interaction.phase.isExpanded || (interaction.phase == .compact && hasRestingTarget))
-        let breathing = visible && interaction.phase == .compact
+        let breathing = visible && interaction.phase == .compact && settings.relayMotion != .off
         if presentation.breathes != breathing { presentation.breathes = breathing }
+        let still = settings.relayMotion == .off
+        if presentation.mascot.still != still { presentation.mascot.still = still }
+        life.expressive = settings.relayMotion == .expressive
+        if visible && settings.relayIdle && !still { life.start() } else { life.stop() }
         if visible {
             follower.start()
         } else {

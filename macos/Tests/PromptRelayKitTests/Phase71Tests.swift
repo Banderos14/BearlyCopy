@@ -182,3 +182,140 @@ final class TooltipWidthTests: XCTestCase {
         XCTAssertGreaterThan(long.height, short.height * 2.5, "long text wraps onto several lines")
     }
 }
+
+// MARK: - Living Relay
+
+@MainActor
+final class LivingRelayTests: XCTestCase {
+    /// The idle machine: beats only after quiet, one timer at a time, back
+    /// to Idle after each; the pointer and events win at once; sleepy after
+    /// a long quiet time, woken by activity.
+    func testIdleBeatsYieldToTheUserAndSleepAfterQuiet() {
+        let scheduler = ManualScheduler()
+        var rolls = [0.1, 0.2, 0.9]   // gap, choice (glance), side; then 0.5
+        let life = RelayLife(scheduler: scheduler, now: { scheduler.now }, random: { rolls.isEmpty ? 0.5 : rolls.removeFirst() })
+        var poses: [RelayLife.Pose] = []
+        life.apply = { poses.append($0) }
+        life.start()
+        XCTAssertEqual(scheduler.liveTimers, 1, "one timer, nothing else running")
+        scheduler.advance(40)
+        XCTAssertEqual(life.phase, .glance, "a glance to one side")
+        XCTAssertNotEqual(poses.last?.look, .zero)
+        life.activity()
+        XCTAssertEqual(life.phase, .idle, "the pointer wins at once")
+        XCTAssertEqual(poses.last, RelayLife.Pose(), "back to neutral")
+        XCTAssertEqual(scheduler.liveTimers, 1)
+        // Quiet for 5 minutes: sleepy, and it stays until activity.
+        for _ in 0..<80 where life.phase != .sleepy { scheduler.advance(5) }
+        XCTAssertGreaterThanOrEqual(scheduler.now - 40, RelayLife.sleepAfter, "not before 5 quiet minutes")
+        XCTAssertEqual(life.phase, .sleepy)
+        XCTAssertEqual(poses.last?.expression, .sleepy)
+        life.activity()
+        XCTAssertEqual(life.phase, .idle, "activity wakes it")
+        life.stop()
+        XCTAssertEqual(scheduler.liveTimers, 0, "stopped: no timer left")
+    }
+
+    func testEveryBeatEndsInIdleWithoutOverlap() {
+        let scheduler = ManualScheduler()
+        for choice in [0.1, 0.5, 0.7, 0.95] {
+            var rolls = [0.0, choice, 0.9]
+            let life = RelayLife(scheduler: scheduler, now: { scheduler.now }, random: { rolls.isEmpty ? 0.0 : rolls.removeFirst() })
+            life.start()
+            scheduler.advance(34)
+            XCTAssertNotEqual(life.phase, .idle, "choice \(choice) plays a beat")
+            XCTAssertLessThanOrEqual(scheduler.liveTimers, 1, "never two timers")
+            for _ in 0..<10 { scheduler.advance(0.5) }
+            XCTAssertEqual(life.phase, .idle, "choice \(choice) returns to Idle")
+            life.stop()
+        }
+    }
+
+    /// Extreme poses at rest stay inside the ear (clear of the camera, the
+    /// outline and the top of the screen), the 2.5D ear shift included.
+    func testExtremePosesStayInsideTheEar() {
+        for x in stride(from: -1.0, through: 1.0, by: 0.25) {
+            for y in stride(from: -1.0, through: 1.0, by: 0.25) {
+                for mood in [MascotState.Mood.idle, .curious, .pleased] {
+                    let pose = RestingPose(head: CGPoint(x: x, y: y), mood: mood, lift: -RestingPose.hop)
+                    let points = RestingPose.silhouette(dx: pose.dx, dy: pose.dy, turn: pose.turn, lift: 0,
+                                                        earLift: mood == .curious ? 0.025 : 0)
+                    for p in points {
+                        XCTAssertTrue(RestingPose.safe.insetBy(dx: -0.01, dy: -0.01).contains(p), "\(x),\(y) \(mood): \(p)")
+                    }
+                    XCTAssertGreaterThan(pose.k, 0.3, "it still moves visibly")
+                }
+            }
+        }
+    }
+
+    /// The 2.5D turn moves the layers by depth: nose more than eyes, eyes
+    /// more than the outline, ears the other way; the far eye narrower.
+    func testTurnParallaxIsLayered() {
+        let t = MascotView.Turn(yaw: 1, pitch: 0)
+        XCTAssertGreaterThan(t.layer(1.0), t.layer(0.7))
+        XCTAssertGreaterThan(t.layer(0.7), t.outlineShift)
+        XCTAssertLessThan(t.earShift(side: -1), 0, "ears move against the turn")
+        XCTAssertLessThan(t.eyeWidth(side: 1), t.eyeWidth(side: -1), "the far eye is foreshortened")
+        XCTAssertLessThan(t.earScale(side: 1), t.earScale(side: -1), "the far ear is smaller")
+        let up = MascotView.Turn(yaw: 0, pitch: -1)
+        XCTAssertLessThan(up.pitchShift(1), 0, "looking up raises the face")
+        XCTAssertLessThan(up.muzzleSquash, 1)
+        let neutral = MascotView.Turn(yaw: 0, pitch: 0)
+        XCTAssertEqual(neutral.layer(1), 0); XCTAssertEqual(neutral.eyeWidth(side: 1), 1)
+    }
+
+    func testRelayMotionSettings() {
+        let defaults = UserDefaults(suiteName: "PromptRelayTests.relay.\(UUID().uuidString)")!
+        let s = NotchSettings(defaults: defaults)
+        XCTAssertEqual(s.relayMotion, .subtle)
+        XCTAssertTrue(s.relayIdle); XCTAssertTrue(s.relayFollowsPointer); XCTAssertTrue(s.relayWithoutNotch)
+        XCTAssertEqual(NotchSettings.RelayMotion.off.amplitude, 0)
+        XCTAssertLessThan(NotchSettings.RelayMotion.subtle.amplitude, NotchSettings.RelayMotion.expressive.amplitude)
+        s.relayMotion = .off
+        XCTAssertEqual(NotchSettings(defaults: defaults).relayMotion, .off, "remembered")
+    }
+}
+
+/// Opt-in: PROMPT_RELAY_SNAPSHOT_DIR=<dir> renders Relay's poses (the real
+/// drawing code, offscreen) for docs/images/phase71-relay/. Not a check of
+/// motion on the live screen.
+@MainActor
+final class RelayPoseRenderTests: XCTestCase {
+    func testRenderPoses() throws {
+        guard let dir = ProcessInfo.processInfo.environment["PROMPT_RELAY_SNAPSHOT_DIR"] else {
+            throw XCTSkip("set PROMPT_RELAY_SNAPSHOT_DIR to render Relay's poses")
+        }
+        let poses: [(String, CGPoint, MascotState.Mood, MascotState.Expression, CGFloat)] = [
+            ("neutral", .zero, .idle, .none, 0), ("left", CGPoint(x: -1, y: 0), .idle, .none, 0),
+            ("right", CGPoint(x: 1, y: 0), .idle, .none, 0), ("up", CGPoint(x: 0, y: -1), .idle, .none, 0),
+            ("down", CGPoint(x: 0, y: 1), .idle, .none, 0), ("up-right", CGPoint(x: 0.8, y: -0.8), .idle, .none, 0),
+            ("down-left", CGPoint(x: -0.8, y: 0.8), .idle, .none, 0), ("curious", CGPoint(x: 0.3, y: -0.5), .curious, .none, 0),
+            ("new answer", .zero, .curious, .none, 0), ("copied", .zero, .pleased, .none, 1),
+            ("smile", .zero, .idle, .smile, 0), ("sleepy", CGPoint(x: 0, y: 0.55), .idle, .sleepy, 0),
+            ("capture error", .zero, .concerned, .none, 0),
+        ]
+        let grid = VStack(alignment: .leading, spacing: 10) {
+            ForEach(0..<2) { row in
+                HStack(spacing: 14) {
+                    ForEach(Array(poses.enumerated()).filter { $0.offset / 7 == row }, id: \.offset) { _, p in
+                        VStack(spacing: 4) {
+                            MascotFace(gazeX: p.1.x, gazeY: p.1.y, eyeOpen: 1, squint: p.4, mood: p.2, yaw: p.1.x, pitch: p.1.y, expression: p.3)
+                                .frame(width: 84, height: 84)
+                                .rotationEffect(.degrees(p.2 == .curious && p.1 != .zero ? 7 : 0), anchor: .bottom)
+                            Text(p.0).font(.system(size: 10)).foregroundStyle(.white.opacity(0.8))
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16).background(Color.black)
+        let renderer = ImageRenderer(content: grid)
+        renderer.scale = 2
+        let image = try XCTUnwrap(renderer.nsImage)
+        let rep = try XCTUnwrap(image.tiffRepresentation.flatMap(NSBitmapImageRep.init(data:)))
+        let url = URL(fileURLWithPath: dir).appendingPathComponent("relay-poses.png")
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: url)
+    }
+}
