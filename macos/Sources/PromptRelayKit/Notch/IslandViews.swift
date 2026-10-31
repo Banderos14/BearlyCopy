@@ -247,6 +247,7 @@ struct IslandContent: View {
                                                    actions: actions)
                 case .reader: ReaderView(model: model, presentation: presentation)
                 case .taskReader: TaskReaderView(model: model, presentation: presentation)
+                case .evidence: EvidenceView(model: model, presentation: presentation)
                 case .packagePreview: PackagePreviewView(model: model, presentation: presentation)
                 case .attachmentPreview: AttachmentPreviewView(model: model, presentation: presentation)
                 }
@@ -603,7 +604,9 @@ struct ResponseCard: View {
                 .buttonStyle(.plain)
                 .islandFrame("response.full")
                 .accessibilityLabel("View Full Report")
-                .islandHelp("Open Full Report: the complete answer, formatted or as plain text")
+                .islandHelp("Open Full Report: the complete answer, Formatted or Markdown Source")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(alignment: .trailing) { EvidenceChip(model: model) }
             }
         }
         .islandCard()

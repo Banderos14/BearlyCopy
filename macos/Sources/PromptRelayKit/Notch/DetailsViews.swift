@@ -536,6 +536,7 @@ struct AttachmentsCard: View {
             }
             BoundedScroll(minHeight: 34) {
                 VStack(alignment: .leading, spacing: 3) {
+                    CompletenessLine(model: model)
                     if !suggestions.isEmpty {
                         HStack {
                             Text("From this turn").font(.system(size: 10, weight: .semibold)).foregroundStyle(Island.tertiary)

@@ -87,7 +87,7 @@ final class Phase7Tests: XCTestCase {
         var checked = 0
         for surface in [NotchPresentation.Surface.peek, .expanded] {
             for maxContent: CGFloat in [268, 448] {
-                let routes: [AppModel.IslandRoute] = surface == .peek ? [.home] : [.home, .history, .clipboard, .settings, .reader, .taskReader, .packagePreview, .importReport]
+                let routes: [AppModel.IslandRoute] = surface == .peek ? [.home] : [.home, .history, .clipboard, .settings, .reader, .taskReader, .evidence, .packagePreview, .importReport]
                 for route in routes {
                     m.route = route
                     let tips = IslandTooltips()
@@ -361,5 +361,117 @@ final class SmartContextTests: XCTestCase {
         XCTAssertEqual(sections.map(\.short), ["Session", "Request", "Answer", "Evidence & commands", "Limitations"])
         let ns = Self.packText as NSString
         for s in sections { XCTAssertEqual(ns.substring(with: NSRange(location: s.offset, length: 3)), "## ") }
+    }
+}
+
+// MARK: - Evidence Check, Artifact Completeness, Review Checklist
+
+final class EvidenceTests: XCTestCase {
+    func detail(_ commands: [[String: Any]], files: [String] = []) throws -> ObservedDetail {
+        let json: [String: Any] = ["commands": commands, "files_changed": files.map { ["path": $0, "tools": ["Edit"], "count": 1] },
+                                   "shown_files": [], "artifacts": [], "notifications": 0]
+        return try JSONDecoder().decode(ObservedDetail.self, from: JSONSerialization.data(withJSONObject: json))
+    }
+
+    func cmd(_ command: String, kind: String, exit: Int) -> [String: Any] {
+        ["at": "2026-10-31T10:00:00Z", "command": command, "kind": kind, "outcome": exit == 0 ? "ok" : "failed", "exit_code": exit,
+         "duration_ms": 100, "compound": false, "background": false, "after_stop": false]
+    }
+
+    func counts(files: Int = 0, nonzero: Int = 0) throws -> ObservedCounts {
+        try JSONDecoder().decode(ObservedCounts.self, from: Data("""
+        {"tool_events":12,"runs_exit_zero":1,"runs_nonzero":0,"runs_unknown":0,"files_changed":\(files),"background_started":0,"commands_nonzero":\(nonzero)}
+        """.utf8))
+    }
+
+    /// The owner's example: 12 commands, one exit 1, a claim of passing tests.
+    func testObservedFactsAndClaimsStayApart() throws {
+        var input = EvidenceCheck.Input()
+        input.observed = try counts(files: 2, nonzero: 1)
+        input.detail = try detail((0..<10).map { cmd("ls \($0)", kind: "other", exit: 0) }
+                                  + [cmd("swift test", kind: "test", exit: 0), cmd("make lint", kind: "build", exit: 1)])
+        input.answer = "All tests pass, the app works."
+        let e = EvidenceCheck.make(input)
+        let observed = e.items(.observed).map(\.text)
+        XCTAssertTrue(observed.contains("12 commands observed"))
+        XCTAssertTrue(observed.contains("1 command returned exit 1"))
+        XCTAssertTrue(observed.contains("1 test command exited 0"))
+        XCTAssertTrue(e.items(.reported).map(\.text).contains("The answer says tests pass"))
+        XCTAssertTrue(e.items(.notVerified).contains { $0.text.hasPrefix("Claimed test success") })
+        XCTAssertFalse(e.items(.observed).contains { $0.text.lowercased().contains("pass") }, "a claim is never an observed fact")
+        XCTAssertTrue(e.items(.unavailable).map(\.text).contains("CI not connected"))
+    }
+
+    func testImportsAndMissingCaptureAreUnavailableNotGuessed() {
+        var input = EvidenceCheck.Input()
+        input.imported = true
+        input.answer = "Build succeeded."
+        let e = EvidenceCheck.make(input)
+        XCTAssertTrue(e.items(.observed).isEmpty, "nothing observed for an import")
+        XCTAssertTrue(e.items(.unavailable).first!.text.hasPrefix("Imported by you"))
+        XCTAssertTrue(e.items(.notVerified).contains { $0.text == "Claimed build success: no successful build command was observed" })
+        XCTAssertFalse(EvidenceCheck.Claims.find(in: "I rebuilt the build script").visual, "“ui” only as a word")
+    }
+
+    func state(_ title: String, _ status: MockupState.Status, attachment: String? = nil) -> MockupState {
+        MockupState(id: UUID().uuidString, title: title, summary: nil, interactive: [], status: status, attachmentID: attachment,
+                    failure: nil, selected: true)
+    }
+
+    /// Seven declared states, six images: the missing one is named.
+    func testMockupSixOfSevenStates() {
+        var states = (1...6).map { state("State \($0)", .captured, attachment: "a\($0)") }
+        states.append(state("Error", .namedOnly))
+        let mockup = ReportMaterial(id: "m", reportKey: "k", kind: .mockup, title: "Notch", url: nil, audience: nil, sourcePath: nil,
+                                    version: nil, addedAt: "", provenance: "", selected: true, states: states)
+        let c = ArtifactCompleteness.make(attachments: [], unreadable: [], materials: [mockup])
+        XCTAssertEqual(c.lines.first?.text, "6/7 states captured · 1 missing · Live review required")
+        XCTAssertEqual(c.lines.first?.missing, ["Error"])
+        let unknown = ReportMaterial(id: "u", reportKey: "k", kind: .mockup, title: "X", url: nil, audience: nil, sourcePath: nil,
+                                     version: nil, addedAt: "", provenance: "", selected: true, states: [])
+        XCTAssertEqual(ArtifactCompleteness.make(attachments: [], unreadable: [], materials: [unknown]).lines.first?.text,
+                       "number of states unknown · Live review required", "no invented total")
+        let link = ReportMaterial(id: "l", reportKey: "k", kind: .link, title: "Artifact", url: "https://claude.ai/artifact/x", audience: "owner",
+                                  sourcePath: nil, version: nil, addedAt: "", provenance: "", selected: true, states: [])
+        XCTAssertTrue(ArtifactCompleteness.make(attachments: [], unreadable: [], materials: [link]).lines[0].text.contains("content was not received"))
+    }
+
+    func testChecklistComesFromFactsAndStaysSmall() throws {
+        var input = EvidenceCheck.Input()
+        input.observed = try counts(files: 1, nonzero: 1)
+        input.detail = try detail([cmd("swift build", kind: "build", exit: 1)], files: ["macos/View.swift"])
+        input.answer = "Done: the animation of the island is smooth and the build succeeded."
+        let e = EvidenceCheck.make(input)
+        let list = ReviewChecklist.make(evidence: e, completeness: ArtifactCompleteness(lines: []), changedPaths: ["macos/View.swift"],
+                                        answer: input.answer, handoffFiles: 2, imported: false, isLatest: true)
+        XCTAssertEqual(list.items.map(\.id), ["ui", "motion", "build", "ci", "paste"])
+        XCTAssertLessThanOrEqual(list.items.count, ReviewChecklist.limit)
+        let none = ReviewChecklist.make(evidence: EvidenceCheck.make(EvidenceCheck.Input()), completeness: ArtifactCompleteness(lines: []),
+                                        changedPaths: [], answer: "Renamed a variable.", handoffFiles: 0, imported: false, isLatest: true)
+        XCTAssertTrue(none.items.isEmpty, "nothing invented")
+    }
+}
+
+@MainActor
+final class ReviewCheckMarkTests: XCTestCase {
+    func testTicksAreTheUsersAndRememberedPerAnswer() async throws {
+        let suite = "PromptRelayTests.p7r.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7r-\(UUID().uuidString)"))
+        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        let core = FakeCore(projects: [project("/p", sessions: 1, last: "2026-10-31T00:00:00.000000Z")])
+        core.sessionsByProject["/p"] = [sessionSummary("s", project: "/p", last: "2026-10-31T00:00:00.000000Z", lastTurn: 2)]
+        core.turnsBySession["s"] = [turn(1), turn(2)]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        await m.refreshNow()
+        XCTAssertFalse(m.isReviewChecked("ui"), "never ticked by Prompt Relay")
+        m.setReviewChecked("ui", true)
+        XCTAssertTrue(m.isReviewChecked("ui"))
+        m.selectTurn(1)
+        XCTAssertFalse(m.isReviewChecked("ui"), "another answer has its own ticks")
+        m.selectTurn(2)
+        let again = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        await again.refreshNow()
+        XCTAssertTrue(again.isReviewChecked("ui"), "remembered")
     }
 }

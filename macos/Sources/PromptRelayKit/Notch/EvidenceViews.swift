@@ -1,0 +1,173 @@
+import SwiftUI
+
+/// The compact Evidence chip on the Answer card: what was observed and
+/// what is open, in a few words; opens Evidence & Review.
+struct EvidenceChip: View {
+    let model: AppModel
+
+    var body: some View {
+        if let evidence = model.evidence {
+            let failed = evidence.items.contains { $0.kind == .observed && $0.alert }
+            Button { model.navigate(to: .evidence) } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: failed ? "exclamationmark.triangle.fill" : "checklist")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundStyle(failed ? Island.warning : Island.secondary)
+                    Text(evidence.summary.isEmpty ? "Evidence" : evidence.summary)
+                        .font(.system(size: 10.5, weight: .medium)).lineLimit(1)
+                }
+                .foregroundStyle(Island.secondary)
+                .padding(.horizontal, 6).frame(height: 18)
+                .background(Capsule().fill(Island.cardRaised))
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Evidence Check: \(evidence.summary)")
+            .islandHelp("Evidence Check: what Prompt Relay observed on this Mac, kept apart from what the answer claims")
+            .islandFrame("response.evidence")
+        }
+    }
+}
+
+/// One line in Attachments when materials are incomplete; details in
+/// Evidence & Review.
+struct CompletenessLine: View {
+    let model: AppModel
+
+    var body: some View {
+        let lines = model.completeness.lines.filter(\.alert)
+        if let first = lines.first {
+            Button { model.navigate(to: .evidence) } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "square.stack.3d.up.trianglebadge.exclamationmark").font(.system(size: 9.5))
+                        .foregroundStyle(Island.warning)
+                    Text("\(first.title): \(first.text)" + (lines.count > 1 ? " · +\(lines.count - 1)" : ""))
+                        .font(.system(size: 10.5)).foregroundStyle(Island.secondary).lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .islandHelp("Artifact Completeness: what was declared, captured, chosen and missing")
+            .islandFrame("attachments.completeness")
+        }
+    }
+}
+
+/// Evidence & Review: Evidence Check (observed / reported / not verified /
+/// unavailable), Artifact Completeness and the Review Checklist. All from
+/// stored facts; the user's ticks are shown as the user's.
+struct EvidenceView: View {
+    let model: AppModel
+    let presentation: NotchPresentation
+
+    var body: some View {
+        BoundedScroll(maxHeight: presentation.listHeight(chrome: 8)) {
+            VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+                if let evidence = model.evidence {
+                    section("Evidence Check", note: "Observed facts come from hook events on this Mac. What the answer says is listed as reported, never as proof.") {
+                        ForEach(EvidenceCheck.Kind.allCases, id: \.self) { kind in
+                            let items = evidence.items(kind)
+                            if !items.isEmpty {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Caption(kind.title, role: tint(kind))
+                                    ForEach(items) { item in
+                                        Label {
+                                            Text(item.text).font(.system(size: 11.5)).foregroundStyle(Island.primary)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        } icon: {
+                                            Image(systemName: symbol(kind, alert: item.alert)).font(.system(size: 10))
+                                                .foregroundStyle(item.alert ? Island.error : tint(kind))
+                                        }
+                                    }
+                                }
+                                .islandFrame("evidence.\(kind.rawValue)")
+                            }
+                        }
+                    }
+                    let completeness = model.completeness
+                    section("Artifact Completeness", note: "From the attachment list: what is stored, chosen and missing. A total is shown only when it is known.") {
+                        if completeness.lines.isEmpty {
+                            Text("No documents, mockups or links are attached to this answer.").font(.system(size: 11.5))
+                                .foregroundStyle(Island.tertiary)
+                        }
+                        ForEach(completeness.lines) { line in
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: line.alert ? "exclamationmark.circle" : "checkmark.circle").font(.system(size: 10))
+                                        .foregroundStyle(line.alert ? Island.warning : Island.success)
+                                    Text(line.title).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(Island.primary).lineLimit(1)
+                                }
+                                Text(line.text).font(.system(size: 11)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
+                                if !line.missing.isEmpty {
+                                    Text("Missing or name only: " + line.missing.joined(separator: ", "))
+                                        .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .islandFrame("completeness.\(line.id)")
+                        }
+                    }
+                    if let checklist = model.reviewChecklist {
+                        section("Review Checklist", note: "For you to check yourself. Prompt Relay has not done these checks; a tick is your own.") {
+                            if checklist.items.isEmpty {
+                                Text("Nothing specific to check from what was recorded.").font(.system(size: 11.5)).foregroundStyle(Island.tertiary)
+                            }
+                            ForEach(checklist.items) { item in
+                                let done = model.isReviewChecked(item.id)
+                                HStack(alignment: .top, spacing: 7) {
+                                    SelectBox(selected: done) { model.setReviewChecked(item.id, !done) }
+                                        .accessibilityLabel(done ? "Checked by you: \(item.text)" : "Not checked: \(item.text)")
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(item.text).font(.system(size: 11.5, weight: .medium))
+                                            .foregroundStyle(done ? Island.secondary : Island.primary)
+                                            .strikethrough(done, color: Island.tertiary)
+                                        Text(done ? "Checked by you · \(item.reason)" : item.reason).font(.system(size: 10.5))
+                                            .foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                                .islandFrame("checklist.\(item.id)")
+                            }
+                        }
+                    }
+                } else {
+                    MessageCard(title: "No answer selected", detail: "Open an answer in Details first.", symbol: "checklist",
+                                tint: Island.secondary, action: nil)
+                }
+            }
+            .padding(.trailing, 4)
+        }
+        .islandPadding(presentation)
+    }
+
+    private func section<C: View>(_ title: String, note: String, @ViewBuilder content: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Caption(title, role: Island.accent)
+            Text(note).font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .islandCard()
+    }
+
+    private func tint(_ kind: EvidenceCheck.Kind) -> Color {
+        switch kind {
+        case .observed: return Island.success
+        case .reported: return Island.review
+        case .notVerified: return Island.warning
+        case .unavailable: return Island.tertiary
+        }
+    }
+
+    private func symbol(_ kind: EvidenceCheck.Kind, alert: Bool) -> String {
+        if alert { return "xmark.octagon" }
+        switch kind {
+        case .observed: return "eye"
+        case .reported: return "quote.bubble"
+        case .notVerified: return "questionmark.circle"
+        case .unavailable: return "minus.circle"
+        }
+    }
+}

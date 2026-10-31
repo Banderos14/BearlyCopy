@@ -106,7 +106,7 @@ public final class AppModel {
 
     public static let pollSeconds = 30
     static let lastSeenKey = "answers.lastSeenAt"
-    private let stateDefaults: UserDefaults?
+    let stateDefaults: UserDefaults?
 
     private let core: CoreProviding
     let clipboard: ClipboardService
@@ -670,6 +670,8 @@ public final class AppModel {
         case attachmentPreview
         /// The whole request of the answer (View Full Task).
         case taskReader
+        /// Evidence Check, Artifact Completeness and the Review Checklist.
+        case evidence
         public var id: String { rawValue }
         public var title: String {
             switch self {
@@ -687,6 +689,7 @@ public final class AppModel {
             case .settings: return "Settings"
             case .reader: return "Full Report"
             case .taskReader: return "Full Task"
+            case .evidence: return "Evidence & Review"
             }
         }
     }
@@ -1486,6 +1489,9 @@ public final class AppModel {
     }
     /// The preview of the report shown; dropped when another report is shown.
     public internal(set) var packPreview: PackPreview?
+
+    /// Bumped when the user's check marks change, so views redraw.
+    var reviewChecksVersion = 0
 
     static let contextDetailKey = "contextDetail.v1"
     /// Standard (the default) or Full; remembered, used by Copy and Preview alike.
