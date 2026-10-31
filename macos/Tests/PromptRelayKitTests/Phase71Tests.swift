@@ -89,6 +89,28 @@ final class Phase71Tests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("store/handoffs.json").path))
     }
 
+    /// The widest step 2 (Continue Transfer + Copy Text Again + 3 files +
+    /// Done) stays inside Quick Peek and Details on short displays.
+    func testWidestStepTwoFitsQuickPeekAndDetails() async throws {
+        let m = await makeModel()
+        let a = try importReport(m, String(repeating: "Ответ. ", count: 400), files: ["a.md", "b.md", "c.md"])
+        m.open(a)
+        await m.copySelectedContext()
+        m.suspendHandoffs()
+        for surface in [NotchPresentation.Surface.peek, .expanded] {
+            for maxContent: CGFloat in [268, 448] {
+                let host = IslandHost(model: m, surface: surface, maxContentHeight: maxContent)
+                defer { host.close() }
+                let id = surface == .peek ? "peek.handoff" : "details.handoff"
+                let f = try XCTUnwrap(host.presentation.layoutFrames[id], "\(surface) \(maxContent)")
+                XCTAssertGreaterThanOrEqual(f.minX, 8); XCTAssertLessThanOrEqual(f.maxX, host.width - 8, "\(surface) \(maxContent): \(f)")
+                XCTAssertLessThanOrEqual(f.maxY, host.height, "inside the island: \(surface) \(maxContent) \(f) \(host.presentation.layoutFrames.filter { $0.key.hasPrefix("peek") || $0.key.hasPrefix("handoff") })")
+                let status = try XCTUnwrap(host.presentation.layoutFrames["handoff.status"])
+                XCTAssertTrue(f.insetBy(dx: -1, dy: -1).contains(status), "the count never spills out of step 2")
+            }
+        }
+    }
+
     func testReplacedClipboardOffersTheSameTextAgain() async throws {
         let m = await makeModel()
         let a = try importReport(m, "Ответ", files: ["a.md"])
@@ -135,5 +157,28 @@ final class Phase71Tests: XCTestCase {
         XCTAssertEqual(CaptureHealthRows.commandsHealth(captureOn: true, observed: none, imported: false).text, "recorded; this turn ran no tools")
         XCTAssertEqual(CaptureHealthRows.commandsHealth(captureOn: false, observed: nil, imported: false).text, "capture is off for this project")
         XCTAssertTrue(CaptureHealthRows.commandsHealth(captureOn: true, observed: nil, imported: false).text.hasPrefix("not recorded"))
+    }
+}
+
+@MainActor
+final class TooltipWidthTests: XCTestCase {
+    func measure(_ text: String) -> CGSize {
+        let tips = IslandTooltips()
+        let host = NSHostingView(rootView: IslandTooltipOverlay(tips: tips, size: CGSize(width: 640, height: 400))
+            .environment(\.islandFrameSink, { id, r in if id == "tooltip" { TooltipWidthTests.last = r } }))
+        host.frame = NSRect(x: 0, y: 0, width: 640, height: 400)
+        tips.show(UUID(), text: text, anchor: CGRect(x: 300, y: 100, width: 26, height: 26))
+        for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+        return TooltipWidthTests.last.size
+    }
+    nonisolated(unsafe) static var last = CGRect.zero
+
+    /// Fits its text; long text wraps inside the maximum, never truncated.
+    func testTipIsAsWideAsItsTextAndWrapsAtTheMaximum() {
+        let short = measure("Back (Esc)")
+        XCTAssertLessThan(short.width, 90, "short tip hugs its text")
+        let long = measure(Labels.copyWithContextHelp)
+        XCTAssertLessThanOrEqual(long.width, IslandTooltipOverlay.maxWidth + 0.5)
+        XCTAssertGreaterThan(long.height, short.height * 2.5, "long text wraps onto several lines")
     }
 }

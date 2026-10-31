@@ -140,13 +140,16 @@ struct IslandTooltipOverlay: View {
                     let wrap = min(Self.maxWidth, TipPlacement.safeArea(island: size, band: band).width)
                     let ready = measuredOwner == tip.owner ? measured : nil
                     let frame = ready.map { TipPlacement.frame(anchor: tip.anchor, tip: $0, island: size, band: band) }
-                    Text(tip.text)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(Island.primary.opacity(0.92))
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: wrap - 12, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 6).padding(.vertical, 3)
+                    // As wide as its text (like inline-block), wrapping at
+                    // `wrap`. Phase 7.1: `.frame(maxWidth:)` took the whole
+                    // maximum, so "Back (Esc)" sat in a 208-pt box.
+                    TipTextLayout(maxWidth: wrap - 14) {
+                        Text(tip.text)
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(Island.primary.opacity(0.92))
+                            .multilineTextAlignment(.leading)
+                    }
+                    .padding(.horizontal, 7).padding(.vertical, 4)
                         .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.black.opacity(0.82)))
                         .onGeometryChange(for: CGSize.self, of: { $0.size }) { measured = $0; measuredOwner = tip.owner }
                         .islandFrame("tooltip")
@@ -159,6 +162,22 @@ struct IslandTooltipOverlay: View {
             }
             .allowsHitTesting(false)
             .accessibilityHidden(true)
+    }
+}
+
+/// Its one child at its ideal width, but never wider than `maxWidth`; the
+/// height is what that width needs (the text wraps instead of truncating).
+struct TipTextLayout: Layout {
+    let maxWidth: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let width = min(child.sizeThatFits(.unspecified).width, maxWidth)
+        return CGSize(width: width, height: child.sizeThatFits(ProposedViewSize(width: width, height: nil)).height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
     }
 }
 

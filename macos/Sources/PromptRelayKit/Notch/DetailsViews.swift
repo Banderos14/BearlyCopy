@@ -156,21 +156,32 @@ struct DetailsView: View {
                     ForEach(Pane.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented).labelsHidden().frame(width: 220)
-                if pane == .report { reportColumn(layout, facts: facts) } else { handoffColumn }
+                if pane == .report { reportColumn(layout, facts: facts) } else { handoffColumn(layout, facts: facts) }
             }
         }
     }
 
+    /// Short displays, one column: while step 2 is the footer, the Task card
+    /// moves to the For Review pane. Header, picker, Task, Answer and step 2
+    /// did not fit the 300-pt floor together (step 2 ended 15 pt below the
+    /// island, Phase 7.1); the Answer keeps its room.
+    private var taskInReviewPane: Bool { model.activeHandoff != nil }
+
     private func reportColumn(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
         VStack(alignment: .leading, spacing: layout.metrics.spacing) {
-            TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2,
-                         viewFull: { model.navigate(to: .taskReader) }).islandFrame("card.task")
+            if !taskInReviewPane { taskCard(layout, facts: facts) }
             ResponseCard(model: model, facts: facts) { model.navigate(to: .reader) }
         }
     }
 
-    private var handoffColumn: some View {
+    private func taskCard(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
+        TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2,
+                 viewFull: { model.navigate(to: .taskReader) }).islandFrame("card.task")
+    }
+
+    private func handoffColumn(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
         VStack(alignment: .leading, spacing: Island.Space.m) {
+            if taskInReviewPane { taskCard(layout, facts: facts) }
             HandoffContentsCard(model: model).islandFrame("card.handoff")
             AttachmentsCard(model: model).islandFrame("card.attachments")
         }
@@ -733,14 +744,21 @@ struct HandoffFooter: View {
 
     var body: some View {
         // One row when it fits (it saves a line on short displays), else two.
+        // One row, then status over the buttons, then (narrow, larger
+        // text) the buttons on two rows: never wider than the island.
         ViewThatFits(in: .horizontal) {
             HStack(spacing: Island.Space.m) {
                 status(short: true).fixedSize()
-                buttons
+                buttons(compact: true)
             }
             VStack(alignment: .leading, spacing: Island.Space.s) {
                 status(short: false)
-                HStack(spacing: Island.Space.m) { buttons }
+                HStack(spacing: Island.Space.m) { buttons(compact: false) }
+            }
+            VStack(alignment: .leading, spacing: Island.Space.s) {
+                status(short: true)
+                HStack(spacing: Island.Space.m) { fileButtons; Spacer(minLength: 0) }
+                HStack(spacing: Island.Space.m) { textAgain(compact: false); Spacer(minLength: 0); done }
             }
         }
         .padding(.horizontal, Island.Space.l).padding(.vertical, Island.Space.m)
@@ -777,7 +795,34 @@ struct HandoffFooter: View {
     }
 
     @ViewBuilder
-    private var buttons: some View {
+    private func buttons(compact: Bool) -> some View {
+        textAgain(compact: compact)
+        fileButtons
+        Spacer(minLength: 0)
+        done
+    }
+
+    /// Compact (one-row layout): an icon, so step 2 keeps one line.
+    @ViewBuilder
+    private func textAgain(compact: Bool) -> some View {
+        if !model.handoffSelectionChanged, model.handoffTextReplaced || step.resumed, compact {
+            IconLink(symbol: model.isCopied(AppModel.reviewToken(step.ref)) ? "checkmark" : "text.badge.checkmark",
+                     label: "Copy Text Again",
+                     help: "Copy Text Again: the same package text (\(step.characters.formatted()) characters, not rebuilt)") {
+                model.copyHandoffTextAgain()
+            }
+            .foregroundStyle(model.handoffTextReplaced ? Island.warning : Island.secondary)
+        } else if !model.handoffSelectionChanged, model.handoffTextReplaced || step.resumed {
+            Button { model.copyHandoffTextAgain() } label: {
+                Label(model.isCopied(AppModel.reviewToken(step.ref)) ? Labels.copied : "Copy Text Again", systemImage: "text.badge.checkmark")
+            }
+            .buttonStyle(IslandPillStyle(prominent: model.handoffTextReplaced))
+            .islandHelp("Put the same package text on the clipboard again (\(step.characters.formatted()) characters, not rebuilt)")
+        }
+    }
+
+    @ViewBuilder
+    private var fileButtons: some View {
         if model.handoffSelectionChanged {
             Button { Task { await model.copySelectedContext() } } label: {
                 Label(Labels.copyWithContext + " Again", systemImage: "arrow.clockwise")
@@ -785,13 +830,6 @@ struct HandoffFooter: View {
             .buttonStyle(IslandPillStyle(prominent: true))
             .islandHelp("Copy the text again with the files chosen now")
         } else {
-            if model.handoffTextReplaced || step.resumed {
-                Button { model.copyHandoffTextAgain() } label: {
-                    Label(model.isCopied(AppModel.reviewToken(step.ref)) ? Labels.copied : "Copy Text Again", systemImage: "text.badge.checkmark")
-                }
-                .buttonStyle(IslandPillStyle(prominent: model.handoffTextReplaced))
-                .islandHelp("Put the same package text on the clipboard again (\(step.characters.formatted()) characters, not rebuilt)")
-            }
             Button { model.copyHandoffFiles() } label: {
                 Label(filesCopied ? Labels.copied : (step.fileCount == 1 ? "Copy File" : "Copy \(step.fileCount) Files"),
                       systemImage: filesCopied ? "checkmark" : "doc.on.doc")
@@ -802,7 +840,9 @@ struct HandoffFooter: View {
                            help: "Drag the files into ChatGPT, Gemini or another app") { model.handoffFileURLs() }
             IconLink(symbol: "folder", label: "Show in Finder", help: "Show the files in Finder") { model.revealHandoffFiles() }
         }
-        Spacer(minLength: 0)
+    }
+
+    private var done: some View {
         Button("Done") { model.endHandoff() }
             .buttonStyle(IslandPillStyle(prominent: false))
             .islandHelp("Finish this transfer. Closing the island does not; the clipboard keeps what you copied")

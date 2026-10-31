@@ -207,8 +207,9 @@ final class Phase6Tests: XCTestCase {
                 XCTAssertLessThanOrEqual(island.height, 32 + maxContent)
             }
             await m.copySelectedContext()
+            // Phase 7.1: one column with step 2 moves the Task card to For Review.
             island.assertNoOverlap(maxContent >= 330 ? ["details.header", "card.task", "card.response", "card.attachments", "details.footer"]
-                                                     : ["details.header", "card.task", "card.response", "details.footer"])
+                                                     : ["details.header", "card.response", "details.footer"])
             let handoff = try XCTUnwrap(island.presentation.layoutFrames["details.handoff"], "step 2 is the footer")
             XCTAssertEqual(handoff.minY, try XCTUnwrap(island.presentation.layoutFrames["details.footer"]).minY, accuracy: 0.5)
             m.endHandoff()
