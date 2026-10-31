@@ -475,3 +475,54 @@ final class ReviewCheckMarkTests: XCTestCase {
         XCTAssertTrue(again.isReviewChecked("ui"), "remembered")
     }
 }
+
+// MARK: - Export Bundle
+
+@MainActor
+final class ExportBundleTests: XCTestCase {
+    func testBundleHasThePackageTheChosenSnapshotsAndAManifest() async throws {
+        let suite = "PromptRelayTests.p7e.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7e-\(UUID().uuidString)"))
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p7e-\(UUID().uuidString)")
+        let out = root.appendingPathComponent("out")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        let core = FakeCore(projects: [project("/a", sessions: 1, last: "2026-10-31T10:00:00.000000Z")])
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults,
+                         reportStore: ReportStore(root: root.appendingPathComponent("store")))
+        await m.refreshNow()
+        _ = m.importReport(text: "Ответ ✅\n```\ncode\n```", task: "Задача", projectPath: "/a", sessionLabel: "ChatGPT")
+        let ref = try XCTUnwrap(m.currentRef)
+        let src = root.appendingPathComponent("src")
+        try FileManager.default.createDirectory(at: src, withIntermediateDirectories: true)
+        for (name, data) in [("plan.md", Data("# План\n".utf8)), ("shot.png", Phase6Tests.png(seed: 3)), ("gone.txt", Data("x".utf8))] {
+            try data.write(to: src.appendingPathComponent(name))
+            try XCTUnwrap(m.reportStore).addFile(from: src.appendingPathComponent(name), to: ref, source: .you, displayPath: name)
+        }
+        m.attachmentsVersion += 1
+        // One stored snapshot disappears: it is listed as missing, not claimed.
+        let gone = try XCTUnwrap(m.attachments(for: ref).first { $0.originalFilename == "gone.txt" })
+        try FileManager.default.removeItem(at: try XCTUnwrap(m.attachmentURL(gone)))
+
+        let first = await m.writeBundle(ref, into: out)
+        let folder = try XCTUnwrap(first)
+        guard case .success(let pack) = await m.buildPack(ref) else { return XCTFail("pack") }
+        let written = try String(contentsOf: folder.appendingPathComponent("context.md"), encoding: .utf8)
+        XCTAssertEqual(written.replacingOccurrences(of: #"Exported by Prompt Relay at [^\n]*"#, with: "", options: .regularExpression),
+                       pack.text.replacingOccurrences(of: #"Exported by Prompt Relay at [^\n]*"#, with: "", options: .regularExpression),
+                       "the same package as Copy with Context")
+        XCTAssertTrue(written.contains("Ответ ✅\n```\ncode\n```"), "the answer verbatim")
+        let original = try Data(contentsOf: src.appendingPathComponent("plan.md"))
+        XCTAssertEqual(try Data(contentsOf: folder.appendingPathComponent("files/plan.md")), original, "snapshot byte for byte")
+        let manifest = try JSONSerialization.jsonObject(with: Data(contentsOf: folder.appendingPathComponent("manifest.json"))) as! [String: Any]
+        let files = manifest["files"] as! [[String: Any]]
+        XCTAssertEqual(Set(files.map { "\($0["name"]!)=\($0["status"]!)" }), ["files/plan.md=included", "files/shot.png=included", "files/gone.txt=missing"])
+        XCTAssertEqual(manifest["source"] as? String, "imported by you")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("files/gone.txt").path))
+        // A second export never overwrites the first.
+        let again = await m.writeBundle(ref, into: out)
+        let second = try XCTUnwrap(again)
+        XCTAssertNotEqual(second, folder)
+    }
+}

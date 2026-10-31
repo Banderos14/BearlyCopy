@@ -1,7 +1,6 @@
 # Status
 
-Last updated: 2026-10-31, local Mac session (Phase 6: UX redesign and
-Clipboard; committed on the branch, owner validation pending),
+Last updated: 2026-10-31, local Mac session (Phase 7 committed on the branch, owner validation pending),
 branch `claude/loving-mccarthy-ossw3q`.
 
 ## Completed
@@ -656,7 +655,24 @@ visual pass. Swift 202 tests 0 failures (11 opt-in skipped), Python 168 OK
 on 3.14 and 3.9.6, Xcode Debug/Release succeeded, layout recursion 0. The
 live panel on screen is the owner's check.
 
+## Phase 7 (2026-10-31; committed on the branch, not pushed)
+UX stabilization and developer workspace; defects, causes, features and
+owner checks in `docs/PHASE7.md`. Backup ref `refs/backup/phase7-start`.
+Implemented: tooltip placement inside the visible island, thumbnail
+hit-testing, View Full Task, Markdown Source, Standard / Full Copy with
+Context (Core `--detail`), Preview sections, Evidence Check, Artifact
+Completeness, Review Checklist, Import AI Result, Export Bundle.
+
+| Check | Result |
+|---|---|
+| Swift tests | 221, 0 failures (11 opt-in skipped) |
+| Python 3.14 / 3.9.6 | 172 OK each (1 skipped by design) |
+| Layout recursion | 0 hits |
+| Xcode Debug / Release | BUILD SUCCEEDED, 0 warnings |
+| Live NSPanel hover, real mouse, Reduce Motion, paste into assistants | **Not verified** (owner) |
+
 ## Next agreed stage
-Phase 6 and its polish are committed locally; the owner checks `docs/PHASE6.md`
-§ Owner checks, § Owner checks (polish) and § Owner checks (visual pass). Push only when the owner asks. Phase 7, stage 5.10 and ADR-012 wait
-for separate decisions.
+Phase 7 is committed locally; the owner checks `docs/PHASE7.md` § Owner
+checks (first: quit old builds, remove the stale `~/Applications` copy).
+Push only when the owner asks. Stage 5.10, ADR-012, source adapters and
+Phase 8 wait for approval.

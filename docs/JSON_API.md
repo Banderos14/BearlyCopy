@@ -64,7 +64,7 @@ fractional digits and a `Z` suffix: `2026-10-29T14:04:18.117766Z`.
 | `sessions` | `--project DIR` | `sessions_data`: `session_summary[]`, newest first |
 | `turns` | `--session ID\|KEY`, `--project DIR` | `turns_data`: one session (default: the latest) and its `turn_summary[]` |
 | `show` | `--session`, `--project`, `--turn N` | `show_data`: the session and one `turn_full` with full texts (default: the latest turn that has a response) |
-| `context` | as `show` | `context_data`: the Copy Context text, `sensitive_findings` (section, line, kind; never the value), read-only `git` summary, `exported_at` |
+| `context` | as `show`; `--detail standard\|full` (Phase 7, default `full`, unchanged) | `context_data`: the Copy Context text, `sensitive_findings` (section, line, kind; never the value), read-only `git` summary, `exported_at` |
 | `delete` | `--session ID\|KEY` or `--all`; `--dry-run`, `--yes`, `--force-active` | `plan_data` |
 | `prune` | `--older-than-days N` (default: the retention setting), `--yes` | `plan_data` |
 | `retention` | `--days N` or `--off` | `retention_data` |

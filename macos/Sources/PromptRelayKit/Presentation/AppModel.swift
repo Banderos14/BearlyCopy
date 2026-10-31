@@ -1490,6 +1490,9 @@ public final class AppModel {
     /// The preview of the report shown; dropped when another report is shown.
     public internal(set) var packPreview: PackPreview?
 
+    /// The folder the last Export Bundle went to (Show in Finder).
+    public var lastExportFolder: URL?
+
     /// Bumped when the user's check marks change, so views redraw.
     var reviewChecksVersion = 0
 
@@ -1621,6 +1624,8 @@ public enum FilePickRequest: Equatable, Sendable {
     case folders
     /// Documents, PDFs and images to keep with a report.
     case files
+    /// The folder an Export Bundle is written into (Phase 7).
+    case exportFolder
 }
 
 /// The system `NSOpenPanel`, as its own window with the keyboard: the island
@@ -1657,6 +1662,13 @@ public enum LiveFilePicker {
             panel.canChooseDirectories = false
             panel.allowedContentTypes = [.image, .pdf, .text, .sourceCode, .json, .commaSeparatedText, .xml, .html, .yaml]
             panel.message = "Choose documents, PDFs or images to keep with this report (snapshots)."
+        case .exportFolder:
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.canCreateDirectories = true
+            panel.allowsMultipleSelection = false
+            panel.prompt = "Export Here"
+            panel.message = "Choose a folder. A new folder with the package, the chosen files and a manifest is created inside it."
         }
         // Prompt Relay is an agent app whose island is a non-activating
         // panel: the click on 📎 did not make it the active app. The dialog

@@ -79,6 +79,26 @@ S ≈ a day, M ≈ several days, L ≈ a phase.
 5. Neutral package heading in the Core (one string, golden tests).
 6. Supported macOS: 14+ (current deployment target); test on 14 and the latest.
 
+## Phase 7 status (2026-10-31)
+Done: View Full Task, Markdown Source, Standard / Full Copy with Context,
+Preview sections, Evidence Check, Artifact Completeness, Review Checklist,
+Import AI Result, Export Bundle (`docs/PHASE7.md`). Backlog: a deeper
+export pipeline (several turns, a session), checklist items from project
+rules, CI as an observed source.
+
+## Future direction: Source Adapters and Target Profiles (not implemented)
+- **Source adapters**: a small contract per coding agent (Claude Code
+  today; later Codex CLI, Gemini CLI, OpenCode, Cursor). Each one maps its own
+  documented hooks or logs to the same events (request, answer, commands,
+  files, errors) with a provenance label naming the source. The UI already
+  speaks of "the AI" and takes the source from `ReportSource`. Each
+  adapter needs its own research doc, the opt-in rule and the fail-closed
+  rule. No transcript scraping.
+- **Target profiles**: how a package is shaped for the receiving assistant
+  (ChatGPT, Claude, Gemini…): detail level, file limits, Markdown dialect,
+  whether files go in by paste or drag. Only formatting choices; Prompt
+  Relay never drives another app's interface or sends anything by itself.
+
 ## After MVP
 Smart Handoff Preview · Export Markdown / with attachments · attention
 notifications · keyboard session switcher · Clipboard shortcut.

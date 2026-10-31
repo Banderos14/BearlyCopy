@@ -306,6 +306,8 @@ struct NavigationIcons: View {
             .keyboardShortcut(",", modifiers: .command)
             Menu {
                 Button(Labels.importAIResult + "…") { model.navigate(to: .importReport) }
+                Button("Export Bundle…") { model.exportBundle() }
+                    .disabled(model.currentRef == nil || model.reportStore == nil)
                 Divider()
                 Button("Quit Prompt Relay") { actions.quit() }
             } label: {
@@ -314,7 +316,7 @@ struct NavigationIcons: View {
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("More")
-            .islandHelp("More: \(Labels.importAIResult) (one result saved elsewhere, such as a cloud session), Quit")
+            .islandHelp("More: \(Labels.importAIResult) (a result from another AI), Export Bundle (this result to a folder), Quit")
         }
         .foregroundStyle(Island.secondary)
     }
