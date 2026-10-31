@@ -76,6 +76,12 @@ public final class NotchPresentation {
     var animation: Animation? {
         reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.34, dampingFraction: 0.86)
     }
+
+    /// The island taking a new height while open (another answer, a card
+    /// growing): 240 ms, no bounce, so the footer moves with the content.
+    var resizeAnimation: Animation? {
+        reduceMotion ? .easeOut(duration: 0.1) : .smooth(duration: 0.24)
+    }
 }
 
 /// Reads the displays; injectable so multi-display behavior is testable.
@@ -385,16 +391,16 @@ public final class NotchController {
         }
         if height >= presentation.contentHeight {
             panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek), display: true)
-            withAnimation(presentation.animation) { presentation.contentHeight = height }
+            withAnimation(presentation.resizeAnimation) { presentation.contentHeight = height }
         } else {
-            withAnimation(presentation.animation) { presentation.contentHeight = height }
+            withAnimation(presentation.resizeAnimation) { presentation.contentHeight = height }
             let work = DispatchWorkItem { [weak self] in
                 guard let self, self.interaction.phase.isExpanded, let layout = self.layout else { return }
                 self.panel?.setFrame(layout.expandedFrame(contentHeight: self.presentation.contentHeight,
                                                           peek: self.presentation.surface == .peek), display: true)
             }
             resizeWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0.12 : 0.3), execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0.1 : 0.26), execute: work)
         }
     }
 

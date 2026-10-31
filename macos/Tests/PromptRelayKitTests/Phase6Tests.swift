@@ -356,6 +356,39 @@ final class Phase6Tests: XCTestCase {
         }
     }
 
+    /// PROMPT_RELAY_REAL_RENDER=<dir>: the real captured history (read-only,
+    /// private pasteboard, nothing persisted) rendered in Phase 6's views:
+    /// the newest answer, then each earlier one of its session.
+    func testRenderRealHistory() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let dir = env["PROMPT_RELAY_REAL_RENDER"] else { throw XCTSkip("set PROMPT_RELAY_REAL_RENDER=<dir>") }
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        var processEnv = env
+        processEnv["PROMPT_RELAY_CLI"] = env["PROMPT_RELAY_CLI"] ?? Repo.cli
+        let locator = CoreLocator(processEnvironment: processEnv, bundleResourceURL: nil, defaults: { _ in nil })
+        let m = AppModel(core: CoreClient.live(locator: locator), clipboard: ClipboardService(pasteboard: board), dataDirectory: nil)
+        await m.refreshNow()
+        let deadline = Date().addingTimeInterval(20)
+        while m.selectedResponseText == nil, Date() < deadline { try await Task.sleep(nanoseconds: 100_000_000) }
+        var lines: [String] = []
+        for (i, index) in NotchRootView.answerTurns(m).prefix(4).enumerated() {
+            m.selectTurn(index)
+            while m.selectedResponseText == nil, Date() < deadline.addingTimeInterval(20) { try await Task.sleep(nanoseconds: 50_000_000) }
+            for maxContent: CGFloat in [341, 448] {
+                let island = IslandHost(model: m, maxContentHeight: maxContent)
+                island.assertNoOverlap(["details.header", "card.task", "card.response", "card.handoff", "card.attachments", "details.footer"])
+                try island.png("\(dir)/real-details-\(i)-\(Int(maxContent)).png")
+                island.close()
+            }
+            let pos = AnswerStepper.position(m, turn: index)
+            lines.append("turn \(index): \(pos.map { "\($0.position)/\($0.count)" } ?? "-") origin \(m.selectedTurn?.requestOrigin.map { "\($0)" } ?? "-")")
+        }
+        let peek = IslandHost(model: m, surface: .peek)
+        try peek.png("\(dir)/real-peek.png")
+        peek.close()
+        try lines.joined(separator: "\n").write(toFile: "\(dir)/order.txt", atomically: true, encoding: .utf8)
+    }
+
     static func png(seed: Int) -> Data {
         let image = NSImage(size: NSSize(width: 40 + seed, height: 30), flipped: false) { rect in
             NSColor(calibratedHue: CGFloat(seed) / 7, saturation: 0.8, brightness: 0.9, alpha: 1).setFill(); rect.fill()

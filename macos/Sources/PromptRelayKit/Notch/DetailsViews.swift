@@ -20,7 +20,7 @@ struct DetailsLayout {
     /// Content width inside the island's visible sides.
     var contentWidth: CGFloat { presentation.islandWidth - 2 * metrics.leading }
     var twoColumns: Bool { contentWidth >= 520 && presentation.maxContentHeight >= 300 }
-    var rightColumn: CGFloat { contentWidth >= 600 ? 260 : 248 }
+    var rightColumn: CGFloat { contentWidth >= 600 ? 276 : 264 }
 }
 
 // MARK: - Details
@@ -316,7 +316,9 @@ struct HandoffContentsCard: View {
                              tint: failed(turn.observed) > 0 ? Island.error : Island.tertiary, chevron: true)
                 }
                 .buttonStyle(.plain)
-                .help("The commands, exit codes and durations Prompt Relay observed in this turn")
+                .help(turn.observed == nil
+                      ? "No tool events were captured for this turn (plugin before 0.3.0, or capture was off then). This is not the same as Claude using no tools."
+                      : "The commands, exit codes and durations Prompt Relay observed in this turn. An exit code describes one command, not the task.")
                 if let observed = turn.observed {
                     row(symbol: "doc.badge.ellipsis", title: "Changed Files",
                         detail: observed.filesChanged == 0 ? "none observed" : (observed.filesChanged == 1 ? "1 file" : "\(observed.filesChanged) files"),
@@ -349,14 +351,13 @@ struct HandoffContentsCard: View {
     /// A fact, never a verdict. Distinguishes: no tool events captured for
     /// this turn (older plugin, or capture off) from tools not used at all.
     static func commands(_ o: ObservedCounts?, captureOn: Bool) -> String {
-        guard let o else { return captureOn ? "not captured for this turn" : "capture off" }
+        guard let o else { return captureOn ? "not captured" : "capture off" }
         if o.toolEvents == 0 { return "no tools used" }
         let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
-        var parts: [String] = []
-        if failed > 0 { parts.append("\(failed) failed") }
-        if o.runsExitZero > 0 { parts.append("\(o.runsExitZero) checks exit 0") }
-        if parts.isEmpty { parts.append(o.toolEvents == 1 ? "1 tool event" : "\(o.toolEvents) tool events") }
-        return parts.joined(separator: " · ")
+        // One fact fits the row; failures come first. The rest is in Observed Work.
+        if failed > 0 { return "\(failed) failed" }
+        if o.runsExitZero > 0 { return "\(o.runsExitZero)× exit 0" }
+        return o.toolEvents == 1 ? "1 event" : "\(o.toolEvents) events"
     }
 
     private func row(symbol: String, title: String, detail: String, help: String) -> some View {
