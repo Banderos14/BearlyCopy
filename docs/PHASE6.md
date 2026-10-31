@@ -97,3 +97,58 @@ Relay (the bear) is unchanged.
    paste. Tell me what arrived (V8).
 6. Hover the icons: tooltips appear quickly; System Settings → Accessibility
    → Reduce Motion on: only short fades.
+
+## Phase 6 polish (2026-10-31)
+
+Backup ref `refs/backup/phase6-polish-start` (= `f1074db`). App only; the
+Core (including its package heading "Copy for ChatGPT", see
+`docs/PRODUCT_ROADMAP.md`) is unchanged.
+
+| # | Defect | Cause | Fix |
+|---|---|---|---|
+| 1 | History: clicking the open session does not close it | Expansion *was* the selection; `focusSession` returns early for the selected session | `historyExpandedKey` by session key: open ↔ close, A → B closes A; refresh and search leave it alone |
+| 2 | Answer switch still abrupt | While the new full text loaded, the card showed the short preview (16 pt in the test) and then the full text: two jumps. Task and Attachments changed without animation | Previous answer stays (dimmed) until the new one is ready; cards and island move on one curve: 280 ms `smooth` (Island.geometryDuration), text cross-fades 200 ms; the regression test fails with the fix removed |
+| 3 | Tooltips sometimes, sometimes not | AppKit tooltips (`.help`) show only while the app is active; the island is a non-activating accessory panel | In-island tooltips: 180 ms, switch at once between neighbours, hidden on leave, click, close or view change, never hit-testable; accessibility hints kept |
+| 4 | Copy confirmation not everywhere | Only the two main buttons used the global feedback | One token per copy, set only after the clipboard read-back (files are read back too); History, Clipboard Text and Images, step 2 all show "Copied!" for 2 s; the size (`6,126 chars`) appears beside the buttons only when it fits |
+
+**Names.** Copy Answer / Copy for Review (central `Labels`); Import Saved
+Result (it imports one pasted result, not a conversation); Attach to
+Current Answer (its tooltip names the target answer; disabled with none).
+Review card rows: Request & answer (original text), Commands (n failed / n
+completed / none run / not recorded / capture off), Files changed, Git
+status (checked when you copy), Attachments; "What's in it" explains each
+part and its limits in place.
+
+**Quick Peek.** The permanent explanation line is gone (it repeated the
+tooltip). Facts in plain words, only when they exist: "1 failed command",
+"3 commands completed" (exit 0 of a test/build command, never "passed"),
+"2 files changed", "1 document".
+
+**Themes** (Settings → Appearance → Theme; renders in
+`docs/images/phase6-themes/`, real SwiftUI renders of the same fixture
+content, not mock-ups): **Soft Spectrum** (default: lavender accent and
+main button, mint success, amber, coral, lilac; tinted card captions),
+**Material Calm** (M3-style tonal roles), **Classic** (Phase 6's first
+look). Text and state colors ≥ 4.5:1 on cards in all three (tested).
+
+| Check | Result |
+|---|---|
+| Swift `swift test` | 195 tests, 0 failures, 10 opt-in skipped (not counted as passed) |
+| Python (3.14 and Xcode's 3.9.6) | 168 OK each, 1 skipped by design |
+| Layout recursion | 0 hits |
+| Xcode Debug / Release | BUILD SUCCEEDED, 0 compiler warnings |
+| Real history in the new views (offscreen, read-only) | no overlap; 3/3 newest, automatic turn 2/3; API-error turn shown as error |
+| Relay CPU (one Debug run) | rest 0.82 % app; moving 6.4 % with the 2.2 % loop |
+| On the real screen, Reduce Motion, tooltip feel, paste into assistants | **Not verified** (owner) |
+
+### Owner checks (polish)
+1. Rebuild in Xcode, quit the old builds.
+2. History: click a session twice — it closes; click another — the first closes.
+3. Step through answers ‹ › on a long and a short answer, with and without
+   files: one smooth change, no jump to a short preview; footer never covered.
+4. Hover icons in Quick Peek *without clicking first*: tooltips after a
+   moment, every time.
+5. Copy Answer, Copy for Review, History copy, Clipboard Copy Again / Copy
+   images: each shows "Copied!" for about 2 s.
+6. Settings → Appearance → Theme: compare Soft Spectrum, Material Calm, Classic.
+7. Reduce Motion on: no moving or resizing animation, short fades only.

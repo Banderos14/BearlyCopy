@@ -640,7 +640,15 @@ and stored data unchanged.
 | Running app on screen, Reduce Motion, external display | **Not verified** (owner) |
 | Paste into ChatGPT Desktop / Safari / Chrome (V8), ⌃⇧⌘4 history (V6) | **Not verified** (owner) |
 
+## Phase 6 polish (2026-10-31; committed on the branch, not pushed)
+History toggle, answer-switch motion, in-island tooltips, one copy
+confirmation, Copy Answer / Copy for Review, plain-language facts, three
+themes (Soft Spectrum default). Details: `docs/PHASE6.md` § Phase 6 polish;
+proposals for a public release: `docs/PRODUCT_ROADMAP.md`. Swift 195 tests
+0 failures (10 opt-in skipped), Python 168 OK on 3.14 and 3.9.6, Xcode
+Debug/Release succeeded, layout recursion 0. On-screen checks are the owner's.
+
 ## Next agreed stage
-Phase 6 is committed locally; the owner checks `docs/PHASE6.md` § Owner
-checks. Push only when the owner asks. Phase 7, stage 5.10 and ADR-012 wait
+Phase 6 and its polish are committed locally; the owner checks `docs/PHASE6.md`
+§ Owner checks and § Owner checks (polish). Push only when the owner asks. Phase 7, stage 5.10 and ADR-012 wait
 for separate decisions.
