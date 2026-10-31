@@ -35,6 +35,10 @@ final class RelayMotion {
     private(set) var headRelaxed = false
     /// How far the head follows the look (Subtle 0.65, Expressive 1).
     var headScale: CGFloat = 1
+    /// Phase 8: 0 (Subtle) … 1 (Expressive). Expressive gives the head a
+    /// livelier spring (a little more overshoot on a fast move) and the ears
+    /// more swing; Subtle stays as calm as before.
+    var liveliness: CGFloat = 0
     private(set) var amountTargets = Amounts()
 
     // State
@@ -58,7 +62,13 @@ final class RelayMotion {
     }
 
     /// A short reaction played over the pose.
-    enum Reaction: Equatable { case cheer, worry }
+    enum Reaction: Equatable {
+        case cheer, worry
+        /// Phase 8: a small nod when a new answer arrives.
+        case nod
+        /// Phase 8: the pointer came onto Relay: a tiny lift, ears up.
+        case perk
+    }
 
     /// What one frame draws.
     struct Frame: Equatable {
@@ -76,6 +86,8 @@ final class RelayMotion {
         var shake: Double = 0
         var squint: CGFloat = 0
         var scale: CGFloat = 1
+        /// Added to the head's pitch (the nod), −1…1.
+        var nod: CGFloat = 0
     }
 
     private(set) var rollTarget: Double = 0
@@ -98,6 +110,12 @@ final class RelayMotion {
     /// the Phase 5 keyframes: hop 0.14 s up, 0.3 s down; shake 0.35 s;
     /// squint held 0.8 s).
     static func reactionCurve(_ kind: Reaction, t: TimeInterval) -> (lift: CGFloat, shake: Double, squint: CGFloat, scale: CGFloat) {
+        let c = curve(kind, t: t)
+        return (c.lift, c.shake, c.squint, c.scale)
+    }
+
+    /// Every reaction's curves at `t`, the nod included.
+    static func curve(_ kind: Reaction, t: TimeInterval) -> (lift: CGFloat, shake: Double, squint: CGFloat, scale: CGFloat, nod: CGFloat) {
         func ease(_ p: Double) -> Double { p < 0.5 ? 4 * p * p * p : 1 - pow(-2 * p + 2, 3) / 2 }
         func seg(_ t: Double, _ keys: [(Double, Double)], from: Double = 0) -> Double {
             var start = 0.0, value = from
@@ -112,10 +130,17 @@ final class RelayMotion {
             let lift = seg(t, [(1, 0.14), (0, 0.3)])
             let scale = seg(t, [(1.08, 0.14), (0.97, 0.14), (1, 0.22)], from: 1)
             let squint = t < 0.06 ? t / 0.06 : (t < 0.86 ? 1 : max(0, 1 - (t - 0.86) / 0.12))
-            return (CGFloat(lift), 0, CGFloat(squint), CGFloat(scale))
+            return (CGFloat(lift), 0, CGFloat(squint), CGFloat(scale), 0)
         case .worry:
             let shake = seg(t, [(-1, 0.07), (1, 0.1), (-0.6, 0.09), (0, 0.09)])
-            return (0, shake, 0, 1)
+            return (0, shake, 0, 1, 0)
+        case .nod:
+            // Down, a little up past rest, back: 0.7 s.
+            return (0, 0, 0, 1, CGFloat(seg(t, [(0.55, 0.16), (-0.15, 0.22), (0, 0.32)])))
+        case .perk:
+            let lift = seg(t, [(0.45, 0.12), (0, 0.33)])
+            let scale = seg(t, [(1.04, 0.12), (1, 0.33)], from: 1)
+            return (CGFloat(lift), 0, 0, CGFloat(scale), 0)
         }
     }
 
@@ -200,8 +225,8 @@ final class RelayMotion {
         }
         var f = Frame(gaze: gaze, head: head, earLag: earLag, eyeOpen: eyeOpen(now), amounts: amounts, roll: roll)
         if let reaction {
-            let c = Self.reactionCurve(reaction.kind, t: now - reaction.start)
-            f.lift = c.lift; f.shake = c.shake; f.squint = c.squint; f.scale = c.scale
+            let c = Self.curve(reaction.kind, t: now - reaction.start)
+            f.lift = c.lift; f.shake = c.shake; f.squint = c.squint; f.scale = c.scale; f.nod = c.nod
         }
         return f
     }
@@ -215,15 +240,17 @@ final class RelayMotion {
         gaze.x += (lookTarget.x - gaze.x) * kEyes
         gaze.y += (lookTarget.y - gaze.y) * kEyes
         // Head: a damped spring (ω 12, ζ 0.78), slower than the eyes, with a
-        // touch of overshoot, so it trails and settles.
+        // touch of overshoot, so it trails and settles. Expressive: ω 13.5,
+        // ζ 0.64 — a visible, still soft overshoot on a quick move.
         let target = headTarget
-        let omega: CGFloat = 12, zeta: CGFloat = 0.78
+        let omega: CGFloat = 12 + 1.5 * liveliness, zeta: CGFloat = 0.78 - 0.14 * liveliness
         headVelocity.x += (omega * omega * (target.x - head.x) - 2 * zeta * omega * headVelocity.x) * d
         headVelocity.y += (omega * omega * (target.y - head.y) - 2 * zeta * omega * headVelocity.y) * d
         head.x += headVelocity.x * d
         head.y += headVelocity.y * d
-        // Ears: a soft spring pulled against the head's sideways speed.
-        let earTarget = max(-1, min(1, -headVelocity.x * 0.16))
+        // Ears: a soft spring pulled against the head's sideways speed (and,
+        // a little, its nodding speed).
+        let earTarget = max(-1, min(1, -headVelocity.x * (0.16 + 0.08 * liveliness) - headVelocity.y * 0.05))
         earVelocity += (120 * (earTarget - earLag) - 18 * earVelocity) * d   // ζ ≈ 0.82: one soft swing, settled in ≈ 0.6 s
         earLag += earVelocity * d
         // Faces blend (≈ 0.35 s).
@@ -242,7 +269,7 @@ final class RelayMotion {
         let face = abs(amounts.smile - amountTargets.smile) < eps && abs(amounts.sleepy - amountTargets.sleepy) < eps
             && abs(amounts.curious - amountTargets.curious) < eps
         let blinking = blinkStart.map { now - $0 < 0.2 } ?? false || secondBlinkAt.map { now < $0 + 0.2 } ?? false
-        let reacting = reaction.map { now - $0.start < 1.0 } ?? false
+        let reacting = reaction.map { now - $0.start < ($0.kind == .cheer || $0.kind == .worry ? 1.0 : 0.75) } ?? false
         if !reacting { reaction = nil }
         let done = near(gaze, lookTarget) && near(head, target) && abs(headVelocity.x) < 0.01 && abs(headVelocity.y) < 0.01
             && abs(earLag) < eps && abs(earVelocity) < 0.01 && face && !blinking && !reacting && abs(roll - rollTarget) < 0.01

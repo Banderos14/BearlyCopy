@@ -75,6 +75,8 @@ final class RelayPerformanceTests: XCTestCase {
         let settings = NotchSettings(defaults: defaults)
         settings.mascotEnabled = true
         settings.animation = .full
+        // Phase 8: PROMPT_RELAY_PERF_MOTION=expressive measures Expressive.
+        if ProcessInfo.processInfo.environment["PROMPT_RELAY_PERF_MOTION"] == "expressive" { settings.relayMotion = .expressive }
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayPerf-\(UUID().uuidString)"))
         defer { board.releaseGlobally() }
         let model = AppModel(core: FakeCore(projects: []), clipboard: ClipboardService(pasteboard: board), dataDirectory: nil)

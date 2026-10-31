@@ -88,7 +88,7 @@ struct MascotPose: Equatable {
         let h = head.map { CGPoint(x: max(-1, min(1, $0.x)), y: max(-1, min(1, $0.y))) } ?? g
         eyes = g
         tilt = Double(h.x) * Self.maxTilt
-        shift = CGSize(width: h.x * Self.maxShift, height: h.y * Self.maxShift * 0.75)
+        shift = CGSize(width: h.x * Self.maxShift, height: h.y * Self.maxShift)   // Phase 8: full nod (was 0.75)
     }
 }
 
@@ -278,7 +278,7 @@ struct MascotView: View {
 
         // Eyes: round, with a highlight; they follow the gaze within the face
         // and the turn (a middle layer); the far eye is narrower.
-        let dx = g.x * 0.055 + t.layer(0.7), dy = g.y * 0.04 + t.pitchShift(0.7)
+        let dx = g.x * 0.055 + t.layer(0.7), dy = g.y * 0.055 + t.pitchShift(0.7)
         // Heavy lids close gradually; past 80 % they become the soft arc.
         let sleepy = sleepiness > 0.8
         let open = max(0, min(1 - 0.7 * sleepiness, eyeOpen))
@@ -306,12 +306,12 @@ struct MascotView: View {
                 out.stroke(p, ink, width: 0.045 * s)
             } else {
                 let e: CGFloat = 0.125 + 0.02 * curiousness
-                let h = e * open
+                let h = e * open * t.eyeFlatten
                 let w = e * wide
                 out.fill(ellipse: CGRect(x: center.x - w * s / 2, y: center.y - h * s / 2, width: w * s, height: h * s), ink)
                 if open > 0.6 {
                     // The highlight shifts with the gaze, so the eyes read as turning.
-                    let hx = center.x - 0.015 * s + g.x * 0.012 * s, hy = center.y - 0.045 * s
+                    let hx = center.x - 0.015 * s + g.x * 0.012 * s, hy = center.y - 0.045 * s + g.y * 0.01 * s
                     out.fill(ellipse: CGRect(x: hx, y: hy, width: 0.045 * s, height: 0.045 * s), CGColor(gray: 1, alpha: 0.92))
                 }
             }
@@ -372,14 +372,21 @@ struct MascotView: View {
         }
         /// Sideways shift of a face layer at `depth` (1 = the nose, nearest).
         func layer(_ depth: CGFloat) -> CGFloat { yaw * 0.085 * depth }
-        func pitchShift(_ depth: CGFloat) -> CGFloat { pitch * 0.06 * depth }
+        /// Phase 8: 0.085 (was 0.06): up and down read as clearly as left and right.
+        func pitchShift(_ depth: CGFloat) -> CGFloat { pitch * 0.085 * depth }
         var outlineShift: CGFloat { yaw * 0.02 }
         var outlineScale: CGFloat { 1 - 0.05 * abs(yaw) }
-        var muzzleSquash: CGFloat { 1 - 0.12 * abs(pitch) }
+        var muzzleSquash: CGFloat { 1 - 0.16 * abs(pitch) }
         /// Ears sit behind: they move against the turn; the far one shrinks.
         func earShift(side: CGFloat) -> CGFloat { -yaw * 0.03 + (side * yaw > 0 ? -side * 0.03 * abs(yaw) : 0) }
         func earScale(side: CGFloat) -> CGFloat { side * yaw > 0 ? 1 - 0.14 * abs(yaw) : 1 + 0.04 * abs(yaw) }
-        var earRise: CGFloat { pitch * 0.02 }
+        /// Phase 8: the ears sit behind the face, so they move against the
+        /// pitch: looking up they drop back as the face rises. Looking down
+        /// only the face drops away; the ears never rise (in the notch ear
+        /// there is no room above them — the top of the screen).
+        var earRise: CGFloat { max(0, -pitch) * 0.025 }
+        /// Eyes seen from above or below look a little flatter.
+        var eyeFlatten: CGFloat { 1 - 0.1 * abs(pitch) }
         /// The far eye moves toward the centre and gets narrower.
         func eyeConverge(side: CGFloat) -> CGFloat { side * yaw > 0 ? -side * 0.025 * abs(yaw) : 0 }
         func eyeWidth(side: CGFloat) -> CGFloat { side * yaw > 0 ? 1 - 0.3 * abs(yaw) : 1 + 0.05 * abs(yaw) }
@@ -566,7 +573,7 @@ final class RelayLayerView: NSView {
         state.framesDrawn += 1
         let calm = reduceMotion || facts.still
         let eyes = calm ? CGPoint.zero : f.gaze
-        let head = calm ? CGPoint.zero : f.head
+        let head = calm ? CGPoint.zero : CGPoint(x: f.head.x, y: f.head.y + f.nod)
         let s = bounds.width
         var transform = CGAffineTransform.identity
         let shapes: [RelayShape]

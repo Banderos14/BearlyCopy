@@ -34,6 +34,8 @@ public final class NotchPresentation {
     public internal(set) var isFloating = false
     /// Show the small "answer ready" ears beside the notch.
     public internal(set) var showsIndicator = false
+    /// Phase 8: what the right ear shows (an unseen answer, or work in progress).
+    public internal(set) var indicator: AppModel.ReadyIndicator = .none
     /// Relay the bear beside the notch and in the band (Settings → Appearance).
     public internal(set) var showsMascot = false
     public let mascot = MascotState()
@@ -172,6 +174,10 @@ public final class NotchController {
     let follower: PointerFollower
     private let scheduler: NotchScheduling
     var eyesReturn: NotchTimer?
+    /// Phase 8: the pointer was on Relay at the last update, and when Relay
+    /// last perked (so a pointer resting on it does not repeat the perk).
+    var wasOnRelay = false
+    var lastPerk: Date?
     /// The displays are asleep: Relay neither blinks nor follows the pointer.
     var screensAsleep = false
     private var resizeWork: DispatchWorkItem?
@@ -533,11 +539,14 @@ public final class NotchController {
         guard isRunning else { observingModel = false; return }
         let unseen = withObservationTracking {
             (model.hasUnseenAnswer, model.pendingSensitiveContext != nil,
-             model.copyFeedback, model.projects.error != nil && model.projects.value == nil)
+             model.copyFeedback, model.projects.error != nil && model.projects.value == nil, model.readyIndicator)
         } onChange: { [weak self] in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.track() } }
         }
-        let showIndicator = unseen.0
+        let showIndicator = unseen.4 != .none
+        if presentation.indicator != unseen.4 {
+            withAnimation(presentation.animation) { presentation.indicator = unseen.4 }
+        }
         if presentation.showsIndicator != showIndicator {
             withAnimation(presentation.animation) { presentation.showsIndicator = showIndicator }
             if interaction.phase == .compact { placePanel(for: .compact) }
@@ -613,6 +622,16 @@ extension NotchController {
     func look(at point: CGPoint) {
         guard presentation.showsMascot, !presentation.reduceMotion, let panel else { return }
         setGaze(Self.gaze(toward: point, windowHeight: panel.frame.height, presentation: presentation, windowWidth: panel.frame.width))
+        // Phase 8: the pointer arriving on Relay gets a tiny perk (at most
+        // every 4 s, never while still), then Relay looks at you.
+        let c = Self.gazeCenter(windowHeight: panel.frame.height, presentation: presentation, windowWidth: panel.frame.width)
+        let onRelay = hypot(point.x - c.x, point.y - c.y) < 16
+        if onRelay, !wasOnRelay, !presentation.mascot.still, (lastPerk.map { Date().timeIntervalSince($0) > 4 } ?? true) {
+            lastPerk = Date()
+            presentation.mascot.motion.react(.perk)
+            presentation.mascot.wake()
+        }
+        wasOnRelay = onRelay
     }
 
     /// Points the eyes and head toward `target` (Phase 7.2: the motion
@@ -621,22 +640,55 @@ extension NotchController {
         let mascot = presentation.mascot
         eyesReturn?.cancel(); eyesReturn = nil
         mascot.motion.headScale = settings.relayMotion.amplitude
+        mascot.motion.liveliness = settings.relayMotion == .expressive ? 1 : 0
         if mascot.motion.look(at: target) { mascot.wake() }
     }
 
     /// −1…1 per axis (y down) from Relay toward `point` (window coordinates,
     /// origin bottom-left): the left ear at rest, the band's leading edge when
-    /// open. Soft saturation (tanh): near the bear the eyes move most, far
-    /// away they settle at the edge, on any display.
+    /// open.
+    ///
+    /// Phase 8: the *direction* to the pointer, scaled by a soft saturation
+    /// of the distance (tanh, no threshold). Before, each axis saturated on
+    /// its own: Relay sits at the top of the screen, so the pointer was
+    /// nearly always 200–900 pt below it and `tanh(dy/160)` stayed at
+    /// 0.96–1.0 — moving the mouse up and down barely moved the eyes. Now
+    /// a pointer low on the screen gives a downward look, one level with the
+    /// menu bar a sideways one, and one beside Relay a look up: "level" is a
+    /// point `eyeLevel` below Relay, so the menu bar reads as up. On Relay
+    /// itself the look fades to the viewer (no jitter at zero distance).
     static func gaze(toward point: CGPoint, windowHeight: CGFloat, presentation: NotchPresentation,
                      windowWidth: CGFloat? = nil) -> CGPoint {
+        let center = gazeCenter(windowHeight: windowHeight, presentation: presentation, windowWidth: windowWidth)
+        return gaze(dx: point.x - center.x, dy: center.y - point.y)
+    }
+
+    /// Where "straight ahead" is: this far below Relay.
+    static let eyeLevel: CGFloat = 90
+    /// The distance at which the look reaches 76 % of its range.
+    static let gazeReach: CGFloat = 170
+
+    /// `dx` right, `dy` down from Relay, in points.
+    static func gaze(dx: CGFloat, dy: CGFloat) -> CGPoint {
+        let vy = dy - eyeLevel
+        let r = hypot(dx, vy)
+        guard r > 0.5 else { return .zero }
+        let reach = tanh(r / gazeReach)
+        // On Relay (within ~14 pt) it looks at you; fully toward the pointer from ~44 pt.
+        let near = hypot(dx, dy)
+        let p = max(0, min(1, (near - 14) / 30))
+        let fade = p * p * (3 - 2 * p)
+        return CGPoint(x: dx / r * reach * fade, y: vy / r * reach * fade)
+    }
+
+    static func gazeCenter(windowHeight: CGFloat, presentation: NotchPresentation, windowWidth: CGFloat?) -> CGPoint {
         let center: CGPoint = presentation.isExpanded
             ? CGPoint(x: IslandMetrics.of(presentation).leading + MascotView.size(notchHeight: presentation.notchSize.height) / 2,
                       y: windowHeight - presentation.notchSize.height / 2)
             : presentation.isFloating
                 ? CGPoint(x: (windowWidth ?? 76) / 2, y: windowHeight / 2)   // the pill's middle, no notch
                 : CGPoint(x: RestingPose.origin.x + RestingPose.size / 2, y: windowHeight / 2)
-        return CGPoint(x: tanh((point.x - center.x) / 220), y: tanh((center.y - point.y) / 160))
+        return center
     }
 
     /// The pointer rested or following stopped: Relay looks back to the
@@ -678,6 +730,11 @@ extension NotchController {
         default: mood = coreDown ? .concerned : (newAnswer ? .curious : .idle)
         }
         guard mascot.mood != mood else { return }
+        // Phase 8: a new answer gets a small nod (not on a copy or failure).
+        if newAnswer, mood == .curious, !presentation.reduceMotion, !mascot.still, presentation.showsMascot {
+            mascot.motion.react(.nod)
+            mascot.wake()
+        }
         if case .copied = copy { mascot.cheers += 1 }
         if case .failed = copy { mascot.worries += 1 }
         mascot.mood = mood

@@ -128,11 +128,13 @@ struct MarkdownBlocksView: View {
     /// Lines shown of each code block (nil: all; the reader shows all).
     var codeLineLimit: Int?
     var fontSize: CGFloat = 13
+    /// Each block carries its index as its id, for `ScrollViewReader` jumps.
+    var anchored = false
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                view(block)
+            ForEach(Array(blocks.enumerated()), id: \.offset) { i, block in
+                if anchored { view(block).id(i) } else { view(block) }
             }
         }
     }

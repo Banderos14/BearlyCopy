@@ -177,7 +177,7 @@ final class TooltipWidthTests: XCTestCase {
     func testTipIsAsWideAsItsTextAndWrapsAtTheMaximum() {
         let short = measure("Back (Esc)")
         XCTAssertLessThan(short.width, 90, "short tip hugs its text")
-        let long = measure(Labels.copyWithContextHelp)
+        let long = measure("Copy with Context: Claude's full answer plus your request, the commands Prompt Relay saw, changed files, Git status and the chosen attachments, as Markdown for another assistant")
         XCTAssertLessThanOrEqual(long.width, IslandTooltipOverlay.maxWidth + 0.5)
         XCTAssertGreaterThan(long.height, short.height * 2.5, "long text wraps onto several lines")
     }

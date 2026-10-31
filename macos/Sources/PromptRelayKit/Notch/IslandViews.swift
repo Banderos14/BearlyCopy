@@ -445,7 +445,44 @@ struct TaskCard: View {
     var viewFull: (() -> Void)?
     static let expandedHeight: CGFloat = 168
 
+    /// The smallest displays (one column, under 300 pt of content): the
+    /// task on the caption's line, so Answer and the footer keep their room
+    /// (Phase 8: at the 300-pt island floor the footer ended 3 pt past it).
+    var inline = false
+
     var body: some View {
+        if inline { inlineBody } else { cardBody }
+    }
+
+    private var inlineBody: some View {
+        HStack(spacing: 6) {
+            Caption("Task")
+            Text(taskLine).font(.system(size: 12)).foregroundStyle(Island.secondary).lineLimit(1).truncationMode(.tail)
+            Spacer(minLength: 0)
+            if let viewFull, hasText {
+                Button(action: viewFull) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right").font(.system(size: 9, weight: .bold))
+                        .frame(width: 22, height: 18).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Island.secondary)
+                .accessibilityLabel(Labels.viewFullTask)
+                .islandHelp("\(Labels.viewFullTask): the whole request, Formatted or Markdown Source")
+            }
+        }
+        .islandCard()
+        .accessibilityElement(children: .contain)
+    }
+
+    private var taskLine: String {
+        switch facts.task {
+        case .linked(let t), .inferred(let t), .supplied(let t), .unknownSource(let t): return PeekContent.oneLine(t)
+        case .automated(let earlier, _): return earlier.map { "Started automatically · after: " + PeekContent.oneLine($0) } ?? "Started automatically"
+        case .unavailable(let why): return why.isEmpty ? "Unavailable" : "Unavailable: \(why)"
+        }
+    }
+
+    private var cardBody: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
                 Caption("Task")
@@ -597,24 +634,41 @@ struct ResponseCard: View {
                 .onChange(of: display, initial: true) { _, new in if new.ref == model.currentRef { shown = new } }
                 .islandFrame("response.scroll")
                 .accessibilityLabel("Answer")
-                Button(action: openFull) {
-                    HStack(spacing: 4) {
-                        Text("View Full Report").font(.system(size: 11.5, weight: .medium))
-                        Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold))
+                // The link and the Evidence chip share a row when both fit,
+                // else the chip takes its own row below. Phase 8: the chip was
+                // an overlay that took no room and covered "View Full Report".
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Island.Space.s) {
+                        fullReportLink
+                        Spacer(minLength: Island.Space.s)
+                        EvidenceChip(model: model)
                     }
-                    .foregroundStyle(Island.secondary)
-                    .contentShape(Rectangle())
+                    VStack(alignment: .leading, spacing: Island.Space.s) {
+                        fullReportLink
+                        EvidenceChip(model: model)
+                    }
                 }
-                .buttonStyle(.plain)
-                .islandFrame("response.full")
-                .accessibilityLabel("View Full Report")
-                .islandHelp("Open Full Report: the complete answer, Formatted or Markdown Source")
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .trailing) { EvidenceChip(model: model) }
             }
         }
         .islandCard()
         .islandFrame("card.response")
+    }
+
+    private var fullReportLink: some View {
+        Button(action: openFull) {
+            HStack(spacing: 4) {
+                Text("View Full Report").font(.system(size: 11.5, weight: .medium)).lineLimit(1)
+                Image(systemName: "chevron.right").font(.system(size: 8.5, weight: .bold))
+            }
+            .fixedSize()
+            .foregroundStyle(Island.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .islandFrame("response.full")
+        .accessibilityLabel("View Full Report")
+        .islandHelp("The complete answer, Formatted or Markdown Source")
     }
 }
 
@@ -807,7 +861,16 @@ struct PeekContent: View {
                                summary: model.materialSummary(for: model.currentRef))
         if !facts.isEmpty {
             HStack(spacing: 5) {
-                ForEach(facts, id: \.text) { Tag($0.text, tint: $0.tint) }
+                ForEach(facts, id: \.text) { fact in
+                    if fact.tint == Island.error {
+                        // "1 failed command" opens Failure Inspector (Observed Work).
+                        Button { model.navigate(to: .activity); interaction.focus() } label: { Tag(fact.text, tint: fact.tint) }
+                            .buttonStyle(.plain)
+                            .islandHelp("Which command, its exit code and the last lines it printed")
+                    } else {
+                        Tag(fact.text, tint: fact.tint)
+                    }
+                }
                 Spacer(minLength: 0)
             }
             .frame(height: 17)
@@ -869,7 +932,7 @@ struct PeekContent: View {
         .buttonStyle(.plain)
         .foregroundStyle(Island.primary)
         .accessibilityLabel("Details")
-        .islandHelp("Open Details: the whole answer, observed work, attachments, sessions and settings")
+        .islandHelp("The whole answer, observed work, attachments and settings")
     }
 
     private var expandButton: some View {

@@ -9,9 +9,8 @@ enum Labels {
     static let copyWithContext = "Copy with Context"
     static let copied = "Copied!"
 
-    static let copyAnswerHelp = "Copy Answer: only Claude's answer, exactly as written (⇧⌘C)"
-    static let copyWithContextHelp = "Copy with Context: Claude's full answer plus your request, the commands Prompt Relay saw, "
-        + "changed files, Git status and the chosen attachments, as Markdown for another assistant (⌥⌘C)"
+    static let copyAnswerHelp = "Only Claude's answer, exactly as written · ⇧⌘C"
+    static let copyWithContextHelp = "Answer, request, commands, files, Git and chosen attachments as Markdown · ⌥⌘C"
 
     /// Phase 7 (was "Import Saved Result"): one finished result from another
     /// AI, pasted by the user. Nothing is captured automatically through it.

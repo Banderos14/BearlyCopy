@@ -160,7 +160,7 @@ public struct NotchRootView: View {
                 .padding(.leading, presentation.isFloating ? 0 : RestingPose.origin.x)
                 .frame(width: presentation.isFloating ? size : ear, alignment: .leading)
                 .islandFrame("resting.mascot")
-            } else if presentation.showsIndicator {
+            } else if case .ready = presentation.indicator {
                 Image(systemName: "text.bubble.fill")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
@@ -168,17 +168,18 @@ public struct NotchRootView: View {
                     .padding(.leading, 4)
             }
             Spacer(minLength: 0)
-            if presentation.showsIndicator {
-                Circle().fill(Island.accent).frame(width: 6, height: 6)
+            if presentation.indicator != .none {
+                ReadyIndicatorView(indicator: presentation.indicator, reduceMotion: presentation.reduceMotion)
                     .frame(width: ear)
                     .padding(.trailing, 4)
+                    .islandFrame("resting.indicator")
             }
         }
         .frame(height: islandSize.height)
         .contentShape(Rectangle())
         .onTapGesture { interaction.toggle() }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(presentation.showsIndicator ? "Prompt Relay: a new answer is ready" : "Prompt Relay")
+        .accessibilityLabel(ReadyIndicatorView.label(presentation.indicator))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { interaction.toggle() }
     }
@@ -229,5 +230,60 @@ public struct NotchRootView: View {
         let current = answers.firstIndex(of: model.selectedTurnIndex ?? -1) ?? 0
         let next = min(max(current + delta, 0), answers.count - 1)
         if answers[next] != model.selectedTurnIndex { model.selectTurn(answers[next]) }
+    }
+}
+
+/// Phase 8: the right ear. An unseen answer is a small light dot (a ring
+/// when Claude Code started that turn itself, not your request), with the
+/// number of sessions when more than one has one; a prompt still waiting
+/// for Claude is three dim dots. Never "done" or "success": Stop only means
+/// Claude stopped answering. Appears with one soft scale-in; no loop runs.
+struct ReadyIndicatorView: View {
+    let indicator: AppModel.ReadyIndicator
+    let reduceMotion: Bool
+
+    var body: some View {
+        Group {
+            switch indicator {
+            case .none:
+                EmptyView()
+            case .working:
+                HStack(spacing: 2.5) {
+                    ForEach(0..<3, id: \.self) { _ in Circle().fill(Color.white.opacity(0.42)).frame(width: 3, height: 3) }
+                }
+                .transition(.opacity)
+            case .ready(let sessions, let automated, let background):
+                HStack(spacing: 3) {
+                    ZStack {
+                        if automated {
+                            Circle().strokeBorder(Color.white.opacity(0.85), lineWidth: 1.5)
+                        } else {
+                            Circle().fill(Color.white.opacity(0.92))
+                        }
+                        if background {
+                            Circle().strokeBorder(Island.warning, lineWidth: 1.2).frame(width: 11, height: 11)
+                        }
+                    }
+                    .frame(width: 7, height: 7)
+                    if sessions > 1 {
+                        Text("\(sessions)").font(.system(size: 9, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(Color.white.opacity(0.8))
+                    }
+                }
+                .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
+            }
+        }
+        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.62), value: indicator)
+    }
+
+    static func label(_ indicator: AppModel.ReadyIndicator) -> String {
+        switch indicator {
+        case .none: return "Prompt Relay"
+        case .working(let n): return "Prompt Relay: Claude is working" + (n > 1 ? " in \(n) sessions" : "")
+        case .ready(let n, let automated, let background):
+            return "Prompt Relay: " + (automated ? "an answer to a turn Claude Code started itself" : "a new answer")
+                + (background ? ", background work was still running" : "")
+                + (n > 1 ? "; new answers in \(n) sessions" : "") + ". Not yet opened."
+        }
     }
 }

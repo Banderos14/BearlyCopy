@@ -12,7 +12,7 @@ import Foundation
 @MainActor
 final class RelayLife {
     enum Phase: String, Equatable, Sendable {
-        case idle, glance, lookingAround, curious, smiling, sleepy
+        case idle, glance, lookingUp, lookingAround, curious, smiling, sleepy
     }
 
     /// What a beat asks of the face; applied by the controller.
@@ -94,9 +94,13 @@ final class RelayLife {
         let side: CGFloat = random() < 0.5 ? -1 : 1
         let steps: [(Pose, TimeInterval)]
         switch r {
-        case ..<0.35:
+        case ..<0.24:
             phase = .glance
             steps = [(Pose(look: CGPoint(x: 0.75 * side, y: -0.15)), 1.6)]
+        case ..<0.35:
+            // Phase 8: now and then a look up, as if at something above the screen.
+            phase = .lookingUp
+            steps = [(Pose(look: CGPoint(x: 0.15 * side, y: -0.85)), 1.3)]
         case ..<0.6:
             phase = .lookingAround
             steps = [(Pose(look: CGPoint(x: -0.8 * side, y: 0.05)), 0.9),

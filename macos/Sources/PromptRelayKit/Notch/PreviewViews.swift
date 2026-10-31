@@ -13,14 +13,24 @@ struct PackagePreviewView: View {
     let presentation: NotchPresentation
     /// The section to scroll to (Preview navigation); the token repeats a jump.
     @State private var jump: (offset: Int, token: Int)?
+    /// Phase 8: Formatted (rendered Markdown) or Markdown Source (the exact
+    /// characters). Two views of one immutable snapshot (`pack.text`):
+    /// switching never rebuilds it, and Copy always copies the source.
+    @State private var source = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             switch model.packPreview {
             case .ready(let pack)?:
                 header(pack)
-                VerbatimTextView(pack.text, textColor: NSColor(Island.primary), fontSize: 12, jump: jump)
-                    .padding(6)
+                Group {
+                    if source {
+                        VerbatimTextView(pack.text, textColor: NSColor(Island.primary), fontSize: 12, jump: jump)
+                            .padding(6)
+                    } else {
+                        FormattedPackView(text: pack.text, jump: jump)
+                    }
+                }
                     .frame(maxWidth: .infinity, minHeight: 120, maxHeight: .infinity)
                     .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
                     .clipShape(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous))
@@ -46,8 +56,12 @@ struct PackagePreviewView: View {
                 Spacer(minLength: 0)
                 sectionMenu(pack)
             }
-            Text("Exactly this text is copied. Git status and the time were read when it was built; Copy uses this snapshot.")
-                .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .center, spacing: 8) {
+                ReaderModePicker(source: $source)
+                    .islandFrame("preview.mode")
+                Text("One snapshot in both views; Copy copies the Markdown Source exactly. Git status and the time were read when it was built.")
+                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+            }
             if !pack.findings.isEmpty {
                 Label("Possible secrets found: you will be asked before it is copied.", systemImage: "exclamationmark.shield")
                     .font(.system(size: 11)).foregroundStyle(Island.warning)
@@ -200,5 +214,42 @@ struct PDFPreview: NSViewRepresentable {
 
     func updateNSView(_ view: PDFView, context: Context) {
         if view.document?.documentURL != url { view.document = PDFDocument(url: url) }
+    }
+}
+
+/// Copy with Context, Formatted: the snapshot's Markdown rendered (headings,
+/// lists, tables, code) in a lazy stack, so 100,000 characters and more
+/// scroll without building every row. Display only; the Sections menu jumps
+/// to the same `## ` heading as in Markdown Source.
+struct FormattedPackView: View {
+    let text: String
+    let jump: (offset: Int, token: Int)?
+
+    var body: some View {
+        let blocks = Markdown.blocks(text)
+        ScrollViewReader { proxy in
+            ScrollView {
+                MarkdownBlocksView(blocks: blocks, codeLineLimit: nil, fontSize: 12.5, anchored: true)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .scrollIndicators(.automatic)
+            .onChange(of: jump?.token) {
+                guard let jump, let index = Self.blockIndex(of: jump.offset, in: text, blocks: blocks) else { return }
+                withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(index, anchor: .top) }
+            }
+        }
+        .islandFrame("preview.formatted")
+    }
+
+    /// The block of the `## ` heading at `offset` in the source: the n-th
+    /// level-2 heading with that title, where n counts the same titles before it.
+    static func blockIndex(of offset: Int, in text: String, blocks: [Markdown.Block]) -> Int? {
+        let sections = PackSection.sections(in: text)
+        guard let section = sections.first(where: { $0.offset == offset }) else { return nil }
+        let nth = sections.filter { $0.title == section.title && $0.offset < offset }.count
+        let matches = blocks.indices.filter { if case .heading(2, section.title) = blocks[$0] { return true } else { return false } }
+        return nth < matches.count ? matches[nth] : nil
     }
 }

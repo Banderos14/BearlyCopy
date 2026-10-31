@@ -552,6 +552,46 @@ public final class AppModel {
         return da > db
     }
 
+    /// Phase 8: what the notch's right ear shows. `Stop` means Claude
+    /// stopped answering, not that the task succeeded, so nothing here says
+    /// "done" or "success": only that an answer is there and not yet seen,
+    /// or that Claude is still working on a prompt.
+    public enum ReadyIndicator: Equatable, Sendable {
+        case none
+        /// A prompt is waiting for Claude in this many sessions (recently active).
+        case working(sessions: Int)
+        /// Unseen answers: how many sessions have one; whether the newest was
+        /// a turn Claude Code started itself (not your request) — known only
+        /// when its turns are loaded, otherwise false; whether background
+        /// work was still running when it stopped.
+        case ready(sessions: Int, automated: Bool, backgroundPending: Bool)
+    }
+
+    /// A waiting prompt older than this is not shown as work (an interrupted
+    /// turn never gets a Stop and would otherwise look busy forever).
+    static let workingWindow: TimeInterval = 20 * 60
+
+    public var readyIndicator: ReadyIndicator {
+        if hasUnseenAnswer, let answer = readyAnswer {
+            let seen = lastSeenAt
+            let others = allSessions.filter { s in
+                guard s.sessionKey != answer.sessionKey, let last = s.lastTurn, let at = s.lastEventAt else { return false }
+                let finished = last.status == .stopReceived || last.status == .stopReceivedBackgroundTasksPending
+                return finished && (seen.map { Self.isNewer(at, than: $0) } ?? false)
+            }
+            let turns = answer.sessionKey == selectedSessionKey ? turns.value : turnCache[answer.sessionKey]?.turns
+            let automated = turns?.first { $0.index == answer.turnIndex }?.requestOrigin == .automated
+            return .ready(sessions: 1 + others.count, automated: automated,
+                          backgroundPending: answer.status == .stopReceivedBackgroundTasksPending)
+        }
+        let now = Date()
+        let working = allSessions.filter {
+            $0.lastTurn?.status == .awaitingResponse
+                && (Wording.date($0.lastEventAt).map { now.timeIntervalSince($0) < Self.workingWindow } ?? false)
+        }
+        return working.isEmpty ? .none : .working(sessions: working.count)
+    }
+
     /// The user looked at the newest answer (opened the notch or a window).
     public func acknowledgeReadyAnswer() {
         hasUnseenAnswer = false

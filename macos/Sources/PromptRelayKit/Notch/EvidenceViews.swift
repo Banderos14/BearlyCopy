@@ -23,7 +23,7 @@ struct EvidenceChip: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Evidence Check: \(evidence.summary)")
-            .islandHelp("Evidence Check: what Prompt Relay observed on this Mac, kept apart from what the answer claims")
+            .islandHelp("What this Mac observed, kept apart from what the answer claims")
             .islandFrame("response.evidence")
         }
     }

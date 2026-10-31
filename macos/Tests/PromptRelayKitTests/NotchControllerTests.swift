@@ -505,8 +505,10 @@ final class NotchControllerTests: XCTestCase {
         // The pointer far below-left, on the external display (left of the built-in one).
         pointer.move(to: CGPoint(x: -900, y: 300))
         let mascot = controller.presentation.mascot
-        XCTAssertLessThan(mascot.motion.lookTarget.x, -0.95, "looks left toward the other display")
-        XCTAssertGreaterThan(mascot.motion.lookTarget.y, 0.9, "and down")
+        // Phase 8: the direction to the pointer (left and somewhat down), at full reach.
+        XCTAssertLessThan(mascot.motion.lookTarget.x, -0.9, "looks left toward the other display")
+        XCTAssertGreaterThan(mascot.motion.lookTarget.y, 0.25, "and down")
+        XCTAssertEqual(hypot(mascot.motion.lookTarget.x, mascot.motion.lookTarget.y), 1, accuracy: 0.02, "far away: the whole range")
         _ = mascot.motion.frame(at: RelayMotion.clock() + 1.0 / 60)
         XCTAssertGreaterThan(mascot.gaze.x, -0.5, "eased, not a jump")
         Self.runFrames(mascot.motion, seconds: 1.5)
@@ -514,7 +516,9 @@ final class NotchControllerTests: XCTestCase {
         pointer.move(to: CGPoint(x: ear.minX + NotchLayout.earWidth / 2 + 30, y: ear.midY))
         clock.advance(0.1)
         Self.runFrames(mascot.motion, seconds: 1)
-        XCTAssertEqual(mascot.gaze.x, tanh(30 / 220), accuracy: 0.05, "just right of the bear")
+        XCTAssertGreaterThan(mascot.gaze.x, 0.02, "just right of the bear: a small look right")
+        XCTAssertLessThan(mascot.gaze.x, 0.2)
+        XCTAssertLessThan(mascot.gaze.y, 0, "level with Relay at the top of the screen: a little up")
         clock.advance(PointerFollower.restAfter + 0.1)
         Self.runFrames(mascot.motion, seconds: 0.6)
         XCTAssertEqual(mascot.head.x, 0, accuracy: 0.01, "R8: the head is back first")

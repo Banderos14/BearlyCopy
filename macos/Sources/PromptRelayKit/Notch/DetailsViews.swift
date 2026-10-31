@@ -59,8 +59,12 @@ struct PairedRows: Layout {
             i < subviews.count ? subviews[i].sizeThatFits(ProposedViewSize(width: w, height: 0)).height : 0
         }
         let topMin = max(smallest(0, left), smallest(1, rightWidth))
-        let top = max(topMin, min(topNatural, topCap, max(0, budget - rowSpacing - min(bottomNatural, minBottom))))
-        let bottom = min(bottomNatural, max(0, budget - rowSpacing - top))
+        // The bottom cards' fixed rows (the Answer's header, its smallest
+        // scroll and the Full Report row) never get less than they need:
+        // a smaller slot let the card draw onto the footer (Phase 8).
+        let bottomMin = max(smallest(2, left), smallest(3, rightWidth))
+        let top = max(topMin, min(topNatural, topCap, max(0, budget - rowSpacing - max(bottomMin, min(bottomNatural, minBottom)))))
+        let bottom = max(min(bottomNatural, bottomMin), min(bottomNatural, max(0, budget - rowSpacing - top)))
         return Rows(left: left, top: top, bottom: bottom)
     }
 
@@ -176,7 +180,8 @@ struct DetailsView: View {
 
     private func taskCard(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
         TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2,
-                 viewFull: { model.navigate(to: .taskReader) }).islandFrame("card.task")
+                 viewFull: { model.navigate(to: .taskReader) }, inline: presentation.maxContentHeight < 300 && !taskInReviewPane)
+            .islandFrame("card.task")
     }
 
     private func handoffColumn(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
@@ -304,11 +309,11 @@ struct NavigationIcons: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            IconLink(symbol: "tray.full", label: "History", help: "History: every captured and imported report") {
+            IconLink(symbol: "tray.full", label: "History", help: "Every captured and imported report") {
                 model.navigate(to: .history)
             }
             IconLink(symbol: "doc.on.clipboard", label: "Clipboard",
-                     help: "Clipboard: your last copies and copied images") {
+                     help: "Your last copies and copied images") {
                 model.navigate(to: .clipboard)
             }
             IconLink(symbol: "gearshape", label: "Settings", help: "Settings (⌘,)", badge: !AppBuild.otherBuildsRunning().isEmpty) {
@@ -327,7 +332,7 @@ struct NavigationIcons: View {
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("More")
-            .islandHelp("More: \(Labels.importAIResult) (a result from another AI), Export Bundle (this result to a folder), Quit")
+            .islandHelp("\(Labels.importAIResult), Export Bundle, Quit")
         }
         .foregroundStyle(Island.secondary)
     }
@@ -428,10 +433,15 @@ struct HandoffContentsCard: View {
                 }
             }
             if let open = rows.first(where: { $0.title == explained }) {
-                BoundedScroll(maxHeight: 64) {
-                    Text(open.explanation).font(.system(size: 10.5)).foregroundStyle(Island.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-                        .padding(.trailing, 4)
+                BoundedScroll(maxHeight: 96) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(open.explanation.lines, id: \.0) { label, text in
+                            (Text(label + "  ").font(.system(size: 9.5, weight: .semibold)).foregroundStyle(Island.tertiary)
+                             + Text(text).font(.system(size: 10.5)).foregroundStyle(Island.secondary))
+                                .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(.trailing, 4)
                 }
                 .padding(7)
                 .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Island.cardRaised))
@@ -459,7 +469,7 @@ struct HandoffContentsCard: View {
         .buttonStyle(.plain)
         .disabled(model.currentRef == nil)
         .accessibilityLabel("Preview full context")
-        .islandHelp("Preview full context: the exact text Copy with Context copies")
+        .islandHelp("The exact text Copy with Context copies")
     }
 
     struct Row: Equatable {
@@ -468,7 +478,21 @@ struct HandoffContentsCard: View {
         let detail: String
         var alert = false
         var opensActivity = false
-        let explanation: String
+        let explanation: Explanation
+    }
+
+    /// Phase 8: every ⓘ answers the same four questions, in this order.
+    struct Explanation: Equatable {
+        /// What this part of the package is.
+        let what: String
+        /// Where its data comes from.
+        let source: String
+        /// What Prompt Relay itself read or checked on this Mac.
+        let checked: String
+        /// What it does not know.
+        let unknown: String
+
+        var lines: [(String, String)] { [("What", what), ("Source", source), ("Checked here", checked), ("Not known", unknown)] }
     }
 
     /// The parts of the package for the report shown, as plain facts.
@@ -482,32 +506,52 @@ struct HandoffContentsCard: View {
             default: return "original text"
             }
         }()
-        rows.append(Row(symbol: "text.quote", title: "Request & answer", detail: taskDetail,
-                        explanation: "Your request and Claude's complete answer, unchanged and included once. What Claude says it did is marked “Reported by Claude”."))
+        let imported = model.selectedImport != nil
+        rows.append(Row(symbol: "text.quote", title: "Request & answer", detail: taskDetail, explanation: Explanation(
+            what: "Your request and Claude's complete answer, each included once, character for character.",
+            source: imported ? "The text you pasted into Import AI Result." : "Claude Code's UserPromptSubmit and Stop hooks, stored on this Mac.",
+            checked: imported ? "Nothing beyond storing it as you pasted it." : "That both belong to this session and turn (by prompt id or order, as labelled).",
+            unknown: "Whether what the answer claims is true: those claims are marked “Reported by Claude”.")))
         if model.selectedImport != nil {
-            rows.append(Row(symbol: "terminal", title: "Commands", detail: "not available",
-                            explanation: "Imported results come from places Prompt Relay could not watch, so no commands are listed."))
+            rows.append(Row(symbol: "terminal", title: "Commands", detail: "not available", explanation: Explanation(
+                what: "Commands the assistant ran.",
+                source: "None: an imported result comes from a place Prompt Relay could not watch.",
+                checked: "Nothing.",
+                unknown: "Which commands ran, and with what result.")))
         } else if let turn = model.selectedTurn {
             let captureOn = model.selectedProject?.captureEnabled ?? true
             let failed = turn.observed.map { max($0.commandsNonzero ?? 0, $0.runsNonzero) } ?? 0
             rows.append(Row(symbol: "terminal", title: "Commands", detail: commands(turn.observed, captureOn: captureOn),
-                            alert: failed > 0, opensActivity: true,
-                            explanation: turn.observed == nil
-                                ? (captureOn ? "No command events were recorded for this answer (plugin before 0.3.0, or recorded before tool capture). This does not mean Claude ran none."
-                                             : "Capture is off for this project, so nothing was recorded.")
-                                : "Each command Prompt Relay saw, with its exit code and duration. An exit code describes one command, not whether the task is done."))
+                            alert: failed > 0, opensActivity: true, explanation: turn.observed == nil
+                                ? Explanation(what: "Commands Claude ran during this answer.",
+                                              source: captureOn ? "None recorded (plugin before 0.3.0, or captured before tool events)." : "None: capture is off for this project.",
+                                              checked: "Nothing.",
+                                              unknown: "Whether Claude ran any commands; no record does not mean none ran.")
+                                : Explanation(what: "Each shell command Claude ran: its text, exit code and duration; › opens Failure Inspector.",
+                                              source: "Claude Code's tool hooks (PostToolUse / PostToolUseFailure) on this Mac.",
+                                              checked: "The exit code of each command as the hook reported it; for a failed test or build, its last lines after a secret scan.",
+                                              unknown: "Whether the task is done. With a pipe or `;` the exit code is the last process's. Full output is not kept.")))
             if let observed = turn.observed {
                 rows.append(Row(symbol: "doc.badge.ellipsis", title: "Files changed",
                                 detail: observed.filesChanged == 0 ? "none seen" : Labels.filesChanged(observed.filesChanged).replacingOccurrences(of: " changed", with: ""),
-                                explanation: "Files Claude edited or wrote, as seen by the tool events (not by comparing the disk)."))
+                                explanation: Explanation(
+                                    what: "Files Claude edited or wrote during this answer.",
+                                    source: "The paths in Claude Code's Write / Edit tool events.",
+                                    checked: "Only that an edit tool ran on each path. The files were not opened or compared.",
+                                    unknown: "Whether the edits are correct, still on disk, or the only changes. Files the answer merely mentions are not listed here.")))
             }
-            rows.append(Row(symbol: "arrow.triangle.branch", title: "Git status", detail: "checked when you copy",
-                            explanation: "Branch and uncommitted changes, read on this Mac at the moment of the copy, read-only. If the folder is not a Git repository, the package says so."))
+            rows.append(Row(symbol: "arrow.triangle.branch", title: "Git status", detail: "checked when you copy", explanation: Explanation(
+                what: "Branch, HEAD and uncommitted files of the project.",
+                source: "Git, run read-only on this Mac when the package is built.",
+                checked: "The repository's state at that moment (no fetch, no hooks run).",
+                unknown: "Which of those changes Claude made, and anything that changed after the copy.")))
         }
         let n = model.handoffAttachments(for: model.currentRef).count
-        rows.append(Row(symbol: "paperclip", title: "Attachments", detail: n == 0 ? "none chosen" : "\(n) chosen",
-                        explanation: n == 0 ? "No files are chosen. Tick files below to name them in the text and hand them over after it."
-                                            : "The chosen files are named in the text; after the copy you hand them over as files (Copy Files, Drag or Finder)."))
+        rows.append(Row(symbol: "paperclip", title: "Attachments", detail: n == 0 ? "none chosen" : "\(n) chosen", explanation: Explanation(
+            what: n == 0 ? "Files you choose below are named in the text and handed over after it." : "The chosen files: named in the text, handed over after it as files.",
+            source: "Snapshots you added, stored by Prompt Relay (not the live files).",
+            checked: "That each snapshot exists when the package is built; a missing one is reported, not skipped silently.",
+            unknown: "Whether the other assistant received them: Prompt Relay cannot see another app.")))
         return rows
     }
 
@@ -947,6 +991,8 @@ struct ActivityView: View {
                     }
                 }
                 BoundedScroll(maxHeight: presentation.listHeight(chrome: 92)) {
+                    VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+                    FailureSection(inspector: FailureInspector(commands: detail.commands))
                     GroupCard {
                         VStack(alignment: .leading, spacing: 0) {
                             ForEach(Array(shown.enumerated()), id: \.offset) { i, c in
@@ -973,6 +1019,8 @@ struct ActivityView: View {
                             }
                         }
                     }
+                    }
+                    .padding(.trailing, 2)
                 }
                 Text("From Claude Code's tool hooks. An exit code describes one command (with a pipe, its last process); "
                      + "it does not show that the task is complete.")
@@ -1014,7 +1062,7 @@ struct CommandRow: View {
         .padding(.horizontal, 10).padding(.vertical, 7)
         .contentShape(Rectangle())
         .onTapGesture { if command.outputTail != nil { expanded.toggle() } }
-        .islandHelp(command.command ?? "")
+        .islandHelp(command.command ?? "Command text withheld (\(command.commandWithheld ?? "unavailable")); only its exit code was kept")
     }
 
     @ViewBuilder private var result: some View {
