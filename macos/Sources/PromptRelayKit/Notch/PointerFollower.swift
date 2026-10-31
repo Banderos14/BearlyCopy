@@ -41,7 +41,9 @@ public final class LivePointerEvents: PointerEvents {
 /// pointer does not move. Only the latest position is kept, never a path.
 @MainActor
 public final class PointerFollower {
-    public static let maxRate: Double = 30
+    /// Phase 7.2: 60 (was 30). Each update only moves the engine's target;
+    /// frames come from the display, so a coarse target made the eyes step.
+    public static let maxRate: Double = 60
     /// R8: the head returns to neutral this long after the pointer stops.
     public static let restAfter: TimeInterval = 1.2
 

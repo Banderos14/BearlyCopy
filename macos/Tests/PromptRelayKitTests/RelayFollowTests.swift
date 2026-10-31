@@ -121,10 +121,25 @@ final class RelayPerformanceTests: XCTestCase {
         let rest = await idle(seconds: 8)
         let still = await measure(seconds: 5, moving: false)
         let deliveriesBefore = controller.follower.deliveries
-        let framesBefore = controller.presentation.mascot.framesPublished
+        let mascot = controller.presentation.mascot
+        let framesBefore = mascot.framesDrawn
+        let rootBefore = NotchRootView.bodyCount
+        mascot.motion.resetIntervals()
         let moving = await measure(seconds: 10, moving: true)
         let rate = Double(controller.follower.deliveries - deliveriesBefore) / 10
-        print(String(format: "RELAY-FRAMES %.1f Relay frames/s while moving", Double(controller.presentation.mascot.framesPublished - framesBefore) / 10))
+        let gaps = mascot.motion.intervals.sorted()
+        func pct(_ q: Double) -> Double { gaps.isEmpty ? -1 : gaps[min(gaps.count - 1, Int(Double(gaps.count) * q))] * 1000 }
+        let mean = gaps.isEmpty ? -1 : gaps.reduce(0, +) / Double(gaps.count) * 1000
+        let drops = gaps.filter { $0 > 1.5 / 60 }.count
+        print("RELAY-ROOT \(NotchRootView.bodyCount - rootBefore) island body updates in 10 s of movement")
+        print(String(format: "RELAY-FRAMES %.1f frames/s drawn while moving; interval mean %.2f ms, p50 %.2f, p95 %.2f, p99 %.2f, max %.2f ms; %d of %d intervals > 25 ms; display max %d Hz",
+                     Double(mascot.framesDrawn - framesBefore) / 10, mean, pct(0.5), pct(0.95), pct(0.99), pct(1.0), drops, gaps.count,
+                     NSScreen.main?.maximumFramesPerSecond ?? 0))
+        // Settles: after the pointer stops, the timeline pauses (no frames at rest).
+        try? await Task.sleep(nanoseconds: 3_000_000_000)
+        let restFrames = mascot.framesDrawn
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        print("RELAY-FRAMES at rest after moving: \(mascot.framesDrawn - restFrames) frames in 2 s, animating=\(mascot.animating)")
         print(String(format: "RELAY-PERF rest %.2f%% app, %.2f%% WindowServer; still %.1f%% CPU, moving %.1f%% CPU (WindowServer %.1f%%), %.0f gaze updates/s (events 120/s), RSS %d MB",
                      rest.app, rest.server, still.app, moving.app, moving.server, rate, Self.residentMB()))
         XCTAssertLessThanOrEqual(rate, Double(PointerFollower.maxRate) * 1.1)

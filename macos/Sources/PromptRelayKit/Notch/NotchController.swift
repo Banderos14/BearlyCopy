@@ -171,7 +171,6 @@ public final class NotchController {
     let life: RelayLife
     let follower: PointerFollower
     private let scheduler: NotchScheduling
-    var gazeTick: NotchTimer?
     var eyesReturn: NotchTimer?
     /// The displays are asleep: Relay neither blinks nor follows the pointer.
     var screensAsleep = false
@@ -273,8 +272,7 @@ public final class NotchController {
         blinkTask?.cancel()
         blinkTask = nil
         follower.stop()
-        gazeTick?.cancel()
-        gazeTick = nil
+        presentation.mascot.motion.reset()
         interaction.setAvailable(false)   // cancels timers, orders the panel out
         panel?.tearDown()
         panel?.close()
@@ -600,6 +598,10 @@ extension NotchController {
     func applyLife(_ pose: RelayLife.Pose) {
         let mascot = presentation.mascot
         if mascot.expression != pose.expression { mascot.expression = pose.expression }
+        mascot.motion.setAmounts(RelayMotion.Amounts(smile: pose.expression == .smile ? 1 : 0,
+                                                     sleepy: pose.expression == .sleepy ? 1 : 0,
+                                                     curious: pose.expression == .curious ? 1 : 0))
+        mascot.wake()
         let roll = pose.roll * Double(settings.relayMotion.amplitude)
         if mascot.roll != roll { mascot.roll = roll }
         setGaze(pose.look)
@@ -611,68 +613,13 @@ extension NotchController {
         setGaze(Self.gaze(toward: point, windowHeight: panel.frame.height, presentation: presentation, windowWidth: panel.frame.width))
     }
 
-    /// Eases the eyes and head toward `target`, 30 frames a second, only
-    /// until they arrive; nothing runs while Relay is still.
+    /// Points the eyes and head toward `target` (Phase 7.2: the motion
+    /// engine eases them per display frame; nothing runs once they arrive).
     func setGaze(_ target: CGPoint) {
         let mascot = presentation.mascot
         eyesReturn?.cancel(); eyesReturn = nil
-        guard abs(target.x - mascot.gazeTarget.x) > 0.02 || abs(target.y - mascot.gazeTarget.y) > 0.02 || target == .zero else { return }
-        mascot.gazeTarget = target
-        // Subtle turns the head less than Expressive; the eyes still look.
-        let a = settings.relayMotion.amplitude
-        mascot.headTarget = CGPoint(x: target.x * a, y: target.y * a)
-        guard gazeTick == nil else { return }
-        stepGaze()
-    }
-
-    /// Two followers at 30 frames a second, only until both arrive: the eyes
-    /// ease quickly (≈ 0.15 s, no overshoot); the head is a damped spring
-    /// (≈ 0.35 s, a slight overshoot) so it trails the eyes. Nothing runs
-    /// while Relay is still.
-    private func stepGaze() {
-        let mascot = presentation.mascot
-        let dt: CGFloat = 1.0 / 30
-        #if DEBUG
-        let publishedBefore = (mascot.gaze, mascot.head)
-        #endif
-        let step = MascotState.step
-        func moved(_ a: CGPoint, _ b: CGPoint) -> Bool { abs(a.x - b.x) >= step || abs(a.y - b.y) >= step }
-        var e = mascot.gazeExact
-        let ex = mascot.gazeTarget.x - e.x, ey = mascot.gazeTarget.y - e.y
-        let eyesDone = abs(ex) < 0.01 && abs(ey) < 0.01
-        if eyesDone {
-            mascot.gazeExact = mascot.gazeTarget
-            if mascot.gaze != mascot.gazeTarget { mascot.gaze = mascot.gazeTarget }
-        } else {
-            e = CGPoint(x: e.x + ex * 0.45, y: e.y + ey * 0.45)
-            mascot.gazeExact = e
-            if moved(e, mascot.gaze) { mascot.gaze = e }
-        }
-        let omega: CGFloat = 14, zeta: CGFloat = 0.75
-        var v = mascot.headVelocity, h = mascot.headExact
-        let ax = omega * omega * (mascot.headTarget.x - h.x) - 2 * zeta * omega * v.x
-        let ay = omega * omega * (mascot.headTarget.y - h.y) - 2 * zeta * omega * v.y
-        v = CGPoint(x: v.x + ax * dt, y: v.y + ay * dt)
-        h = CGPoint(x: h.x + v.x * dt, y: h.y + v.y * dt)
-        let headDone = abs(mascot.headTarget.x - h.x) < 0.005 && abs(mascot.headTarget.y - h.y) < 0.005
-            && abs(v.x) < 0.05 && abs(v.y) < 0.05
-        if headDone {
-            mascot.headVelocity = .zero
-            mascot.headExact = mascot.headTarget
-            if mascot.head != mascot.headTarget { mascot.head = mascot.headTarget }
-        } else {
-            mascot.headVelocity = v
-            mascot.headExact = h
-            if moved(h, mascot.head) { mascot.head = h }
-        }
-        #if DEBUG
-        if mascot.gaze != publishedBefore.0 || mascot.head != publishedBefore.1 { mascot.framesPublished += 1 }
-        #endif
-        if eyesDone && headDone { gazeTick = nil; return }
-        gazeTick = scheduler.schedule(after: 1.0 / 30) { [weak self] in
-            self?.gazeTick = nil
-            self?.stepGaze()
-        }
+        mascot.motion.headScale = settings.relayMotion.amplitude
+        if mascot.motion.look(at: target) { mascot.wake() }
     }
 
     /// −1…1 per axis (y down) from Relay toward `point` (window coordinates,
@@ -690,28 +637,22 @@ extension NotchController {
         return CGPoint(x: tanh((point.x - center.x) / 220), y: tanh((center.y - point.y) / 160))
     }
 
-    /// The pointer rested or following stopped: the head returns to neutral
-    /// now, the eyes a moment later (they linger), both animated.
+    /// The pointer rested or following stopped: Relay looks back to the
+    /// centre (the head trails the eyes on its spring).
     func pointerLeft() {
         let mascot = presentation.mascot
-        if presentation.reduceMotion || !presentation.showsMascot {
-            gazeTick?.cancel(); gazeTick = nil
-            eyesReturn?.cancel(); eyesReturn = nil
-            mascot.gazeTarget = .zero; mascot.headTarget = .zero; mascot.headVelocity = .zero; mascot.headExact = .zero
-            mascot.gazeExact = .zero
-            if mascot.gaze != .zero { mascot.gaze = .zero }
-            if mascot.head != .zero { mascot.head = .zero }
+        eyesReturn?.cancel(); eyesReturn = nil
+        if presentation.reduceMotion || !presentation.showsMascot || mascot.still {
+            mascot.motion.reset()
             return
         }
-        guard mascot.headTarget != .zero || mascot.head != .zero || mascot.gazeTarget != .zero || mascot.gaze != .zero else { return }
-        mascot.headTarget = .zero
-        if gazeTick == nil { stepGaze() }
-        eyesReturn?.cancel()
+        // R8: the head comes back first; the eyes linger a moment, then return.
+        mascot.motion.relaxHead()
+        mascot.wake()
         eyesReturn = scheduler.schedule(after: Self.eyesLinger) { [weak self] in
             guard let self else { return }
             self.eyesReturn = nil
-            self.presentation.mascot.gazeTarget = .zero
-            if self.gazeTick == nil { self.stepGaze() }
+            if self.presentation.mascot.motion.look(at: .zero) { self.presentation.mascot.wake() }
         }
     }
 
@@ -725,9 +666,8 @@ extension NotchController {
         let mascot = presentation.mascot
         if newAnswer || copy != .idle || coreDown { life.activity() }
         if case .copied = copy, mascot.mood != .pleased, !presentation.reduceMotion {
-            // Attention: the head comes to the centre for the happy hop.
-            mascot.headTarget = .zero
-            if gazeTick == nil { stepGaze() }
+            // Attention: Relay looks at you for the happy hop.
+            if mascot.motion.look(at: .zero) { mascot.wake() }
         }
         let mood: MascotState.Mood
         switch copy {
@@ -774,19 +714,21 @@ extension NotchController {
             pointerLeft()
         }
         if visible, blinkTask == nil {
+            // Blinks every 2.2–5.4 s, one in five a double blink (Phase 7.2);
+            // each draws ≈ 0.2 s of frames, then the timeline pauses again.
             blinkTask = Task { @MainActor [weak self] in
                 while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: UInt64.random(in: 3_500_000_000...7_000_000_000))
+                    try? await Task.sleep(nanoseconds: UInt64.random(in: 2_200_000_000...5_400_000_000))
                     guard let self, !Task.isCancelled else { return }
-                    self.presentation.mascot.isBlinking = true
-                    try? await Task.sleep(nanoseconds: 140_000_000)
-                    self.presentation.mascot.isBlinking = false
+                    let mascot = self.presentation.mascot
+                    guard mascot.expression != .sleepy else { continue }
+                    mascot.motion.blink(double: Double.random(in: 0..<1) < 0.2)
+                    mascot.wake()
                 }
             }
         } else if !visible {
             blinkTask?.cancel()
             blinkTask = nil
-            presentation.mascot.isBlinking = false
         }
     }
 

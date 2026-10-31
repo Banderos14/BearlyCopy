@@ -466,9 +466,10 @@ final class NotchControllerTests: XCTestCase {
         XCTAssertEqual(NotchRootView.restingSize(notch: CGSize(width: 185, height: 32)), CGSize(width: 183, height: 31))
     }
 
-    /// Phase 5.11: Relay is redrawn only for changes that can be seen
-    /// (≥ MascotState.step ≈ 0.07 pt); the exact target is still reached.
-    func testInvisibleGazeChangesDoNotRedrawRelay() async throws {
+    /// Phase 7.2: the engine moves Relay per display frame and stops: it
+    /// arrives exactly, the timeline is asked to run only while moving, and
+    /// no timer is left (the old 30 Hz follower is gone).
+    func testRelayMovesPerFrameAndStopsWhenSettled() async throws {
         settings.mascotEnabled = true
         settings.animation = .full
         settings.relayMotion = .expressive   // the head follows the whole target (Subtle: 65 %)
@@ -477,18 +478,20 @@ final class NotchControllerTests: XCTestCase {
         await model.refreshNow()
         let mascot = controller.presentation.mascot
         controller.setGaze(CGPoint(x: 0.6, y: 0.2))
-        clock.run(1)
+        XCTAssertTrue(mascot.animating, "the timeline runs while Relay moves")
+        Self.runFrames(mascot.motion, seconds: 1.5)
         XCTAssertEqual(mascot.gaze, CGPoint(x: 0.6, y: 0.2), "arrives exactly")
         XCTAssertEqual(mascot.head, CGPoint(x: 0.6, y: 0.2))
-        let before = mascot.framesPublished
-        controller.setGaze(CGPoint(x: 0.63, y: 0.21))    // ≈ 0.05 pt for the eyes: invisible steps
-        clock.run(1)
-        XCTAssertLessThanOrEqual(mascot.framesPublished - before, 2,
-                                 "only the arrivals of the eyes and the head are drawn, not the steps in between")
-        XCTAssertEqual(mascot.gaze, CGPoint(x: 0.63, y: 0.21), "but the final position is published exactly")
-        XCTAssertEqual(mascot.head, CGPoint(x: 0.63, y: 0.21))
+        XCTAssertTrue(mascot.motion.isSettled, "and stops: nothing to draw at rest")
         XCTAssertEqual(clock.liveTimers(matching: 1.0 / 30), 0)
         controller.stop()
+    }
+
+    /// Steps the engine like display frames at `hz`, from now.
+    static func runFrames(_ motion: RelayMotion, seconds: Double, hz: Double = 60) {
+        let start = RelayMotion.clock()
+        var t = start
+        while t - start < seconds { t += 1 / hz; _ = motion.frame(at: t) }
     }
 
     func testRelayFollowsThePointerAnywhereOnlyWhileVisible() async throws {
@@ -502,21 +505,24 @@ final class NotchControllerTests: XCTestCase {
         // The pointer far below-left, on the external display (left of the built-in one).
         pointer.move(to: CGPoint(x: -900, y: 300))
         let mascot = controller.presentation.mascot
-        XCTAssertLessThan(mascot.gazeTarget.x, -0.95, "looks left toward the other display")
-        XCTAssertGreaterThan(mascot.gazeTarget.y, 0.9, "and down")
+        XCTAssertLessThan(mascot.motion.lookTarget.x, -0.95, "looks left toward the other display")
+        XCTAssertGreaterThan(mascot.motion.lookTarget.y, 0.9, "and down")
+        _ = mascot.motion.frame(at: RelayMotion.clock() + 1.0 / 60)
         XCTAssertGreaterThan(mascot.gaze.x, -0.5, "eased, not a jump")
-        clock.run(0.5)
-        XCTAssertEqual(mascot.gaze, mascot.gazeTarget, "arrives within half a second")
-        XCTAssertEqual(clock.liveTimers(matching: 1.0 / 30), 0, "and the easing stops: nothing runs while still")
+        Self.runFrames(mascot.motion, seconds: 1.5)
+        XCTAssertEqual(mascot.gaze, mascot.motion.lookTarget, "arrives and settles within 1.5 s")
         pointer.move(to: CGPoint(x: ear.minX + NotchLayout.earWidth / 2 + 30, y: ear.midY))
-        clock.run(0.5)
+        clock.advance(0.1)
+        Self.runFrames(mascot.motion, seconds: 1)
         XCTAssertEqual(mascot.gaze.x, tanh(30 / 220), accuracy: 0.05, "just right of the bear")
         clock.advance(PointerFollower.restAfter + 0.1)
-        clock.run(0.6)
-        XCTAssertEqual(mascot.head, .zero, "R8: the head is back first")
-        clock.run(NotchController.eyesLinger + 0.6)
+        Self.runFrames(mascot.motion, seconds: 0.6)
+        XCTAssertEqual(mascot.head.x, 0, accuracy: 0.01, "R8: the head is back first")
+        XCTAssertNotEqual(mascot.gaze, .zero, "while the eyes linger")
+        clock.advance(NotchController.eyesLinger + 0.1)
+        Self.runFrames(mascot.motion, seconds: 1)
         XCTAssertEqual(mascot.gaze, .zero, "then the eyes: neutral again (eased)")
-        XCTAssertEqual(clock.liveTimers(matching: 1.0 / 30), 0, "and nothing runs once still")
+        XCTAssertTrue(mascot.motion.isSettled, "and nothing to draw once still")
 
         workspace.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
         XCTAssertFalse(controller.isFollowingPointer, "display asleep: nothing runs")
@@ -549,7 +555,7 @@ final class NotchControllerTests: XCTestCase {
         XCTAssertTrue(controller.isBlinkLoopRunning, "blinks while the resting island is on screen")
 
         controller.look(at: CGPoint(x: 200, y: 16))       // pointer far right of the left ear
-        XCTAssertGreaterThan(controller.presentation.mascot.gazeTarget.x, 0.5)
+        XCTAssertGreaterThan(controller.presentation.mascot.motion.lookTarget.x, 0.5)
         controller.pointerLeft()
         clock.run(NotchController.eyesLinger + 1)
         XCTAssertEqual(controller.presentation.mascot.gaze, .zero, "back to neutral")

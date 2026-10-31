@@ -1,3 +1,5 @@
+import AppKit
+import QuartzCore
 import Foundation
 @testable import PromptRelayKit
 
@@ -63,4 +65,40 @@ final class FakeRunner: CommandRunning, @unchecked Sendable {
 func envelope(command: String, ok: Bool = true, data: String = "null", error: String = "null",
               warnings: String = "[]", version: Int = 1) -> Data {
     Data("{\"api_version\":\(version),\"command\":\"\(command)\",\"data\":\(data),\"error\":\(error),\"ok\":\(ok),\"warnings\":\(warnings)}".utf8)
+}
+
+/// Phase 7.2: Relay is Core Animation layers; this renders the real layer
+/// tree (`RelayLayerView`) into a bitmap, top-left origin.
+@MainActor
+enum RelayRender {
+    static func image(_ state: MascotState, size: CGFloat = 28, reduceMotion: Bool = false, resting: Bool = true,
+                      canvas: CGSize = CGSize(width: 28, height: 28), origin: CGPoint = .zero, scale: CGFloat = 4) -> CGImage? {
+        let view = RelayLayerView(state: state)
+        view.frame = NSRect(x: 0, y: 0, width: size, height: size)
+        view.layoutSubtreeIfNeeded()
+        view.layout()
+        view.configure(size: size, reduceMotion: reduceMotion, resting: resting,
+                       facts: RelayFacts(mood: state.mood, expression: state.expression, roll: state.roll, still: state.still,
+                                         cheers: state.cheers, worries: state.worries))
+        view.render(at: RelayMotion.clock())
+        guard let layer = view.layer else { return nil }
+        // `render(in:)` draws y-up and ignores a root layer's geometry flip:
+        // place Relay from the bottom so `origin` is measured from the top.
+        let container = CALayer()
+        container.bounds = CGRect(origin: .zero, size: canvas)
+        container.anchorPoint = .zero
+        container.position = .zero
+        layer.removeFromSuperlayer()
+        layer.anchorPoint = .zero
+        layer.position = CGPoint(x: origin.x, y: canvas.height - origin.y - size)
+        layer.bounds = CGRect(x: 0, y: 0, width: size, height: size)
+        container.addSublayer(layer)
+        let w = Int(canvas.width * scale), h = Int(canvas.height * scale)
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        ctx.scaleBy(x: scale, y: scale)
+        container.render(in: ctx)
+        return ctx.makeImage()
+    }
 }

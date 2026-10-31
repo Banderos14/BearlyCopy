@@ -32,29 +32,34 @@ public final class MascotState {
     public internal(set) var roll: Double = 0
     /// Settings → Relay: Off draws a still bear (no head motion, no hops).
     public internal(set) var still = false
-    public internal(set) var isBlinking = false
-    /// Where Relay looks now, each axis −1…1 (y down): eased toward
-    /// `gazeTarget` at 30 frames a second while they differ (see
-    /// `NotchController.setGaze`). Never stored, no history.
-    public internal(set) var gaze: CGPoint = .zero
-    /// Where the pointer is, seen from Relay.
-    public internal(set) var gazeTarget: CGPoint = .zero
-    /// Where the head points, each axis −1…1: a slower, slightly springy
-    /// follower of `headTarget`, so the head trails the eyes (inertia).
-    public internal(set) var head: CGPoint = .zero
-    public internal(set) var headTarget: CGPoint = .zero
-    /// The followers' exact state. `gaze` and `head` are published only when
-    /// they move by `MascotState.step` (≈ 0.07 pt, a seventh of a Retina
-    /// pixel) or arrive, so Relay is not redrawn for invisible changes.
-    @ObservationIgnored var gazeExact: CGPoint = .zero
-    @ObservationIgnored var headExact: CGPoint = .zero
-    @ObservationIgnored var headVelocity: CGPoint = .zero
-    /// One unit moves the eyes ≈ 1.5 pt and the head ≈ 1.4 pt (28 pt Relay).
-    static let step: CGFloat = 0.05
-    #if DEBUG
-    /// Frames published by the gaze followers (for the performance test).
-    @ObservationIgnored var framesPublished = 0
-    #endif
+    /// Phase 7.2: the motion engine, stepped by the layer view's display
+    /// link while `animating`; not observed, so moving it never re-runs
+    /// SwiftUI. `animating`: a frame clock is running now.
+    @ObservationIgnored let motion = RelayMotion()
+    public internal(set) var animating = false
+    /// Where Relay looks and points its head now (read from the engine).
+    public var gaze: CGPoint {
+        get { motion.gaze }
+        set { motion.place(gaze: newValue, head: motion.head) }
+    }
+    public var head: CGPoint {
+        get { motion.head }
+        set { motion.place(gaze: motion.gaze, head: newValue) }
+    }
+    /// Frames drawn (for the frame-pacing check; Release too).
+    @ObservationIgnored var framesDrawn = 0
+
+    /// The layer views drawing this Relay (the resting ear, the open band).
+    @ObservationIgnored private var views = NSHashTable<RelayLayerView>.weakObjects()
+
+    func attach(_ view: RelayLayerView) { views.add(view) }
+
+    /// Starts the frame clock of every view showing Relay, if the engine has
+    /// something to do. Without a view on screen nothing runs.
+    func wake() {
+        for view in views.allObjects { view.wake() }
+    }
+
     /// Counts successful copies: each one plays the short happy reaction
     /// (a hop with the eyes closed).
     public internal(set) var cheers = 0
@@ -183,81 +188,22 @@ struct MascotView: View {
     static let preferredSize: CGFloat = 28
     static func size(notchHeight: CGFloat) -> CGFloat { min(preferredSize, max(16, notchHeight - 4)) }
 
+    /// Breathing (resting only): a render-server animation, no frames drawn.
+    var breathes = false
+
+    /// Phase 7.2: Relay is Core Animation shape layers updated once per
+    /// display frame by `NSView.displayLink` while it moves, and paused when
+    /// it rests. SwiftUI only passes the facts (mood, face, settings) down:
+    /// a TimelineView + Canvas re-ran SwiftUI every frame (13–17 % CPU at 60
+    /// fps in an optimized probe; ≈ 88 % in the Debug test), the layers cost
+    /// ≈ 2 % (probe). The drawing is the same `MascotView.shapes`.
     var body: some View {
-        let calm = reduceMotion || state.still
-        let eyes = calm ? CGPoint.zero : state.gaze
-        let head = calm ? CGPoint.zero : state.head
-        let roll = calm ? 0 : state.roll
-        let expression = state.mood == .idle ? state.expression : .none
-        let reaction = ReactionTrigger(cheers: state.cheers, worries: state.worries)
-        KeyframeAnimator(initialValue: Reaction(), trigger: reaction) { r in
-            if resting {
-                // Bounded in the ear: shift, turn around the centre, lift; the
-                // limit includes the hop, so a copy never reaches the screen top.
-                let pose = RestingPose(head: head, mood: state.mood, lift: -r.lift)
-                MascotFace(gazeX: eyes.x, gazeY: eyes.y, eyeOpen: state.isBlinking ? 0 : 1, squint: r.squint, mood: state.mood,
-                           yaw: head.x * pose.k, pitch: head.y * pose.k, expression: expression)
-                    .frame(width: size, height: size)
-                    .rotationEffect(.degrees(pose.turn + r.shake * 3 + roll * 0.5 * Double(pose.k)), anchor: .center)
-                    .offset(x: pose.dx, y: pose.dy)
-            } else {
-                let pose = MascotPose(gaze: eyes, head: head)
-                MascotFace(gazeX: pose.eyes.x, gazeY: pose.eyes.y, eyeOpen: state.isBlinking ? 0 : 1,
-                           squint: r.squint, mood: state.mood, yaw: head.x, pitch: head.y, expression: expression)
-                    .frame(width: size, height: size)
-                    .rotationEffect(.degrees(pose.tilt + r.shake * 4 + roll), anchor: .bottom)
-                    .offset(x: pose.shift.width * size, y: pose.shift.height * size + r.lift)
-                    .scaleEffect(r.scale, anchor: .bottom)
-            }
-        } keyframes: { _ in
-            // Amplitudes are zero for the reaction that did not happen, and
-            // for every movement under Reduce Motion (the closed eyes stay).
-            // At rest the hop has no scale and at most `RestingPose.hop`.
-            let hop: CGFloat = state.mood == .pleased && !reduceMotion && !state.still ? 1 : 0
-            let grow: CGFloat = resting ? 0 : hop
-            let lift: CGFloat = resting ? RestingPose.hop : 1.5
-            let shake: CGFloat = state.mood == .concerned && !reduceMotion && !state.still ? 1 : 0
-            let squint: CGFloat = state.mood == .pleased ? 1 : 0
-            KeyframeTrack(\.scale) {
-                SpringKeyframe(1 + 0.08 * grow, duration: 0.14)
-                SpringKeyframe(1 - 0.03 * grow, duration: 0.14)
-                SpringKeyframe(1, duration: 0.22)
-            }
-            KeyframeTrack(\.lift) {
-                CubicKeyframe(-lift * hop, duration: 0.14)
-                CubicKeyframe(0, duration: 0.3)
-            }
-            KeyframeTrack(\.shake) {
-                LinearKeyframe(-1 * shake, duration: 0.07)
-                LinearKeyframe(1 * shake, duration: 0.1)
-                LinearKeyframe(-0.6 * shake, duration: 0.09)
-                LinearKeyframe(0, duration: 0.09)
-            }
-            KeyframeTrack(\.squint) {
-                LinearKeyframe(squint, duration: 0.06)
-                LinearKeyframe(squint, duration: 0.8)
-                LinearKeyframe(0, duration: 0.12)
-            }
-        }
-        // No SwiftUI animation on the gaze: it is eased at 30 fps by the
-        // controller and only while moving (a spring here redrew the panel
-        // at the display's full rate, ≈ 23 % CPU while the pointer moved).
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.07), value: state.isBlinking)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state.mood)
-        .animation(calm ? nil : .easeInOut(duration: 0.45), value: state.roll)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: state.expression)
-        .accessibilityElement()
-        .accessibilityLabel(label)
-    }
-
-    private struct ReactionTrigger: Equatable { var cheers: Int; var worries: Int }
-
-    struct Reaction {
-        var scale: CGFloat = 1
-        var lift: CGFloat = 0
-        var shake: Double = 0
-        /// 1: the happy closed eyes (^ ^).
-        var squint: CGFloat = 0
+        RelayLayerRepresentable(state: state, size: size, reduceMotion: reduceMotion, resting: resting, breathes: breathes,
+                                facts: .init(mood: state.mood, expression: state.mood == .idle ? state.expression : .none,
+                                             roll: state.roll, still: state.still, cheers: state.cheers, worries: state.worries))
+            .frame(width: size, height: size)
+            .accessibilityElement()
+            .accessibilityLabel(label)
     }
 
     private var label: String {
@@ -269,11 +215,11 @@ struct MascotView: View {
         }
     }
 
-    static let fur = Color(red: 0.80, green: 0.62, blue: 0.45)
-    static let furDark = Color(red: 0.62, green: 0.45, blue: 0.31)
-    static let muzzle = Color(red: 0.95, green: 0.86, blue: 0.74)
-    static let ink = Color(red: 0.11, green: 0.08, blue: 0.07)
-    static let blush = Color(red: 0.96, green: 0.52, blue: 0.50)
+    static let fur = CGColor(srgbRed: 0.80, green: 0.62, blue: 0.45, alpha: 1)
+    static let furDark = CGColor(srgbRed: 0.62, green: 0.45, blue: 0.31, alpha: 1)
+    static let muzzle = CGColor(srgbRed: 0.95, green: 0.86, blue: 0.74, alpha: 1)
+    static let ink = CGColor(srgbRed: 0.11, green: 0.08, blue: 0.07, alpha: 1)
+    static let blush = CGColor(srgbRed: 0.96, green: 0.52, blue: 0.50, alpha: 1)
 
     /// The face for one frame. `eyeOpen` 0…1 (a blink), `squint` 0…1 (the
     /// happy closed eyes); `gaze` moves the eyes within the face.
@@ -284,9 +230,17 @@ struct MascotView: View {
     /// ears the other way), the far eye and the far ear are foreshortened,
     /// the outline narrows slightly and the muzzle flattens with the pitch.
     /// A drawing, not a 3D model: no new artwork, the same bear.
-    static func draw(in ctx: inout GraphicsContext, size: CGSize, mood: MascotState.Mood, eyeOpen: CGFloat = 1,
+    static func shapes(size: CGSize, mood: MascotState.Mood, eyeOpen: CGFloat = 1,
                      squint: CGFloat = 0, gaze: CGPoint, yaw: CGFloat = 0, pitch: CGFloat = 0,
-                     expression: MascotState.Expression = .none) {
+                     expression: MascotState.Expression = .none, amounts: RelayMotion.Amounts? = nil,
+                     earLag: CGFloat = 0) -> [RelayShape] {
+        var out = RelayShapes()
+        // Phase 7.2: faces are amounts 0…1 that blend frame by frame; a
+        // still picture (the renders) maps the expression to full amounts.
+        let a = amounts ?? RelayMotion.Amounts(smile: expression == .smile ? 1 : 0, sleepy: expression == .sleepy ? 1 : 0,
+                                               curious: expression == .curious ? 1 : 0)
+        let curiousness = max(mood == .curious ? 1 : 0, a.curious)
+        let sleepiness = mood == .idle ? a.sleepy : 0
         let s = min(size.width, size.height)
         func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
             CGRect(x: x * s, y: y * s, width: w * s, height: h * s)
@@ -295,101 +249,118 @@ struct MascotView: View {
         let t = Turn(yaw: yaw, pitch: pitch)
         // Ears (perked a little when curious): behind the head, they move
         // against the turn; the far one shrinks and slides toward the centre.
-        let earLift: CGFloat = mood == .curious || expression == .curious ? 0.025 : 0
+        let earLift: CGFloat = 0.025 * curiousness
         for (x, side) in [(0.05, CGFloat(-1)), (0.67, 1)] {
             let k = t.earScale(side: side)
-            let ex = x + t.earShift(side: side), ey = 0.03 - earLift + t.earRise
+            // Ear inertia: they swing a little behind a fast turn, then settle.
+            let ex = x + t.earShift(side: side) + earLag * 0.035, ey = 0.03 - earLift + t.earRise + abs(earLag) * 0.01
             let w = 0.28 * k
-            ctx.fill(Path(ellipseIn: r(ex + (0.28 - w) / 2, ey + (0.28 - w) / 2, w, w)), with: .color(fur))
+            out.fill(ellipse: r(ex + (0.28 - w) / 2, ey + (0.28 - w) / 2, w, w), fur)
             let iw = 0.14 * k
-            ctx.fill(Path(ellipseIn: r(ex + (0.28 - iw) / 2, ey + 0.07 + (0.14 - iw) / 2, iw, iw)), with: .color(furDark))
+            out.fill(ellipse: r(ex + (0.28 - iw) / 2, ey + 0.07 + (0.14 - iw) / 2, iw, iw), furDark)
         }
         // Head: narrows a touch as it turns, its centre follows a little.
         let hw = 0.82 * t.outlineScale
-        ctx.fill(Path(ellipseIn: r(0.5 - hw / 2 + t.outlineShift, 0.13 + t.pitchShift(0.25), hw, 0.8)), with: .color(fur))
+        out.fill(ellipse: r(0.5 - hw / 2 + t.outlineShift, 0.13 + t.pitchShift(0.25), hw, 0.8), fur)
         // The muzzle follows the gaze a touch, and the turn most (nearest layer).
         let mx = g.x * 0.025 + t.layer(1.0), my = g.y * 0.015 + t.pitchShift(1.0)
         let mh = 0.3 * t.muzzleSquash
-        ctx.fill(Path(ellipseIn: r(0.3 + mx, 0.53 + my + (0.3 - mh) / 2, 0.4 * t.outlineScale, mh)), with: .color(muzzle))
-        ctx.fill(Path(ellipseIn: r(0.425 + mx * 1.15, 0.565 + my * 1.1, 0.15, 0.095 * t.muzzleSquash)), with: .color(ink))
-        ctx.fill(Path(ellipseIn: r(0.46 + mx * 1.15, 0.575 + my * 1.1, 0.045, 0.03)), with: .color(.white.opacity(0.35)))
+        out.fill(ellipse: r(0.3 + mx, 0.53 + my + (0.3 - mh) / 2, 0.4 * t.outlineScale, mh), muzzle)
+        out.fill(ellipse: r(0.425 + mx * 1.15, 0.565 + my * 1.1, 0.15, 0.095 * t.muzzleSquash), ink)
+        out.fill(ellipse: r(0.46 + mx * 1.15, 0.575 + my * 1.1, 0.045, 0.03), CGColor(gray: 1, alpha: 0.35))
 
-        if mood == .pleased || expression == .smile {
-            let a = mood == .pleased ? 0.55 : 0.35
+        let blushAlpha = mood == .pleased ? 0.55 : 0.35 * Double(a.smile)
+        if blushAlpha > 0.02 {
             for x in [0.2, 0.68] {
-                ctx.fill(Path(ellipseIn: r(x + mx, 0.56 + my, 0.12, 0.07)), with: .color(blush.opacity(a)))
+                out.fill(ellipse: r(x + mx, 0.56 + my, 0.12, 0.07), blush.copy(alpha: CGFloat(blushAlpha))!)
             }
         }
 
         // Eyes: round, with a highlight; they follow the gaze within the face
         // and the turn (a middle layer); the far eye is narrower.
         let dx = g.x * 0.055 + t.layer(0.7), dy = g.y * 0.04 + t.pitchShift(0.7)
-        let sleepy = expression == .sleepy && mood == .idle
-        let open = max(0, min(sleepy ? 0.3 : 1, eyeOpen))
+        // Heavy lids close gradually; past 80 % they become the soft arc.
+        let sleepy = sleepiness > 0.8
+        let open = max(0, min(1 - 0.7 * sleepiness, eyeOpen))
         for (x, side) in [(0.335, CGFloat(-1)), (0.665, 1)] {
             let center = CGPoint(x: (x + dx + t.eyeConverge(side: side)) * s, y: (0.45 + dy) * s)
             let wide = t.eyeWidth(side: side)
             if squint > 0.5 {
                 // Happy closed eyes (^ ^).
-                var p = Path()
+                let p = CGMutablePath()
                 p.move(to: CGPoint(x: center.x - 0.065 * s * wide, y: center.y + 0.025 * s))
                 p.addQuadCurve(to: CGPoint(x: center.x + 0.065 * s * wide, y: center.y + 0.025 * s),
                                control: CGPoint(x: center.x, y: center.y - 0.065 * s))
-                ctx.stroke(p, with: .color(ink), style: StrokeStyle(lineWidth: 0.05 * s, lineCap: .round))
+                out.stroke(p, ink, width: 0.05 * s)
             } else if sleepy {
                 // Heavy lids: a soft downward arc.
-                var p = Path()
+                let p = CGMutablePath()
                 p.move(to: CGPoint(x: center.x - 0.06 * s * wide, y: center.y - 0.005 * s))
                 p.addQuadCurve(to: CGPoint(x: center.x + 0.06 * s * wide, y: center.y - 0.005 * s),
                                control: CGPoint(x: center.x, y: center.y + 0.04 * s))
-                ctx.stroke(p, with: .color(ink), style: StrokeStyle(lineWidth: 0.045 * s, lineCap: .round))
+                out.stroke(p, ink, width: 0.045 * s)
             } else if open < 0.25 {
-                var p = Path()
+                let p = CGMutablePath()
                 p.move(to: CGPoint(x: center.x - 0.06 * s * wide, y: center.y))
                 p.addLine(to: CGPoint(x: center.x + 0.06 * s * wide, y: center.y))
-                ctx.stroke(p, with: .color(ink), style: StrokeStyle(lineWidth: 0.045 * s, lineCap: .round))
+                out.stroke(p, ink, width: 0.045 * s)
             } else {
-                let e: CGFloat = mood == .curious || expression == .curious ? 0.145 : 0.125
+                let e: CGFloat = 0.125 + 0.02 * curiousness
                 let h = e * open
                 let w = e * wide
-                ctx.fill(Path(ellipseIn: CGRect(x: center.x - w * s / 2, y: center.y - h * s / 2, width: w * s, height: h * s)),
-                         with: .color(ink))
+                out.fill(ellipse: CGRect(x: center.x - w * s / 2, y: center.y - h * s / 2, width: w * s, height: h * s), ink)
                 if open > 0.6 {
                     // The highlight shifts with the gaze, so the eyes read as turning.
                     let hx = center.x - 0.015 * s + g.x * 0.012 * s, hy = center.y - 0.045 * s
-                    ctx.fill(Path(ellipseIn: CGRect(x: hx, y: hy, width: 0.045 * s, height: 0.045 * s)),
-                             with: .color(.white.opacity(0.92)))
+                    out.fill(ellipse: CGRect(x: hx, y: hy, width: 0.045 * s, height: 0.045 * s), CGColor(gray: 1, alpha: 0.92))
                 }
             }
         }
         // Brows only when concerned: inner ends raised (worried, not angry), no red.
         if mood == .concerned {
             for (x, dir) in [(0.335, 1.0), (0.665, -1.0)] {
-                var p = Path()
+                let p = CGMutablePath()
                 p.move(to: CGPoint(x: (x - 0.075 + dx) * s, y: (0.31 + 0.025 * dir) * s))
                 p.addLine(to: CGPoint(x: (x + 0.075 + dx) * s, y: (0.31 - 0.025 * dir) * s))
-                ctx.stroke(p, with: .color(furDark), style: StrokeStyle(lineWidth: 0.05 * s, lineCap: .round))
+                out.stroke(p, furDark, width: 0.05 * s)
             }
         }
         // Mouth: a small smile, an open happy one when pleased, a flat line when concerned.
         let y = (0.725 + my) * s, cx = 0.5 + mx
-        var mouth = Path()
+        let mouth = CGMutablePath()
         switch mood {
         case .pleased:
             mouth.move(to: CGPoint(x: (cx - 0.1) * s, y: y - 0.01 * s))
             mouth.addQuadCurve(to: CGPoint(x: (cx + 0.1) * s, y: y - 0.01 * s), control: CGPoint(x: cx * s, y: y + 0.11 * s))
             mouth.closeSubpath()
-            ctx.fill(mouth, with: .color(ink))
+            out.fill(path: mouth, ink)
         case .concerned:
             mouth.move(to: CGPoint(x: (cx - 0.06) * s, y: y + 0.01 * s))
             mouth.addLine(to: CGPoint(x: (cx + 0.06) * s, y: y + 0.01 * s))
-            ctx.stroke(mouth, with: .color(ink), style: StrokeStyle(lineWidth: 0.04 * s, lineCap: .round))
+            out.stroke(mouth, ink, width: 0.04 * s)
         default:
-            let w: CGFloat = expression == .smile ? 0.09 : (mood == .curious || expression == .curious ? 0.05 : 0.075)
-            let depth: CGFloat = expression == .smile ? 0.085 : (sleepy ? 0.03 : 0.065)
+            let w: CGFloat = 0.075 + 0.015 * a.smile - 0.025 * curiousness
+            let depth: CGFloat = 0.065 + 0.02 * a.smile - 0.035 * sleepiness
             mouth.move(to: CGPoint(x: (cx - w) * s, y: y))
             mouth.addQuadCurve(to: CGPoint(x: (cx + w) * s, y: y), control: CGPoint(x: cx * s, y: y + depth * s))
-            ctx.stroke(mouth, with: .color(ink), style: StrokeStyle(lineWidth: 0.04 * s, lineCap: .round))
+            out.stroke(mouth, ink, width: 0.04 * s)
+        }
+        return out.list
+    }
+
+    /// The same face into a SwiftUI Canvas (renders, previews, tests).
+    static func draw(in ctx: inout GraphicsContext, size: CGSize, mood: MascotState.Mood, eyeOpen: CGFloat = 1,
+                     squint: CGFloat = 0, gaze: CGPoint, yaw: CGFloat = 0, pitch: CGFloat = 0,
+                     expression: MascotState.Expression = .none, amounts: RelayMotion.Amounts? = nil,
+                     earLag: CGFloat = 0) {
+        for shape in shapes(size: size, mood: mood, eyeOpen: eyeOpen, squint: squint, gaze: gaze, yaw: yaw, pitch: pitch,
+                            expression: expression, amounts: amounts, earLag: earLag) {
+            let path = Path(shape.path)
+            if let width = shape.lineWidth {
+                ctx.stroke(path, with: .color(Color(cgColor: shape.color)), style: StrokeStyle(lineWidth: width, lineCap: .round))
+            } else {
+                ctx.fill(path, with: .color(Color(cgColor: shape.color)))
+            }
         }
     }
 
@@ -415,6 +386,25 @@ struct MascotView: View {
     }
 }
 
+/// One filled or stroked part of Relay's face.
+struct RelayShape {
+    let path: CGPath
+    let color: CGColor
+    /// nil: filled; else stroked with round caps.
+    let lineWidth: CGFloat?
+}
+
+struct RelayShapes {
+    private(set) var list: [RelayShape] = []
+    mutating func fill(ellipse rect: CGRect, _ color: CGColor) {
+        list.append(RelayShape(path: CGPath(ellipseIn: rect, transform: nil), color: color, lineWidth: nil))
+    }
+    mutating func fill(path: CGPath, _ color: CGColor) { list.append(RelayShape(path: path, color: color, lineWidth: nil)) }
+    mutating func stroke(_ path: CGPath, _ color: CGColor, width: CGFloat) {
+        list.append(RelayShape(path: path, color: color, lineWidth: width))
+    }
+}
+
 /// The face, interpolated frame by frame: gaze, blink and squint animate
 /// smoothly instead of jumping between pointer events.
 struct MascotFace: View, Animatable {
@@ -426,6 +416,8 @@ struct MascotFace: View, Animatable {
     var yaw: CGFloat = 0
     var pitch: CGFloat = 0
     var expression: MascotState.Expression = .none
+    var amounts: RelayMotion.Amounts? = nil
+    var earLag: CGFloat = 0
 
     var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>, CGFloat> {
         get { AnimatablePair(AnimatablePair(gazeX, gazeY), eyeOpen) }
@@ -435,58 +427,195 @@ struct MascotFace: View, Animatable {
     var body: some View {
         Canvas { context, canvas in
             MascotView.draw(in: &context, size: canvas, mood: mood, eyeOpen: eyeOpen, squint: squint,
-                            gaze: CGPoint(x: gazeX, y: gazeY), yaw: yaw, pitch: pitch, expression: expression)
+                            gaze: CGPoint(x: gazeX, y: gazeY), yaw: yaw, pitch: pitch, expression: expression,
+                            amounts: amounts, earLag: earLag)
         }
     }
 }
 
-/// Breathing on the render server: a slow, repeating Core Animation scale of
-/// the layer that holds Relay (≤ 1.5 % of its height, from the bottom). The
-/// panel is not redrawn for it and the app's CPU stays idle; nothing runs
-/// under Reduce Motion or while it is hidden.
-struct Breathing<Content: View>: NSViewRepresentable {
-    let active: Bool
-    @ViewBuilder let content: Content
+/// What SwiftUI passes to Relay's layers; a change redraws one frame (or
+/// starts a reaction), nothing else.
+struct RelayFacts: Equatable {
+    var mood: MascotState.Mood
+    var expression: MascotState.Expression
+    var roll: Double
+    var still: Bool
+    var cheers: Int
+    var worries: Int
+}
 
-    func makeNSView(context: Context) -> BreathingHost<Content> {
-        BreathingHost(rootView: content)
+struct RelayLayerRepresentable: NSViewRepresentable {
+    let state: MascotState
+    let size: CGFloat
+    let reduceMotion: Bool
+    let resting: Bool
+    let breathes: Bool
+    let facts: RelayFacts
+
+    func makeNSView(context: Context) -> RelayLayerView {
+        let view = RelayLayerView(state: state)
+        view.configure(size: size, reduceMotion: reduceMotion, resting: resting, facts: facts)
+        view.setBreathing(breathes && !reduceMotion)
+        return view
     }
 
-    func updateNSView(_ view: BreathingHost<Content>, context: Context) {
-        view.hosting.rootView = content
-        view.setBreathing(active)
+    func updateNSView(_ view: RelayLayerView, context: Context) {
+        view.configure(size: size, reduceMotion: reduceMotion, resting: resting, facts: facts)
+        view.setBreathing(breathes && !reduceMotion)
     }
 }
 
-final class BreathingHost<Content: View>: NSView {
-    let hosting: NSHostingView<Content>
+/// Relay as Core Animation layers. `displayLink` (the system frame clock,
+/// aligned to the display's refresh) steps the motion engine while it
+/// moves, asking for about 60 fps (also on ProMotion); once settled the link
+/// is paused, so a resting Relay costs nothing but breathing on the render
+/// server. Layer changes are committed without implicit animations.
+@MainActor
+final class RelayLayerView: NSView {
+    let state: MascotState
+    private let breathLayer = CALayer()
+    private let face = CALayer()
+    private var pool: [CAShapeLayer] = []
+    private var link: CADisplayLink?
+    private var size: CGFloat = MascotView.preferredSize
+    private var reduceMotion = false
+    private var resting = false
+    private var facts: RelayFacts?
     private(set) var isBreathing = false
-    static var key: String { "relay.breathing" }
+    static let breathKey = "relay.breathing"
+    /// The link is running (Relay moves).
+    var isAnimating: Bool { link.map { !$0.isPaused } ?? false }
 
-    init(rootView: Content) {
-        hosting = NSHostingView(rootView: rootView)
+    init(state: MascotState) {
+        self.state = state
         super.init(frame: .zero)
         wantsLayer = true
-        hosting.wantsLayer = true
-        addSubview(hosting)
+        // Breathing scales from the bottom: AppKit keeps this layer's anchor
+        // at (0, 0), its bottom edge (y up).
+        breathLayer.anchorPoint = .zero
+        face.anchorPoint = .zero
+        face.isGeometryFlipped = true   // the drawing is y-down
+        layer?.addSublayer(breathLayer)
+        breathLayer.addSublayer(face)
+        state.attach(self)
     }
 
     required init?(coder: NSCoder) { nil }
 
-    /// No size of its own: the caller gives it a fixed frame. Asking the
-    /// hosted view for its fitting size ran a SwiftUI layout pass on every
-    /// update while the pointer moved (Phase 5.11 profile).
     override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric) }
 
     override func layout() {
         super.layout()
-        // AppKit keeps the layer's anchor at (0, 0): its bottom edge (y up),
-        // which is where breathing scales from.
-        hosting.frame = bounds
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        breathLayer.frame = bounds
+        face.bounds = CGRect(origin: .zero, size: bounds.size)
+        face.position = .zero
+        CATransaction.commit()
+        render()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil { link?.invalidate(); link = nil } else { render(); wake() }
+    }
+
+    func configure(size: CGFloat, reduceMotion: Bool, resting: Bool, facts: RelayFacts) {
+        let old = self.facts
+        self.size = size; self.reduceMotion = reduceMotion; self.resting = resting
+        self.facts = facts
+        let motion = state.motion
+        let calm = reduceMotion || facts.still
+        if let old {
+            if facts.cheers != old.cheers, facts.mood == .pleased, !calm { motion.react(.cheer) }
+            if facts.worries != old.worries, facts.mood == .concerned, !calm { motion.react(.worry) }
+        }
+        motion.setRoll(calm ? 0 : facts.roll)
+        if calm { motion.reset() }
+        render()
+        wake()
+    }
+
+    /// Starts the frame clock if the engine has something to do.
+    func wake() {
+        guard window != nil else { return }
+        guard !state.motion.isSettled else { link?.isPaused = true; return }
+        if link == nil {
+            let l = displayLink(target: self, selector: #selector(step(_:)))
+            // About 60 fps on any display: on ProMotion one frame in two, which
+            // halves the work; the motion is time-based, so its speed is the same.
+            l.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+            l.add(to: .main, forMode: .common)
+            link = l
+        }
+        link?.isPaused = false
+        if !state.animating { state.animating = true }
+    }
+
+    @objc private func step(_ link: CADisplayLink) {
+        render(at: RelayMotion.clock())
+        if state.motion.isSettled {
+            link.isPaused = true
+            if state.animating { state.animating = false }
+        }
+    }
+
+    /// Draws the frame for `now` into the layers.
+    func render(at now: TimeInterval = RelayMotion.clock()) {
+        guard let facts, bounds.width > 0 else { return }
+        let f = state.motion.frame(at: now)
+        state.framesDrawn += 1
+        let calm = reduceMotion || facts.still
+        let eyes = calm ? CGPoint.zero : f.gaze
+        let head = calm ? CGPoint.zero : f.head
+        let s = bounds.width
+        var transform = CGAffineTransform.identity
+        let shapes: [RelayShape]
+        if resting {
+            // Bounded in the ear: shift, turn around the centre, lift; the
+            // limit includes the hop, so a copy never reaches the screen top.
+            let pose = RestingPose(head: head, mood: facts.mood, lift: -f.lift * RestingPose.hop)
+            shapes = MascotView.shapes(size: CGSize(width: s, height: s), mood: facts.mood, eyeOpen: f.eyeOpen,
+                                       squint: f.squint, gaze: eyes, yaw: head.x * pose.k, pitch: head.y * pose.k,
+                                       expression: facts.expression, amounts: f.amounts, earLag: calm ? 0 : f.earLag * pose.k)
+            let angle = (pose.turn + f.shake * 3 + f.roll * 0.5 * Double(pose.k)) * .pi / 180
+            transform = transform.translatedBy(x: pose.dx + s / 2, y: pose.dy + s / 2).rotated(by: angle).translatedBy(x: -s / 2, y: -s / 2)
+        } else {
+            let pose = MascotPose(gaze: eyes, head: head)
+            shapes = MascotView.shapes(size: CGSize(width: s, height: s), mood: facts.mood, eyeOpen: f.eyeOpen,
+                                       squint: f.squint, gaze: pose.eyes, yaw: head.x, pitch: head.y,
+                                       expression: facts.expression, amounts: f.amounts, earLag: calm ? 0 : f.earLag)
+            let angle = (pose.tilt + f.shake * 4 + f.roll) * .pi / 180
+            let grow = resting ? 1 : f.scale
+            // Rotate and scale around the bottom centre, then shift and lift.
+            transform = transform
+                .translatedBy(x: pose.shift.width * s + s / 2, y: pose.shift.height * s - f.lift * 1.5 + s)
+                .rotated(by: angle).scaledBy(x: grow, y: grow)
+                .translatedBy(x: -s / 2, y: -s)
+        }
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        while pool.count < shapes.count {
+            let l = CAShapeLayer()
+            l.lineCap = .round
+            face.addSublayer(l)
+            pool.append(l)
+        }
+        for (i, layer) in pool.enumerated() {
+            guard i < shapes.count else { layer.isHidden = true; continue }
+            let shape = shapes[i]
+            layer.isHidden = false
+            layer.path = shape.path
+            if let width = shape.lineWidth {
+                layer.fillColor = nil; layer.strokeColor = shape.color; layer.lineWidth = width
+            } else {
+                layer.fillColor = shape.color; layer.strokeColor = nil
+            }
+        }
+        face.setAffineTransform(transform)
+        CATransaction.commit()
     }
 
     func setBreathing(_ on: Bool) {
-        guard on != isBreathing, let layer = hosting.layer else { return }
+        guard on != isBreathing else { return }
         isBreathing = on
         if on {
             let breathe = CABasicAnimation(keyPath: "transform.scale.y")
@@ -496,9 +625,9 @@ final class BreathingHost<Content: View>: NSView {
             breathe.autoreverses = true
             breathe.repeatCount = .infinity
             breathe.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            layer.add(breathe, forKey: Self.key)
+            breathLayer.add(breathe, forKey: Self.breathKey)
         } else {
-            layer.removeAnimation(forKey: Self.key)
+            breathLayer.removeAnimation(forKey: Self.breathKey)
         }
     }
 }

@@ -55,16 +55,9 @@ final class RelayRestingTests: XCTestCase {
             for mood in [MascotState.Mood.idle, .curious] {
                 let state = MascotState()
                 state.gaze = gaze; state.head = gaze; state.mood = mood
-                let view = ZStack(alignment: .topLeading) {
-                    Color.clear
-                    MascotView(state: state, size: 28, reduceMotion: false, resting: true)
-                        .frame(width: 28, height: 28)
-                        .padding(.leading, RestingPose.origin.x).padding(.top, 2)
-                }
-                .frame(width: 64, height: 40, alignment: .topLeading)
-                let renderer = ImageRenderer(content: view)
-                renderer.scale = scale
-                let image = try XCTUnwrap(renderer.cgImage)
+                // Phase 7.2: the real layers (the drawing Relay uses on screen).
+                let image = try XCTUnwrap(RelayRender.image(state, canvas: CGSize(width: 64, height: 40),
+                                                            origin: CGPoint(x: RestingPose.origin.x, y: 2), scale: scale))
                 let alpha = try alphaMap(image)
                 for y in 0..<image.height {
                     for x in 0..<image.width where alpha[y * image.width + x] > 24 {
@@ -82,22 +75,23 @@ final class RelayRestingTests: XCTestCase {
     func testReduceMotionKeepsTheHeadStillButStillShowsFeelings() throws {
         let state = MascotState()
         state.gaze = CGPoint(x: -1, y: -1); state.head = CGPoint(x: -1, y: -1); state.mood = .pleased
-        let still = ImageRenderer(content: MascotView(state: state, size: 28, reduceMotion: true, resting: true).frame(width: 28, height: 28))
+        let still = try XCTUnwrap(RelayRender.image(state, reduceMotion: true))
         let neutralState = MascotState(); neutralState.mood = .pleased
-        let neutral = ImageRenderer(content: MascotView(state: neutralState, size: 28, reduceMotion: true, resting: true).frame(width: 28, height: 28))
-        XCTAssertEqual(try XCTUnwrap(still.nsImage?.tiffRepresentation), try XCTUnwrap(neutral.nsImage?.tiffRepresentation),
+        let neutral = try XCTUnwrap(RelayRender.image(neutralState, reduceMotion: true))
+        XCTAssertEqual(try alphaMap(still), try alphaMap(neutral),
                        "under Reduce Motion the pointer moves nothing")
     }
 
     func testBreathingRunsOnTheRenderServerOnlyWhenActive() {
-        let host = BreathingHost(rootView: Color.red.frame(width: 28, height: 28))
-        host.frame = NSRect(x: 0, y: 0, width: 28, height: 28)
-        host.layout()
-        host.setBreathing(true)
-        XCTAssertNotNil(host.hosting.layer?.animation(forKey: BreathingHost<AnyView>.key), "a Core Animation, not redraws")
-        XCTAssertEqual(host.hosting.layer?.anchorPoint.y, 0, "breathes from the bottom edge")
-        host.setBreathing(false)
-        XCTAssertNil(host.hosting.layer?.animation(forKey: BreathingHost<AnyView>.key))
+        let view = RelayLayerView(state: MascotState())
+        view.frame = NSRect(x: 0, y: 0, width: 28, height: 28)
+        view.layout()
+        view.setBreathing(true)
+        let breath = view.layer?.sublayers?.first
+        XCTAssertNotNil(breath?.animation(forKey: RelayLayerView.breathKey), "a Core Animation, not redraws")
+        XCTAssertEqual(breath?.anchorPoint.y, 0, "breathes from the bottom edge")
+        view.setBreathing(false)
+        XCTAssertNil(breath?.animation(forKey: RelayLayerView.breathKey))
     }
 
     private func alphaMap(_ image: CGImage) throws -> [UInt8] {

@@ -217,8 +217,12 @@ struct IslandContent: View {
             IslandBand(presentation: presentation) {
                 HStack(spacing: 7) {
                     if presentation.showsMascot {
-                        MascotView(state: presentation.mascot, size: MascotView.size(notchHeight: presentation.notchSize.height), reduceMotion: presentation.reduceMotion)
-                            .islandFrame("band.mascot")
+                        // Layers with their own frame clock (Phase 7.2): Relay's
+                        // frames never re-run the island's SwiftUI.
+                        let size = MascotView.size(notchHeight: presentation.notchSize.height)
+                        MascotView(state: presentation.mascot, size: size, reduceMotion: presentation.reduceMotion)
+                        .frame(width: size, height: size)
+                        .islandFrame("band.mascot")
                     }
                     if model.route != .home { BackButton(model: model) }
                 }

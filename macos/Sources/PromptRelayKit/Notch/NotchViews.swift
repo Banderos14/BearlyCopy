@@ -102,7 +102,14 @@ public struct NotchRootView: View {
             : AnyShape(NotchShape(bottomRadius: bottomRadius, topRadius: topRadius))
     }
 
+    #if DEBUG
+    nonisolated(unsafe) static var bodyCount = 0
+    #endif
+
     public var body: some View {
+        #if DEBUG
+        let _ = { Self.bodyCount += 1 }()
+        #endif
         ZStack(alignment: .topLeading) {
             // No shadow: the island must not show a grey halo on light desktops.
             shape.fill(Color.black)
@@ -147,9 +154,8 @@ public struct NotchRootView: View {
                 // R8: at x = 8 in the ear (3.4 pt clear of the visible side
                 // and of the camera housing); its motion is bounded there.
                 let size = MascotView.size(notchHeight: presentation.notchSize.height)
-                Breathing(active: presentation.breathes) {
-                    MascotView(state: presentation.mascot, size: size, reduceMotion: presentation.reduceMotion, resting: true)
-                }
+                MascotView(state: presentation.mascot, size: size, reduceMotion: presentation.reduceMotion, resting: true,
+                           breathes: presentation.breathes)
                 .frame(width: size, height: size)
                 .padding(.leading, presentation.isFloating ? 0 : RestingPose.origin.x)
                 .frame(width: presentation.isFloating ? size : ear, alignment: .leading)
