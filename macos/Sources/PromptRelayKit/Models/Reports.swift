@@ -30,7 +30,7 @@ public enum ReportSource: String, Codable, Sendable {
     public var label: String {
         switch self {
         case .localClaudeCode: return "Claude Code · this Mac"
-        case .cloudManualImport: return "Cloud · imported by you"
+        case .cloudManualImport: return "Imported by you"
         }
     }
 }

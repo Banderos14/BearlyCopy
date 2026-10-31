@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 public final class AppModel {
     public enum CopyKind: String, Sendable {
         case response = "Answer", context = "Copy with Context", image = "Image", responseWithImages = "Response and images"
-        case files = "Files"
+        case files = "Files", task = "Task"
     }
 
     public enum CopyFeedback: Equatable {
@@ -667,6 +667,8 @@ public final class AppModel {
         case packagePreview
         /// One attachment (image, text document, PDF) opened from Details.
         case attachmentPreview
+        /// The whole request of the answer (View Full Task).
+        case taskReader
         public var id: String { rawValue }
         public var title: String {
             switch self {
@@ -680,9 +682,10 @@ public final class AppModel {
             case .attachmentPreview: return "Attachment"
             case .copies: return "Recent Copies"
             case .history: return "History"
-            case .importReport: return Labels.importSavedResult
+            case .importReport: return Labels.importAIResult
             case .settings: return "Settings"
             case .reader: return "Full Report"
+            case .taskReader: return "Full Task"
             }
         }
     }

@@ -58,7 +58,7 @@ struct PromptRelayApp: App {
             Button("Open Prompt Relay  \(HotKeyRegistration.displayString)") { services.present(.home) }
             Button("Clipboard") { services.present(.copies) }
             Button("History") { services.present(.history) }
-            Button("Import Saved Result…") { services.present(.importReport) }
+            Button("Import AI Result…") { services.present(.importReport) }
             Divider()
             Button("Settings…") { services.present(.settings) }
                 .keyboardShortcut(",")

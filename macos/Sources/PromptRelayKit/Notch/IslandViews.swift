@@ -246,6 +246,7 @@ struct IslandContent: View {
                 case .settings: IslandSettingsView(model: model, presentation: presentation, settings: settings, notifier: notifier,
                                                    actions: actions)
                 case .reader: ReaderView(model: model, presentation: presentation)
+                case .taskReader: TaskReaderView(model: model, presentation: presentation)
                 case .packagePreview: PackagePreviewView(model: model, presentation: presentation)
                 case .attachmentPreview: AttachmentPreviewView(model: model, presentation: presentation)
                 }
@@ -366,12 +367,15 @@ struct ReportFacts {
             return .automated(earlier: turn.earlierUserRequest.map { $0.displayPreview ?? Wording.requestForDisplay($0.preview).text },
                               turn: turn.earlierUserRequest?.turn)
         case .unknown? where turn.request != nil:
-            return .unknownSource(turn.request!.readablePreview)
+            return .unknownSource(model.selectedRequestText.map { Wording.requestForDisplay($0).text } ?? turn.request!.readablePreview)
         default: break
         }
-        switch (turn.link, turn.request) {
-        case (.promptID, let request?): return .linked(request.readablePreview)
-        case (_, let request?): return .inferred(request.readablePreview)
+        // The whole request once `show` has loaded it (Phase 7: More showed
+        // only the Core's 200-character preview of a long request).
+        let readable = model.selectedRequestText.map { Wording.requestForDisplay($0).text } ?? turn.request?.readablePreview
+        switch (turn.link, readable) {
+        case (.promptID, let text?): return .linked(text)
+        case (_, let text?): return .inferred(text)
         default: return .unavailable((Wording.link(turn.link) ?? "not captured").lowercased())
         }
     }
@@ -432,6 +436,8 @@ struct TaskCard: View {
     @Binding var expanded: Bool
     @Environment(\.islandReduceMotion) private var reduceMotion
     var lines = 2
+    /// Opens View Full Task; nil where there is no room for it.
+    var viewFull: (() -> Void)?
     static let expandedHeight: CGFloat = 168
 
     var body: some View {
@@ -447,6 +453,16 @@ struct TaskCard: View {
                 }
                 if facts.taskWasPasted { Tag("pasted text", tint: Island.secondary) }
                 Spacer(minLength: 0)
+                if let viewFull, hasText {
+                    Button(action: viewFull) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right").font(.system(size: 9, weight: .bold))
+                            .frame(width: 22, height: 18).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Island.secondary)
+                    .accessibilityLabel(Labels.viewFullTask)
+                    .islandHelp("\(Labels.viewFullTask): the whole request on its own screen, Formatted or Markdown Source")
+                }
                 if canExpand {
                     Button { withAnimation(Island.geometry(reduceMotion: reduceMotion)) { expanded.toggle() } } label: {
                         HStack(spacing: 3) {
@@ -498,6 +514,11 @@ struct TaskCard: View {
         }
         .scrollDisabled(!expanded)
         .islandFrame("task.body")
+    }
+
+    private var hasText: Bool {
+        if case .unavailable = facts.task { return false }
+        return true
     }
 
     private var canExpand: Bool {
@@ -1426,13 +1447,13 @@ struct ImportView: View {
     var body: some View {
         BoundedScroll(maxHeight: presentation.listHeight(chrome: 20)) {
             VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
-                Text("Cloud sessions run on Anthropic's servers, so the capture on this Mac can't see them. Copy Claude's final report there, then paste it here. It is saved on this Mac exactly as pasted and marked as imported.")
+                Text("For a finished result from Claude Cloud, ChatGPT, Gemini or another AI that the hooks on this Mac cannot see: paste its answer (and, if you like, your request). It is saved on this Mac exactly as pasted and marked “imported by you”, never as captured locally. Files you attach later go with it; nothing else is read.")
                     .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                 reportCard
-                field("Task (optional)", text: $task, prompt: "What you asked Claude, for the Review Pack", lines: 3)
+                field("Task (optional)", text: $task, prompt: "What you asked the assistant", lines: 3)
                 HStack(alignment: .top, spacing: 10) {
                     projectMenu
-                    field("Cloud session (optional)", text: $session, prompt: "ID or link", lines: 1)
+                    field("Source or session (optional)", text: $session, prompt: "e.g. ChatGPT, a session ID or link", lines: 1)
                 }
                 HStack(spacing: 10) {
                     Button("Import") { save() }
@@ -1524,15 +1545,16 @@ struct ImportView: View {
 
 // MARK: - Full Report
 
-/// The whole report, scrolling inside the island: formatted, or the exact
-/// plain text. Both are drawn from the same original text in one viewport
+/// The whole report, scrolling inside the island: Formatted (the Markdown
+/// rendered, the default) or Markdown Source (the exact characters, markup
+/// included). Both are drawn from the same original text in one viewport
 /// that keeps its size, so switching never changes the island's height
 /// (Phase 5: back to Formatted, the island collapsed to 93 pt and cut the
 /// report off; see `NotchPresentation.reportContentHeight`).
 struct ReaderView: View {
     let model: AppModel
     let presentation: NotchPresentation
-    @State private var plain = false
+    @State private var source = false
 
     var body: some View {
         let facts = ReportFacts(model: model)
@@ -1542,18 +1564,10 @@ struct ReaderView: View {
                         .compactMap { $0 }.joined(separator: " · "))
                     .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).lineLimit(1)
                 Spacer(minLength: 0)
-                Picker("Show as", selection: $plain) {
-                    Text("Formatted").tag(false)
-                    Text("Plain Text").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .controlSize(.small)
-                .fixedSize()
-                .islandHelp("Formatted renders the Markdown; Plain Text shows the exact characters. Both copy the same original.")
+                ReaderModePicker(source: $source)
             }
             if let text = fullText {
-                ReaderBody(text: text, plain: plain)
+                ReaderBody(text: text, plain: source)
                     .frame(minHeight: 120, maxHeight: .infinity)
                     .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
                     .clipShape(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous))
@@ -1578,6 +1592,88 @@ struct ReaderView: View {
     private var fullText: String? {
         if let report = model.selectedImport { return report.text }
         return model.selectedResponseText
+    }
+}
+
+/// Formatted / Markdown Source, the same control in both readers.
+struct ReaderModePicker: View {
+    @Binding var source: Bool
+
+    var body: some View {
+        Picker("Show as", selection: $source) {
+            Text("Formatted").tag(false)
+            Text(Labels.markdownSource).tag(true)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .controlSize(.small)
+        .fixedSize()
+        .islandHelp("Formatted renders the Markdown; Markdown Source shows the exact characters, markup included. Both copy the same original.")
+    }
+}
+
+/// View Full Task: the whole request of the answer, from what is stored
+/// (no new capture, no AI). Formatted hides the blocks Claude Code adds;
+/// Markdown Source and Copy Original Task are the stored text exactly. An
+/// automatic turn's message is never presented as the user's request.
+struct TaskReaderView: View {
+    let model: AppModel
+    let presentation: NotchPresentation
+    @State private var source = false
+
+    var body: some View {
+        let facts = ReportFacts(model: model)
+        let task = model.fullTask
+        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+            HStack(spacing: 8) {
+                Text([facts.source?.label, task?.characters.map { "\($0.formatted()) characters" }]
+                        .compactMap { $0 }.joined(separator: " · "))
+                    .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                if let task, !task.complete { Tag("incomplete", tint: Island.warning) }
+                if task?.origin == .automated { Tag("started automatically", tint: Island.warning) }
+                Spacer(minLength: 0)
+                if task?.display != nil { ReaderModePicker(source: $source) }
+            }
+            if let task, let original = task.original {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(task.notes, id: \.self) { note in
+                        Text(note).font(.system(size: 11)).foregroundStyle(Island.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let earlier = task.earlierRequest {
+                        Text("Your request before it (first characters): \(earlier)").font(.system(size: 11))
+                            .foregroundStyle(Island.secondary).lineLimit(2)
+                    }
+                }
+                .islandFrame("task.notes")
+                ReaderBody(text: source || task.display == nil ? original : task.display!, plain: source || task.display == nil)
+                    .frame(minHeight: 100, maxHeight: .infinity)
+                    .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+                    .clipShape(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous))
+                    .islandFrame("task.reader.body")
+                HStack(spacing: 8) {
+                    Button {
+                        model.copyOriginalTask()
+                    } label: {
+                        Label(model.isCopied(AppModel.taskToken(model.currentRef)) ? Labels.copied : Labels.copyOriginalTask,
+                              systemImage: model.isCopied(AppModel.taskToken(model.currentRef)) ? "checkmark" : "doc.on.doc")
+                    }
+                    .buttonStyle(IslandPillStyle(prominent: true))
+                    .disabled(!task.canCopy)
+                    .islandHelp(task.canCopy ? "Copy the request exactly as it was stored, every character"
+                                             : "Claude Code wrote this message, not you: there is no original task to copy")
+                    Spacer(minLength: 0)
+                }
+                .islandFrame("task.reader.actions")
+                CopyFailureLine(model: model)
+            } else if model.detail.isLoading {
+                ProgressView().controlSize(.small).frame(maxWidth: .infinity).padding(.vertical, 8)
+            } else {
+                MessageCard(title: "No task text", detail: task?.notes.first ?? "No answer is selected.",
+                            symbol: "text.bubble", tint: Island.secondary, action: nil)
+            }
+        }
+        .islandPadding(presentation)
     }
 }
 

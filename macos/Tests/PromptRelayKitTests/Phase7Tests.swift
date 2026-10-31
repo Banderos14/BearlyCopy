@@ -87,7 +87,7 @@ final class Phase7Tests: XCTestCase {
         var checked = 0
         for surface in [NotchPresentation.Surface.peek, .expanded] {
             for maxContent: CGFloat in [268, 448] {
-                let routes: [AppModel.IslandRoute] = surface == .peek ? [.home] : [.home, .history, .clipboard, .settings, .reader, .packagePreview]
+                let routes: [AppModel.IslandRoute] = surface == .peek ? [.home] : [.home, .history, .clipboard, .settings, .reader, .taskReader, .packagePreview, .importReport]
                 for route in routes {
                     m.route = route
                     let tips = IslandTooltips()
@@ -191,5 +191,73 @@ final class Phase7ClipboardHitTests: XCTestCase {
             }
         }
         XCTAssertEqual(sites, 3)
+    }
+}
+
+// MARK: - View Full Task
+
+final class FullTaskTests: XCTestCase {
+    func ref(_ preview: String, chars: Int, truncated: Bool, text: String? = nil) throws -> TextRef {
+        var json: [String: Any] = ["preview": preview, "truncated": truncated, "char_count": chars, "utf8_bytes": chars,
+                                   "prompt_id": "p1", "received_at": "2026-10-31T10:00:00Z"]
+        if let text { json["text"] = text }
+        return try JSONDecoder().decode(TextRef.self, from: JSONSerialization.data(withJSONObject: json))
+    }
+
+    /// A long pasted Markdown request: the whole stored text, every
+    /// character, once `show` has loaded it; nothing shortened.
+    func testLongMarkdownRequestIsWholeAndVerbatim() throws {
+        let long = "<pasted_content>\n# Plan\n\n" + String(repeating: "- пункт с `кодом` и **жирным**\n", count: 400) + "```swift\nlet x = 1\n```\n</pasted_content>\r\nСделай это."
+        let request = try ref(String(long.prefix(200)), chars: long.unicodeScalars.count, truncated: true)
+        let task = FullTask.local(request: request, fullText: long, requestOrigin: .user, link: .promptID, earlier: nil)
+        XCTAssertEqual(task.original, long, "Markdown Source and the copy are the stored text exactly")
+        XCTAssertTrue(task.complete)
+        XCTAssertEqual(task.origin, .linked)
+        XCTAssertEqual(task.characters, long.unicodeScalars.count)
+        XCTAssertFalse(task.display!.contains("pasted_content"), "Formatted hides only the paste wrapper")
+        XCTAssertTrue(task.display!.contains("Сделай это."))
+        XCTAssertTrue(task.canCopy)
+    }
+
+    func testOnlyThePreviewAtHandIsMarkedIncomplete() throws {
+        let request = try ref(String(repeating: "a", count: 200), chars: 5_000, truncated: true)
+        let task = FullTask.local(request: request, fullText: nil, requestOrigin: .user, link: .promptID, earlier: nil)
+        XCTAssertFalse(task.complete)
+        XCTAssertTrue(task.notes.contains { $0.hasPrefix("Incomplete here: only the first 200 of \(5_000.formatted()) characters") }, "\(task.notes)")
+        let short = try ref("Коротко", chars: 7, truncated: false)
+        XCTAssertTrue(FullTask.local(request: short, fullText: nil, requestOrigin: .user, link: .promptID, earlier: nil).complete,
+                      "a preview that is the whole text is complete")
+    }
+
+    /// A message Claude Code wrote is never offered as the user's task.
+    func testAutomaticTurnIsNotTheUsersTask() throws {
+        let request = try ref("<task-notification>done</task-notification>", chars: 43, truncated: false)
+        let earlier = try JSONDecoder().decode(EarlierRequest.self, from: Data(#"{"turn":1,"preview":"Implement Phase 7","truncated":false,"char_count":17,"utf8_bytes":17,"prompt_id":"p1","received_at":"2026-10-31T10:00:00Z"}"#.utf8))
+        let task = FullTask.local(request: request, fullText: nil, requestOrigin: .automated, link: .promptID, earlier: earlier)
+        XCTAssertEqual(task.origin, .automated)
+        XCTAssertFalse(task.canCopy, "Copy Original Task is off")
+        XCTAssertNil(task.display, "shown as stored text only, never formatted as a request")
+        XCTAssertEqual(task.earlierRequest, "Implement Phase 7")
+        XCTAssertTrue(task.notes[0].contains("you did not write this message"))
+    }
+
+    func testOrderLinkAndImportsSayWhereTheTaskCameFrom() throws {
+        let request = try ref("Do it", chars: 5, truncated: false)
+        let inferred = FullTask.local(request: request, fullText: "Do it", requestOrigin: .user, link: .sequence, earlier: nil)
+        XCTAssertEqual(inferred.origin, .inferred)
+        XCTAssertTrue(inferred.notes[0].contains("by order only"))
+        let imported = FullTask.imported(task: "Задача из ChatGPT")
+        XCTAssertEqual(imported.original, "Задача из ChatGPT")
+        XCTAssertTrue(imported.notes[0].contains("Entered by you when importing"))
+        XCTAssertFalse(FullTask.imported(task: nil).canCopy)
+        XCTAssertFalse(FullTask.local(request: nil, fullText: nil, requestOrigin: nil, link: .none, earlier: nil).canCopy)
+    }
+
+    func testLabelsArePhase7Names() {
+        XCTAssertEqual(Labels.markdownSource, "Markdown Source")
+        XCTAssertEqual(Labels.importAIResult, "Import AI Result")
+        XCTAssertEqual(ReportSource.cloudManualImport.label, "Imported by you")
+        XCTAssertEqual(ReportSource(rawValue: "cloudManualImport"), .cloudManualImport, "older imports still decode")
+        XCTAssertEqual(AppModel.IslandRoute.taskReader.title, "Full Task")
     }
 }

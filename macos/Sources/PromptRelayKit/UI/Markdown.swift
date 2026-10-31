@@ -185,7 +185,8 @@ struct CodeBlockView: View {
             if !language.isEmpty {
                 Text(language).font(.system(size: 10, weight: .semibold)).foregroundStyle(Island.tertiary)
             }
-            ScrollView(.horizontal, showsIndicators: false) {
+            // In the reader (no line limit) a long line shows its scroller, so it is clear there is more to the right.
+            ScrollView(.horizontal, showsIndicators: lineLimit == nil) {
                 Text(shown.joined(separator: "\n"))
                     .font(.system(size: fontSize, design: .monospaced))
                     .foregroundStyle(Island.primary.opacity(0.9))

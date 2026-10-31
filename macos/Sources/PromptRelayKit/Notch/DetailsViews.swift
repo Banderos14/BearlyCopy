@@ -143,7 +143,8 @@ struct DetailsView: View {
     private func content(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
         if layout.twoColumns {
             PairedRows(rightWidth: layout.rightColumn, columnSpacing: Island.Space.l, rowSpacing: layout.metrics.spacing) {
-                TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2).islandFrame("card.task")
+                TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2,
+                         viewFull: { model.navigate(to: .taskReader) }).islandFrame("card.task")
                 HandoffContentsCard(model: model).islandFrame("card.handoff")
                 ResponseCard(model: model, facts: facts) { model.navigate(to: .reader) }
                 AttachmentsCard(model: model).islandFrame("card.attachments")
@@ -162,7 +163,8 @@ struct DetailsView: View {
 
     private func reportColumn(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
         VStack(alignment: .leading, spacing: layout.metrics.spacing) {
-            TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2).islandFrame("card.task")
+            TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2,
+                         viewFull: { model.navigate(to: .taskReader) }).islandFrame("card.task")
             ResponseCard(model: model, facts: facts) { model.navigate(to: .reader) }
         }
     }
@@ -303,7 +305,7 @@ struct NavigationIcons: View {
             }
             .keyboardShortcut(",", modifiers: .command)
             Menu {
-                Button(Labels.importSavedResult + "…") { model.navigate(to: .importReport) }
+                Button(Labels.importAIResult + "…") { model.navigate(to: .importReport) }
                 Divider()
                 Button("Quit Prompt Relay") { actions.quit() }
             } label: {
@@ -312,7 +314,7 @@ struct NavigationIcons: View {
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("More")
-            .islandHelp("More: \(Labels.importSavedResult) (one result saved elsewhere, such as a cloud session), Quit")
+            .islandHelp("More: \(Labels.importAIResult) (one result saved elsewhere, such as a cloud session), Quit")
         }
         .foregroundStyle(Island.secondary)
     }
@@ -1002,7 +1004,7 @@ struct SessionSwitcherView: View {
                         ForEach(model.imports) { report in
                             Button { model.open(report.ref) } label: {
                                 SessionRowLabel(title: report.task.map { Wording.requestForDisplay($0).text } ?? "Imported report",
-                                                meta: "Cloud · imported by you · \(Wording.relative(report.importedAt))",
+                                                meta: "Imported by you · \(Wording.relative(report.importedAt))",
                                                 chip: nil, selected: model.selectedImportID == report.id, subtitle: nil)
                             }
                             .buttonStyle(.plain)

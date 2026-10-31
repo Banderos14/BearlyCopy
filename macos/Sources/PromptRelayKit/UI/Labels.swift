@@ -13,9 +13,15 @@ enum Labels {
     static let copyWithContextHelp = "Copy with Context: Claude's full answer plus your request, the commands Prompt Relay saw, "
         + "changed files, Git status and the chosen attachments, as Markdown for another assistant (⌥⌘C)"
 
-    static let importSavedResult = "Import Saved Result"
-    static let importSavedResultHelp = "Paste one result saved elsewhere (for example a Claude Code cloud session), "
-        + "where Prompt Relay could not capture it. One answer, not a whole conversation."
+    /// Phase 7 (was "Import Saved Result"): one finished result from another
+    /// AI, pasted by the user. Nothing is captured automatically through it.
+    static let importAIResult = "Import AI Result"
+    static let importAIResultHelp = "Paste one finished result from Claude Cloud, ChatGPT, Gemini or another AI: "
+        + "its request, its answer and the files you attach. Saved as imported by you, never as captured by a local hook; "
+        + "no other app or session is read."
+    static let markdownSource = "Markdown Source"
+    static let viewFullTask = "View Full Task"
+    static let copyOriginalTask = "Copy Original Task"
     static let attachToCurrentAnswer = "Attach to Current Answer"
 
     /// "1,234 chars": the size of what was really put on the clipboard.
