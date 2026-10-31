@@ -132,7 +132,6 @@ public final class AppModel {
         self.stateDefaults = stateDefaults
         self.reportStore = reportStore
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
-        contextDetail = stateDefaults?.string(forKey: Self.contextDetailKey).flatMap(ContextDetail.init(rawValue:)) ?? .full
         handoffs = reportStore.map(Self.loadHandoffs) ?? [:]
         imports = reportStore?.imports() ?? []
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
@@ -1523,18 +1522,11 @@ public final class AppModel {
     /// Bumped when the user's check marks change, so views redraw.
     var reviewChecksVersion = 0
 
-    static let contextDetailKey = "contextDetail.v1"
-    /// Full (the default since Phase 7.1) or Standard; remembered, used by Copy and Preview alike.
-    public var contextDetail: ContextDetail = .full {
-        didSet {
-            guard oldValue != contextDetail else { return }
-            stateDefaults?.set(contextDetail.rawValue, forKey: Self.contextDetailKey)
-            // An open preview shows the chosen level: built again, never a stale text.
-            if packPreview != nil, route == .packagePreview, let ref = currentRef {
-                Task { await self.rebuildPreview(ref) }
-            }
-        }
-    }
+    /// Phase 7.2: Copy with Context is always Full, the most complete
+    /// package; the owner asked for no choice in the interface. (The Core
+    /// keeps `--detail standard` for other callers; the app never uses it,
+    /// and an older saved "Standard" choice is ignored.)
+    public let contextDetail: ContextDetail = .full
 
     private func rebuildPreview(_ ref: ReportRef) async {
         packPreview = .loading(ref)

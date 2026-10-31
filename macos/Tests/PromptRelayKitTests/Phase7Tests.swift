@@ -316,34 +316,21 @@ final class SmartContextTests: XCTestCase {
         return core
     }
 
-    func testFullIsTheDefaultAndTheChoiceIsRemembered() async throws {
+    /// Phase 7.2: always Full; an older saved "Standard" is ignored.
+    func testCopyAndPreviewAreAlwaysFull() async throws {
+        defaults.set("standard", forKey: "contextDetail.v1")
         let core = try core()
         let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
         await m.refreshNow()
-        XCTAssertEqual(m.contextDetail, .full, "Phase 7.1: Full is the default")
+        XCTAssertEqual(m.contextDetail, .full)
         await m.copySelectedContext()
-        XCTAssertEqual(core.contextDetails.last, .full, "Copy asks the Core for the chosen level")
-        m.contextDetail = .standard
-        let again = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
-        XCTAssertEqual(again.contextDetail, .standard, "remembered")
-    }
-
-    /// Preview shows the chosen level; Copy copies that very snapshot; a
-    /// level changed after building is built again, never copied stale.
-    func testPreviewAndCopyUseOneSnapshotOfTheChosenLevel() async throws {
-        let core = try core()
-        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
-        await m.refreshNow()
+        XCTAssertEqual(core.contextDetails.last, .full, "Copy asks the Core for Full")
         await m.openPackPreview()
         guard case .ready(let pack)? = m.packPreview else { return XCTFail("preview built") }
         XCTAssertEqual(pack.detail, .full)
         await m.copyPreviewedPack()
-        XCTAssertEqual(board.string(forType: .string), pack.text, "exactly the previewed text")
-        let calls = core.contextDetails.count
-        m.contextDetail = .standard
-        try await waitUntil { if case .ready(let p)? = m.packPreview { return p.detail == .standard } else { return false } }
-        XCTAssertEqual(core.contextDetails.count, calls + 1, "the open preview was built again at Standard")
-        XCTAssertEqual(core.contextDetails.last, .standard)
+        XCTAssertEqual(board.string(forType: .string), pack.text, "Copy uses exactly the previewed snapshot")
+        XCTAssertEqual(core.contextDetails, [.full, .full], "built once for Preview, not again for its Copy")
     }
 
     private func waitUntil(_ condition: @MainActor () -> Bool, timeout: TimeInterval = 2) async throws {

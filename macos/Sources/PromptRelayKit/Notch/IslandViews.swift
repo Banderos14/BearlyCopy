@@ -1659,9 +1659,10 @@ struct ImportView: View {
         }
     }
 
+    /// The menu only: the caption is the picker's ("Project · Manual |
+    /// Suggest"); it was drawn twice (Phase 7.2 audit).
     private var projectMenu: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Caption("Project")
             Menu {
                 Button("None") { projectPath = nil }
                 ForEach(model.projectRows) { row in Button(row.name) { projectPath = row.path } }

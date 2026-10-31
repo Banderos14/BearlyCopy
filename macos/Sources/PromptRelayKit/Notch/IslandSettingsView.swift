@@ -70,7 +70,7 @@ struct IslandSettingsView: View {
             toggle("Open on hover", detail: "Show the answer when the pointer rests on the notch. Off: open from the menu bar or \(HotKeyRegistration.displayString).",
                    isOn: $settings.notchEnabled)
             Hairline()
-            picker("Display", detail: "Where Prompt Relay appears. Without a notch it floats below the menu bar.",
+            picker("Display", detail: "Automatic: the built-in display's notch, else another display with a notch, else a small floating island under the menu bar of the main display. A display you choose without a notch gets the floating island there. Unplugged, Automatic is used until it returns.",
                    current: displayTitle(settings.display),
                    options: [("Automatic", DisplayChoice.automatic)]
                     + screens.filter(\.hasNotch).map { ($0.name, DisplayChoice.display($0.displayID)) }) { settings.display = $0 }
@@ -94,7 +94,7 @@ struct IslandSettingsView: View {
                    isOn: $settings.mascotEnabled)
             if settings.mascotEnabled {
                 Hairline()
-                picker("Relay", detail: "Subtle: calm head turns and rare moments of its own. Expressive: livelier. Off: a still bear. Reduce Motion always keeps it still.",
+                picker("Relay", detail: "Subtle (default): calm head turns and an idle moment every 16–34 s. Expressive: fuller turns, every 9–18 s. Off: a still bear; nothing is animated or drawn. Motion → Reduced, or Reduce Motion with Follow System, keeps it still as well.",
                        current: settings.relayMotion.title,
                        options: NotchSettings.RelayMotion.allCases.map { ($0.title, $0) }) { settings.relayMotion = $0 }
                 Hairline()
@@ -108,7 +108,7 @@ struct IslandSettingsView: View {
                        isOn: $settings.relayWithoutNotch)
             }
             Hairline()
-            picker("Motion", detail: "Reduced: short fades instead of moving and resizing (also follows the system's Reduce Motion).",
+            picker("Motion", detail: "Follow System (default): System Settings → Accessibility → Reduce Motion decides. Smooth: full motion even when Reduce Motion is on — only if you choose it here. Reduced: short fades, no moving or resizing, and Relay keeps still.",
                    current: settings.animation.title,
                    options: NotchSettings.Animation.allCases.map { ($0.title, $0) }) { settings.animation = $0 }
         }

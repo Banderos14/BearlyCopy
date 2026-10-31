@@ -226,7 +226,9 @@ public final class NotchController {
                                                      object: nil, queue: .main, using: onDisplayChange)))
         for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification,
                      NSWorkspace.activeSpaceDidChangeNotification,
-                     NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
+                     NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification,
+                     // System Settings → Reduce Motion changed while running (Phase 7.2).
+                     NSWorkspace.accessibilityDisplayOptionsDidChangeNotification] {
             observers.append((workspaceCenter, workspaceCenter.addObserver(forName: name, object: nil, queue: .main,
                                                                            using: onDisplayChange)))
         }

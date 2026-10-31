@@ -136,3 +136,79 @@ final class RelayLayerPoseRenderTests: XCTestCase {
         try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: url)
     }
 }
+
+@MainActor
+final class CopyWithContextHeaderTests: XCTestCase {
+    /// The owner's screenshot: the title took three lines and "Preview"
+    /// broke inside the word. Now one line each, at every width and height.
+    func testTitleAndPreviewStayOnOneLine() async throws {
+        let suite = "PromptRelayTests.p72h.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP72h-\(UUID().uuidString)"))
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p72h-\(UUID().uuidString)")
+        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        let m = AppModel(core: FakeCore(projects: [project("/a", sessions: 0, last: nil)]), clipboard: ClipboardService(pasteboard: board),
+                         dataDirectory: nil, stateDefaults: defaults, reportStore: ReportStore(root: root))
+        await m.refreshNow()
+        _ = m.importReport(text: ReportFixture.report(sections: 8), task: "Задача", projectPath: "/a", sessionLabel: nil)
+        for maxContent: CGFloat in [341, 448] {
+            let host = IslandHost(model: m, maxContentHeight: maxContent)
+            defer { host.close() }
+            let title = try XCTUnwrap(host.presentation.layoutFrames["handoff.title"], "\(maxContent)")
+            let preview = try XCTUnwrap(host.presentation.layoutFrames["handoff.preview"])
+            let card = try XCTUnwrap(host.presentation.layoutFrames["card.handoff"])
+            XCTAssertLessThan(title.height, 16, "the title is one line (\(title))")
+            XCTAssertLessThanOrEqual(preview.height, 20, "Preview is one line or the eye (\(preview))")
+            XCTAssertFalse(title.intersects(preview), "no overlap")
+            XCTAssertLessThanOrEqual(preview.maxX, card.maxX + 0.5, "inside the card")
+            XCTAssertNil(host.presentation.layoutFrames["handoff.detail"], "no Standard / Full control")
+        }
+    }
+}
+
+/// Opt-in (PROMPT_RELAY_AUDIT_DIR): the island's surfaces as the real
+/// views in an offscreen window, for a visual audit. Not the live panel.
+@MainActor
+final class SurfaceAuditRenderTests: XCTestCase {
+    func testRenderSurfacesForAudit() async throws {
+        guard let dir = ProcessInfo.processInfo.environment["PROMPT_RELAY_AUDIT_DIR"] else {
+            throw XCTSkip("set PROMPT_RELAY_AUDIT_DIR to render the surfaces")
+        }
+        let suite = "PromptRelayTests.p72a.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP72a-\(UUID().uuidString)"))
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p72a-\(UUID().uuidString)")
+        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        let m = AppModel(core: FakeCore(projects: [project("/a", sessions: 0, last: nil)]), clipboard: ClipboardService(pasteboard: board),
+                         dataDirectory: nil, stateDefaults: defaults, reportStore: ReportStore(root: root))
+        await m.refreshNow()
+        _ = m.importReport(text: ReportFixture.report(sections: 8), task: String(repeating: "Длинная задача с подробностями. ", count: 12),
+                           projectPath: "/a", sessionLabel: "ChatGPT", assistant: .chatGPT)
+        let ref = try XCTUnwrap(m.currentRef)
+        let src = root.appendingPathComponent("src"); try FileManager.default.createDirectory(at: src, withIntermediateDirectories: true)
+        for name in ["plan.md", "notes.txt", "shot.png"] {
+            try (name.hasSuffix(".png") ? Phase6Tests.png(seed: 4) : Data("# \(name)\n".utf8)).write(to: src.appendingPathComponent(name))
+            try XCTUnwrap(m.reportStore).addFile(from: src.appendingPathComponent(name), to: ref, source: .you, displayPath: name)
+        }
+        m.attachmentsVersion += 1
+        func shot(_ name: String, surface: NotchPresentation.Surface = .expanded, maxContent: CGFloat = 341) throws {
+            let host = IslandHost(model: m, surface: surface, maxContentHeight: maxContent)
+            defer { host.close() }
+            let view = host.host
+            let rep = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+            view.cacheDisplay(in: view.bounds, to: rep)
+            let url = URL(fileURLWithPath: dir).appendingPathComponent("\(name).png")
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: url)
+        }
+        m.route = .home; try shot("details-341"); try shot("details-448", maxContent: 448); try shot("details-268", maxContent: 268)
+        try shot("peek", surface: .peek)
+        await m.copySelectedContext(); m.suspendHandoffs()
+        try shot("details-handoff"); try shot("peek-handoff", surface: .peek)
+        m.endHandoff()
+        for route in [AppModel.IslandRoute.taskReader, .reader, .evidence, .importReport, .settings, .history, .clipboard] {
+            m.route = route; try shot("route-\(route.rawValue)")
+        }
+        await m.openPackPreview(); try shot("route-packagePreview")
+    }
+}

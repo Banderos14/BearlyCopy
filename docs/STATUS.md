@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-31, local Mac session (Phase 7.1 committed on the branch, owner validation pending),
+Last updated: 2026-10-31, local Mac session (Phase 7.2 committed on the branch, owner validation pending),
 branch `claude/loving-mccarthy-ossw3q`.
 
 ## Completed
@@ -679,8 +679,15 @@ Capture Health, About details, Full as default. Details, the clipboard
 incident and owner checks: `docs/PHASE7.md` § Phase 7.1. Swift 243 / 0 failures, Python 172 OK ×2,
 Debug/Release built. Live-screen behaviour is the owner's check.
 
+## Phase 7.2 (2026-10-31; committed on the branch, not pushed)
+Relay on a display link with Core Animation layers: 59 fps while moving
+(was 12), paused at rest, ≈ 4 % CPU for Relay while following on the bench.
+Coucou studied (MIT techniques, no artwork). Copy with Context always Full,
+header fixed, audit fixes, display choice and Reduce Motion observer.
+Details and measurements: `docs/PHASE7.md` § Phase 7.2.
+
 ## Next agreed stage
-Phase 7 and 7.1 are committed locally; the owner checks `docs/PHASE7.md` § Owner
+Phase 7, 7.1 and 7.2 are committed locally; the owner checks `docs/PHASE7.md` § Owner
 checks and § Phase 7.1 → Owner checks (first: quit old copies).
 Push only when the owner asks. Stage 5.10, ADR-012, source adapters and
 Phase 8 wait for approval.

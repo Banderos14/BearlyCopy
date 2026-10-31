@@ -155,7 +155,7 @@ struct DetailsView: View {
                 Picker("", selection: $pane) {
                     ForEach(Pane.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
-                .pickerStyle(.segmented).labelsHidden().frame(width: 220)
+                .pickerStyle(.segmented).labelsHidden().fixedSize()   // its own width, left-aligned with the cards (was centred in 220 pt)
                 if pane == .report { reportColumn(layout, facts: facts) } else { handoffColumn(layout, facts: facts) }
             }
         }
@@ -386,21 +386,22 @@ struct HandoffContentsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
+            // Phase 7.2: the title keeps its natural width and "Preview" never
+            // wraps; when the column is narrow the button is just the eye.
+            // (Before, a Standard/Full control squeezed them: the title took
+            // three lines and "Preview" broke inside the word.)
             HStack(spacing: 6) {
                 Caption(Labels.copyWithContext, role: Island.accent)
-                Spacer(minLength: 0)
-                ContextDetailPicker(model: model)
-                Button { Task { await model.openPackPreview() } } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "eye").font(.system(size: 9.5, weight: .semibold))
-                        Text("Preview").font(.system(size: 10.5, weight: .medium))
-                    }
-                    .foregroundStyle(Island.secondary).contentShape(Rectangle())
+                    .lineLimit(1).fixedSize()
+                    .layoutPriority(2)
+                    .islandFrame("handoff.title")
+                Spacer(minLength: 4)
+                ViewThatFits(in: .horizontal) {
+                    previewButton(label: true)
+                    previewButton(label: false)
                 }
-                .buttonStyle(.plain)
-                .disabled(model.currentRef == nil)
-                .accessibilityLabel("Preview the text Copy with Context will copy")
-                .islandHelp("See the exact text before copying")
+                .layoutPriority(1)
+                .islandFrame("handoff.preview")
             }
             .islandFrame("handoff.header")
             let rows = Self.rows(model: model)
@@ -443,6 +444,22 @@ struct HandoffContentsCard: View {
         }
         .islandCard()
         .onChange(of: model.currentRef) { explained = nil }
+    }
+
+    private func previewButton(label: Bool) -> some View {
+        Button { Task { await model.openPackPreview() } } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "eye").font(.system(size: 9.5, weight: .semibold))
+                if label { Text("Preview").font(.system(size: 10.5, weight: .medium)).lineLimit(1) }
+            }
+            .fixedSize()
+            .frame(minWidth: 18, minHeight: 18)
+            .foregroundStyle(Island.secondary).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(model.currentRef == nil)
+        .accessibilityLabel("Preview full context")
+        .islandHelp("Preview full context: the exact text Copy with Context copies")
     }
 
     struct Row: Equatable {

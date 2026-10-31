@@ -241,3 +241,98 @@ no test touches the general pasteboard now.
    hover opens Quick Peek.
 5. Import AI Result: paste a ChatGPT answer with "Project:" in it, and paste
    one of your own Copy with Context packages.
+
+# Phase 7.2 — Relay at 60 fps, Coucou research, final UI cleanup
+
+Backup ref `refs/backup/phase7.2-start` (= `0c54c9b`). The Core, hooks and
+plugin are unchanged. Running at the start: the owner's Xcode Debug build and
+the old `~/Applications` build from Oct 29 (neither was quit).
+
+## Relay before
+A 30 Hz main-queue timer eased the gaze and head and published them as
+observed SwiftUI state; the pointer was throttled to 30 Hz and only visible
+changes were published. **Measured on the bench: 12.2 frames/s while
+following the pointer**, on a timer not aligned to the display.
+
+## What Coucou does (MIT source, read, not copied as a whole)
+`BotCanvasView` draws through `TimelineView(.animation)` + `Canvas` at the
+display rate (interval 0.9/fps) and runs while visible.
+`MochiFrameClock.advance` steps the engine once per drawn frame: their
+measured-delta "step debt" version froze and jumped with frame jitter.
+`BotEngine.update` uses frame-rate independent smoothing
+`x += (t − x)·(1 − b^dt)`, time-based tweens with easing (a blink closes in
+70 ms and opens in 130 ms, sometimes twice), and a spring fed by head
+velocity for secondary motion. Mochi, its look, expressions and animations are
+not MIT (`LICENSE-ASSETS.md`); none of them is used.
+
+## Relay now
+- **`RelayMotion`** (our own code; the techniques are credited in the file):
+  time-based sub-steps of at most 1/240 s, so 60 and 120 Hz move alike (test).
+  Frame jitter changes nothing (test), and a long gap is not replayed.
+  - Eyes: exponential approach; they lead.
+  - Head: a spring (ω 12, ζ 0.78) with a touch of overshoot.
+  - Ears: a spring pulled against the head's speed (one soft swing).
+  - Faces (smile, sleepy, curious): blends of about 0.35 s.
+  - Blink: eased, with a double blink one time in five.
+  - Copy hop, worried shake and idle tilt: time curves.
+  - The R8 order is kept: the head returns first, the eyes linger.
+- **Rendering:** `RelayLayerView` draws the same shapes (`MascotView.shapes`,
+  used by the Canvas renders too) into `CAShapeLayer`s. `NSView.displayLink`
+  steps it at about 60 fps (on ProMotion one frame in two) and is **paused
+  once settled**. Breathing stays a render-server animation.
+- **Why not SwiftUI:** an optimized probe at 60 fps measured `TimelineView` +
+  `Canvas` at 13–17 % CPU, Core Graphics redraw at 7.2 %, and moving
+  `CAShapeLayer`s at **1.7 %**. With `TimelineView` the Debug bench reached
+  88 % CPU; the island's body was not re-run (0 updates) — SwiftUI's
+  per-frame graph update was the cost.
+
+## Measured (bench: the real panel in the test process, synthetic pointer at 120 Hz; display max 120 Hz)
+| Build | Frames/s moving | Interval p50 / p95 / p99 / max | > 25 ms | CPU moving* | CPU rest | RSS |
+|---|---|---|---|---|---|---|
+| Before (Debug) | 12.2 | — | — | 8.6 % | 1.6 % | 59 MB |
+| Now, Debug | 59.3 | 16.65 / 16.76 / 17.09 / 20.8 ms | 0 / 593 | 8.1 % | 0.59 % | 55 MB |
+| Now, optimized (`-c release` with test hooks) | 59.2 | 16.65 / 16.79 / 19.62 / 20.0 ms | 0 / 592 | 7.4 % | 0.63 % | 54 MB |
+
+\* includes the bench's own pointer loop, 3.2–3.3 %. At rest Relay draws only
+blinks (about 0.2 s every 2.2–5.4 s). These are bench numbers, not the live
+app; the owner's Release app was not measured.
+
+## UI
+- **Copy with Context is always Full.** The Standard / Full control is gone
+  from the card and from Preview, and an old saved "Standard" is ignored.
+  Preview and Copy use one snapshot (test). The Core keeps `--detail
+  standard` for other callers.
+- **Copy with Context header:** the title keeps one line, and "Preview" never
+  wraps; when narrow it becomes the eye icon with the tooltip "Preview full
+  context". The Standard / Full control had squeezed them (test).
+- **Audit** (offscreen renders of the real views at 268 / 341 / 448 pt):
+  - Import AI Result drew "Project" twice; fixed.
+  - The one-column picker was centred in a 220-pt frame, 20 pt off the
+    cards; fixed.
+  - No other overlap found.
+- **Display:** a chosen display without a notch now gets the floating island
+  there; it used to appear on the first screen instead.
+- **Reduce Motion:** a change in System Settings is now noticed while running.
+- **Settings texts** describe what Display, Relay and Motion really do.
+  Smooth overrides Reduce Motion only as your explicit choice; Follow System
+  is the default.
+
+## Verification
+| Check | Result |
+|---|---|
+| Swift tests | 252, 0 failures; 14 opt-in skipped (renders, CPU bench, audit) |
+| Python | not run: the Core did not change in 7.2 (7.1: 172 OK ×2) |
+| Layout recursion | 0 |
+| Xcode Debug / Release | BUILD SUCCEEDED, 0 warnings |
+| 60 fps on the live screen with a real mouse, ProMotion feel, external display | **Not verified** (owner) |
+
+## Owner checks
+1. Quit the old copies, rebuild Debug, move the pointer around the notch:
+   smooth eyes, the head following, the ears swinging a little; Relay still
+   when you stop.
+2. Optional: `PROMPT_RELAY_PERF=1 swift test --filter RelayPerformanceTests`
+   prints the bench line on your Mac.
+3. Details: the Copy with Context header reads "COPY WITH CONTEXT · 👁
+   Preview" on one line; Preview → Copy; paste.
+4. Settings → Display: choose your external display (no notch), and the
+   floating island appears there.

@@ -45,7 +45,6 @@ struct PackagePreviewView: View {
                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
                 Spacer(minLength: 0)
                 sectionMenu(pack)
-                ContextDetailPicker(model: model)
             }
             Text("Exactly this text is copied. Git status and the time were read when it was built; Copy uses this snapshot.")
                 .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
@@ -96,25 +95,6 @@ struct PackagePreviewView: View {
         }
         .islandFrame("preview.actions")
         .animation(.easeOut(duration: 0.15), value: model.copiedToken)
-    }
-}
-
-/// Standard / Full for Copy with Context; the same choice in the card and
-/// in Preview, remembered.
-struct ContextDetailPicker: View {
-    let model: AppModel
-
-    var body: some View {
-        Picker("Detail", selection: Binding(get: { model.contextDetail }, set: { model.contextDetail = $0 })) {
-            ForEach(ContextDetail.allCases, id: \.self) { Text($0.title).tag($0) }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .controlSize(.mini)
-        .fixedSize()
-        .disabled(model.selectedImport != nil)
-        .islandHelp(model.selectedImport != nil ? "An imported result has no commands or Git state: Standard and Full are the same"
-                                                : model.contextDetail.help)
     }
 }
 

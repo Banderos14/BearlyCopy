@@ -240,7 +240,10 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertNil(DisplayChoice.pick(.automatic, from: [external]), "external only: menu-bar fallback")
         XCTAssertNil(DisplayChoice.pick(.automatic, from: []))
         XCTAssertEqual(DisplayChoice.pick(.display(1), from: [external, builtIn]), builtIn)
-        XCTAssertNil(DisplayChoice.pick(.display(2), from: [external, builtIn]), "a chosen display without a notch shows nothing")
+        // Phase 7.2: it used to return nil, and the island then floated on the
+        // first screen instead of the chosen one.
+        XCTAssertEqual(DisplayChoice.pick(.display(2), from: [external, builtIn]), external,
+                       "a chosen display without a notch gets the floating island there")
         XCTAssertEqual(DisplayChoice.pick(.display(77), from: [external, builtIn]), builtIn, "a disconnected choice falls back to automatic")
     }
 }

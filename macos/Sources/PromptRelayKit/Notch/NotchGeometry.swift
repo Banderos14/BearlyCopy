@@ -64,8 +64,8 @@ extension ScreenDescriptor {
 public enum DisplayChoice: Hashable, Sendable {
     /// The first display with a notch (the built-in one first).
     case automatic
-    /// A specific display; if it is gone or has no notch, nothing is shown
-    /// there and the menu-bar item remains the way in.
+    /// A specific display: at its notch, or floating below its menu bar when
+    /// it has none; while it is disconnected, Automatic is used.
     case display(UInt32)
 
     public static func pick(_ choice: DisplayChoice, from screens: [ScreenDescriptor]) -> ScreenDescriptor? {
@@ -74,7 +74,10 @@ public enum DisplayChoice: Hashable, Sendable {
             let notched = screens.filter(\.hasNotch)
             return notched.first(where: \.isBuiltIn) ?? notched.first
         case .display(let id):
-            if let screen = screens.first(where: { $0.displayID == id }), screen.hasNotch { return screen }
+            // Phase 7.2: a chosen display without a notch gets the floating
+            // island there (it used to return nil, and the island then
+            // appeared on the first screen instead of the chosen one).
+            if let screen = screens.first(where: { $0.displayID == id }) { return screen }
             // The chosen display is disconnected: fall back to automatic, so
             // unplugging an external display never leaves the user without the notch.
             if !screens.contains(where: { $0.displayID == id }) { return pick(.automatic, from: screens) }

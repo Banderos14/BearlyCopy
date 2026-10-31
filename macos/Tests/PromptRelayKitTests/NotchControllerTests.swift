@@ -134,7 +134,7 @@ final class NotchControllerTests: XCTestCase {
         let layout = try XCTUnwrap(controller.layout)
         assertFrame(controller.panelFrame, layout.notch, "no indicator: exactly the notch, nothing else covered")
         XCTAssertEqual(notchPanels().count, 1)
-        XCTAssertEqual(controller.observerCount, 10, "screens, wake ×2, space, app launch/quit, display sleep/wake, menu begin/end")
+        XCTAssertEqual(controller.observerCount, 11, "screens, wake ×2, space, app launch/quit, Reduce Motion, display sleep/wake, menu begin/end")
         controller.stop()
     }
 
