@@ -1,7 +1,7 @@
 # Status
 
-Last updated: 2026-10-29, local Mac session (Phase 4: real-world workflow,
-native UX and mascot; committed on the branch, owner validation pending),
+Last updated: 2026-10-31, local Mac session (Phase 6: UX redesign and
+Clipboard; committed on the branch, owner validation pending),
 branch `claude/loving-mccarthy-ossw3q`.
 
 ## Completed
@@ -624,8 +624,23 @@ background). The Release app itself was not profiled.
 | Clipboard image history vs macOS 27 paste prompt (V6) | **Not verified** (owner) |
 | Local rendering of mockup states (5.10) | **Not implemented** (deferred) |
 
+## Phase 6 (2026-10-31; committed on the branch, not pushed)
+UX redesign, Clipboard workspace and functional polish; details, defects,
+state table and owner checks in `docs/PHASE6.md`. Backup ref
+`refs/backup/phase6-start` (= `7538a98`). App only: Core, plugin, JSON API
+and stored data unchanged.
+
+| Item | Status |
+|---|---|
+| Swift `swift test` | **Automated: 186 tests, 0 failures** (9 opt-in skipped) |
+| Python suite, `scripts/check.sh` | **Automated: 168 OK** (1 skipped) |
+| Layout recursion check | **0 hits** |
+| Xcode Debug and Release | **BUILD SUCCEEDED**, 0 compiler warnings |
+| Real history in the new views (offscreen, read-only) | no overlap; answer order verified |
+| Running app on screen, Reduce Motion, external display | **Not verified** (owner) |
+| Paste into ChatGPT Desktop / Safari / Chrome (V8), ⌃⇧⌘4 history (V6) | **Not verified** (owner) |
+
 ## Next agreed stage
-Phase 5.11 is committed locally. The owner's checks are in
-`docs/OWNER_CHECKS_5_11.md` (rebuild, Xcode console, island, V8 paste
-matrix, V6, Release CPU). Push only when the owner asks. Stage 5.10 and
-ADR-012 wait for separate decisions.
+Phase 6 is committed locally; the owner checks `docs/PHASE6.md` § Owner
+checks. Push only when the owner asks. Phase 7, stage 5.10 and ADR-012 wait
+for separate decisions.
