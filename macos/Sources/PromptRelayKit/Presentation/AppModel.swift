@@ -132,7 +132,8 @@ public final class AppModel {
         self.stateDefaults = stateDefaults
         self.reportStore = reportStore
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
-        contextDetail = stateDefaults?.string(forKey: Self.contextDetailKey).flatMap(ContextDetail.init(rawValue:)) ?? .standard
+        contextDetail = stateDefaults?.string(forKey: Self.contextDetailKey).flatMap(ContextDetail.init(rawValue:)) ?? .full
+        handoffs = reportStore.map(Self.loadHandoffs) ?? [:]
         imports = reportStore?.imports() ?? []
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
         pinned = Self.decode([ReportRef].self, stateDefaults?.data(forKey: Self.pinsKey)) ?? []
@@ -293,6 +294,7 @@ public final class AppModel {
     /// Called when a surface (menu panel, window) appears or disappears. The
     /// fallback timer only runs while something is visible.
     public func surfaceAppeared() {
+        islandOpened()
         visibleSurfaces += 1
         if visibleSurfaces == 1 {
             startWatching()
@@ -727,6 +729,8 @@ public final class AppModel {
     /// Called synchronously when a dialog opens or closes, before it shows,
     /// so the island is out of the way first (set by `NotchController`).
     @ObservationIgnored var onSystemDialog: ((Bool) -> Void)?
+    /// The user pressed Done on a hand-off (Relay's satisfied reaction).
+    @ObservationIgnored public var onHandoffDone: (() -> Void)?
     /// Shows the system file picker; calls back with the chosen files, or
     /// nil for Cancel or Esc. Replaceable in tests.
     @ObservationIgnored public var filePicker: @MainActor (FilePickRequest, @escaping @MainActor ([URL]?) -> Void) -> Void
@@ -1018,31 +1022,53 @@ public final class AppModel {
 
     // MARK: Hand-off (two steps: text, then files)
 
-    /// After Copy for ChatGPT with files selected: the files still to hand
-    /// over. Nothing here says they reached ChatGPT. It belongs to one
-    /// report (project, session and turn are in `ref`) and to the files
-    /// chosen when its text was copied; showing another report, or closing
-    /// the island, ends it (the files and the clipboard stay as they are).
-    public struct HandoffStep: Equatable, Sendable {
+    /// After Copy with Context with files chosen: the files still to hand
+    /// over. Nothing here says the text or the files reached another app.
+    /// One per report (project, session and turn are in `ref`), bound to the
+    /// exact text copied and to the files chosen at that moment. Phase 7.1:
+    /// it outlives closing the island, switching to another answer (it shows
+    /// again on return) and a restart; only Done ends it.
+    public struct HandoffStep: Codable, Equatable, Sendable {
         public let ref: ReportRef
-        public let characters: Int
+        /// The package text that was put on the clipboard, for Copy Text Again.
+        public let text: String
+        public var characters: Int { CharacterCount.of(text) }
         /// The chosen files at the moment of the copy, in hand-off order.
         public let attachmentIDs: [String]
         public var fileCount: Int { attachmentIDs.count }
         /// Set once the files were put on the clipboard (not "sent").
         public var filesCopied = false
+        /// The pasteboard's change count right after our text write.
+        public var textChangeCount: Int?
+        /// The island closed while it was open: shown as "Continue Transfer".
+        public var resumed = false
     }
-    public internal(set) var handoffStep: HandoffStep?
+    /// Unfinished hand-offs by `ReportRef.key`.
+    public internal(set) var handoffs: [String: HandoffStep] = [:] {
+        didSet { if handoffs != oldValue { saveHandoffs() } }
+    }
+    /// The hand-off of the report shown now.
+    public internal(set) var handoffStep: HandoffStep? {
+        get { currentRef.flatMap { handoffs[$0.key] } }
+        set { if let key = currentRef?.key { handoffs[key] = newValue } }
+    }
     /// The Task card is expanded (Details); collapses for another answer.
     public var taskExpanded = false
     /// The attachment open in the attachment preview.
     public internal(set) var previewAttachmentID: String?
 
     /// The hand-off of the report shown now; nil for any other report.
-    public var activeHandoff: HandoffStep? {
-        guard let step = handoffStep, step.ref == currentRef else { return nil }
-        return step
+    public var activeHandoff: HandoffStep? { handoffStep }
+
+    /// The clipboard no longer holds the text of the hand-off shown (another
+    /// copy replaced it, here or in another app): offer Copy Text Again.
+    public var handoffTextReplaced: Bool {
+        guard let step = activeHandoff, let count = step.textChangeCount else { return false }
+        _ = clipboardTick
+        return clipboard.changeCount != count && !step.filesCopied
     }
+    /// Bumped when the island opens, so the clipboard check above is redone.
+    var clipboardTick = 0
 
     /// The files chosen for the report changed after its text was copied:
     /// the old set is not handed over silently.
@@ -1053,7 +1079,7 @@ public final class AppModel {
 
     /// Ends a hand-off that no longer belongs to the report shown.
     func dropStaleHandoff() {
-        if let step = handoffStep, step.ref != currentRef { handoffStep = nil }
+        // Hand-offs of other answers are kept (Phase 7.1) and show again on return.
         if let preview = packPreview, preview.ref != currentRef { packPreview = nil }
         if taskExpanded, lastShownRef != currentRef { taskExpanded = false }
         lastShownRef = currentRef
@@ -1471,7 +1497,7 @@ public final class AppModel {
             try clipboard.copy(pack.text)
             finishCopy(.copied(.context, characters: pack.text.unicodeScalars.count), token: Self.reviewToken(pack.ref))
             record(.reviewPack, ref: pack.ref, characters: pack.text.unicodeScalars.count)
-            beginHandoff(ref: pack.ref, characters: pack.text.unicodeScalars.count)
+            beginHandoff(ref: pack.ref, text: pack.text)
         } catch {
             finishCopy(.failed(Self.message(for: error)))
         }
@@ -1497,8 +1523,8 @@ public final class AppModel {
     var reviewChecksVersion = 0
 
     static let contextDetailKey = "contextDetail.v1"
-    /// Standard (the default) or Full; remembered, used by Copy and Preview alike.
-    public var contextDetail: ContextDetail = .standard {
+    /// Full (the default since Phase 7.1) or Standard; remembered, used by Copy and Preview alike.
+    public var contextDetail: ContextDetail = .full {
         didSet {
             guard oldValue != contextDetail else { return }
             stateDefaults?.set(contextDetail.rawValue, forKey: Self.contextDetailKey)
@@ -1560,7 +1586,7 @@ public final class AppModel {
         do {
             try clipboard.copy(pending.text)
             finishCopy(.copied(.context, characters: pending.text.unicodeScalars.count), token: Self.reviewToken(pending.ref))
-            beginHandoff(ref: pending.ref, characters: pending.text.unicodeScalars.count)
+            beginHandoff(ref: pending.ref, text: pending.text)
         } catch {
             finishCopy(.failed(Self.message(for: error)))
         }

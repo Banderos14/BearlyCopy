@@ -750,18 +750,30 @@ struct HandoffFooter: View {
 
     private func status(short: Bool) -> some View {
         let changed = model.handoffSelectionChanged
-        let files = step.fileCount == 1 ? "the file" : "the \(step.fileCount) files"
+        let replaced = model.handoffTextReplaced
         return HStack(spacing: 6) {
-            Image(systemName: changed ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                .foregroundStyle(changed ? Island.warning : Island.success)
-            Text(changed
-                 ? (short ? "Files changed" : "The chosen files changed after the text was copied.")
-                 : (short ? "Text copied · now \(files):" : "Text copied. Paste it in the assistant, then add \(files)."))
+            Image(systemName: changed || replaced ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+                .foregroundStyle(changed || replaced ? Island.warning : Island.success)
+            Text(changed ? (short ? "Files changed" : "The chosen files changed after the text was copied.")
+                 : Self.statusText(step, replaced: replaced, short: short))
                 .foregroundStyle(Island.primary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                .monospacedDigit()
             if !short { Spacer(minLength: 0) }
         }
         .font(.system(size: 11.5))
         .accessibilityElement(children: .combine)
+        .islandFrame("handoff.status")
+    }
+
+    /// "Text copied · 12,486 characters · Now 3 files"; compact
+    /// "12,486 chars copied · 3 files next"; after a close "Continue Transfer
+    /// · 3 Files". The count is of the text the clipboard confirmed.
+    static func statusText(_ step: AppModel.HandoffStep, replaced: Bool, short: Bool) -> String {
+        let n = step.characters.formatted()
+        let files = step.fileCount == 1 ? "1 file" : "\(step.fileCount) files"
+        if replaced { return short ? "Text replaced on clipboard" : "The clipboard no longer holds the text (\(n) characters)." }
+        if step.resumed { return "Continue Transfer · \(step.fileCount == 1 ? "1 File" : "\(step.fileCount) Files")" + (short ? "" : " · text \(n) characters") }
+        return short ? "\(n) chars copied · \(files) next" : "Text copied · \(n) characters · Now \(files)"
     }
 
     @ViewBuilder
@@ -773,6 +785,13 @@ struct HandoffFooter: View {
             .buttonStyle(IslandPillStyle(prominent: true))
             .islandHelp("Copy the text again with the files chosen now")
         } else {
+            if model.handoffTextReplaced || step.resumed {
+                Button { model.copyHandoffTextAgain() } label: {
+                    Label(model.isCopied(AppModel.reviewToken(step.ref)) ? Labels.copied : "Copy Text Again", systemImage: "text.badge.checkmark")
+                }
+                .buttonStyle(IslandPillStyle(prominent: model.handoffTextReplaced))
+                .islandHelp("Put the same package text on the clipboard again (\(step.characters.formatted()) characters, not rebuilt)")
+            }
             Button { model.copyHandoffFiles() } label: {
                 Label(filesCopied ? Labels.copied : (step.fileCount == 1 ? "Copy File" : "Copy \(step.fileCount) Files"),
                       systemImage: filesCopied ? "checkmark" : "doc.on.doc")
@@ -786,10 +805,16 @@ struct HandoffFooter: View {
         Spacer(minLength: 0)
         Button("Done") { model.endHandoff() }
             .buttonStyle(IslandPillStyle(prominent: false))
-            .islandHelp("Close step 2; the clipboard keeps what you copied")
+            .islandHelp("Finish this transfer. Closing the island does not; the clipboard keeps what you copied")
     }
 
     private var filesCopied: Bool { model.isCopied(AppModel.handoffToken) }
+}
+
+/// The step-2 wording, for tests.
+enum DetailsHandoffText {
+    static func status(_ step: AppModel.HandoffStep) -> String { HandoffFooter.statusText(step, replaced: false, short: false) }
+    static func compact(_ step: AppModel.HandoffStep) -> String { HandoffFooter.statusText(step, replaced: false, short: true) }
 }
 
 /// Drag several files at once (in order) into another app.

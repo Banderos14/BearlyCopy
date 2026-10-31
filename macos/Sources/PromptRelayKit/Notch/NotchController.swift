@@ -124,8 +124,8 @@ public final class LiveNotchNeighbors: NotchNeighbors {
         return names
     }
 
-    /// Other Prompt Relay copies this one steps aside for (`AppBuild.yields`);
-    /// always honoured, whatever the setting for other notch apps.
+    /// Other Prompt Relay copies this one steps aside for (`AppBuild.yields`),
+    /// when the user lets the island step aside (on by default).
     public var promptRelayCopies: [String] {
         AppBuild.yields(own: AppBuild.ownCopy, to: AppBuild.runningCopies()).map { AppBuild.name(of: $0.bundleID) + " (PID \($0.pid))" }
     }
@@ -297,7 +297,10 @@ public final class NotchController {
         layout = newLayout
         let copies = neighbors.promptRelayCopies
         neighborNames = neighbors.running + copies
-        let yielding = (settings.yieldToOtherNotchApps && !neighbors.running.isEmpty) || !copies.isEmpty
+        // Copies are recognised by bundle ID only (ad-hoc builds have no Team
+        // ID to verify), so stepping aside for them stays under the same user
+        // setting as other notch apps; Settings names who the island yields to.
+        let yielding = settings.yieldToOtherNotchApps && !(neighbors.running.isEmpty && copies.isEmpty)
         let resting = !newLayout.isFloating && settings.notchEnabled && !yielding
         let yieldChanged = yielding != isYielding || resting != hasRestingTarget
         isYielding = yielding
@@ -421,11 +424,11 @@ public final class NotchController {
         case .hidden:
             presentation.isExpanded = false
             presentation.isFocused = false
-            if old.isExpanded { model.surfaceDisappeared(); model.endHandoff() }
+            if old.isExpanded { model.surfaceDisappeared(); model.suspendHandoffs() }
             panel?.orderOut(nil)
         case .compact:
-            // Closing ends step 2 on screen; the files and the clipboard stay.
-            if old.isExpanded { model.surfaceDisappeared(); model.endHandoff() }
+            // Closing keeps step 2 (Phase 7.1): it shows as Continue Transfer.
+            if old.isExpanded { model.surfaceDisappeared(); model.suspendHandoffs() }
             presentation.isFocused = false
             withAnimation(presentation.animation) { presentation.isExpanded = false }
             if old.isExpanded {

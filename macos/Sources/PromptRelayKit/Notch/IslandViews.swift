@@ -664,7 +664,11 @@ struct CopyActions: View {
             .islandHelp(Labels.copyWithContextHelp)
 
             if answer || review, case .copied(_, let n) = model.copyFeedback, n > 0 {
+                // "· 12,486 characters", "12,486 chars" when narrow, or nothing:
+                // never wider than the room left, so nothing grows.
                 ViewThatFits(in: .horizontal) {
+                    Text("· \(n.formatted()) characters").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Island.tertiary)
+                        .fixedSize()
                     Text(Labels.chars(n)).font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Island.tertiary)
                         .fixedSize()
                     EmptyView()

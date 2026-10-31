@@ -19,6 +19,9 @@ public final class ClipboardService {
         self.pasteboard = pasteboard
     }
 
+    /// Changes whenever anything (any app) writes to the pasteboard.
+    public var changeCount: Int { pasteboard.changeCount }
+
     /// Returns the pasteboard change count of the write.
     @discardableResult
     public func copy(_ text: String) throws -> Int {

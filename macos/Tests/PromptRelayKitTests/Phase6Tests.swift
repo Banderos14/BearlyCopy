@@ -144,7 +144,9 @@ final class Phase6Tests: XCTestCase {
         XCTAssertEqual(m.activeHandoff?.fileCount, 1, "a new copy takes the new choice")
     }
 
-    func testClosingTheIslandEndsStepTwoButKeepsTheFiles() async throws {
+    /// Phase 7.1 changed this contract: closing keeps step 2 (Continue
+    /// Transfer); only Done ends it.
+    func testClosingTheIslandKeepsStepTwoUntilDone() async throws {
         let core = FakeCore(projects: [project("/a", sessions: 1, last: "2026-10-30T10:00:00.000000Z")])
         core.sessionsByProject["/a"] = [sessionSummary("sa", project: "/a", last: "2026-10-30T10:00:00.000000Z")]
         core.turnsBySession["sa"] = [turn(1)]
@@ -163,8 +165,10 @@ final class Phase6Tests: XCTestCase {
         await m.copySelectedContext()
         XCTAssertNotNil(m.activeHandoff)
         controller.interaction.close()
-        XCTAssertNil(m.handoffStep, "closed: the next open shows the normal footer")
+        XCTAssertEqual(m.handoffStep?.resumed, true, "closed: it waits as Continue Transfer")
         XCTAssertEqual(m.attachments(for: a).count, 1)
+        m.endHandoff()
+        XCTAssertNil(m.handoffStep, "Done ends it")
         controller.stop()
     }
 

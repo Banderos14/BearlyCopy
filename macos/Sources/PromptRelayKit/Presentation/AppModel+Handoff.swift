@@ -345,9 +345,50 @@ extension AppModel {
         return documents + states + images
     }
 
-    func beginHandoff(ref: ReportRef, characters: Int) {
+    func beginHandoff(ref: ReportRef, text: String) {
         let ids = handoffAttachments(for: ref).map(\.id)
-        handoffStep = ids.isEmpty ? nil : HandoffStep(ref: ref, characters: characters, attachmentIDs: ids)
+        handoffs[ref.key] = ids.isEmpty ? nil : HandoffStep(ref: ref, text: text, attachmentIDs: ids, textChangeCount: clipboard.changeCount)
+    }
+
+    /// Puts the hand-off's own text on the clipboard again, byte for byte
+    /// (not rebuilt: the same snapshot the files belong to).
+    public func copyHandoffTextAgain() {
+        guard let step = activeHandoff else { return }
+        do {
+            try clipboard.copy(step.text)
+            handoffs[step.ref.key]?.textChangeCount = clipboard.changeCount
+            handoffs[step.ref.key]?.filesCopied = false
+            finishCopy(.copied(.context, characters: step.characters), token: Self.reviewToken(step.ref))
+        } catch {
+            finishCopy(.failed(Self.message(for: error)))
+        }
+    }
+
+    /// The island closed with a hand-off open: it waits, never ends by itself.
+    func suspendHandoffs() {
+        for key in handoffs.keys { handoffs[key]?.resumed = true }
+    }
+
+    func islandOpened() { clipboardTick += 1 }
+
+    // MARK: Hand-off persistence (next to the reports, app data dir)
+
+    static func handoffsURL(_ store: ReportStore) -> URL { store.root.appendingPathComponent("handoffs.json") }
+
+    /// Steps saved before a restart; one whose files are gone is dropped.
+    static func loadHandoffs(_ store: ReportStore) -> [String: HandoffStep] {
+        guard let data = try? Data(contentsOf: handoffsURL(store)),
+              let saved = try? JSONDecoder().decode([String: HandoffStep].self, from: data) else { return [:] }
+        let present = Set(store.allAttachments().filter { store.fileURL(for: $0).map { FileManager.default.fileExists(atPath: $0.path) } ?? false }.map(\.id))
+        return saved.filter { $0.value.attachmentIDs.allSatisfy(present.contains) }
+    }
+
+    func saveHandoffs() {
+        guard let reportStore else { return }
+        let url = Self.handoffsURL(reportStore)
+        if handoffs.isEmpty { try? FileManager.default.removeItem(at: url); return }
+        try? FileManager.default.createDirectory(at: reportStore.root, withIntermediateDirectories: true)
+        try? JSONEncoder().encode(handoffs).write(to: url, options: [.atomic])
     }
 
     /// The files of the active hand-off: exactly the set chosen at the copy,
@@ -388,7 +429,12 @@ extension AppModel {
 
 
 
-    public func endHandoff() { handoffStep = nil }
+    /// Done: the user finished this hand-off. The clipboard keeps what it has.
+    public func endHandoff() {
+        guard let ref = currentRef else { return }
+        handoffs[ref.key] = nil
+        onHandoffDone?()
+    }
 
     /// The prepared hand-off files (for an AppKit multi-file drag).
     public func handoffFileURLs() -> [URL] { preparedHandoffFiles() }
