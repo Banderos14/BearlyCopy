@@ -84,15 +84,18 @@ public final class ReportStore {
     /// returns the existing record (`isDuplicate`), so repeating an import
     /// never creates a second copy.
     public func importReport(text: String, task: String?, projectPath: String?, projectName: String?,
-                             sessionLabel: String?) throws -> (report: ImportedReport, isDuplicate: Bool) {
+                             sessionLabel: String?, assistant: String? = nil,
+                             importedAs: String? = nil) throws -> (report: ImportedReport, isDuplicate: Bool) {
         guard !text.isEmpty else { throw ReportStoreError.empty }
         let task = task.flatMap { $0.isEmpty ? nil : $0 }
         let digest = Self.sha256(Data((text + "\u{0}" + (task ?? "")).utf8))
         if let existing = imports().first(where: { $0.digest == digest }) { return (existing, true) }
         try ensure(importsDir)
-        let report = ImportedReport(id: UUID().uuidString.lowercased(), importedAt: Self.now(), text: text, task: task,
+        var report = ImportedReport(id: UUID().uuidString.lowercased(), importedAt: Self.now(), text: text, task: task,
                                     projectPath: projectPath, projectName: projectName,
                                     sessionLabel: sessionLabel.flatMap { $0.isEmpty ? nil : $0 }, digest: digest)
+        report.assistant = assistant
+        report.importedAs = importedAs
         try write(try JSONEncoder().encode(report), to: importsDir.appendingPathComponent("\(report.id).json"))
         return (report, false)
     }

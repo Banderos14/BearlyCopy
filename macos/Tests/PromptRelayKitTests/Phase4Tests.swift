@@ -204,7 +204,7 @@ final class ReportStoreTests: XCTestCase {
                                           mimeType: "image/png", byteCount: 2048, sha256: "s", addedAt: "t", provenance: "p")
         let pack = ReviewPack.render(imported: report, attachments: [attachment], exportedAt: "2026-10-29T18:05:00.000Z")
         XCTAssertTrue(pack.hasPrefix("# Copy with Context:"))
-        XCTAssertTrue(pack.contains("Source: Claude Code cloud session, imported manually"))
+        XCTAssertTrue(pack.contains("Source: an AI assistant (not specified), imported manually"), "Phase 7.1: no source is claimed unless the user chose one")
         XCTAssertTrue(pack.contains("[Unavailable] The request was not supplied"), "a missing task is labeled, never invented")
         XCTAssertEqual(pack.components(separatedBy: text).count - 1, 1, "the full report once")
         XCTAssertEqual(ReviewPackReader.response(in: pack).map { Data($0.utf8) }, Data(text.utf8),

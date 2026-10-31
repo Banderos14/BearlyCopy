@@ -319,3 +319,119 @@ final class RelayPoseRenderTests: XCTestCase {
         try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: url)
     }
 }
+
+// MARK: - Import AI Result
+
+final class ImportAnalysisTests: XCTestCase {
+    let local = [ImportAnalysis.LocalProject(name: "prompt-relay", path: "/Users/a/prompt-relay"),
+                 ImportAnalysis.LocalProject(name: "ColorDiary", path: "/Users/a/ColorDiary"),
+                 ImportAnalysis.LocalProject(name: "ColorDiary", path: "/Users/b/ColorDiary")]
+
+    /// Our own package: recognised, its request taken from its fenced block,
+    /// its project from its Session field, its source from its Session line.
+    func testOwnPackageIsRecognised() {
+        let pack = """
+        # Copy with Context: Claude Code result for an independent check
+        Exported by Prompt Relay at 2026-10-31T10:00:00Z. No AI service was used.
+
+        ## Session
+        - Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]
+        - Project: prompt-relay [Confirmed locally]
+
+        ## Original user request
+        [Confirmed locally] Request as captured; it holds no automated message blocks.
+
+        ````text
+        Сделай Phase 7.1
+        ```swift
+        let x = 1
+        ```
+        ````
+
+        ## Claude final response
+        Готово.
+        """
+        let a = ImportAnalysis.analyze(pack, projects: local)
+        XCTAssertTrue(a.isPromptRelayPackage)
+        XCTAssertEqual(a.task, "Сделай Phase 7.1\n```swift\nlet x = 1\n```", "the request verbatim, nested fence intact")
+        XCTAssertEqual(a.projects, ["/Users/a/prompt-relay"])
+        XCTAssertEqual(a.assistant, .claudeCode)
+    }
+
+    func testAutomaticTurnPackageGivesNoTask() {
+        let pack = """
+        # Copy with Context: Claude Code result for an independent check
+        ## Original user request
+        [Confirmed locally; from turn 1 of this session] This turn was not started by the user. The latest earlier request:
+
+        ```text
+        old
+        ```
+        """
+        XCTAssertNil(ImportAnalysis.analyze(pack, projects: local).task, "service messages are never the user's request")
+    }
+
+    func testProjectOnlyFromExplicitFieldsAndAmbiguityIsShown() {
+        XCTAssertEqual(ImportAnalysis.analyze("We changed prompt-relay and ColorDiary today.", projects: local).projects, [],
+                       "loose words never pick a project")
+        let repo = ImportAnalysis.analyze("**Repository:** https://github.com/Banderos14/prompt-relay.git\nDone.", projects: local)
+        XCTAssertEqual(repo.projects, ["/Users/a/prompt-relay"])
+        let ambiguous = ImportAnalysis.analyze("Project: ColorDiary", projects: local)
+        XCTAssertEqual(ambiguous.projects.count, 2, "both shown, the user chooses")
+        let unknown = ImportAnalysis.analyze("Project: Moonbase", projects: local)
+        XCTAssertEqual(unknown.projects, []); XCTAssertEqual(unknown.statedProjects, ["Moonbase"])
+    }
+
+    func testTaskHeadingAndSourceAreOnlySuggestions() {
+        let chat = "Source: ChatGPT (GPT-5)\n\n## Task\nFix the tooltip.\n\n## Answer\nDone."
+        let a = ImportAnalysis.analyze(chat, projects: local)
+        XCTAssertEqual(a.task, "Fix the tooltip.")
+        XCTAssertEqual(a.assistant, .chatGPT)
+        XCTAssertFalse(a.isPromptRelayPackage)
+        XCTAssertNil(ImportAnalysis.analyze("## Task\nA\n## Task\nB", projects: local).task, "two task headings: ambiguous")
+        XCTAssertNil(ImportAnalysis.analyze("## Task\n<system-reminder>x</system-reminder>", projects: local).task)
+    }
+}
+
+@MainActor
+final class ImportFlowTests: XCTestCase {
+    func testImportKeepsTextSourceAndPackageChoiceAndOldImportsStillDecode() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p71i-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP71i-\(UUID().uuidString)"))
+        defer { board.releaseGlobally() }
+        let m = AppModel(core: FakeCore(projects: [project("/a", sessions: 0, last: nil)]), clipboard: ClipboardService(pasteboard: board),
+                         dataDirectory: nil, reportStore: ReportStore(root: root))
+        await m.refreshNow()
+        let big = "# Copy with Context: Claude Code result for an independent check\n" + String(repeating: "строка ✅ `код`\n", count: 20_000)
+        XCTAssertEqual(m.importReport(text: big, task: nil, projectPath: "/a", sessionLabel: nil, assistant: .claudeCode,
+                                      importedAs: "historical-context"), .added)
+        let report = try XCTUnwrap(m.selectedImport)
+        XCTAssertEqual(report.text, big, "kept whole")
+        XCTAssertEqual(report.assistantTitle, "Claude Code")
+        XCTAssertTrue(report.isHistoricalPackage)
+        XCTAssertNotNil(m.existingImport(text: big), "a repeat is announced before importing")
+        guard case .success(let pack) = await m.buildPack(report.ref) else { return XCTFail("pack") }
+        XCTAssertTrue(pack.text.contains("Source: Claude Code, imported manually"))
+        XCTAssertTrue(pack.text.contains("itself an earlier Prompt Relay package"))
+        XCTAssertFalse(pack.text.contains("- Source: Claude Code on this Mac, captured"),
+                       "the package's own session line stays inside the pasted answer, never as this pack's source")
+        // An import written before Phase 7.1 (no assistant, no importedAs).
+        let old = #"{"id":"x","importedAt":"2026-10-30T10:00:00Z","text":"t","digest":"d"}"#
+        let decoded = try JSONDecoder().decode(ImportedReport.self, from: Data(old.utf8))
+        XCTAssertNil(decoded.assistant); XCTAssertFalse(decoded.isHistoricalPackage)
+    }
+
+    func testLongReportScrollsInsideItsCard() async throws {
+        let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP71j-\(UUID().uuidString)"))
+        defer { board.releaseGlobally() }
+        let m = AppModel(core: FakeCore(projects: []), clipboard: ClipboardService(pasteboard: board), dataDirectory: nil)
+        await m.refreshNow()
+        m.route = .importReport
+        let host = IslandHost(model: m, maxContentHeight: 448)
+        defer { host.close() }
+        XCTAssertLessThanOrEqual(host.height, 32 + 448)
+        let card = try XCTUnwrap(host.presentation.layoutFrames["import.report"])
+        XCTAssertLessThan(card.height, 200, "the empty card is small")
+    }
+}

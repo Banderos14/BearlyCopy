@@ -50,6 +50,13 @@ public struct ImportedReport: Codable, Identifiable, Equatable, Sendable {
     public var sessionLabel: String?
     /// SHA-256 of the text and task, to recognize a repeated import.
     public let digest: String
+    /// Phase 7.1 (optional, older imports decode unchanged): the AI the user
+    /// says it came from (`ImportAssistant.rawValue`), and whether a pasted
+    /// Prompt Relay package was kept as historical context or plain text.
+    public var assistant: String? = nil
+    public var importedAs: String? = nil
+    public var assistantTitle: String? { assistant.flatMap(ImportAssistant.init(rawValue:))?.title }
+    public var isHistoricalPackage: Bool { importedAs == "historical-context" }
     public var source: ReportSource { .cloudManualImport }
     public var ref: ReportRef { .imported(id: id) }
 }

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-31, local Mac session (Phase 7 committed on the branch, owner validation pending),
+Last updated: 2026-10-31, local Mac session (Phase 7.1 committed on the branch, owner validation pending),
 branch `claude/loving-mccarthy-ossw3q`.
 
 ## Completed
@@ -671,8 +671,16 @@ Completeness, Review Checklist, Import AI Result, Export Bundle.
 | Xcode Debug / Release | BUILD SUCCEEDED, 0 warnings |
 | Live NSPanel hover, real mouse, Reduce Motion, paste into assistants | **Not verified** (owner) |
 
+## Phase 7.1 (2026-10-31; committed on the branch, not pushed)
+Persistent hand-off with the copied character count, one Relay across
+running copies, tooltip width, short-display step 2, Living Relay (2.5D head,
+idle machine, settings, no-notch pill), Intelligent Import AI Result,
+Capture Health, About details, Full as default. Details, the clipboard
+incident and owner checks: `docs/PHASE7.md` § Phase 7.1. Swift 243 / 0 failures, Python 172 OK ×2,
+Debug/Release built. Live-screen behaviour is the owner's check.
+
 ## Next agreed stage
-Phase 7 is committed locally; the owner checks `docs/PHASE7.md` § Owner
-checks (first: quit old builds, remove the stale `~/Applications` copy).
+Phase 7 and 7.1 are committed locally; the owner checks `docs/PHASE7.md` § Owner
+checks and § Phase 7.1 → Owner checks (first: quit old copies).
 Push only when the owner asks. Stage 5.10, ADR-012, source adapters and
 Phase 8 wait for approval.

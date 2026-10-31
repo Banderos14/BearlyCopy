@@ -1450,22 +1450,41 @@ struct ImportView: View {
     @State private var session = ""
     @State private var projectPath: String?
     @State private var outcome: AppModel.ImportOutcome?
+    @State private var assistant: ImportAssistant?
+    @State private var suggestProject = false
+    @State private var asPlainText = false
+    @State private var showAll = false
 
     var body: some View {
+        let analysis = text.isEmpty ? ImportAnalysis() : ImportAnalysis.analyze(text, projects: model.localProjectsForImport)
         BoundedScroll(maxHeight: presentation.listHeight(chrome: 20)) {
             VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
-                Text("For a finished result from Claude Cloud, ChatGPT, Gemini or another AI that the hooks on this Mac cannot see: paste its answer (and, if you like, your request). It is saved on this Mac exactly as pasted and marked “imported by you”, never as captured locally. Files you attach later go with it; nothing else is read.")
+                Text("For a finished result from Claude Cloud, ChatGPT, Gemini, Codex or another AI that the hooks on this Mac cannot see. It is saved exactly as pasted and marked “imported by you”, never as captured locally. Nothing else is read; files you attach later go with it.")
                     .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                 reportCard
-                field("Task (optional)", text: $task, prompt: "What you asked the assistant", lines: 3)
-                HStack(alignment: .top, spacing: 10) {
-                    projectMenu
-                    field("Source or session (optional)", text: $session, prompt: "e.g. ChatGPT, a session ID or link", lines: 1)
+                if analysis.isPromptRelayPackage { packageChoice }
+                if let existing = model.existingImport(text: text) {
+                    Label("The same text was imported \(Wording.relative(existing.importedAt)). Importing opens that one again.",
+                          systemImage: "doc.on.doc").font(.system(size: 11)).foregroundStyle(Island.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .islandFrame("import.duplicate")
                 }
+                VStack(alignment: .leading, spacing: 4) {
+                    field("Task (optional)", text: $task, prompt: "What you asked the assistant", lines: 3)
+                    if let suggested = analysis.task, task.isEmpty {
+                        suggestion("Use the request stated in the report (\(CharacterCount.of(suggested).formatted()) characters)") { task = suggested }
+                    }
+                }
+                HStack(alignment: .top, spacing: 10) {
+                    projectPicker(analysis)
+                    sourcePicker(analysis)
+                }
+                field("Session or link (optional)", text: $session, prompt: "a session ID or link, kept as you type it", lines: 1)
                 HStack(spacing: 10) {
-                    Button("Import") { save() }
+                    Button("Import") { save(analysis) }
                         .buttonStyle(IslandPillStyle(prominent: true))
                         .disabled(text.isEmpty)
+                        .islandHelp("Save it as imported by you; it then appears in History, Full Report, Copy Answer and Copy with Context")
                     if case .failed(let message) = outcome {
                         Text(message).font(.system(size: 11)).foregroundStyle(Island.error)
                     }
@@ -1475,24 +1494,32 @@ struct ImportView: View {
             .padding(.horizontal, IslandMetrics.of(presentation).leading)
         }
         .islandPadding(presentation, horizontal: false)
+        .onChange(of: text) { suggestProject = false; asPlainText = false; showAll = false; assistant = nil }
     }
 
-    private func save() {
-        let result = model.importReport(text: text, task: task, projectPath: projectPath, sessionLabel: session)
+    private func save(_ analysis: ImportAnalysis) {
+        let kind = analysis.isPromptRelayPackage ? (asPlainText ? "plain-text" : "historical-context") : nil
+        let result = model.importReport(text: text, task: task, projectPath: projectPath, sessionLabel: session,
+                                        assistant: assistant, importedAs: kind)
         outcome = result
         if case .failed = result { return }
-        text = ""; task = ""; session = ""
+        text = ""; task = ""; session = ""; projectPath = nil; assistant = nil
     }
 
+    /// The report scrolls inside a card of bounded height; a long report
+    /// never makes the island taller. The text is never changed.
     private var reportCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Caption("Report")
                 if !text.isEmpty {
-                    Text("\(text.unicodeScalars.count.formatted()) characters, kept exactly").font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    Text("\(CharacterCount.of(text).formatted()) characters, kept exactly").font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
                 }
                 Spacer()
                 if !text.isEmpty {
+                    Button(showAll ? "Short Preview" : "Full Text") { showAll.toggle() }.buttonStyle(.plain)
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
+                        .islandHelp("The whole pasted text, exactly, scrolling inside this card")
                     Button("Clear") { text = "" }.buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
                 }
             }
@@ -1500,13 +1527,113 @@ struct ImportView: View {
                 Button { paste() } label: { Label("Paste Report from Clipboard", systemImage: "doc.on.clipboard") }
                     .buttonStyle(IslandPillStyle(prominent: false))
                 Text("Reads the clipboard once, when you click.").font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+            } else if showAll {
+                VerbatimTextView(text, textColor: NSColor(Island.primary), fontSize: 12)
+                    .frame(height: 180)
+                    .islandFrame("import.full")
             } else {
-                ResponsePreview(text: text, lines: 5)
+                BoundedScroll(maxHeight: 132) {
+                    MarkdownBlocksView(blocks: Markdown.blocks(String(text.prefix(6000))), codeLineLimit: 12, fontSize: 12)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.trailing, 6)
+                }
+                .islandFrame("import.preview")
             }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
+        .islandFrame("import.report")
+    }
+
+    /// A pasted Copy with Context package: kept whole either way; as context
+    /// its labels are explained as the original machine's, never trusted here.
+    private var packageChoice: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label("This is a Prompt Relay package (Copy with Context).", systemImage: "shippingbox")
+                .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
+            Picker("", selection: $asPlainText) {
+                Text("Import as historical context").tag(false)
+                Text("Import as plain text").tag(true)
+            }
+            .pickerStyle(.radioGroup).labelsHidden().font(.system(size: 11.5))
+            Text(asPlainText ? "Kept as one pasted answer, nothing explained."
+                             : "Copy with Context will say that its “Confirmed locally” labels describe the machine and time it was made, not this import, so it is not mistaken for a new local check.")
+                .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Island.cardRaised))
+        .islandFrame("import.package")
+    }
+
+    private func suggestion(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: "wand.and.stars").font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
+        }
+        .buttonStyle(.plain)
+        .islandHelp("A suggestion from the text's own structure; nothing is used until you click")
+    }
+
+    /// Manual: choose a local project. Suggest from Report: only projects an
+    /// explicit Project / Repository field names; you confirm one.
+    private func projectPicker(_ analysis: ImportAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Caption("Project")
+                Picker("", selection: $suggestProject) {
+                    Text("Manual").tag(false)
+                    Text("Suggest from Report").tag(true)
+                }
+                .pickerStyle(.segmented).labelsHidden().controlSize(.mini).fixedSize()
+            }
+            if suggestProject {
+                if analysis.projects.isEmpty {
+                    Text(analysis.statedProjects.isEmpty ? "The report names no project: Unassigned."
+                         : "Named “\(analysis.statedProjects.joined(separator: "”, “"))”, which matches no local project: Unassigned.")
+                        .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                } else {
+                    if analysis.projects.count > 1 {
+                        Text("Several projects match; choose one.").font(.system(size: 10.5)).foregroundStyle(Island.warning)
+                    }
+                    ForEach(analysis.projects, id: \.self) { path in
+                        let name = model.projectRows.first { $0.path == path }?.name ?? (path as NSString).lastPathComponent
+                        Button { projectPath = path } label: {
+                            Label(projectPath == path ? "\(name) · chosen" : "Use \(name)",
+                                  systemImage: projectPath == path ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 11.5)).foregroundStyle(projectPath == path ? Island.accent : Island.primary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            } else {
+                projectMenu
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The assistant it came from; a detected one is marked as a suggestion.
+    private func sourcePicker(_ analysis: ImportAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Caption("Source")
+            Menu {
+                Button("Not specified") { assistant = nil }
+                ForEach(ImportAssistant.allCases) { a in
+                    Button(a == analysis.assistant ? "\(a.title) (suggested by the text)" : a.title) { assistant = a }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(assistant?.title ?? "Not specified").lineLimit(1)
+                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 8, weight: .semibold))
+                }
+                .font(.system(size: 12.5)).foregroundStyle(Island.primary)
+            }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .padding(.horizontal, 10).frame(height: 31)
+            .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Island.card))
+            if let suggested = analysis.assistant, assistant == nil {
+                suggestion("Suggested: \(suggested.title)") { assistant = suggested }
+            }
+        }
     }
 
     private func paste() {

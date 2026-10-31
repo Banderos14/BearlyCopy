@@ -43,10 +43,14 @@ public enum ReviewPack {
             + "[\(unavailable)] = could not be determined.")
         add()
         add("## Session")
-        add("- Source: Claude Code cloud session, imported manually: the user pasted this report into Prompt Relay. "
-            + "Prompt Relay did not observe the session. [\(userSupplied)]")
+        add("- Source: \(report.assistantTitle ?? "an AI assistant (not specified)"), imported manually: the user pasted this report "
+            + "into Prompt Relay. Prompt Relay did not observe the session. [\(userSupplied)]")
+        if report.isHistoricalPackage {
+            add("- The pasted text is itself an earlier Prompt Relay package. Its labels (such as “\(confirmed)”) describe "
+                + "the machine and the time it was made; here the whole text counts as pasted by the user. [\(userSupplied)]")
+        }
         add("- Project: \(report.projectName ?? "not specified") [\(report.projectName == nil ? unavailable : userSupplied)]")
-        add("- Cloud session: \(report.sessionLabel ?? "not specified") [\(report.sessionLabel == nil ? unavailable : userSupplied)]")
+        add("- Session or link: \(report.sessionLabel ?? "not specified") [\(report.sessionLabel == nil ? unavailable : userSupplied)]")
         add("- Imported at: \(report.importedAt) [\(confirmed)]")
         add()
         add("## Original user request")

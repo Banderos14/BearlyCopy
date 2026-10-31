@@ -310,7 +310,8 @@ public final class NotchController {
         let yielding = settings.yieldToOtherNotchApps && !(neighbors.running.isEmpty && copies.isEmpty)
         // Without a notch (Phase 7.1) Relay rests in the floating layout's
         // small pill under the menu bar, when the mascot and that option are on.
-        let resting = (newLayout.isFloating ? settings.mascotEnabled && settings.relayWithoutNotch : settings.notchEnabled) && !yielding
+        // "Open on hover" governs both: no hover surface ever appears with it off.
+        let resting = settings.notchEnabled && (!newLayout.isFloating || (settings.mascotEnabled && settings.relayWithoutNotch)) && !yielding
         let yieldChanged = yielding != isYielding || resting != hasRestingTarget
         isYielding = yielding
         hasRestingTarget = resting
@@ -764,7 +765,9 @@ extension NotchController {
         if presentation.mascot.still != still { presentation.mascot.still = still }
         life.expressive = settings.relayMotion == .expressive
         if visible && settings.relayIdle && !still { life.start() } else { life.stop() }
-        if visible {
+        // The system-wide pointer monitor runs only when following is wanted:
+        // with "Follow the pointer" or Relay off, it is not started at all.
+        if visible && settings.relayFollowsPointer && settings.relayMotion != .off {
             follower.start()
         } else {
             follower.stop()

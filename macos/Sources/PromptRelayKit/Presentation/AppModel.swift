@@ -988,12 +988,13 @@ public final class AppModel {
     /// cloud session). Stored verbatim and shown at once; repeating the same
     /// import shows the existing record.
     @discardableResult
-    public func importReport(text: String, task: String?, projectPath: String?, sessionLabel: String?) -> ImportOutcome {
+    public func importReport(text: String, task: String?, projectPath: String?, sessionLabel: String?,
+                             assistant: ImportAssistant? = nil, importedAs: String? = nil) -> ImportOutcome {
         guard let store = reportStore else { return .failed("Imports are not available.") }
         let name = projectPath.map { path in projectRows.first { $0.path == path }?.name ?? (path as NSString).lastPathComponent }
         do {
             let result = try store.importReport(text: text, task: task, projectPath: projectPath, projectName: name,
-                                                sessionLabel: sessionLabel)
+                                                sessionLabel: sessionLabel, assistant: assistant?.rawValue, importedAs: importedAs)
             imports = store.imports()
             selectImport(result.report.id)
             route = .home
