@@ -68,14 +68,13 @@ final class Phase6VisualTests: XCTestCase {
         for anchor in [CGRect(x: 600, y: 330, width: 26, height: 26),   // bottom right (Settings)
                        CGRect(x: 10, y: 330, width: 120, height: 28),   // bottom left (Copy Answer)
                        CGRect(x: 300, y: 40, width: 30, height: 20)] {  // top middle
-            let x = IslandTooltipOverlay.x(anchor: anchor, width: width, in: size)
-            let y = IslandTooltipOverlay.y(anchor: anchor, height: height, in: size)
-            XCTAssertGreaterThanOrEqual(x, 8); XCTAssertLessThanOrEqual(x + width, size.width - 8, "\(anchor)")
-            XCTAssertGreaterThanOrEqual(y, 0); XCTAssertLessThanOrEqual(y + height, size.height, "\(anchor)")
-            let tip = CGRect(x: x, y: y, width: width, height: height)
+            let tip = TipPlacement.frame(anchor: anchor, tip: CGSize(width: width, height: height), island: size, band: 32)
+            XCTAssertGreaterThanOrEqual(tip.minX, 8); XCTAssertLessThanOrEqual(tip.maxX, size.width - 8, "\(anchor)")
+            XCTAssertGreaterThanOrEqual(tip.minY, 0); XCTAssertLessThanOrEqual(tip.maxY, size.height, "\(anchor)")
             XCTAssertFalse(tip.intersects(anchor.insetBy(dx: 1, dy: 1)), "never over its own control \(anchor)")
         }
-        XCTAssertLessThan(IslandTooltipOverlay.y(anchor: CGRect(x: 10, y: 330, width: 10, height: 28), height: 30, in: size), 330,
+        XCTAssertLessThan(TipPlacement.frame(anchor: CGRect(x: 10, y: 330, width: 10, height: 28), tip: CGSize(width: width, height: 30),
+                                             island: size, band: 32).minY, 330,
                           "no room below: above the control")
     }
 

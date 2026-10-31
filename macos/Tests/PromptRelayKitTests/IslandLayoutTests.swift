@@ -356,8 +356,12 @@ final class IslandHost {
     let host: NSView
     let width: CGFloat
 
+    let tips: IslandTooltips
+
     init(model: AppModel, surface: NotchPresentation.Surface = .expanded, maxContentHeight: CGFloat = 568, mascot: Bool = true,
-         theme: IslandTheme = .warmCocoa) {
+         theme: IslandTheme = .warmCocoa, tips: IslandTooltips? = nil) {
+        let tips = tips ?? IslandTooltips()
+        self.tips = tips
         width = surface == .peek ? NotchLayout.peekWidth : NotchLayout.expandedWidth
         presentation.notchSize = CGSize(width: 185, height: 32)
         presentation.islandWidth = width
@@ -370,7 +374,8 @@ final class IslandHost {
         settings.theme = theme
         host = NSHostingView(rootView: NotchRootView(model: model, presentation: presentation,
                                                      interaction: NotchInteraction(scheduler: MainQueueScheduler()),
-                                                     actions: SurfaceActions(quit: {}), settings: settings)
+                                                     actions: SurfaceActions(quit: {}), settings: settings,
+                                                     notifier: nil, tips: tips)
             .frame(width: size.width, height: size.height).background(Color(white: 0.86)))
         window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false

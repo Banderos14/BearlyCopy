@@ -638,6 +638,7 @@ struct KindIcon: View {
         .frame(width: 24, height: 24)
         .background(Island.code)
         .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 5, style: .continuous))   // the `.fill` overflow takes no clicks
     }
 }
 
@@ -1139,6 +1140,7 @@ struct StateCard: View {
                 }
                 .frame(maxWidth: .infinity).frame(height: 54).background(Island.code).clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))   // the `.fill` overflow takes no clicks
                 SelectBox(selected: state.selected) { model.setStateSelected(material, state: state.id, !state.selected) }
                     .padding(3)
             }

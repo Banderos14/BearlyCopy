@@ -45,10 +45,17 @@ public struct NotchRootView: View {
     let actions: SurfaceActions
     let settings: NotchSettings?
     let notifier: ReadyNotifier?
-    @State private var tips = IslandTooltips()
+    @State private var tips: IslandTooltips
 
     public init(model: AppModel, presentation: NotchPresentation, interaction: NotchInteraction, actions: SurfaceActions,
                 settings: NotchSettings? = nil, notifier: ReadyNotifier? = nil) {
+        self.init(model: model, presentation: presentation, interaction: interaction, actions: actions,
+                  settings: settings, notifier: notifier, tips: IslandTooltips())
+    }
+
+    init(model: AppModel, presentation: NotchPresentation, interaction: NotchInteraction, actions: SurfaceActions,
+         settings: NotchSettings?, notifier: ReadyNotifier?, tips: IslandTooltips) {
+        _tips = State(initialValue: tips)
         self.model = model
         self.presentation = presentation
         self.interaction = interaction
@@ -108,7 +115,7 @@ public struct NotchRootView: View {
                 compactContent
                     .transition(.opacity.animation(.easeOut(duration: 0.1)))
             }
-            if expanded { IslandTooltipOverlay(tips: tips, size: islandSize) }
+            if expanded { IslandTooltipOverlay(tips: tips, size: islandSize, band: presentation.notchSize.height) }
         }
         .environment(\.islandTooltips, tips)
         // A theme change redraws the island with the new roles.

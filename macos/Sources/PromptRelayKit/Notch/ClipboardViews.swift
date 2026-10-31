@@ -225,6 +225,7 @@ struct ClipboardImagesPane: View {
                     .clipShape(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous))
                     .onDrag { history.exportFiles([item]).first.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
                     .islandFrame("clipboard.preview")
+                    .islandFrame("clipboard.preview.\(item.id)")
             }
         }
     }
@@ -258,16 +259,24 @@ struct ClipboardThumb: View {
                     }
                     .frame(width: 96, height: 64).background(Island.code).clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    // Clipping hides the overflow of a `.fill` image but does
+                    // not stop it from taking clicks and hover: a wide
+                    // screenshot reached into its neighbour, so pointing at
+                    // one image lit or opened another (Phase 7, found by the
+                    // owner). Only the visible thumbnail is hit-testable.
+                    .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .stroke(chosen ? Island.accent : (hovering ? Island.hairline.opacity(3) : Island.hairline), lineWidth: chosen ? 2 : 1))
                 }
                 .buttonStyle(.plain)
                 .onHover { hovering = $0 }
+                .islandFrame("clipboard.thumb.\(item.id)")
                 .islandHelp("Preview · drag it into another app")
                 .accessibilityLabel("Preview \(ClipboardImageHistory.exportName(item))")
                 SelectBox(selected: chosen, action: toggle).padding(4)
                     .islandHelp(chosen ? "Chosen" : "Choose for Copy, Drag or Add")
             }
+            .contentShape(Rectangle())
             .onDrag { history.exportFiles([item]).first.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
             Text(item.displayName).font(.system(size: 10)).foregroundStyle(Island.secondary).lineLimit(1)
             Text("\(Wording.clock(ISO8601DateFormatter().string(from: item.capturedAt))) · \(ReviewPack.size(item.byteCount))")
