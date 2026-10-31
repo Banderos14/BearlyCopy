@@ -50,8 +50,8 @@ other agents.
 | Signed, notarized build + updates | ad-hoc signed Xcode build | Developer ID + notarization; Sparkle with EdDSA (as Agent Island) or Homebrew cask (as Maccy, boring.notch) | People can install and trust it | M | Apple Developer account | **Before release** |
 | First-run setup | `doctor`, manual `claude plugin` | Guided: install plugin via `claude plugin` with consent, choose projects, show what is stored | Fewer broken installs | M | ADR-008 rules | **Before release** |
 | Coexistence with other notch apps | yield to Coucou etc. | Test with Vibe Notch, Agent Island, boring.notch; document | No fights over the notch | S | — | **Before release** |
-| Package heading still "Copy for ChatGPT" | Core `export.py` heading | Neutral heading "Result for independent review"; golden tests updated | Consistent naming across assistants | S | Core change (owner approval) | **Before release** |
-| Smart Handoff Preview | "What's in it" explains each part; secret scan blocks copy | Show the real package text before copying (read-only, scrollable), with the secret findings inline | Know exactly what leaves the Mac | S–M | none (same formatter) | Post-MVP (high) |
+| Package heading | neutral since the visual pass ("# Copy with Context: …") | — | Consistent naming across assistants | done | — | done |
+| Smart Handoff Preview | Preview of the real package (same builder, same snapshot copied); secrets still confirmed | Highlight the secret findings' lines inside the preview | Know exactly what leaves the Mac | S–M | none (same formatter) | Post-MVP (high) |
 | Export Markdown / Export with Attachments | copy only | Save the package as `.md` + a folder with the chosen files | Archive, attach to issues, mail | S | ReviewPack | Post-MVP |
 | Attention notifications | "answer ready" notification | Notify when Claude waits for the user (Notification hook), worded as facts | Fewer idle agents | S | Claude Code `Notification` hook (documented) | Post-MVP |
 | Multi-session switcher | project/session picker | Keyboard switcher (⌃⌥⌘P then 1…9) across running sessions | Faster with several agents | S | — | Post-MVP |
@@ -95,3 +95,13 @@ with its documented events only, labelled as such in every package
 | Copy for AI | Short | Vague; every copy goes to some AI |
 | Copy with Context | Accurate | Does not say *why* |
 | Copy Report | Simple | Confused with the answer itself |
+
+## Compatibility and security notes (for a later, separate pass)
+- Tooltips, previews and the package are drawn inside the island; no extra
+  windows. PDF preview uses PDFKit (read-only); HTML is never rendered.
+- Text previews read only Prompt Relay's own stored copies (≤ 1 MB, UTF-8).
+- The package builder is shared by copy and Preview, so the secret scan and
+  provenance rules cannot diverge; a security review should still cover the
+  Core's `context` output and the attachment store.
+- Other notch apps (Vibe Notch, Agent Island, boring.notch): coexistence
+  still to be tested on a real Mac.

@@ -648,7 +648,15 @@ proposals for a public release: `docs/PRODUCT_ROADMAP.md`. Swift 195 tests
 0 failures (10 opt-in skipped), Python 168 OK on 3.14 and 3.9.6, Xcode
 Debug/Release succeeded, layout recursion 0. On-screen checks are the owner's.
 
+## Phase 6 visual pass (2026-10-31; committed on the branch, not pushed)
+Warm Cocoa (default), paired card rows, Task motion, compact in-island
+tooltips, Copy with Context with a real Preview, attachment preview,
+neutral package heading in the Core. Details: `docs/PHASE6.md` § Phase 6
+visual pass. Swift 202 tests 0 failures (11 opt-in skipped), Python 168 OK
+on 3.14 and 3.9.6, Xcode Debug/Release succeeded, layout recursion 0. The
+live panel on screen is the owner's check.
+
 ## Next agreed stage
 Phase 6 and its polish are committed locally; the owner checks `docs/PHASE6.md`
-§ Owner checks and § Owner checks (polish). Push only when the owner asks. Phase 7, stage 5.10 and ADR-012 wait
+§ Owner checks, § Owner checks (polish) and § Owner checks (visual pass). Push only when the owner asks. Phase 7, stage 5.10 and ADR-012 wait
 for separate decisions.

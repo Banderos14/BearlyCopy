@@ -152,3 +152,67 @@ look). Text and state colors ≥ 4.5:1 on cards in all three (tested).
    images: each shows "Copied!" for about 2 s.
 6. Settings → Appearance → Theme: compare Soft Spectrum, Material Calm, Classic.
 7. Reduce Motion on: no moving or resizing animation, short fades only.
+
+## Phase 6 visual pass (2026-10-31)
+
+Backup ref `refs/backup/phase6-visual-start` (= `93cfad5`). Renders (real
+SwiftUI, fixture content): `docs/images/phase6-warm-cocoa/`.
+
+| # | Problem | Cause | Fix |
+|---|---|---|---|
+| 1 | Tooltips over other apps | Only AppKit tooltips (their own window) can leave the island; the polish build had none, except the fallback path used outside the island environment | Fallback removed (accessibility hint only); compact tip (10.5 pt, 6×3 padding, 82 % black, no shadow, wraps at 220 pt); placement clamped to the island on every edge, above the control when there is no room below (tested) |
+| 2 | Task More/Less snaps, then animates | Expanding replaced a `Text` with a new scroll view whose height starts at 0 | One scroll view for both states; expanded up to 168 pt, scrolls inside |
+| 3 | Unbalanced cards | Two independent columns | `PairedRows`: each row is as tall as its taller card's natural height; Answer keeps ≥ 140 pt when space is short; the top row never below its cards' minimum (tests caught a 6-pt overlap at 300 pt); below 330 pt one column at a time |
+| 4 | Step 2 too tall on short displays | Two-line footer | One row when it fits (Details), two rows otherwise (Quick Peek) |
+| 5 | Real data, 14-inch: Answer squeezed to ~45 pt by the Copy with Context card | The top row followed that card's five rows | Its rows scroll inside the card; the top row follows Task (≤ 42 % of the space) |
+
+**Warm Cocoa** (Settings → Appearance → Theme; default for new installs and
+for anyone who never chose a theme; an explicit choice is kept): cards
+`#292725`, text `#F4EEE5`, caramel accent and Copy Answer `#C59468` on dark
+`#1E140B` text, sand `#E9D7BC` for materials, green `#93C79F`, amber
+`#E8C077`, coral `#EC968E`; selected files get a soft caramel row. All text
+and states ≥ 4.5:1 on both card surfaces. The camera area and Relay are
+unchanged.
+
+**Copy with Context** (was Copy for Review). The Core's package heading is
+now `# Copy with Context: Claude Code result for an independent check`
+(golden files: that line only). Structure and provenance labels unchanged.
+
+**Preview.** Copy with Context card → Preview builds the package with the
+same builder the copy uses (`AppModel.buildPack`: the Core's `context` for
+a local answer, `ReviewPack` for an import) and shows its exact text. Copy
+from Preview copies that snapshot byte for byte (Git status and time as
+read when it was built; said in the view). If the chosen files changed
+since, Copy builds it again so text and files agree. Possible secrets still
+ask before copying. Another answer drops the preview.
+
+**Attachment preview.** Click an attachment (or ⋯ → Preview): image
+(enlarged, drag), text documents up to 1 MB (exact text, read-only), PDF
+(PDFKit); Copy, Drag, Show in Finder; Back. HTML is shown as source and
+never run; mockup states say that motion and clicks are not checked.
+Opening a preview changes neither the answer, the session nor the choice of
+files (tested).
+
+**Selected answer.** Details: Answer header shows characters · time · N/M;
+Quick Peek: N/M beside the state chip, time in the band.
+
+| Check | Result |
+|---|---|
+| Swift `swift test` | 202 tests, 0 failures, 11 opt-in skipped (not counted) |
+| Python 3.14 / 3.9.6 | 168 OK each (1 skipped by design) |
+| Layout recursion | 0 hits |
+| Xcode Debug / Release | BUILD SUCCEEDED, 0 compiler warnings |
+| Real history in the new views (offscreen render, read-only) | no overlap; 4/4 newest |
+| Relay CPU (one Debug run, busy machine) | rest 1.15 %; moving 10.1 % with a 4.2 % loop — noisier than the earlier run; Relay code unchanged |
+| Live NSPanel on the real screen | **Not verified** (two builds already running; no third started) |
+
+### Owner checks (visual pass)
+1. Rebuild in Xcode; Settings → Appearance → Theme → Warm Cocoa (new
+   installs get it; an earlier explicit choice is kept).
+2. Hover Copy Answer, Copy with Context, History, Clipboard, Settings near
+   the island's edges: small tips, always inside the island.
+3. Task More / Less, quickly several times: no snap.
+4. Copy with Context → Preview → scroll → Copy; paste somewhere: the same text.
+5. Click a Markdown, PNG and PDF attachment: preview, Back.
+6. On a long and a short answer, with and without files: the two rows end
+   on one line; nothing overlaps the footer.
