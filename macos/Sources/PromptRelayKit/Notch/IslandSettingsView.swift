@@ -155,6 +155,8 @@ struct IslandSettingsView: View {
                 status("Last capture", value: model.projects.value == nil ? "—" : "None yet", ok: false)
             }
             Hairline()
+            CaptureHealthRows(model: model)
+            Hairline()
             HStack {
                 Text("Checks run only when you open this page or click Check Again.").font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 Spacer()
@@ -213,6 +215,15 @@ struct IslandSettingsView: View {
             }
             .padding(.horizontal, 12).frame(height: 32)
             Hairline()
+            VStack(alignment: .leading, spacing: 3) {
+                aboutLine("Build", AppBuild.isDebugBuild ? "Debug (Xcode)" : "Release")
+                aboutLine("Commit", AppBuild.gitCommit ?? "not recorded in this build (Xcode builds; see `git log` in the checkout)")
+                aboutLine("Plugin", model.doctor.value?.configuration.plugin.records.first { $0.id.hasPrefix("prompt-relay@") }?.version
+                          ?? (model.doctor.value == nil ? "open Advanced to check" : "not detected"))
+                aboutLine("Running", AppBuild.describeRunning().joined(separator: "\n"))
+            }
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            Hairline()
             Link(destination: Self.repository) {
                 HStack {
                     Text("Source code").foregroundStyle(Island.primary)
@@ -250,6 +261,15 @@ struct IslandSettingsView: View {
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
+        }
+    }
+
+    private func aboutLine(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(title).font(.system(size: 11.5)).foregroundStyle(Island.secondary).frame(width: 56, alignment: .leading)
+            Text(value).font(.system(size: 11)).foregroundStyle(Island.tertiary).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
         }
     }
 

@@ -39,6 +39,61 @@ public enum AppBuild {
         }
     }
 
+    /// One running copy of Prompt Relay.
+    public struct Copy: Equatable, Sendable {
+        public let pid: Int32
+        public let bundleID: String
+        public let launched: Date?
+        public init(pid: Int32, bundleID: String, launched: Date?) { self.pid = pid; self.bundleID = bundleID; self.launched = launched }
+    }
+
+    /// The copies this one steps aside for at the notch, so only one Relay is
+    /// ever on screen (Phase 7.1: two Debug runs and an installed build drew
+    /// two or three bears; only Release → Debug used to step aside). A
+    /// Release build yields to any Debug build; within one bundle ID the
+    /// newest launch keeps the notch (ties: the higher PID). Builds from
+    /// before Phase 7.1 do not follow this rule; Settings offers to quit them.
+    public static func yields(own: Copy, to running: [Copy]) -> [Copy] {
+        running.filter { other in
+            guard other.pid != own.pid, [releaseBundleID, debugBundleID].contains(other.bundleID) else { return false }
+            if own.bundleID == releaseBundleID && other.bundleID == debugBundleID { return true }
+            guard other.bundleID == own.bundleID else { return false }
+            switch (other.launched, own.launched) {
+            case let (a?, b?) where a != b: return a > b
+            default: return other.pid > own.pid
+            }
+        }
+    }
+
+    @MainActor
+    public static func runningCopies() -> [Copy] {
+        NSWorkspace.shared.runningApplications.compactMap { app in
+            app.bundleIdentifier.map { Copy(pid: app.processIdentifier, bundleID: $0, launched: app.launchDate) }
+        }
+    }
+
+    @MainActor
+    public static var ownCopy: Copy {
+        let me = NSRunningApplication.current
+        return Copy(pid: me.processIdentifier, bundleID: bundleID ?? "", launched: me.launchDate)
+    }
+
+    /// Executable path, launch time and PID of every running copy, for About.
+    @MainActor
+    public static func describeRunning() -> [String] {
+        NSWorkspace.shared.runningApplications
+            .filter { [releaseBundleID, debugBundleID].contains($0.bundleIdentifier ?? "") }
+            .map { app in
+                let own = app.processIdentifier == ProcessInfo.processInfo.processIdentifier ? " (this one)" : ""
+                let when = app.launchDate.map { ISO8601DateFormatter().string(from: $0) } ?? "?"
+                return "PID \(app.processIdentifier)\(own) · \(app.executableURL?.path ?? "?") · started \(when)"
+            }
+    }
+
+    /// The commit this build was made from, when the build recorded it
+    /// (`scripts/build-macos-app.sh` writes `PRGitCommit`); Xcode builds say so.
+    public static var gitCommit: String? { Bundle.main.object(forInfoDictionaryKey: "PRGitCommit") as? String }
+
     public static func name(of bundleID: String) -> String {
         bundleID == debugBundleID ? "Prompt Relay (Debug)" : "Prompt Relay"
     }

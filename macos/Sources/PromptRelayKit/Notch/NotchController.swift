@@ -102,6 +102,12 @@ public final class LiveScreens: ScreenProviding {
 public protocol NotchNeighbors: AnyObject {
     /// Localized names of running apps that use the notch area.
     var running: [String] { get }
+    /// Other Prompt Relay copies that keep the notch instead of this one.
+    var promptRelayCopies: [String] { get }
+}
+
+extension NotchNeighbors {
+    public var promptRelayCopies: [String] { [] }
 }
 
 @MainActor
@@ -111,16 +117,17 @@ public final class LiveNotchNeighbors: NotchNeighbors {
     public init() {}
     public var running: [String] {
         let apps = NSWorkspace.shared.runningApplications
-        var names = apps
+        let names = apps
             .filter { $0.bundleIdentifier.map(Self.bundleIDs.contains) ?? false }
             .map { $0.localizedName ?? $0.bundleIdentifier ?? "another notch app" }
-        // The Release build steps aside for a Debug build being developed, so
-        // two Prompt Relay islands never sit on top of each other.
-        if AppBuild.bundleID == AppBuild.releaseBundleID,
-           apps.contains(where: { $0.bundleIdentifier == AppBuild.debugBundleID }) {
-            names.append(AppBuild.name(of: AppBuild.debugBundleID))
-        }
+        _ = apps
         return names
+    }
+
+    /// Other Prompt Relay copies this one steps aside for (`AppBuild.yields`);
+    /// always honoured, whatever the setting for other notch apps.
+    public var promptRelayCopies: [String] {
+        AppBuild.yields(own: AppBuild.ownCopy, to: AppBuild.runningCopies()).map { AppBuild.name(of: $0.bundleID) + " (PID \($0.pid))" }
     }
 }
 
@@ -288,8 +295,9 @@ public final class NotchController {
         let moved = activeScreen?.displayID != screen.displayID || layout != newLayout
         activeScreen = screen
         layout = newLayout
-        neighborNames = neighbors.running
-        let yielding = settings.yieldToOtherNotchApps && !neighborNames.isEmpty
+        let copies = neighbors.promptRelayCopies
+        neighborNames = neighbors.running + copies
+        let yielding = (settings.yieldToOtherNotchApps && !neighbors.running.isEmpty) || !copies.isEmpty
         let resting = !newLayout.isFloating && settings.notchEnabled && !yielding
         let yieldChanged = yielding != isYielding || resting != hasRestingTarget
         isYielding = yielding
