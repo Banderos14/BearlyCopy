@@ -145,15 +145,21 @@ struct IslandMetrics: Equatable {
     var leading: CGFloat { edge + inset }
 
     @MainActor static func of(_ p: NotchPresentation) -> IslandMetrics {
-        make(width: p.islandWidth, maxContentHeight: p.maxContentHeight, floating: p.isFloating, peek: p.surface == .peek)
+        var metrics = make(width: p.islandWidth, maxContentHeight: p.maxContentHeight, floating: p.isFloating, peek: p.surface == .peek)
+        metrics.bottom = max(metrics.bottom, p.helpTextHeight + 7)
+        return metrics
     }
 
     static func make(width: CGFloat, maxContentHeight: CGFloat, floating: Bool, peek: Bool) -> IslandMetrics {
         let edge = floating ? 0 : NotchRootView.expandedTopRadius
-        if peek { return IslandMetrics(edge: edge, inset: 20, top: 4, bottom: 18, spacing: 10) }
+        if peek { return IslandMetrics(edge: edge, inset: 20, top: 4, bottom: 20, spacing: 10) }
+        if maxContentHeight < 300 {
+            return IslandMetrics(edge: edge, inset: width >= 520 ? 24 : 22, top: 0,
+                                 bottom: 20, spacing: 4, compact: true)
+        }
         let roomy = maxContentHeight >= 460
         return IslandMetrics(edge: edge, inset: width >= 520 ? 24 : 22, top: roomy ? 6 : 4,
-                             bottom: roomy ? 22 : 18, spacing: roomy ? 12 : 10, compact: !roomy)
+                             bottom: 20, spacing: roomy ? 12 : 10, compact: !roomy)
     }
 }
 
@@ -419,12 +425,12 @@ struct SourceLine: View {
             if facts.source == .localClaudeCode, let project = model.selectedProject, !project.captureEnabled {
                 Text("· capture off")
                     .foregroundStyle(Island.warning)
-                    .islandHelp("New answers from this project are not recorded. Turn capture on in Projects.")
+                    .islandHelp("Enable capture to save new answers")
             }
             if model.selectedImport == nil, let turn = model.selectedTurn, turn.status == .stopReceivedBackgroundTasksPending {
                 // A fact about the Stop, not about now: the work may have ended since.
                 Text("· background work at Stop").foregroundStyle(Island.warning)
-                    .islandHelp("When Claude stopped, background tasks were still running. Monitors (such as an artifact's live updates) are not counted.")
+                    .islandHelp("Background work was still running when the answer arrived")
             }
         }
         .font(.system(size: 11.5))
@@ -467,7 +473,7 @@ struct TaskCard: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(Island.secondary)
                 .accessibilityLabel(Labels.viewFullTask)
-                .islandHelp("\(Labels.viewFullTask): the whole request, Formatted or Markdown Source")
+                .islandHelp("Read the complete original request")
             }
         }
         .islandCard()
@@ -503,7 +509,7 @@ struct TaskCard: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(Island.secondary)
                     .accessibilityLabel(Labels.viewFullTask)
-                    .islandHelp("\(Labels.viewFullTask): the whole request on its own screen, Formatted or Markdown Source")
+                    .islandHelp("Read the complete original request")
                 }
                 if canExpand {
                     Button { withAnimation(Island.geometry(reduceMotion: reduceMotion)) { expanded.toggle() } } label: {
@@ -516,7 +522,7 @@ struct TaskCard: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(Island.secondary)
                     .accessibilityLabel(expanded ? "Show less of the task" : "Show the whole task")
-                    .islandHelp(expanded ? "Collapse the task" : "Show the whole task; it scrolls inside this card")
+                    .islandHelp(expanded ? "Collapse the task" : "Read more of the request")
                 }
             }
             switch facts.task {
@@ -668,7 +674,7 @@ struct ResponseCard: View {
         .buttonStyle(.plain)
         .islandFrame("response.full")
         .accessibilityLabel("View Full Report")
-        .islandHelp("The complete answer, Formatted or Markdown Source")
+        .islandHelp("Read the complete answer")
     }
 }
 
@@ -760,7 +766,9 @@ struct PeekContent: View {
             } trailing: {
                 if let at = facts.at { Text(Wording.relative(at)).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.tertiary) }
             }
-            VStack(alignment: .leading, spacing: Island.Space.m) {
+            // Keep the compact panel height: a second help line borrows only
+            // inter-row spacing, preserving the task, answer and action heights.
+            VStack(alignment: .leading, spacing: max(2, Island.Space.m - max(0, presentation.helpTextHeight - 13) / 3)) {
                 if facts.source == nil {
                     HStack(alignment: .center) {
                         Text(model.projects.value?.isEmpty == true ? "Click to choose a project to capture." : "No answer yet.")
@@ -866,7 +874,7 @@ struct PeekContent: View {
                         // "1 failed command" opens Failure Inspector (Observed Work).
                         Button { model.navigate(to: .activity); interaction.focus() } label: { Tag(fact.text, tint: fact.tint) }
                             .buttonStyle(.plain)
-                            .islandHelp("Which command, its exit code and the last lines it printed")
+                            .islandHelp("Inspect this command’s result")
                     } else {
                         Tag(fact.text, tint: fact.tint)
                     }
@@ -932,7 +940,7 @@ struct PeekContent: View {
         .buttonStyle(.plain)
         .foregroundStyle(Island.primary)
         .accessibilityLabel("Details")
-        .islandHelp("The whole answer, observed work, attachments and settings")
+        .islandHelp("Open the answer and project context")
     }
 
     private var expandButton: some View {
@@ -945,7 +953,7 @@ struct PeekContent: View {
         .buttonStyle(.plain)
         .foregroundStyle(Island.primary)
         .accessibilityLabel("Expand Prompt Relay")
-        .islandHelp("Show the task, the full report, history and settings")
+        .islandHelp("Open the full report")
     }
 }
 
@@ -1276,7 +1284,7 @@ struct ProjectRowView: View {
                 }
             }
             .buttonStyle(IslandRowStyle())
-            .islandHelp(row.path)
+            .islandHelp("Choose this project")
             .contextMenu {
                 if row.isAddedOnly { Button("Remove from List") { model.removeAddedProject(row.path) } }
             }
@@ -1426,7 +1434,7 @@ struct HistoryView: View {
         }
         .buttonStyle(IslandRowStyle())
         .padding(.horizontal, 2)
-        .islandHelp(session.sessionID ?? session.sessionKey)
+        .islandHelp("Open this session")
         .accessibilityLabel("\(Wording.sessionTitle(session)), \(open ? "expanded" : "collapsed")")
         .accessibilityHint(open ? "Collapse" : "Show its answers")
     }
@@ -1551,7 +1559,7 @@ struct ImportView: View {
                     Button("Import") { save(analysis) }
                         .buttonStyle(IslandPillStyle(prominent: true))
                         .disabled(text.isEmpty)
-                        .islandHelp("Save it as imported by you; it then appears in History, Full Report, Copy Answer and Copy with Context")
+                        .islandHelp("Save this imported answer")
                     if case .failed(let message) = outcome {
                         Text(message).font(.system(size: 11)).foregroundStyle(Island.error)
                     }
@@ -1586,7 +1594,7 @@ struct ImportView: View {
                 if !text.isEmpty {
                     Button(showAll ? "Short Preview" : "Full Text") { showAll.toggle() }.buttonStyle(.plain)
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
-                        .islandHelp("The whole pasted text, exactly, scrolling inside this card")
+                        .islandHelp("Read the full pasted answer")
                     Button("Clear") { text = "" }.buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
                 }
             }
@@ -1637,7 +1645,7 @@ struct ImportView: View {
             Label(title, systemImage: "wand.and.stars").font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
         }
         .buttonStyle(.plain)
-        .islandHelp("A suggestion from the text's own structure; nothing is used until you click")
+        .islandHelp("Use this suggestion")
     }
 
     /// Manual: choose a local project. Suggest from Report: only projects an
@@ -1810,7 +1818,7 @@ struct ReaderModePicker: View {
         .labelsHidden()
         .controlSize(.small)
         .fixedSize()
-        .islandHelp("Formatted renders the Markdown; Markdown Source shows the exact characters, markup included. Both copy the same original.")
+        .islandHelp("Switch between formatted text and Markdown")
     }
 }
 
@@ -1862,7 +1870,7 @@ struct TaskReaderView: View {
                     }
                     .buttonStyle(IslandPillStyle(prominent: true))
                     .disabled(!task.canCopy)
-                    .islandHelp(task.canCopy ? "Copy the request exactly as it was stored, every character"
+                    .islandHelp(task.canCopy ? "Copy the original request"
                                              : "Claude Code wrote this message, not you: there is no original task to copy")
                     Spacer(minLength: 0)
                 }

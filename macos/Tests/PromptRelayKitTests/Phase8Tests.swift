@@ -145,7 +145,7 @@ final class Phase8Tests: XCTestCase {
                 island.settle()
                 let size = CGSize(width: island.width, height: island.height)
                 let safe = TipPlacement.safeArea(island: size, band: 32)
-                let prefixes = [Labels.copyAnswerHelp, Labels.copyWithContextHelp, "Every captured", "Your last copies"]
+                let prefixes = [Labels.copyAnswerHelp, Labels.copyWithContextHelp, "Browse previous", "Your recent copied"]
                 let actions = island.tips.controls.filter { entry in prefixes.contains { entry.value.text.hasPrefix($0) } }
                 XCTAssertGreaterThanOrEqual(actions.count, 2, "\(surface): the copies are registered")
                 for (owner, control) in island.tips.controls where safe.intersects(control.anchor) {
@@ -177,7 +177,7 @@ final class Phase8Tests: XCTestCase {
             for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
             return last.size
         }
-        let one = measure("Every captured and imported report")
+        let one = measure("Copy the original answer")
         XCTAssertLessThan(one.height, 22, "a short tip is one line")
         // Just over the maximum: two balanced lines, not one full line and a stub.
         let two = measure("Answer, request, commands, files, Git and chosen attachments as Markdown")
@@ -200,7 +200,7 @@ final class Phase8Tests: XCTestCase {
         defer { island.close() }
         XCTAssertFalse(island.tips.controls.isEmpty)
         XCTAssertTrue(island.tips.controls.values.allSatisfy { !IslandTooltips.isBlank($0.text) }, "no control registers a blank tip")
-        XCTAssertTrue(island.tips.controls.values.contains { $0.text.hasPrefix("Command text withheld") }, "the withheld row says why")
+        XCTAssertTrue(island.tips.controls.values.contains { $0.text.hasPrefix("Command hidden") }, "the withheld row says why")
     }
 
     // MARK: Failure Inspector
@@ -331,6 +331,12 @@ final class Phase8Tests: XCTestCase {
     func testReadyIndicatorStates() async throws {
         let t0 = iso(Date().addingTimeInterval(-3600))
         let core = FakeCore(projects: [project("/a", sessions: 2, last: t0)])
+        core.showResult = { [weak core] key, index in
+            guard let core, let session = try? core.session(key) else {
+                return .failure(.api(code: "not_found", message: "test session missing"))
+            }
+            return .success(CoreResult(data: ShowData(session: session, turn: turn(index, text: "answer")), warnings: []))
+        }
         core.sessionsByProject["/a"] = [sessionSummary("s1", project: "/a", last: t0)]
         core.turnsBySession["s1"] = [turn(1, request: "first")]
         let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
@@ -364,8 +370,12 @@ final class Phase8Tests: XCTestCase {
 
         // Opening the island: seen.
         await m.revealReadyAnswer()
-        XCTAssertEqual(m.readyIndicator, .none)
+        XCTAssertEqual(m.readyIndicator, .ready(sessions: 1, automated: false, backgroundPending: false),
+                       "opening s2 leaves s1 unread")
         XCTAssertEqual(m.selectedSessionKey, "s2", "the newest answer's session is opened")
+        await m.revealReadyAnswer()
+        XCTAssertEqual(m.selectedSessionKey, "s1")
+        XCTAssertEqual(m.readyIndicator, .none)
     }
 
     func testReadyIndicatorMarksATurnClaudeCodeStartedItself() async throws {
@@ -499,7 +509,7 @@ final class Phase8Tests: XCTestCase {
         for (name, maxContent) in [("details-448", CGFloat(448)), ("details-341", 341)] {
             let island = IslandHost(model: m, maxContentHeight: maxContent)
             try island.png("\(dir)/p8-\(name).png")
-            for (tip, prefix) in [("full", "The complete answer"), ("copy", Labels.copyAnswerHelp), ("history", "Every captured")] {
+            for (tip, prefix) in [("full", "Read the complete answer"), ("copy", Labels.copyAnswerHelp), ("history", "Browse previous")] {
                 _ = try showTip(island, prefix)
                 try island.png("\(dir)/p8-\(name)-tip-\(tip).png")
                 island.tips.hideAll()

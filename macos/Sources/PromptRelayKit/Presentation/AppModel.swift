@@ -71,7 +71,16 @@ public final class AppModel {
 
     public private(set) var readyAnswer: ReadyAnswer?
     /// A newer answer arrived since the user last opened a surface.
-    public private(set) var hasUnseenAnswer = false
+    public var hasUnseenAnswer: Bool { !unseenAnswers.isEmpty }
+    private var finishedAnswers: [ReadyAnswer] = []
+    private var unseenAnswers: [ReadyAnswer] {
+        finishedAnswers.filter { answer in
+            guard let baseline = lastSeenAt, Self.isNewer(answer.at, than: baseline) else { return false }
+            let key = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex).key
+            // Later background events can change lastEventAt without creating a report.
+            return seenAnswers[key] == nil
+        }
+    }
     /// Load `readyAnswer` on every refresh (one extra Core call per refresh;
     /// refreshes happen only when history changes). On by default: the app
     /// opens on the newest answer across all captured projects.
@@ -106,6 +115,7 @@ public final class AppModel {
 
     public static let pollSeconds = 30
     static let lastSeenKey = "answers.lastSeenAt"
+    static let seenAnswersKey = "answers.seenReports"
     let stateDefaults: UserDefaults?
 
     private let core: CoreProviding
@@ -132,6 +142,7 @@ public final class AppModel {
         self.stateDefaults = stateDefaults
         self.reportStore = reportStore
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
+        seenAnswers = stateDefaults?.dictionary(forKey: Self.seenAnswersKey) as? [String: String] ?? [:]
         handoffs = reportStore.map(Self.loadHandoffs) ?? [:]
         imports = reportStore?.imports() ?? []
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
@@ -233,6 +244,9 @@ public final class AppModel {
 
     private var lastSeenAt: String? {
         didSet { stateDefaults?.set(lastSeenAt, forKey: Self.lastSeenKey) }
+    }
+    private var seenAnswers: [String: String] {
+        didSet { stateDefaults?.set(seenAnswers, forKey: Self.seenAnswersKey) }
     }
     private var lastAnnouncedAt: String?
 
@@ -468,6 +482,7 @@ public final class AppModel {
         if let shown = detail.value, shown.session.sessionKey == key, shown.turn.index == index,
            shown.turn.finalResponse?.receivedAt == turn.finalResponse?.receivedAt,
            shown.turn.responseEventCount == turn.responseEventCount, !detail.isLoading {
+            if visibleSurfaces > 0 { acknowledgeReadyAnswer() }
             return
         }
         generation += 1
@@ -478,6 +493,7 @@ public final class AppModel {
             guard token == generation else { return }
             detail = .loaded(result.data)
             detailWarnings = result.warnings
+            if visibleSurfaces > 0 { acknowledgeReadyAnswer() }
         } catch {
             guard token == generation else { return }
             detail = .failed(Self.coreError(error), previous: nil)
@@ -490,7 +506,8 @@ public final class AppModel {
         allSessions = result.data.sessions.sorted {
             (Wording.date($0.lastEventAt) ?? .distantPast) > (Wording.date($1.lastEventAt) ?? .distantPast)
         }
-        guard let answer = await newestFinishedAnswer(in: allSessions) else {
+        finishedAnswers = await latestFinishedAnswers(in: allSessions)
+        guard let answer = finishedAnswers.first else {
             readyAnswer = nil
             return
         }
@@ -509,8 +526,7 @@ public final class AppModel {
             lastSeenAt = at
             return
         }
-        if Self.isNewer(at, than: seen) {
-            hasUnseenAnswer = true
+        if Self.isNewer(at, than: seen), unseenAnswers.contains(answer) {
             if lastAnnouncedAt != at {
                 lastAnnouncedAt = at
                 onNewAnswer?(answer)
@@ -518,18 +534,14 @@ public final class AppModel {
         }
     }
 
-    /// The newest answer Claude finished, across sessions (newest first).
-    /// A session whose last turn is a new prompt still waiting for Claude
-    /// keeps its previous answer: sending the next prompt must not make the
-    /// island jump to an older answer from another project. Only such a
-    /// session costs one `turns` call (cached while it is unchanged).
-    private func newestFinishedAnswer(in sessions: [SessionSummary]) async -> ReadyAnswer? {
+    /// Finished reports, newest first. A waiting prompt retains the preceding
+    /// answer. Changed sessions with several turns also load earlier unread
+    /// reports; these reads use the existing cache while the session is unchanged.
+    private func latestFinishedAnswers(in sessions: [SessionSummary]) async -> [ReadyAnswer] {
         func finished(_ status: TurnStatus) -> Bool { status == .stopReceived || status == .stopReceivedBackgroundTasksPending }
-        var best: ReadyAnswer?
+        var answers: [ReadyAnswer] = []
         for session in sessions {
             guard let last = session.lastTurn, let lastAt = session.lastEventAt else { continue }
-            // Sorted newest first: nothing in this or later sessions can be newer.
-            if let best, !Self.isNewer(lastAt, than: best.at) { break }
             var candidate: ReadyAnswer?
             if finished(last.status) {
                 candidate = ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
@@ -542,9 +554,21 @@ public final class AppModel {
                                         projectName: Wording.projectName(session.project), turnIndex: turn.index,
                                         status: turn.status, at: at)
             }
-            if let candidate, best.map({ Self.isNewer(candidate.at, than: $0.at) }) ?? true { best = candidate }
+            if let candidate {
+                answers.append(candidate)
+                // Several reports can arrive before the island opens. Keep
+                // earlier unread turns too, using the existing session cache.
+                if let baseline = lastSeenAt, Self.isNewer(lastAt, than: baseline), candidate.turnIndex > 1 {
+                    for turn in await cachedTurns(session) where turn.index < candidate.turnIndex && finished(turn.status) {
+                        guard let at = turn.finalResponse?.receivedAt, Self.isNewer(at, than: baseline) else { continue }
+                        answers.append(ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
+                                                   projectName: Wording.projectName(session.project), turnIndex: turn.index,
+                                                   status: turn.status, at: at))
+                    }
+                }
+            }
         }
-        return best
+        return answers.sorted { Self.isNewer($0.at, than: $1.at) }
     }
 
     static func isNewer(_ a: String, than b: String) -> Bool {
@@ -572,16 +596,11 @@ public final class AppModel {
     static let workingWindow: TimeInterval = 20 * 60
 
     public var readyIndicator: ReadyIndicator {
-        if hasUnseenAnswer, let answer = readyAnswer {
-            let seen = lastSeenAt
-            let others = allSessions.filter { s in
-                guard s.sessionKey != answer.sessionKey, let last = s.lastTurn, let at = s.lastEventAt else { return false }
-                let finished = last.status == .stopReceived || last.status == .stopReceivedBackgroundTasksPending
-                return finished && (seen.map { Self.isNewer(at, than: $0) } ?? false)
-            }
+        let unseen = unseenAnswers
+        if let answer = unseen.first {
             let turns = answer.sessionKey == selectedSessionKey ? turns.value : turnCache[answer.sessionKey]?.turns
             let automated = turns?.first { $0.index == answer.turnIndex }?.requestOrigin == .automated
-            return .ready(sessions: 1 + others.count, automated: automated,
+            return .ready(sessions: Set(unseen.map(\.sessionKey)).count, automated: automated,
                           backgroundPending: answer.status == .stopReceivedBackgroundTasksPending)
         }
         let now = Date()
@@ -592,23 +611,29 @@ public final class AppModel {
         return working.isEmpty ? .none : .working(sessions: working.count)
     }
 
-    /// The user looked at the newest answer (opened the notch or a window).
+    /// Acknowledge only the selected report. The launch/migration baseline
+    /// stays fixed: viewing one session must not mark another session seen.
     public func acknowledgeReadyAnswer() {
-        hasUnseenAnswer = false
-        if let at = readyAnswer?.at { lastSeenAt = at }
+        guard selectedImportID == nil,
+              let answer = finishedAnswers.first(where: {
+                  $0.sessionKey == selectedSessionKey && $0.turnIndex == selectedTurnIndex
+              }) else { return }
+        let key = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex).key
+        if seenAnswers[key] == nil { seenAnswers[key] = answer.at }
     }
 
-    /// Select the newest ready answer in every list, then load it.
+    /// Open the newest unseen answer, respecting a pinned session. Only
+    /// acknowledge after the requested report actually loaded successfully.
     public func revealReadyAnswer() async {
-        guard let answer = readyAnswer else { return }
-        acknowledgeReadyAnswer()
-        // A pinned session stays: the other session's answer waits behind the chip.
+        guard let answer = unseenAnswers.first ?? readyAnswer else { return }
         if sessionPinned, answer.sessionKey != selectedSessionKey { return }
         followsLatest = true
         lastFollowedAt = answer.at
         select(answer)
         if sessionPinned { pinnedAt = answer.at; saveSelection() }
         await loadSessions()
+        if let shown = detail.value, shown.session.sessionKey == answer.sessionKey,
+           shown.turn.index == answer.turnIndex { acknowledgeReadyAnswer() }
     }
 
     /// The "New in …" chip: open the other session's newest answer and pin it.
@@ -621,7 +646,11 @@ public final class AppModel {
         pinnedAt = answer.at
         pinSelection()
         route = .home
-        Task { await loadSessions() }
+        Task {
+            await loadSessions()
+            if let shown = detail.value, shown.session.sessionKey == answer.sessionKey,
+               shown.turn.index == answer.turnIndex { acknowledgeReadyAnswer() }
+        }
     }
 
     public func dismissNewAnswerElsewhere() {
@@ -821,8 +850,10 @@ public final class AppModel {
 
     /// The newest unseen answer belongs to this project (or a folder inside it).
     public func hasNewAnswer(inProject path: String?) -> Bool {
-        guard hasUnseenAnswer, let path, let answerPath = readyAnswer?.projectPath else { return false }
-        return Self.path(answerPath, isInside: path)
+        guard let path else { return false }
+        return unseenAnswers.contains { answer in
+            answer.projectPath.map { Self.path($0, isInside: path) } ?? false
+        }
     }
 
     static func path(_ path: String, isInside root: String) -> Bool {

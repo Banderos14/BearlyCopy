@@ -19,7 +19,7 @@ struct ClipboardView: View {
                     ForEach(AppModel.ClipboardTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented).labelsHidden().frame(width: 180)
-                .islandHelp("Text: your copies in Prompt Relay · Images: images you copied anywhere")
+                .islandHelp("Your recent copied text and images")
                 Spacer(minLength: 0)
                 Text(model.clipboardTab == .text ? "Last \(AppModel.copyHistoryLimit) copies made here"
                      : "Last \(ClipboardImageHistory.limit) images · kept 24 h on this Mac")
@@ -86,14 +86,14 @@ struct ClipboardTextList: View {
             }
             .buttonStyle(IslandRowStyle())
             .disabled(!available)
-            .islandHelp("Open this report · \(record.characters.formatted()) characters copied")
+            .islandHelp("Open this report")
             let copied = model.isCopied(record.kind == .response ? AppModel.answerToken(record.ref) : AppModel.reviewToken(record.ref))
             Button { Task { await model.copyAgain(record) } } label: {
                 Label(copied ? Labels.copied : "Copy Again", systemImage: copied ? "checkmark" : "doc.on.doc")
             }
             .buttonStyle(IslandPillStyle(prominent: false))
             .disabled(!available)
-            .islandHelp("Copy the same thing again, read fresh from its source")
+            .islandHelp("Copy this item again")
             Button { model.removeCopyRecord(record) } label: {
                 Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).frame(width: 22, height: 22).contentShape(Rectangle())
             }
@@ -166,7 +166,7 @@ struct ClipboardImagesPane: View {
                 Label(copied ? Labels.copied : "Copy\(suffix)", systemImage: copied ? "checkmark" : "doc.on.doc")
             }
             .buttonStyle(IslandPillStyle(prominent: true)).disabled(n == 0)
-            .islandHelp("Put the chosen images on the clipboard as files (readable names), like ⌘C in Finder")
+            .islandHelp("Copy selected images as files")
             FileDragButton(title: "Drag\(suffix)", help: "Drag the chosen images into another app, such as ChatGPT or Gemini") {
                 history.exportFiles(selected)
             }
@@ -178,8 +178,8 @@ struct ClipboardImagesPane: View {
             }
             .buttonStyle(IslandPillStyle(prominent: false))
             .disabled(n == 0 || model.currentRef == nil)
-            .islandHelp(attachTarget.map { "Attach the chosen images to: \($0). Nothing is attached without this click." }
-                        ?? "No answer is selected: open one in Details first, then come back")
+            .islandHelp(attachTarget.map { _ in "Attach selected images to this answer" }
+                        ?? "Select an answer before attaching images")
             Spacer(minLength: 0)
             Menu {
                 Button(n > 0 ? "Remove \(n == 1 ? "Image" : "\(n) Images")" : "Remove") {
@@ -197,7 +197,7 @@ struct ClipboardImagesPane: View {
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("Remove images")
-            .islandHelp("Remove the chosen images, clear all, or turn the history off")
+            .islandHelp("Manage image history")
         }
         .islandFrame("clipboard.actions")
     }

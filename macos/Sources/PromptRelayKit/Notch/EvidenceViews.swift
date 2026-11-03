@@ -23,7 +23,7 @@ struct EvidenceChip: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Evidence Check: \(evidence.summary)")
-            .islandHelp("What this Mac observed, kept apart from what the answer claims")
+            .islandHelp("Compare observed work with the answer")
             .islandFrame("response.evidence")
         }
     }
@@ -51,7 +51,7 @@ struct CompletenessLine: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .islandHelp("Artifact Completeness: what was declared, captured, chosen and missing")
+            .islandHelp("See which files and images are missing")
             .islandFrame("attachments.completeness")
         }
     }

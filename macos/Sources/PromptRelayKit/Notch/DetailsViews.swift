@@ -255,7 +255,7 @@ struct NewElsewhereChip: View {
                 .background(Capsule().fill(Island.accent.opacity(0.14)))
             }
             .buttonStyle(.plain)
-            .islandHelp("Another session finished. Open its answer; this one stays in History.")
+            .islandHelp("Open the new answer")
             Button { model.dismissNewAnswerElsewhere() } label: {
                 Image(systemName: "xmark").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary)
                     .frame(width: 16, height: 16).contentShape(Rectangle())
@@ -309,14 +309,14 @@ struct NavigationIcons: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            IconLink(symbol: "tray.full", label: "History", help: "Every captured and imported report") {
+            IconLink(symbol: "tray.full", label: "History", help: "Browse previous tasks and answers") {
                 model.navigate(to: .history)
             }
             IconLink(symbol: "doc.on.clipboard", label: "Clipboard",
-                     help: "Your last copies and copied images") {
+                     help: "Your recent copied text and images") {
                 model.navigate(to: .clipboard)
             }
-            IconLink(symbol: "gearshape", label: "Settings", help: "Settings (⌘,)", badge: !AppBuild.otherBuildsRunning().isEmpty) {
+            IconLink(symbol: "gearshape", label: "Settings", help: "Customize Prompt Relay", badge: !AppBuild.otherBuildsRunning().isEmpty) {
                 model.navigate(to: .settings)
             }
             .keyboardShortcut(",", modifiers: .command)
@@ -332,7 +332,7 @@ struct NavigationIcons: View {
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("More")
-            .islandHelp("\(Labels.importAIResult), Export Bundle, Quit")
+            .islandHelp("Import, export, or quit")
         }
         .foregroundStyle(Island.secondary)
     }
@@ -417,7 +417,7 @@ struct HandoffContentsCard: View {
                     if row.opensActivity {
                         Button { model.navigate(to: .activity) } label: { label(row) }
                             .buttonStyle(.plain)
-                            .islandHelp("Open the commands, exit codes and durations")
+                            .islandHelp("Inspect recorded commands")
                     } else {
                         label(row)
                     }
@@ -469,7 +469,7 @@ struct HandoffContentsCard: View {
         .buttonStyle(.plain)
         .disabled(model.currentRef == nil)
         .accessibilityLabel("Preview full context")
-        .islandHelp("The exact text Copy with Context copies")
+        .islandHelp("Preview exactly what will be copied")
     }
 
     struct Row: Equatable {
@@ -606,7 +606,7 @@ struct AttachmentsCard: View {
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .disabled(model.reportStore == nil || ref == nil || model.isPresentingSystemDialog)
                 .accessibilityLabel("Add attachments")
-                .islandHelp("Add documents, PDFs or images to this report (copied as snapshots)")
+                .islandHelp("Attach files to this answer")
             }
             BoundedScroll(minHeight: 34) {
                 VStack(alignment: .leading, spacing: 3) {
@@ -653,7 +653,7 @@ struct SelectBox: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(selected ? "Included in the hand-off" : "Not included")
-        .islandHelp(selected ? "Included in Copy with Context and handed over as a file" : "Not included")
+        .islandHelp(selected ? "Included in the file transfer" : "Not included")
     }
 }
 
@@ -696,7 +696,7 @@ struct AttachmentRow: View {
         .padding(.horizontal, 3)
         .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(attachment.isSelected ? Island.selected : .clear))
         .onDrag { model.dragFile(for: attachment).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
-        .islandHelp("Click to preview · " + (attachment.originalPath.map { "\(attachment.provenance) · \($0)" } ?? attachment.provenance))
+        .islandHelp("Preview this attachment")
     }
 }
 
@@ -739,11 +739,10 @@ struct SuggestionRow: View {
             Button("Add") { model.accept(suggestion) }
                 .buttonStyle(.plain).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Island.accent)
                 .disabled(!(suggestion.exists || suggestion.kind == .mockup))
-                .islandHelp(suggestion.kind == .mockup ? "Keep it as a mockup: its declared states are listed; images are added by you"
-                      : "Copy a snapshot of this file into Prompt Relay")
+                .islandHelp(suggestion.kind == .mockup ? "Add this mockup"
+                      : "Attach a copy of this file")
         }
         .frame(height: 30)
-        .islandHelp(suggestion.path ?? suggestion.title)
     }
 }
 
@@ -769,7 +768,7 @@ struct MockupRow: View {
             .buttonStyle(.plain).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Island.secondary)
         }
         .frame(height: 30)
-        .islandHelp("Visual mockup — review required. \(material.provenance)")
+        .islandHelp("Review this mockup")
     }
 }
 
@@ -869,7 +868,7 @@ struct HandoffFooter: View {
         if !model.handoffSelectionChanged, model.handoffTextReplaced || step.resumed, compact {
             IconLink(symbol: model.isCopied(AppModel.reviewToken(step.ref)) ? "checkmark" : "text.badge.checkmark",
                      label: "Copy Text Again",
-                     help: "Copy Text Again: the same package text (\(step.characters.formatted()) characters, not rebuilt)") {
+                     help: "Copy the same text again") {
                 model.copyHandoffTextAgain()
             }
             .foregroundStyle(model.handoffTextReplaced ? Island.warning : Island.secondary)
@@ -878,7 +877,7 @@ struct HandoffFooter: View {
                 Label(model.isCopied(AppModel.reviewToken(step.ref)) ? Labels.copied : "Copy Text Again", systemImage: "text.badge.checkmark")
             }
             .buttonStyle(IslandPillStyle(prominent: model.handoffTextReplaced))
-            .islandHelp("Put the same package text on the clipboard again (\(step.characters.formatted()) characters, not rebuilt)")
+            .islandHelp("Copy the same text again")
         }
     }
 
@@ -889,14 +888,14 @@ struct HandoffFooter: View {
                 Label(Labels.copyWithContext + " Again", systemImage: "arrow.clockwise")
             }
             .buttonStyle(IslandPillStyle(prominent: true))
-            .islandHelp("Copy the text again with the files chosen now")
+            .islandHelp("Update the copied text with selected files")
         } else {
             Button { model.copyHandoffFiles() } label: {
                 Label(filesCopied ? Labels.copied : (step.fileCount == 1 ? "Copy File" : "Copy \(step.fileCount) Files"),
                       systemImage: filesCopied ? "checkmark" : "doc.on.doc")
             }
             .buttonStyle(IslandPillStyle(prominent: true))
-            .islandHelp("Put the files on the clipboard, like ⌘C in Finder")
+            .islandHelp("Copy the selected files")
             FileDragButton(title: step.fileCount == 1 ? "Drag" : "Drag \(step.fileCount)",
                            help: "Drag the files into ChatGPT, Gemini or another app") { model.handoffFileURLs() }
             IconLink(symbol: "folder", label: "Show in Finder", help: "Show the files in Finder") { model.revealHandoffFiles() }
@@ -906,7 +905,7 @@ struct HandoffFooter: View {
     private var done: some View {
         Button("Done") { model.endHandoff() }
             .buttonStyle(IslandPillStyle(prominent: false))
-            .islandHelp("Finish this transfer. Closing the island does not; the clipboard keeps what you copied")
+            .islandHelp("Finish this transfer")
     }
 
     private var filesCopied: Bool { model.isCopied(AppModel.handoffToken) }
@@ -1062,7 +1061,7 @@ struct CommandRow: View {
         .padding(.horizontal, 10).padding(.vertical, 7)
         .contentShape(Rectangle())
         .onTapGesture { if command.outputTail != nil { expanded.toggle() } }
-        .islandHelp(command.command ?? "Command text withheld (\(command.commandWithheld ?? "unavailable")); only its exit code was kept")
+        .islandHelp(command.command == nil ? "Command hidden to protect sensitive data" : "Recorded command and result")
     }
 
     @ViewBuilder private var result: some View {
@@ -1294,7 +1293,7 @@ struct StateCard: View {
         }
         .padding(6)
         .background(RoundedRectangle(cornerRadius: 9).fill(Island.cardRaised))
-        .islandHelp(state.summary ?? state.title)
+        .islandHelp("Preview this mockup state")
     }
 
     private var statusText: String {

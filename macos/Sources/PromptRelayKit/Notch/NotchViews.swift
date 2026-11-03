@@ -122,7 +122,19 @@ public struct NotchRootView: View {
                 compactContent
                     .transition(.opacity.animation(.easeOut(duration: 0.1)))
             }
-            if expanded { IslandTooltipOverlay(tips: tips, size: islandSize, band: presentation.notchSize.height) }
+            if expanded {
+                let metrics = IslandMetrics.of(presentation)
+                IslandTooltipOverlay(tips: tips, size: islandSize, band: presentation.notchSize.height,
+                                     helpArea: CGRect(x: metrics.leading,
+                                                      y: islandSize.height - 6 - presentation.helpTextHeight,
+                                                      width: islandSize.width - 2 * metrics.leading,
+                                                      height: presentation.helpTextHeight),
+                                     onMeasure: { presentation.helpTextHeight = $0 })
+            }
+        }
+        .animation(IslandTooltips.animation(reduceMotion: presentation.reduceMotion), value: presentation.helpTextHeight)
+        .onChange(of: tips.tip == nil) { _, hidden in
+            if hidden { presentation.helpTextHeight = 0 }
         }
         .environment(\.islandTooltips, tips)
         // A theme change redraws the island with the new roles.
@@ -199,11 +211,14 @@ public struct NotchRootView: View {
         }
         .frame(width: presentation.islandWidth, alignment: .top)
         // The whole height budget is offered; the content takes what it needs.
-        .modifier(BudgetModifier(maxHeight: presentation.notchSize.height + presentation.maxContentHeight))
+        .modifier(BudgetModifier(maxHeight: tips.tip == nil ? presentation.notchSize.height + presentation.maxContentHeight : islandSize.height))
+        .frame(height: tips.tip == nil ? nil : islandSize.height, alignment: .top)
         .environment(\.islandReduceMotion, presentation.reduceMotion)
         // Read after layout; the window follows on the next display pass.
         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { h in
-            presentation.reportContentHeight(h - presentation.notchSize.height)
+            if tips.tip == nil, presentation.helpTextHeight == 0 {
+                presentation.reportContentHeight(h - presentation.notchSize.height)
+            }
         }
         .foregroundStyle(.white)
     }

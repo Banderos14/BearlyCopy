@@ -131,7 +131,7 @@ final class Phase6PolishTests: XCTestCase {
         XCTAssertEqual(tips.tip?.text, "History", "after about 180 ms")
         tips.leave(a)
         tips.enter(b, text: "Settings", anchor: .zero)
-        XCTAssertNil(tips.tip, "leaving hides it; the next one waits again")
+        XCTAssertEqual(tips.tip?.text, "Settings", "crossing the gap switches without hiding")
         try await Task.sleep(nanoseconds: 260_000_000)
         tips.enter(a, text: "History", anchor: .zero)
         XCTAssertEqual(tips.tip?.text, "History", "moving straight to a neighbour switches without a new delay")

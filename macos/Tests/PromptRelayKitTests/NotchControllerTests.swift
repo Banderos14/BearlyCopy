@@ -721,6 +721,12 @@ final class ReadyAnswerTests: XCTestCase {
 
         let core = FakeCore(projects: [project("/a", sessions: 1, last: "2026-10-29T10:00:00.000000Z"),
                                        project("/b", sessions: 1, last: "2026-10-29T09:00:00.000000Z")])
+        core.showResult = { [weak core] key, index in
+            guard let core, let session = try? core.session(key) else {
+                return .failure(.api(code: "not_found", message: "test session missing"))
+            }
+            return .success(CoreResult(data: ShowData(session: session, turn: turn(index, text: "answer")), warnings: []))
+        }
         core.sessionsByProject["/a"] = [sessionSummary("a1", project: "/a", last: "2026-10-29T10:00:00.000000Z")]
         core.sessionsByProject["/b"] = [sessionSummary("b1", project: "/b", last: "2026-10-29T09:00:00.000000Z")]
         // Answer times consistent with the sessions' last events.

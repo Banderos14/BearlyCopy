@@ -9,15 +9,13 @@ enum Labels {
     static let copyWithContext = "Copy with Context"
     static let copied = "Copied!"
 
-    static let copyAnswerHelp = "Only Claude's answer, exactly as written · ⇧⌘C"
-    static let copyWithContextHelp = "Answer, request, commands, files, Git and chosen attachments as Markdown · ⌥⌘C"
+    static let copyAnswerHelp = "Copy the original answer"
+    static let copyWithContextHelp = "Copy the answer with project context"
 
     /// Phase 7 (was "Import Saved Result"): one finished result from another
     /// AI, pasted by the user. Nothing is captured automatically through it.
     static let importAIResult = "Import AI Result"
-    static let importAIResultHelp = "Paste one finished result from Claude Cloud, ChatGPT, Gemini or another AI: "
-        + "its request, its answer and the files you attach. Saved as imported by you, never as captured by a local hook; "
-        + "no other app or session is read."
+    static let importAIResultHelp = "Import an answer from another AI"
     static let markdownSource = "Markdown Source"
     static let viewFullTask = "View Full Task"
     static let copyOriginalTask = "Copy Original Task"

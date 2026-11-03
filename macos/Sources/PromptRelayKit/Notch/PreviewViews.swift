@@ -91,7 +91,7 @@ struct PackagePreviewView: View {
         .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         .disabled(sections.isEmpty)
         .accessibilityLabel("Go to a section")
-        .islandHelp("Go to a section of this text: request, answer, evidence, files, Git, attachments, limitations")
+        .islandHelp("Jump to a section")
     }
 
     private func footer(_ pack: AppModel.BuiltPack) -> some View {
@@ -101,7 +101,7 @@ struct PackagePreviewView: View {
                 Label(copied ? Labels.copied : Labels.copyWithContext, systemImage: copied ? "checkmark" : "checklist")
             }
             .buttonStyle(IslandPillStyle(prominent: true))
-            .islandHelp("Copy this text; then hand over the chosen files")
+            .islandHelp("Copy this preview and transfer the files")
             Text(pack.attachmentIDs.isEmpty ? "No files chosen" : "\(pack.attachmentIDs.count) chosen file\(pack.attachmentIDs.count == 1 ? "" : "s") follow after the text")
                 .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
             Spacer(minLength: 0)
@@ -149,13 +149,16 @@ struct AttachmentPreviewView: View {
                     .lineLimit(1).truncationMode(.middle)
                 Text("\(ReviewPack.type(a)) · \(ReviewPack.size(a.byteCount)) · \(a.effectiveSource.label)")
                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                Text(a.originalPath.map { "\(a.provenance) · \($0)" } ?? a.provenance)
+                    .font(.system(size: 10)).foregroundStyle(Island.tertiary)
+                    .lineLimit(2).textSelection(.enabled)
             }
             Spacer(minLength: 4)
             Button { model.copyAttachmentFiles([a]) } label: {
                 Label(copied ? Labels.copied : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
             }
             .buttonStyle(IslandPillStyle(prominent: false)).disabled(url == nil)
-            .islandHelp("Put the file on the clipboard, like ⌘C in Finder")
+            .islandHelp("Copy this file")
             FileDragButton(title: "Drag", help: "Drag the file into another app") { model.dragFile(for: a).map { [$0] } ?? [] }
             IconLink(symbol: "folder", label: "Show in Finder", help: "Show the file in Finder") { model.revealAttachmentsForHandoff([a]) }
         }

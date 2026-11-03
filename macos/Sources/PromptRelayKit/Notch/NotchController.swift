@@ -28,6 +28,8 @@ public final class NotchPresentation {
     /// Height the expanded content needs (measured by the view); the island
     /// and its window follow it, so there is never empty space below.
     public internal(set) var contentHeight: CGFloat = NotchLayout.minContentHeight
+    /// Measured help text; only its overflow beyond the normal inset consumes content space.
+    var helpTextHeight: CGFloat = 0
     /// Tallest content on the active display; lists and long text scroll inside it.
     public internal(set) var maxContentHeight: CGFloat = 388
     /// No notch on the display: the island floats below the menu bar.

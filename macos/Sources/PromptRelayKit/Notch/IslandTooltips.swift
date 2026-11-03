@@ -5,7 +5,8 @@ import SwiftUI
 // panel of an accessory app, so over Quick Peek they never showed and in
 // Details only after a click had activated the app — "sometimes yes,
 // sometimes no" (Phase 6 audit). One tip at a time, after 180 ms; moving to
-// a neighbour while one is shown switches at once; gone on leaving, on
+// a neighbour while one is shown switches at once; a 120 ms exit grace
+// bridges the gap. Cleared on
 // clicking and when the island closes or changes view. No window of its
 // own, so nothing can stay behind; never hit-testable, so it never covers
 // an action.
@@ -21,24 +22,32 @@ final class IslandTooltips {
     }
 
     static let delay: UInt64 = 180_000_000
+    static let exitDelay: UInt64 = 120_000_000
+    static func animation(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.14)
+    }
 
     private(set) var tip: Tip?
     /// Every control with a tip and where it is now. A tip is placed clear
-    /// of the other controls (Phase 8: tips covered Copy Answer and the
-    /// footer icons); layout tests read it too.
+    /// of content in the bottom inset; layout tests read these anchors too.
     @ObservationIgnored var controls: [UUID: (text: String, anchor: CGRect)] = [:]
     #if DEBUG
     /// Shows a tip at once (layout tests).
-    func show(_ owner: UUID, text: String, anchor: CGRect) { pending?.cancel(); tip = Tip(owner: owner, text: text, anchor: anchor) }
+    func show(_ owner: UUID, text: String, anchor: CGRect) {
+        pending?.cancel(); dismissal?.cancel()
+        tip = Self.isBlank(text) ? nil : Tip(owner: owner, text: text, anchor: anchor)
+    }
     #endif
     @ObservationIgnored private var pending: Task<Void, Never>?
     @ObservationIgnored private var pendingOwner: UUID?
+    @ObservationIgnored private var dismissal: Task<Void, Never>?
 
     func enter(_ owner: UUID, text: String, anchor: CGRect) {
         // An empty tip is only its black background: the small black box
         // over Observed Work's file list (Phase 8, a withheld command's row).
         guard !Self.isBlank(text) else { leave(owner); return }
         pending?.cancel()
+        dismissal?.cancel()
         let next = Tip(owner: owner, text: text, anchor: anchor)
         if tip != nil { tip = next; return }   // already reading tips: switch at once
         pendingOwner = owner
@@ -56,15 +65,24 @@ final class IslandTooltips {
         self.tip = Tip(owner: owner, text: tip.text, anchor: anchor)
     }
 
-    func leave(_ owner: UUID) {
+    func leave(_ owner: UUID, immediately: Bool = false) {
         if pendingOwner == owner { pending?.cancel(); pendingOwner = nil }
-        if tip?.owner == owner { tip = nil }
+        guard tip?.owner == owner else { return }
+        dismissal?.cancel()
+        if immediately { tip = nil; return }
+        // Bridge the small gap between neighbouring controls without a blank frame.
+        dismissal = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.exitDelay)
+            guard !Task.isCancelled, self?.tip?.owner == owner else { return }
+            self?.tip = nil
+        }
     }
 
     static func isBlank(_ text: String) -> Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     func hideAll() {
         pending?.cancel()
+        dismissal?.cancel()
         pendingOwner = nil
         tip = nil
     }
@@ -87,6 +105,7 @@ struct IslandHelp: ViewModifier {
     @State private var owner = UUID()
     @State private var frame: CGRect = .zero
     @FocusState private var focused: Bool
+    @State private var hovered = false
 
     func body(content: Content) -> some View {
         if let tips, !IslandTooltips.isBlank(text) {
@@ -97,16 +116,17 @@ struct IslandHelp: ViewModifier {
                     tips.controls[owner] = (text, $0)
                 }
                 .onHover { inside in
-                    if inside { tips.enter(owner, text: text, anchor: frame) } else { tips.leave(owner) }
+                    hovered = inside
+                    if inside { tips.enter(owner, text: text, anchor: frame) } else if !focused { tips.leave(owner) }
                 }
                 // Keyboard: the tip of the focused control (Full Keyboard Access).
                 .focused($focused)
                 .onChange(of: focused) { _, now in
-                    if now { tips.enter(owner, text: text, anchor: frame) } else { tips.leave(owner) }
+                    if now { tips.enter(owner, text: text, anchor: frame) } else if !hovered { tips.leave(owner) }
                 }
-                .simultaneousGesture(TapGesture().onEnded { tips.leave(owner) })
+                .simultaneousGesture(TapGesture().onEnded { tips.leave(owner, immediately: true) })
                 .onDisappear {
-                    tips.leave(owner)
+                    tips.leave(owner, immediately: true)
                     tips.controls[owner] = nil
                 }
                 .accessibilityHint(text)
@@ -123,51 +143,41 @@ extension View {
     func islandHelp(_ text: String) -> some View { modifier(IslandHelp(text: text)) }
 }
 
-/// The one visible tip, placed from its *measured* size inside the part of
-/// the island that is really black: below the camera band, inside the
-/// flared top sides and clear of the rounded bottom corners. Below the
-/// control, above it when there is no room below, never over it. Phase 7:
-/// the earlier version clamped to the island's bounding rectangle and
-/// placed the tip with alignment guides, so a wrapped tip near a corner
-/// could sit on the transparent corner of the window (cut by the island's
-/// clip) and a first, unmeasured frame could flash in the wrong place.
+/// One measured help label, sharing the island's normal bottom inset. Only
+/// a second line needs additional space; that space comes from the content
+/// budget, not a taller panel. The clip follows the same layout animation as
+/// the inset, so text cannot draw over controls during a height transition.
 struct IslandTooltipOverlay: View {
     let tips: IslandTooltips
     let size: CGSize
-    /// Height of the camera band at the top of the island.
     var band: CGFloat = 32
-    /// Long text wraps; the tip never grows wider than this.
+    var helpArea: CGRect? = nil
+    var onMeasure: ((CGFloat) -> Void)? = nil
     static let maxWidth: CGFloat = 200
-    @State private var measured: CGSize?
-    @State private var measuredOwner: UUID?
 
     var body: some View {
         Color.clear
             .frame(width: size.width, height: size.height)
             .overlay(alignment: .topLeading) {
                 if let tip = tips.tip {
-                    let wrap = min(Self.maxWidth, TipPlacement.safeArea(island: size, band: band).width)
-                    let ready = measuredOwner == tip.owner ? measured : nil
-                    let others = tips.controls.filter { $0.key != tip.owner }.map(\.value.anchor)
-                    let frame = ready.map { TipPlacement.frame(anchor: tip.anchor, tip: $0, island: size, band: band, avoid: others) }
-                    // As wide as its text (like inline-block), wrapping at
-                    // `wrap`. Phase 7.1: `.frame(maxWidth:)` took the whole
-                    // maximum, so "Back (Esc)" sat in a 208-pt box.
-                    TipTextLayout(maxWidth: wrap - 14) {
-                        Text(tip.text)
+                    let width = helpArea?.width ?? min(Self.maxWidth, TipPlacement.safeArea(island: size, band: band).width)
+                    TipTextLayout(maxWidth: width - (helpArea == nil ? 14 : 0), balancesLines: helpArea == nil) {
+                        Text(verbatim: tip.text)
                             .font(.system(size: 10.5))
                             .foregroundStyle(Island.primary.opacity(0.92))
+                            .lineLimit(2)
                             .multilineTextAlignment(.leading)
                     }
-                    .padding(.horizontal, 7).padding(.vertical, 4)
-                        .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.black.opacity(0.82)))
-                        .onGeometryChange(for: CGSize.self, of: { $0.size }) { measured = $0; measuredOwner = tip.owner }
-                        .islandFrame("tooltip")
-                        .offset(x: frame?.minX ?? 0, y: frame?.minY ?? 0)
-                        // Drawn only once measured, so no frame shows in a wrong place.
-                        .opacity(frame == nil ? 0 : 1)
-                        .id(tip.owner)
-                        .transition(.opacity)
+                    .padding(.horizontal, helpArea == nil ? 7 : 0)
+                    .padding(.vertical, helpArea == nil ? 4 : 0)
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { onMeasure?($0) }
+                    .frame(height: helpArea?.height, alignment: .topLeading)
+                    .clipped()
+                    .islandFrame("tooltip")
+                    .offset(x: helpArea?.minX ?? TipPlacement.sideInset,
+                            y: helpArea?.minY ?? size.height - 44)
+                    // Keep identity when switching owners: no overlapping fading labels.
+                    .transition(.identity)
                 }
             }
             .allowsHitTesting(false)
@@ -182,6 +192,7 @@ struct IslandTooltipOverlay: View {
 /// tip kept the whole maximum, with an empty strip on the right).
 struct TipTextLayout: Layout {
     let maxWidth: CGFloat
+    var balancesLines = true
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         guard let child = subviews.first else { return .zero }
@@ -189,6 +200,7 @@ struct TipTextLayout: Layout {
         let ideal = child.sizeThatFits(.unspecified).width
         guard ideal > maxWidth else { return CGSize(width: ideal, height: height(ideal)) }
         let target = height(maxWidth)
+        if !balancesLines { return CGSize(width: maxWidth, height: target) }
         var low = maxWidth / 2, high = maxWidth
         while high - low > 1 {
             let mid = ((low + high) / 2).rounded(.up)

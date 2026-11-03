@@ -173,13 +173,14 @@ final class TooltipWidthTests: XCTestCase {
     }
     nonisolated(unsafe) static var last = CGRect.zero
 
-    /// Fits its text; long text wraps inside the maximum, never truncated.
+    /// Fits its text; long text wraps to at most two lines, then truncates.
     func testTipIsAsWideAsItsTextAndWrapsAtTheMaximum() {
         let short = measure("Back (Esc)")
         XCTAssertLessThan(short.width, 90, "short tip hugs its text")
         let long = measure("Copy with Context: Claude's full answer plus your request, the commands Prompt Relay saw, changed files, Git status and the chosen attachments, as Markdown for another assistant")
         XCTAssertLessThanOrEqual(long.width, IslandTooltipOverlay.maxWidth + 0.5)
-        XCTAssertGreaterThan(long.height, short.height * 2.5, "long text wraps onto several lines")
+        XCTAssertGreaterThan(long.height, short.height, "long text wraps")
+        XCTAssertLessThanOrEqual(long.height, 34, "help is capped at two lines plus its inset")
     }
 }
 
