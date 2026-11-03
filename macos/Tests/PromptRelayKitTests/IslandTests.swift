@@ -116,7 +116,7 @@ final class IslandNavigationTests: XCTestCase {
         await m.refreshNow()                              // first run: everything counts as seen
         XCTAssertFalse(m.hasNewAnswer(inProject: "/a"))
         core.sessionsByProject["/a"] = [sessionSummary("sa", project: "/a/sub", last: "2026-10-29T17:00:00.000000Z", lastTurn: 3)]
-        core.turnsBySession["sa"] = [turn(1), turn(2), turn(3, preview: "new", chars: 3)]
+        core.turnsBySession["sa"] = [turn(1, at: "2026-10-29T15:50:00.000000Z"), turn(2, at: "2026-10-29T16:00:00.000000Z"), turn(3, preview: "new", chars: 3, at: "2026-10-29T17:00:00.000000Z")]
         await m.refreshNow()
         XCTAssertTrue(m.hasUnseenAnswer)
         XCTAssertTrue(m.hasNewAnswer(inProject: "/a"), "captured under /a (a subfolder)")

@@ -145,21 +145,20 @@ struct IslandMetrics: Equatable {
     var leading: CGFloat { edge + inset }
 
     @MainActor static func of(_ p: NotchPresentation) -> IslandMetrics {
-        var metrics = make(width: p.islandWidth, maxContentHeight: p.maxContentHeight, floating: p.isFloating, peek: p.surface == .peek)
-        metrics.bottom = max(metrics.bottom, p.helpTextHeight + 7)
+        let metrics = make(width: p.islandWidth, maxContentHeight: p.maxContentHeight, floating: p.isFloating, peek: p.surface == .peek)
         return metrics
     }
 
     static func make(width: CGFloat, maxContentHeight: CGFloat, floating: Bool, peek: Bool) -> IslandMetrics {
         let edge = floating ? 0 : NotchRootView.expandedTopRadius
-        if peek { return IslandMetrics(edge: edge, inset: 20, top: 4, bottom: 20, spacing: 10) }
+        if peek { return IslandMetrics(edge: edge, inset: 20, top: 4, bottom: 12, spacing: 10) }
         if maxContentHeight < 300 {
             return IslandMetrics(edge: edge, inset: width >= 520 ? 24 : 22, top: 0,
-                                 bottom: 20, spacing: 4, compact: true)
+                                 bottom: 12, spacing: 4, compact: true)
         }
         let roomy = maxContentHeight >= 460
         return IslandMetrics(edge: edge, inset: width >= 520 ? 24 : 22, top: roomy ? 6 : 4,
-                             bottom: 20, spacing: roomy ? 12 : 10, compact: !roomy)
+                             bottom: 12, spacing: roomy ? 12 : 10, compact: !roomy)
     }
 }
 
@@ -482,7 +481,7 @@ struct TaskCard: View {
 
     private var taskLine: String {
         switch facts.task {
-        case .linked(let t), .inferred(let t), .supplied(let t), .unknownSource(let t): return PeekContent.oneLine(t)
+        case .linked(let t), .inferred(let t), .supplied(let t), .unknownSource(let t): return PeekContent.oneLine(TaskExcerpt.text(t))
         case .automated(let earlier, _): return earlier.map { "Started automatically · after: " + PeekContent.oneLine($0) } ?? "Started automatically"
         case .unavailable(let why): return why.isEmpty ? "Unavailable" : "Unavailable: \(why)"
         }
@@ -549,7 +548,7 @@ struct TaskCard: View {
     /// snap to 0 pt first and only then animate.
     private func body(text: String) -> some View {
         BoundedScroll(maxHeight: expanded ? Self.expandedHeight : .infinity, minHeight: expanded ? 36 : 0) {
-            Text(text).font(.system(size: 12.5)).foregroundStyle(Island.secondary)
+            Text(expanded ? text : TaskExcerpt.text(text)).font(.system(size: 12.5)).foregroundStyle(Island.secondary)
                 .lineLimit(expanded ? nil : lines).truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
@@ -766,9 +765,7 @@ struct PeekContent: View {
             } trailing: {
                 if let at = facts.at { Text(Wording.relative(at)).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.tertiary) }
             }
-            // Keep the compact panel height: a second help line borrows only
-            // inter-row spacing, preserving the task, answer and action heights.
-            VStack(alignment: .leading, spacing: max(2, Island.Space.m - max(0, presentation.helpTextHeight - 13) / 3)) {
+            VStack(alignment: .leading, spacing: Island.Space.m) {
                 if facts.source == nil {
                     HStack(alignment: .center) {
                         Text(model.projects.value?.isEmpty == true ? "Click to choose a project to capture." : "No answer yet.")

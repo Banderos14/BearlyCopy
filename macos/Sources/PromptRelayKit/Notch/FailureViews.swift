@@ -39,14 +39,14 @@ struct FailureCard: View {
                 Image(systemName: entry.likelyNotAnError ? "questionmark.circle" : "exclamationmark.triangle.fill")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(entry.likelyNotAnError ? Island.tertiary : Island.error)
-                Text(c.command ?? "(command withheld)").font(.system(size: 11, design: .monospaced)).foregroundStyle(Island.primary)
+                Text(CommandDiagnostics.safeText(c) ?? "(command withheld)").font(.system(size: 11, design: .monospaced)).foregroundStyle(Island.primary)
                     .lineLimit(2).truncationMode(.middle).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(facts(c)).font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Island.tertiary).lineLimit(1).fixedSize()
             }
             line(entry.meaning, color: Island.secondary)
             ForEach(entry.caveats, id: \.self) { line("¹ " + $0, color: Island.tertiary) }
-            if let tail = c.outputTail {
+            if c.tailWithheld == nil, let tail = c.outputTail {
                 BoundedScroll(maxHeight: 96) {
                     Text(tail).font(.system(size: 10.5, design: .monospaced)).foregroundStyle(Island.secondary)
                         .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
@@ -84,7 +84,7 @@ struct FailureCard: View {
         return HStack(alignment: .firstTextBaseline, spacing: 5) {
             Image(systemName: "arrow.clockwise").font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(later.passed ? Island.success : Island.warning)
-            Text("\(what) at \(Wording.clock(c.at))" + (later.match == .sameTool ? ": `\(c.command ?? "withheld")`" : "") + " and \(result)\(caveat)\(tail)")
+            Text("\(what) at \(Wording.clock(c.at))" + (later.match == .sameTool ? ": `\(CommandDiagnostics.safeText(c) ?? "withheld")`" : "") + " and \(result)\(caveat)\(tail)")
                 .font(.system(size: 11)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .islandFrame("failure.later")

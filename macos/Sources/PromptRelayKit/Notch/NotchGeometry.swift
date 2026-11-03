@@ -103,6 +103,7 @@ public struct NotchLayout: Equatable, Sendable {
     /// bar, rounded on every side, and has no resting hover target.
     public let isFloating: Bool
     /// Tallest content below the band on this display; longer content scrolls.
+    public let maxVisibleContentHeight: CGFloat
     public let maxContentHeight: CGFloat
     /// Quick Peek's width on this display.
     public let peekWidth: CGFloat
@@ -160,6 +161,7 @@ public struct NotchLayout: Equatable, Sendable {
         let floor = min(Self.minIslandHeight, (top - screen.minY) * 0.6)
         let height = max(notch.height + Self.minContentHeight, min(Self.maxIslandHeight, max(available, floor)))
         maxContentHeight = height - notch.height
+        maxVisibleContentHeight = max(Self.minContentHeight, top - screen.minY - notch.height - 12)
         var x = notch.midX - width / 2
         x = max(screen.minX, min(x, screen.maxX - width))  // stay on this display
         expanded = CGRect(x: x, y: top - height - Self.shadowInset, width: width, height: height + Self.shadowInset)
@@ -170,8 +172,8 @@ public struct NotchLayout: Equatable, Sendable {
 
     /// Expanded window for a measured content height: as tall as the island,
     /// so no empty transparent area hangs below it.
-    public func expandedFrame(contentHeight: CGFloat, peek: Bool = false) -> CGRect {
-        let content = min(max(contentHeight, Self.minContentHeight), maxContentHeight)
+    public func expandedFrame(contentHeight: CGFloat, peek: Bool = false, helpHeight: CGFloat = 0) -> CGRect {
+        let content = min(max(contentHeight, Self.minContentHeight), min(maxContentHeight + helpHeight, maxVisibleContentHeight))
         let height = notch.height + content + Self.shadowInset
         let width = peek ? peekWidth + Self.shadowInset * 2 : expanded.width
         let x = expanded.midX - width / 2

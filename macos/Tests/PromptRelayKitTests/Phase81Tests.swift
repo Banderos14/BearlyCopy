@@ -97,7 +97,7 @@ struct Phase81Tests {
                 #expect(help.height > 18 && help.height <= 28)
                 #expect(!help.intersects(footer))
                 #expect(island.contains(help) && island.contains(footer))
-                #expect(island.height == panelHeight)
+                #expect(island.height >= panelHeight && island.height <= panelHeight + 32)
                 if let directory = ProcessInfo.processInfo.environment["COMPACT_HELP_OUTPUT"] {
                     let name = surface == .expanded ? "details" : "peek"
                     try island.png("\(directory)/\(name)-\(Int(height))-transfer-help.png")

@@ -76,7 +76,7 @@ struct CompactHelpTests {
                         island.settle()
                         let help = try #require(island.presentation.layoutFrames["tooltip"])
                         #expect(island.contains(help))
-                        #expect(island.height == metrics.last?["panel"] as? CGFloat)
+                        #expect(island.height == (metrics.last?["panel"] as? CGFloat ?? 0) + help.height + 6)
                         #expect(help.height <= 28)
                         if text.hasPrefix("A longer") { #expect(help.height > 18) }
                         for id in ["card.task", "card.response", "card.handoff", "card.attachments", actionID, "peek.header", "peek.preview", "peek.facts"] {

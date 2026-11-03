@@ -182,7 +182,7 @@ final class FollowLatestTests: XCTestCase {
         XCTAssertTrue(m.sessionPinned)
         c.sessionsByProject["/done"] = [sessionSummary("done-new", project: "/done", last: "2026-10-29T15:00:00.000000Z", lastTurn: 3),
                                         sessionSummary("done-old", project: "/done", last: "2026-10-28T09:00:00.000000Z")]
-        c.turnsBySession["done-new"] = [turn(1), turn(2), turn(3, preview: "third", chars: 5)]
+        c.turnsBySession["done-new"] = [turn(1, at: "2026-10-29T10:00:00.000000Z"), turn(2, at: "2026-10-29T11:00:00.000000Z"), turn(3, preview: "third", chars: 5, at: "2026-10-29T15:00:00.000000Z")]
         await m.refreshNow()
         XCTAssertEqual(m.selectedSessionKey, "done-old", "the chosen session stays")
         XCTAssertEqual(m.newAnswerElsewhere?.sessionKey, "done-new", "the new answer is announced, not shown")
@@ -199,7 +199,7 @@ final class FollowLatestTests: XCTestCase {
         // A new answer in the pinned session itself is followed.
         c.sessionsByProject["/done"] = [sessionSummary("done-new", project: "/done", last: "2026-10-29T16:00:00.000000Z", lastTurn: 4),
                                         sessionSummary("done-old", project: "/done", last: "2026-10-28T09:00:00.000000Z")]
-        c.turnsBySession["done-new"] = [turn(1), turn(2), turn(3, preview: "third", chars: 5), turn(4, preview: "fourth", chars: 6)]
+        c.turnsBySession["done-new"] = [turn(1, at: "2026-10-29T10:00:00.000000Z"), turn(2, at: "2026-10-29T11:00:00.000000Z"), turn(3, preview: "third", chars: 5, at: "2026-10-29T15:00:00.000000Z"), turn(4, preview: "fourth", chars: 6, at: "2026-10-29T16:00:00.000000Z")]
         await m.refreshNow()
         XCTAssertEqual(m.selectedSessionKey, "done-new")
         XCTAssertEqual(m.selectedTurnIndex, 4)

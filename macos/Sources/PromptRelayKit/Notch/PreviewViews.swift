@@ -59,7 +59,7 @@ struct PackagePreviewView: View {
             HStack(alignment: .center, spacing: 8) {
                 ReaderModePicker(source: $source)
                     .islandFrame("preview.mode")
-                Text("One snapshot in both views; Copy copies the Markdown Source exactly. Git status and the time were read when it was built.")
+                Text("Full context · Both views share this snapshot. Copy uses its exact Markdown source.")
                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             if !pack.findings.isEmpty {
@@ -67,8 +67,10 @@ struct PackagePreviewView: View {
                     .font(.system(size: 11)).foregroundStyle(Island.warning)
             }
             if model.previewSelectionChanged {
-                Label("The chosen files changed since: Copy builds it again with the new choice.", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 11)).foregroundStyle(Island.warning)
+                HStack {
+                    Text("Attachments changed. Refresh to include the new selection.")
+                    Button("Refresh Preview") { Task { await model.refreshPackPreview() } }.buttonStyle(.plain)
+                }.font(.system(size: 11)).foregroundStyle(Island.warning)
             }
         }
     }
@@ -101,6 +103,7 @@ struct PackagePreviewView: View {
                 Label(copied ? Labels.copied : Labels.copyWithContext, systemImage: copied ? "checkmark" : "checklist")
             }
             .buttonStyle(IslandPillStyle(prominent: true))
+            .disabled(model.previewSelectionChanged)
             .islandHelp("Copy this preview and transfer the files")
             Text(pack.attachmentIDs.isEmpty ? "No files chosen" : "\(pack.attachmentIDs.count) chosen file\(pack.attachmentIDs.count == 1 ? "" : "s") follow after the text")
                 .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)

@@ -28,8 +28,19 @@ public final class NotchPresentation {
     /// Height the expanded content needs (measured by the view); the island
     /// and its window follow it, so there is never empty space below.
     public internal(set) var contentHeight: CGFloat = NotchLayout.minContentHeight
-    /// Measured help text; only its overflow beyond the normal inset consumes content space.
-    var helpTextHeight: CGFloat = 0
+    /// Body and help are measured separately: changing tabs never inherits
+    /// a tooltip's pinned height. Help grows only the bottom of the panel.
+    var bodyContentHeight: CGFloat = NotchLayout.minContentHeight
+    var maxVisibleContentHeight: CGFloat = 2_000
+    var helpExtension: CGFloat { helpTextHeight > 0 ? helpTextHeight + 6 : 0 }
+    var bodyBudget: CGFloat { min(maxContentHeight, maxVisibleContentHeight - helpExtension) }
+    var helpTextHeight: CGFloat = 0 {
+        didSet { reportContentHeight(bodyContentHeight + helpExtension) }
+    }
+    func reportBodyHeight(_ height: CGFloat) {
+        bodyContentHeight = min(max(height, NotchLayout.minContentHeight), bodyBudget)
+        reportContentHeight(bodyContentHeight + helpExtension)
+    }
     /// Tallest content on the active display; lists and long text scroll inside it.
     public internal(set) var maxContentHeight: CGFloat = 388
     /// No notch on the display: the island floats below the menu bar.
@@ -63,7 +74,7 @@ public final class NotchPresentation {
     /// not yet replaced height and was dropped, leaving the island at 93 pt
     /// with its content cut off (Phase 6: Full Report, Plain → Formatted).
     func reportContentHeight(_ height: CGFloat) {
-        let clamped = min(max(height.rounded(.up), NotchLayout.minContentHeight), maxContentHeight)
+        let clamped = min(max(height.rounded(.up), NotchLayout.minContentHeight), maxVisibleContentHeight)
         let last = requestedContentHeight ?? contentHeight
         guard abs(clamped - last) >= 1 else { return }
         requestedContentHeight = clamped
@@ -78,13 +89,13 @@ public final class NotchPresentation {
     }
 
     var animation: Animation? {
-        reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.34, dampingFraction: 0.86)
+        reduceMotion ? nil : .easeOut(duration: 0.2)
     }
 
     /// The island taking a new height while open (another answer, a card
-    /// growing): 240 ms, no bounce, so the footer moves with the content.
+    /// growing): 180 ms, no bounce; Reduce Motion applies it immediately.
     var resizeAnimation: Animation? {
-        reduceMotion ? .easeOut(duration: 0.1) : .smooth(duration: Island.geometryDuration)
+        reduceMotion ? nil : .easeOut(duration: 0.18)
     }
 }
 
@@ -328,6 +339,7 @@ public final class NotchController {
         presentation.peekWidth = newLayout.peekWidth
         presentation.detailsWidth = newLayout.expandedIslandWidth
         presentation.maxContentHeight = newLayout.maxContentHeight
+        presentation.maxVisibleContentHeight = newLayout.maxVisibleContentHeight
         presentation.isFloating = newLayout.isFloating
         let mascotChanged = presentation.showsMascot != settings.mascotEnabled
         presentation.showsMascot = settings.mascotEnabled
@@ -352,12 +364,28 @@ public final class NotchController {
         panel.install(root: root)
         panel.onPointer = { [weak self] inside in
             guard let self else { return }
-            if inside { self.interaction.pointerEntered() } else { self.interaction.pointerExited() }
+            if inside { self.interaction.pointerEntered() } else {
+                if NSEvent.pressedMouseButtons != 0 {
+                    self.interaction.isDragging = true
+                    self.waitForMouseRelease()
+                }
+                self.interaction.pointerExited()
+            }
         }
         panel.onResignKey = { [weak self] in self?.interaction.focusLost() }
         panel.onCancel = { [weak self] in self?.cancel() }
         panel.onKey = { [weak self] key in self?.handleKey(key) ?? false }
         self.panel = panel
+    }
+
+    /// Poll only during a held mouse gesture: AppKit's drag loop can consume
+    /// mouseUp before a local monitor sees it. Never destroy a transfer on exit.
+    private func waitForMouseRelease() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self, self.isRunning, self.interaction.isDragging else { return }
+            if NSEvent.pressedMouseButtons == 0 { self.interaction.isDragging = false }
+            else { self.waitForMouseRelease() }
+        }
     }
 
     private func compactFrame() -> CGRect? {
@@ -381,7 +409,7 @@ public final class NotchController {
     }
 
     private func expandedFrame(_ layout: NotchLayout) -> CGRect {
-        layout.expandedFrame(contentHeight: presentation.contentHeight, peek: presentation.surface == .peek)
+        layout.expandedFrame(contentHeight: presentation.contentHeight, peek: presentation.surface == .peek, helpHeight: presentation.helpExtension)
     }
 
     /// The content changed height (another view, a list grew): the window
@@ -419,14 +447,14 @@ public final class NotchController {
             return
         }
         if height >= presentation.contentHeight {
-            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek), display: true)
+            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek, helpHeight: presentation.helpExtension), display: true)
             withAnimation(presentation.resizeAnimation) { presentation.contentHeight = height }
         } else {
             withAnimation(presentation.resizeAnimation) { presentation.contentHeight = height }
             let work = DispatchWorkItem { [weak self] in
                 guard let self, self.interaction.phase.isExpanded, let layout = self.layout else { return }
                 self.panel?.setFrame(layout.expandedFrame(contentHeight: self.presentation.contentHeight,
-                                                          peek: self.presentation.surface == .peek), display: true)
+                                                          peek: self.presentation.surface == .peek, helpHeight: self.presentation.helpExtension), display: true)
             }
             resizeWork = work
             DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0.1 : Island.geometryDuration + 0.02), execute: work)
@@ -456,7 +484,7 @@ public final class NotchController {
                     self.placePanel(for: .compact)
                 }
                 collapseWork = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0.12 : 0.3), execute: work)
+                DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0 : 0.2), execute: work)
             } else {
                 placePanel(for: .compact)
             }

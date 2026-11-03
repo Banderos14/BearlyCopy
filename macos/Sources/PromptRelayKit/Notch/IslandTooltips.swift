@@ -143,10 +143,9 @@ extension View {
     func islandHelp(_ text: String) -> some View { modifier(IslandHelp(text: text)) }
 }
 
-/// One measured help label, sharing the island's normal bottom inset. Only
-/// a second line needs additional space; that space comes from the content
-/// budget, not a taller panel. The clip follows the same layout animation as
-/// the inset, so text cannot draw over controls during a height transition.
+/// One measured help label below the body. Its measured height extends the
+/// existing panel downward without moving the cards or footer. Clipping and
+/// panel geometry share the transition; no separate tooltip window is used.
 struct IslandTooltipOverlay: View {
     let tips: IslandTooltips
     let size: CGSize

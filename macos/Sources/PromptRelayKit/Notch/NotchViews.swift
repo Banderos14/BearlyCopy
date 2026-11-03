@@ -126,7 +126,7 @@ public struct NotchRootView: View {
                 let metrics = IslandMetrics.of(presentation)
                 IslandTooltipOverlay(tips: tips, size: islandSize, band: presentation.notchSize.height,
                                      helpArea: CGRect(x: metrics.leading,
-                                                      y: islandSize.height - 6 - presentation.helpTextHeight,
+                                                      y: presentation.notchSize.height + presentation.bodyContentHeight - 6,
                                                       width: islandSize.width - 2 * metrics.leading,
                                                       height: presentation.helpTextHeight),
                                      onMeasure: { presentation.helpTextHeight = $0 })
@@ -141,6 +141,7 @@ public struct NotchRootView: View {
         .id(settings?.theme)
         .onChange(of: presentation.isExpanded) { tips.hideAll() }
         .onChange(of: model.route) { tips.hideAll() }
+        .onChange(of: model.clipboardTab) { tips.hideAll() }
         .onChange(of: presentation.surface) { tips.hideAll() }
         .frame(width: islandSize.width, height: islandSize.height, alignment: .top)
         .coordinateSpace(name: Self.space)
@@ -211,14 +212,11 @@ public struct NotchRootView: View {
         }
         .frame(width: presentation.islandWidth, alignment: .top)
         // The whole height budget is offered; the content takes what it needs.
-        .modifier(BudgetModifier(maxHeight: tips.tip == nil ? presentation.notchSize.height + presentation.maxContentHeight : islandSize.height))
-        .frame(height: tips.tip == nil ? nil : islandSize.height, alignment: .top)
+        .modifier(BudgetModifier(maxHeight: presentation.notchSize.height + presentation.bodyBudget))
         .environment(\.islandReduceMotion, presentation.reduceMotion)
         // Read after layout; the window follows on the next display pass.
         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { h in
-            if tips.tip == nil, presentation.helpTextHeight == 0 {
-                presentation.reportContentHeight(h - presentation.notchSize.height)
-            }
+            presentation.reportBodyHeight(h - presentation.notchSize.height)
         }
         .foregroundStyle(.white)
     }

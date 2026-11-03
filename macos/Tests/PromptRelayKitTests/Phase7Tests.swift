@@ -101,7 +101,7 @@ final class Phase7Tests: XCTestCase {
                         tips.show(owner, text: control.text, anchor: control.anchor)
                         host.settle()
                         let f = try XCTUnwrap(host.presentation.layoutFrames["tooltip"], "\(route) \(control.text)")
-                        XCTAssertTrue(safe.insetBy(dx: -1, dy: -1).contains(f),
+                        XCTAssertTrue(TipPlacement.safeArea(island: CGSize(width: host.width, height: host.height), band: 32).insetBy(dx: -1, dy: -1).contains(f),
                                       "\(surface) \(route) \(maxContent): “\(control.text)” at \(f), island \(island)")
                         checked += 1
                     }

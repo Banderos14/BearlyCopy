@@ -59,14 +59,18 @@ public final class NotchInteraction {
     }
 
     public static let openDelay: TimeInterval = 0.15
-    public static let closeDelay: TimeInterval = 0.35
+    public static let closeDelay: TimeInterval = 0.08
 
     public private(set) var phase: Phase = .hidden {
         didSet { if phase != oldValue { onChange?(phase, oldValue) } }
     }
     public private(set) var pointerInside = false
+    private var pointerOwned = false
+    public var isDragging = false {
+        didSet { if !isDragging, !pointerInside, !isPinned, phase.isExpanded { scheduleClose() } }
+    }
     public var isPinned = false {
-        didSet { if !isPinned, !pointerInside, phase.isExpanded, !isFocused { scheduleClose() } }
+        didSet { if !isPinned, !pointerInside, phase.isExpanded, pointerOwned || !isFocused { scheduleClose() } }
     }
     public var onChange: ((Phase, Phase) -> Void)?
 
@@ -99,6 +103,7 @@ public final class NotchInteraction {
     public func pointerEntered() {
         guard phase != .hidden else { return }
         pointerInside = true
+        pointerOwned = true
         closeTimer?.cancel(); closeTimer = nil
         guard phase == .compact, openTimer == nil else { return }
         openTimer = scheduler.schedule(after: Self.openDelay) { [weak self] in
@@ -110,9 +115,11 @@ public final class NotchInteraction {
 
     public func pointerExited() {
         guard phase != .hidden else { return }
+        let wasInside = pointerInside
         pointerInside = false
         openTimer?.cancel(); openTimer = nil
-        if phase.isExpanded, !isPinned, !isFocused { scheduleClose() }
+        // Keyboard-opened panels have no pointer ownership until it enters.
+        if phase.isExpanded, !isPinned, !isDragging, wasInside || !isFocused { scheduleClose() }
     }
 
     /// A click on the compact notch, or the global shortcut.
@@ -120,17 +127,22 @@ public final class NotchInteraction {
         cancelTimers()
         switch phase {
         case .hidden: return
-        case .compact: phase = .expanded(focused: true)
+        case .compact:
+            pointerOwned = pointerInside
+            phase = .expanded(focused: true)
         case .expanded: phase = .compact
         }
     }
 
     /// Quick Peek → Workspace (the expand button): the open panel takes
-    /// keyboard focus, so leaving it with the pointer no longer closes it.
+    /// keyboard focus. Focus alone must not pin a pointer-opened panel.
     public func focus() {
         guard phase.isExpanded else { return }
         cancelTimers()
         phase = .expanded(focused: true)
+        // A file picker can restore key focus after unpinning. Do not cancel
+        // the pending pointer exit forever; keyboard-only openings stay open.
+        if pointerOwned, !pointerInside, !isPinned, !isDragging { scheduleClose() }
     }
 
     /// Escape, a copy that should dismiss, or the panel losing key status.
@@ -153,7 +165,7 @@ public final class NotchInteraction {
         closeTimer = scheduler.schedule(after: Self.closeDelay) { [weak self] in
             guard let self else { return }
             self.closeTimer = nil
-            if !self.pointerInside, !self.isPinned, self.phase.isExpanded, !self.isFocused { self.phase = .compact }
+            if !self.pointerInside, !self.isPinned, !self.isDragging, self.phase.isExpanded { self.phase = .compact }
         }
     }
 

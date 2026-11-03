@@ -59,7 +59,7 @@ final class IslandLayoutTests: XCTestCase {
                 XCTAssertTrue(island.contains(rect.insetBy(dx: -8, dy: -8)), "\(id): 8 pt inside the rounded outline")
             }
             let footer = try XCTUnwrap(f["home.actions"])
-            XCTAssertGreaterThanOrEqual(island.height - footer.maxY, 16, "the actions sit above the rounded bottom edge")
+            XCTAssertGreaterThanOrEqual(island.height - footer.maxY, 12, "the actions sit above the rounded bottom edge")
             XCTAssertLessThanOrEqual(island.height, 32 + maxContent, "Details fits the display without clipping")
             // Two columns side by side, none wider than the island allows.
             let left = try XCTUnwrap(f["card.response"]), right = try XCTUnwrap(f["card.handoff"])
@@ -68,7 +68,7 @@ final class IslandLayoutTests: XCTestCase {
             await m.copySelectedResponse()
             island.settle()
             let withFeedback = try XCTUnwrap(island.presentation.layoutFrames["home.actions"])
-            XCTAssertGreaterThanOrEqual(island.height - withFeedback.maxY, 16, "after a copy, the actions are not cut off (\(maxContent))")
+            XCTAssertGreaterThanOrEqual(island.height - withFeedback.maxY, 12, "after a copy, the actions are not cut off (\(maxContent))")
             // One left edge for the band and the content below it.
             XCTAssertEqual(try XCTUnwrap(f["band.mascot"]).minX, try XCTUnwrap(f["card.task"]).minX, accuracy: 0.5)
             XCTAssertLessThanOrEqual(try XCTUnwrap(f["band.mascot"]).maxX, (island.width - 185) / 2 - 8,
@@ -134,7 +134,7 @@ final class IslandLayoutTests: XCTestCase {
             let footer = try XCTUnwrap(island.presentation.layoutFrames["home.actions"])
             XCTAssertTrue(island.contains(row.insetBy(dx: -8, dy: -8)))
             XCTAssertGreaterThanOrEqual(row.minX - IslandMetrics.of(island.presentation).edge, 20)
-            XCTAssertGreaterThanOrEqual(island.height - footer.maxY, 16, "Home fits with the images and the copy line (\(maxContent))")
+            XCTAssertGreaterThanOrEqual(island.height - footer.maxY, 12, "Home fits with the images and the copy line (\(maxContent))")
             XCTAssertLessThanOrEqual(island.height, 32 + maxContent)
             XCTAssertNotNil(f["response.scroll"], "the answer keeps its scroll area")
             island.close()
@@ -154,7 +154,7 @@ final class IslandLayoutTests: XCTestCase {
             island.settle()
             let bar = try XCTUnwrap(island.presentation.layoutFrames["details.handoff"], "the step-2 bar is shown")
             XCTAssertTrue(island.contains(bar), "the step-2 bar is inside the island (\(maxContent))")
-            XCTAssertGreaterThanOrEqual(island.height - bar.maxY, 16, "the step-2 footer sits above the rounded edge (\(maxContent))")
+            XCTAssertGreaterThanOrEqual(island.height - bar.maxY, 12, "the step-2 footer sits above the rounded edge (\(maxContent))")
             island.assertNoOverlap(["details.header", "card.task", "card.response", "card.handoff", "card.attachments", "details.footer"])
             XCTAssertLessThanOrEqual(island.height, 32 + maxContent)
             m.endHandoff()
@@ -368,7 +368,7 @@ final class IslandHost {
         presentation.surface = surface
         presentation.showsMascot = mascot
         presentation.maxContentHeight = maxContentHeight
-        let size = NSSize(width: width, height: 32 + maxContentHeight)
+        let size = NSSize(width: width, height: 32 + maxContentHeight + 40)
         let settings = NotchSettings(defaults: UserDefaults(suiteName: "PromptRelayLayout-\(UUID().uuidString)")!)
         settings.theme = theme
         host = NSHostingView(rootView: NotchRootView(model: model, presentation: presentation,

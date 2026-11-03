@@ -1624,21 +1624,27 @@ public final class AppModel {
         return handoffAttachments(for: pack.ref).map(\.id) != pack.attachmentIDs
     }
 
-    /// Copies exactly the previewed text (one snapshot). If the chosen files
-    /// changed since, it is built again so the text and the files agree.
+    /// The visible snapshot is the only text this action may copy. A changed
+    /// selection requires an explicit refresh, never a hidden export rebuild.
     public func copyPreviewedPack() async {
-        guard case .ready(let pack)? = packPreview, pack.ref == currentRef else { await copySelectedContext(); return }
-        if previewSelectionChanged || pack.detail != contextDetail {
-            await copyReviewPack(pack.ref)
-            if let ref = currentRef { packPreview = nil; await reopenPreviewSilently(ref) }
+        guard case .ready(let pack)? = packPreview, pack.ref == currentRef else { return }
+        guard !previewSelectionChanged, pack.detail == contextDetail else {
+            copyFeedback = .failed("Attachments changed. Refresh Preview before copying.")
             return
         }
         copyFeedback = .working(.context)
         deliver(pack)
     }
 
-    private func reopenPreviewSilently(_ ref: ReportRef) async {
-        if case .success(let pack) = await buildPack(ref), currentRef == ref { packPreview = .ready(pack) }
+    public func refreshPackPreview() async {
+        guard let ref = currentRef else { return }
+        await rebuildPreview(ref)
+    }
+
+    func copyObservedCommand(_ command: ObservedCommand) {
+        guard let text = CommandDiagnostics.safeText(command) else { return }
+        do { try clipboard.copy(text) }
+        catch { copyFeedback = .failed(Self.message(for: error)) }
     }
 
     /// The user reviewed the findings and still wants the pack copied. It is

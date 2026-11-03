@@ -213,10 +213,10 @@ final class NotchControllerTests: XCTestCase {
         XCTAssertEqual(model.route, .home)
         XCTAssertTrue(controller.interaction.phase.isExpanded)
 
-        // Leaving with the pointer does not close the focused island.
+        // Phase 8.2: ordinary clicks grant focus, not a permanent pin.
         controller.interaction.pointerExited()
         clock.advance(1)
-        XCTAssertTrue(controller.interaction.phase.isExpanded)
+        XCTAssertEqual(controller.interaction.phase, .compact)
 
         controller.cancel()                                 // Esc on Home
         XCTAssertEqual(controller.interaction.phase, .compact)

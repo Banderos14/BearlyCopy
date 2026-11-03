@@ -62,7 +62,7 @@ final class NotchInteractionTests: XCTestCase {
         clock.advance(0.1)
         XCTAssertEqual(notch.phase, .expanded(focused: false), "hover never takes keyboard focus")
         notch.pointerExited()
-        clock.advance(0.2)
+        clock.advance(NotchInteraction.closeDelay / 2)
         XCTAssertEqual(notch.phase, .expanded(focused: false))
         clock.advance(0.2)
         XCTAssertEqual(notch.phase, .compact)
@@ -73,7 +73,7 @@ final class NotchInteractionTests: XCTestCase {
         XCTAssertEqual(notch.phase, .compact)
 
         notch.pointerEntered(); clock.advance(0.2)
-        notch.pointerExited(); clock.advance(0.2)
+        notch.pointerExited(); clock.advance(NotchInteraction.closeDelay / 2)
         notch.pointerEntered(); clock.advance(1)
         XCTAssertEqual(notch.phase, .expanded(focused: false), "coming back within the grace period keeps it open")
     }

@@ -50,9 +50,9 @@ struct PairedRows: Layout {
         let bottomNatural = max(natural(2, left), natural(3, rightWidth))
         let budget = proposal.height ?? .infinity
         // The Answer matters most: when space is short the top row is only
-        // as tall as Task needs (or 42 % of the space); the context rows
+        // as tall as Task needs (or 32 % of the space); the context rows
         // then scroll inside their card.
-        let topCap = max(natural(0, left), budget * 0.42)
+        let topCap = max(natural(0, left), budget * 0.32)
         // Never below what the two top cards need at their smallest (their
         // fixed rows and padding): a smaller slot let a card draw past it.
         func smallest(_ i: Int, _ w: CGFloat) -> CGFloat {
@@ -971,32 +971,35 @@ struct FileDragSource: NSViewRepresentable {
 struct ActivityView: View {
     let model: AppModel
     let presentation: NotchPresentation
-    @State private var showAll = false
+    @State private var filter: CommandFilter = .all
 
     var body: some View {
         let detail = model.detail.value?.turn.observedDetail
         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             if let detail, !detail.commands.isEmpty || !detail.filesChanged.isEmpty {
-                let main = detail.commands.filter { $0.agentType == nil }
+                let main = detail.commands
                 let sub = detail.commands.filter { $0.agentType != nil }
-                let shown = showAll ? main : main.filter(\.isImportant)
+                let shown = main.filter(filter.includes)
                 HStack {
-                    Text("\(main.count) commands observed · \(main.filter(\.isImportant).count) tests, builds, git, failures or background")
-                        .font(.system(size: 11)).foregroundStyle(Island.tertiary)
-                    Spacer()
-                    if main.count != main.filter(\.isImportant).count {
-                        Button(showAll ? "Important only" : "Show all") { showAll.toggle() }.buttonStyle(.plain)
-                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
-                    }
+                    Text(CommandDiagnostics.summary(main))
+                        .font(.system(size: 11)).foregroundStyle(Island.secondary)
+                    Spacer(minLength: 4)
+                    Button("Review readiness") { model.navigate(to: .evidence) }
+                        .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(Island.accent)
                 }
-                BoundedScroll(maxHeight: presentation.listHeight(chrome: 92)) {
+                Picker("Commands", selection: $filter) {
+                    ForEach(CommandFilter.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .islandFrame("commands.filters")
+                BoundedScroll(maxHeight: presentation.listHeight(chrome: 120), resetID: filter) {
                     VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
-                    FailureSection(inspector: FailureInspector(commands: detail.commands))
+                    if filter == .all || filter == .failed { FailureSection(inspector: FailureInspector(commands: shown)) }
                     GroupCard {
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(Array(shown.enumerated()), id: \.offset) { i, c in
+                            ForEach(Array(shown.enumerated()), id: \.element) { i, c in
                                 if i > 0 { Hairline() }
-                                CommandRow(command: c)
+                                CommandRow(command: c, copy: { model.copyObservedCommand(c) })
                             }
                             if !sub.isEmpty {
                                 Hairline()
@@ -1021,8 +1024,9 @@ struct ActivityView: View {
                     }
                     .padding(.trailing, 2)
                 }
-                Text("From Claude Code's tool hooks. An exit code describes one command (with a pipe, its last process); "
-                     + "it does not show that the task is complete.")
+                Button("Back to summary") { model.goBack() }.buttonStyle(.plain)
+                    .font(.system(size: 11)).foregroundStyle(Island.accent)
+                Text("Observed commands, not proof the task is complete. Pipeline exit 0 may hide earlier failures. CI not connected.")
                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             } else {
                 MessageCard(title: "No work observed for this answer",
@@ -1038,29 +1042,47 @@ struct ActivityView: View {
 
 struct CommandRow: View {
     let command: ObservedCommand
+    var copy: (() -> Void)? = nil
     @State private var expanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text(Wording.clock(command.at)).font(.system(size: 10.5, design: .monospaced)).foregroundStyle(Island.tertiary)
-                Text(command.command.map { $0.split(separator: "\n").first.map(String.init) ?? $0 }
-                     ?? "(withheld: \(command.commandWithheld ?? "unavailable"))")
-                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(Island.primary)
-                    .lineLimit(1).truncationMode(.tail)
-                Spacer(minLength: 4)
-                Text(Wording.duration(command.durationMs)).font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
-                result
-            }
-            if expanded, let tail = command.outputTail {
-                Text(tail).font(.system(size: 10.5, design: .monospaced)).foregroundStyle(Island.secondary)
-                    .textSelection(.enabled).padding(8).frame(maxWidth: .infinity, alignment: .leading)
+            Button { expanded.toggle() } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 9))
+                    Text(Wording.clock(command.at)).font(.system(size: 10.5, design: .monospaced)).foregroundStyle(Island.tertiary)
+                    Text(CommandDiagnostics.safeText(command).map { $0.split(separator: "\n").first.map(String.init) ?? $0 }
+                         ?? "(withheld: \(command.commandWithheld ?? "unavailable"))")
+                        .font(.system(size: 11, design: .monospaced)).foregroundStyle(Island.primary)
+                        .lineLimit(1).truncationMode(.tail)
+                    Spacer(minLength: 4)
+                    Text(Wording.duration(command.durationMs)).font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    result
+                }
+            }.buttonStyle(.plain)
+            .accessibilityLabel("Command: " + (CommandDiagnostics.safeText(command) ?? "Text withheld"))
+            .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+            if expanded {
+                if let text = CommandDiagnostics.safeText(command) {
+                    Text(text).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let copy { Button("Copy Command", action: copy).buttonStyle(.plain).foregroundStyle(Island.accent) }
+                }
+                if FailureInspector.isFailure(command) {
+                    Text(FailureInspector.meaning(command)).font(.system(size: 11)).foregroundStyle(Island.secondary)
+                }
+                ForEach(FailureInspector.caveats(command), id: \.self) { caveat in
+                    Text(caveat).font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                }
+                Text(CommandDiagnostics.output(command)).font(.system(size: 10.5, design: .monospaced))
+                    .foregroundStyle(Island.secondary).textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(8).frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 6).fill(Island.code))
             }
         }
         .padding(.horizontal, 10).padding(.vertical, 7)
         .contentShape(Rectangle())
-        .onTapGesture { if command.outputTail != nil { expanded.toggle() } }
         .islandHelp(command.command == nil ? "Command hidden to protect sensitive data" : "Recorded command and result")
     }
 
@@ -1071,7 +1093,7 @@ struct CommandRow: View {
             tag("interrupted", Island.warning)
         } else if let code = command.exitCode {
             tag("exit \(code)" + (command.compound ? " ¹" : "") + (command.outputTail != nil ? (expanded ? " ⌃" : " ⌄") : ""),
-                code == 0 ? Island.accent : Island.error)
+                code == 0 ? Island.accent : (FailureInspector.likelyNotAnError(command) ? Island.tertiary : Island.error))
         } else {
             tag("exit ?", Island.tertiary)
         }

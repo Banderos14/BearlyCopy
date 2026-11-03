@@ -152,7 +152,7 @@ final class Phase8Tests: XCTestCase {
                     island.tips.show(owner, text: control.text, anchor: control.anchor)
                     island.settle()
                     let tip = try XCTUnwrap(island.presentation.layoutFrames["tooltip"], control.text)
-                    XCTAssertTrue(safe.insetBy(dx: -1, dy: -1).contains(tip), "\(surface) \(maxContent) “\(control.text)” \(tip)")
+                    XCTAssertTrue(TipPlacement.safeArea(island: CGSize(width: island.width, height: island.height), band: 32).insetBy(dx: -1, dy: -1).contains(tip), "\(surface) \(maxContent) “\(control.text)” \(tip)")
                     XCTAssertTrue(island.contains(tip), "inside the island outline: \(control.text)")
                     XCTAssertFalse(tip.intersects(control.anchor.insetBy(dx: 1, dy: 1)), "not over its own control: \(control.text)")
                     for (other, action) in actions where other != owner && !action.anchor.intersects(control.anchor) {
