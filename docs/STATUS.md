@@ -1,5 +1,11 @@
 # Status
 
+## 2026-11-04 — Phase 9.1 acceptance checkpoint
+
+Phase 9 implementation is committed through `1686384`. Phase 9.1 confirms the active Xcode CODEX_HOME, absent Relay hook configuration and zero recorded Codex sessions. Preview succeeded; owner consent to profile changes and real hook trust/session delivery remain pending. Real Xcode and CLI capture are **not verified**. Integration status UI now distinguishes installed adapter, hook definitions and recorded events. Relevant Swift tests, Python regressions and Debug/Release builds pass; interactive live acceptance remains open. See [Phase 9.1](../macos/PHASE9.1.md) and [Phase 9](../macos/PHASE9.md). No Phase 10 work.
+
+## Earlier status (retained)
+
 Last updated: 2026-10-31, local Mac session (Phase 8 committed on the branch, owner validation pending),
 branch `claude/loving-mccarthy-ossw3q`.
 

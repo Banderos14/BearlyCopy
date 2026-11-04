@@ -16,6 +16,7 @@ struct ProviderFilterPicker: View {
 struct IntegrationsView: View {
     let model: AppModel
     @State private var diagnostic: String?
+    @State private var xcodeConfiguration = CodexHookConfiguration(state: .absent)
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Caption("Integrations")
@@ -23,6 +24,10 @@ struct IntegrationsView: View {
                 IntegrationStatusRow(model: model, provider: .claudeCode)
                 Hairline()
                 IntegrationStatusRow(model: model, provider: .codex)
+                Text(xcodeConfiguration.summary)
+                    .font(.system(size: 11)).foregroundStyle(Island.secondary).padding(.horizontal, 12)
+                Text("Only hooks.json definitions are inspected. Inline/plugin hooks, client trust and policy may differ; automatic capture remains unverified until a real Xcode session delivers events.")
+                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
                 Hairline()
                 VStack(alignment: .leading, spacing: 6) {
                     Toggle("Auto-select result attachments", isOn: Binding(
@@ -31,6 +36,7 @@ struct IntegrationsView: View {
                         .font(.system(size: 11)).foregroundStyle(Island.tertiary)
                     Button("Test Connection") {
                         Task {
+                            xcodeConfiguration = .inspect(at: CodexHookConfiguration.xcodeURL)
                             diagnostic = await model.testIntegrationConnection()
                         }
                     }.buttonStyle(IslandPillStyle(prominent: false))
@@ -38,6 +44,7 @@ struct IntegrationsView: View {
                 }.padding(12)
             }
         }
+        .task { xcodeConfiguration = .inspect(at: CodexHookConfiguration.xcodeURL) }
     }
 }
 
@@ -50,11 +57,21 @@ struct IntegrationStatusRow: View {
             HStack {
                 Text(provider.title).font(.system(size: 12.5, weight: .semibold))
                 Spacer()
-                Text(sessions.isEmpty ? "Not connected" : "Limited · events received")
+                Text(sessions.isEmpty ? "Action required" : "Recorded events")
+                    .font(.system(size: 11)).foregroundStyle(Island.secondary)
+            }
+            Text("Source adapter: installed in Prompt Relay")
+                .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+            if sessions.isEmpty {
+                Text("No recorded hook events. Setup and a real session are required.")
                     .font(.system(size: 11)).foregroundStyle(Island.secondary)
             }
             if let latest = sessions.first {
                 Text("\(latest.sourceLabel) · last event \(Wording.relative(latest.lastEventAt))")
+                    .font(.system(size: 11)).foregroundStyle(Island.secondary)
+            }
+            if provider == .codex, !sessions.contains(where: { $0.source?.environment == .xcode }) {
+                Text("Xcode: no recorded events; CLI history does not verify Xcode capture.")
                     .font(.system(size: 11)).foregroundStyle(Island.secondary)
             }
             if let source = sessions.first?.source {
