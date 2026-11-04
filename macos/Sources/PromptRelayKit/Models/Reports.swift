@@ -23,6 +23,7 @@ public enum ReportRef: Hashable, Codable, Sendable {
 public enum ReportSource: String, Codable, Sendable {
     /// Captured on this Mac by the Prompt Relay hooks (Claude Code Stop).
     case localClaudeCode
+    case localCodex
     /// Pasted into Prompt Relay by the user (for example from a Claude Code
     /// cloud session, which the local hooks cannot observe).
     case cloudManualImport
@@ -30,6 +31,7 @@ public enum ReportSource: String, Codable, Sendable {
     public var label: String {
         switch self {
         case .localClaudeCode: return "Claude Code · this Mac"
+        case .localCodex: return "Codex · this Mac"
         case .cloudManualImport: return "Imported by you"
         }
     }
@@ -55,6 +57,7 @@ public struct ImportedReport: Codable, Identifiable, Equatable, Sendable {
     /// Prompt Relay package was kept as historical context or plain text.
     public var assistant: String? = nil
     public var importedAs: String? = nil
+    public var host: AgentHost? = nil
     public var assistantTitle: String? { assistant.flatMap(ImportAssistant.init(rawValue:))?.title }
     public var isHistoricalPackage: Bool { importedAs == "historical-context" }
     public var source: ReportSource { .cloudManualImport }
@@ -86,12 +89,16 @@ public enum AttachmentSource: String, Codable, Sendable {
     case named
     /// The user's clipboard history.
     case clipboard
+    case agentResult
+    case agentObserved
     public var label: String {
         switch self {
         case .you: return "you"
         case .claude: return "Claude"
-        case .named: return "named by Claude"
+        case .named: return "named by agent"
         case .clipboard: return "clipboard"
+        case .agentResult: return "observed result"
+        case .agentObserved: return "observed file"
         }
     }
 }
@@ -114,6 +121,7 @@ public struct ReportAttachment: Codable, Identifiable, Equatable, Sendable {
     // Phase 5 (optional: older records decode unchanged).
     public var kind: AttachmentKind? = nil
     public var source: AttachmentSource? = nil
+    public var sourceProvider: AgentProvider? = nil
     /// Where the original was, for display (project-relative when possible).
     public var originalPath: String? = nil
     /// Included in Copy for ChatGPT and the file hand-off (default: yes).

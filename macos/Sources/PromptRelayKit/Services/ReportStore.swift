@@ -85,17 +85,18 @@ public final class ReportStore {
     /// never creates a second copy.
     public func importReport(text: String, task: String?, projectPath: String?, projectName: String?,
                              sessionLabel: String?, assistant: String? = nil,
-                             importedAs: String? = nil) throws -> (report: ImportedReport, isDuplicate: Bool) {
+                             importedAs: String? = nil, host: AgentHost? = nil) throws -> (report: ImportedReport, isDuplicate: Bool) {
         guard !text.isEmpty else { throw ReportStoreError.empty }
         let task = task.flatMap { $0.isEmpty ? nil : $0 }
         let digest = Self.sha256(Data((text + "\u{0}" + (task ?? "")).utf8))
-        if let existing = imports().first(where: { $0.digest == digest }) { return (existing, true) }
+        if let existing = imports().first(where: { $0.digest == digest && $0.assistant == assistant && $0.host == host && $0.projectPath == projectPath && (sessionLabel == nil || $0.sessionLabel == sessionLabel.flatMap { $0.isEmpty ? nil : $0 }) }) { return (existing, true) }
         try ensure(importsDir)
         var report = ImportedReport(id: UUID().uuidString.lowercased(), importedAt: Self.now(), text: text, task: task,
                                     projectPath: projectPath, projectName: projectName,
                                     sessionLabel: sessionLabel.flatMap { $0.isEmpty ? nil : $0 }, digest: digest)
         report.assistant = assistant
         report.importedAs = importedAs
+        report.host = host
         try write(try JSONEncoder().encode(report), to: importsDir.appendingPathComponent("\(report.id).json"))
         return (report, false)
     }
@@ -217,7 +218,7 @@ public final class ReportStore {
     /// The same for bytes that are not a file yet (a clipboard image).
     @discardableResult
     public func addData(_ data: Data, name: String, to ref: ReportRef, source: AttachmentSource,
-                        displayPath: String? = nil, mockupID: String? = nil, stateID: String? = nil) throws -> ReportAttachment {
+                        displayPath: String? = nil, mockupID: String? = nil, stateID: String? = nil, sourceProvider: AgentProvider? = nil) throws -> ReportAttachment {
         guard !data.isEmpty else { throw ReportStoreError.empty }
         guard let (kind, type) = Self.classify(data, name: name) else {
             let ext = (name as NSString).pathExtension.lowercased()
@@ -227,7 +228,7 @@ public final class ReportStore {
         let digest = Self.sha256(data)
         var index = allAttachments()
         if let existing = index.first(where: { $0.reportKey == ref.key && $0.sha256 == digest && $0.mockupID == mockupID
-                                               && $0.stateID == stateID }) {
+                                               && $0.stateID == stateID && (source != .agentResult || $0.originalPath == displayPath) }) {
             return existing
         }
         try ensure(attachmentsDir)
@@ -242,6 +243,7 @@ public final class ReportStore {
                                           provenance: Self.provenance(source))
         attachment.kind = kind
         attachment.source = source
+        attachment.sourceProvider = sourceProvider
         attachment.originalPath = displayPath
         attachment.mockupID = mockupID
         attachment.stateID = stateID
@@ -254,8 +256,10 @@ public final class ReportStore {
         switch source {
         case .you: return "Added by you from a file on this Mac"
         case .claude: return "Shown or written by Claude in this turn; added by you"
-        case .named: return "Named in Claude's answer and found in the project (not seen being written); added by you"
+        case .named: return "Named in the agent's answer and found in the project (not seen being written); added by you"
         case .clipboard: return "Copied to your clipboard; added by you"
+        case .agentObserved: return "Observed in this turn; added by you"
+        case .agentResult: return "Observed result file; automatically prepared from this turn"
         }
     }
 

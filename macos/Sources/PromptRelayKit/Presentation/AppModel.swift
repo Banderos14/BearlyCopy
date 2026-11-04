@@ -141,6 +141,7 @@ public final class AppModel {
         self.dataDirectory = dataDirectory
         self.stateDefaults = stateDefaults
         self.reportStore = reportStore
+        autoSelectResultAttachments = stateDefaults?.object(forKey: "attachments.autoSelectResults") as? Bool ?? true
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
         seenAnswers = stateDefaults?.dictionary(forKey: Self.seenAnswersKey) as? [String: String] ?? [:]
         handoffs = reportStore.map(Self.loadHandoffs) ?? [:]
@@ -182,6 +183,9 @@ public final class AppModel {
         if sessionPinned { saveSelection() } else { sessionPinned = true }
     }
 
+    public var autoSelectResultAttachments: Bool = true {
+        didSet { stateDefaults?.set(autoSelectResultAttachments, forKey: "attachments.autoSelectResults") }
+    }
     public let reportStore: ReportStore?
     /// The optional clipboard image history (off by default; Settings).
     public var clipboardImages: ClipboardImageHistory?
@@ -492,6 +496,7 @@ public final class AppModel {
             let result = try await core.show(sessionKey: key, turn: index)
             guard token == generation else { return }
             detail = .loaded(result.data)
+            prepareResultAttachments(result.data)
             detailWarnings = result.warnings
             if visibleSurfaces > 0 { acknowledgeReadyAnswer() }
         } catch {
@@ -517,7 +522,8 @@ public final class AppModel {
         // looking at something else right now.
         // A pinned session is followed only within itself: an answer from
         // another session waits behind the "New in …" chip.
-        if followsLatest, lastFollowedAt != at, !sessionPinned || answer.sessionKey == selectedSessionKey {
+        let sameProvider = selectedSession == nil || allSessions.first(where: { $0.sessionKey == answer.sessionKey })?.provider == selectedSession?.provider
+        if followsLatest, sameProvider, lastFollowedAt != at, !sessionPinned || answer.sessionKey == selectedSessionKey {
             lastFollowedAt = at
             select(answer)
         }
@@ -872,12 +878,27 @@ public final class AppModel {
     /// Every session across captured projects, newest first: the result of
     /// the same `sessions` call that finds the ready answer (no extra call).
     public private(set) var allSessions: [SessionSummary] = []
+    public var providerFilter: AgentProvider? = nil
+    public func matchesProvider(_ ref: ReportRef) -> Bool {
+        guard let providerFilter else { return true }
+        switch ref {
+        case .imported: return providerFilter == .imported
+        case .local(let key, _): return allSessions.first { $0.sessionKey == key }?.provider == providerFilter
+        }
+    }
+    public func sourceLabel(for ref: ReportRef) -> String {
+        switch ref {
+        case .imported(let id): return "Imported · " + (imports.first { $0.id == id }?.assistantTitle ?? "Unknown")
+        case .local(let key, _): return allSessions.first { $0.sessionKey == key }?.sourceLabel ?? "Unknown"
+        }
+    }
+
 
     /// Sessions grouped by project for All Responses, projects by recent activity.
     public var sessionsByProject: [(project: String, name: String, sessions: [SessionSummary])] {
         var groups: [String: [SessionSummary]] = [:]
         var names: [String: String] = [:]
-        for session in allSessions {
+        for session in allSessions where providerFilter == nil || session.provider == providerFilter {
             let key = projectPath(containing: session.project.path) ?? session.project.path ?? "?"
             groups[key, default: []].append(session)
             names[key] = (projects.value ?? []).first { $0.path == key }.map(Wording.projectName) ?? Wording.projectName(session.project)
@@ -1059,12 +1080,12 @@ public final class AppModel {
     /// import shows the existing record.
     @discardableResult
     public func importReport(text: String, task: String?, projectPath: String?, sessionLabel: String?,
-                             assistant: ImportAssistant? = nil, importedAs: String? = nil) -> ImportOutcome {
+                             assistant: ImportAssistant? = nil, importedAs: String? = nil, host: AgentHost? = nil) -> ImportOutcome {
         guard let store = reportStore else { return .failed("Imports are not available.") }
         let name = projectPath.map { path in projectRows.first { $0.path == path }?.name ?? (path as NSString).lastPathComponent }
         do {
             let result = try store.importReport(text: text, task: task, projectPath: projectPath, projectName: name,
-                                                sessionLabel: sessionLabel, assistant: assistant?.rawValue, importedAs: importedAs)
+                                                sessionLabel: sessionLabel, assistant: assistant?.rawValue, importedAs: importedAs, host: host)
             imports = store.imports()
             selectImport(result.report.id)
             route = .home
@@ -1421,6 +1442,24 @@ public final class AppModel {
 
     // MARK: Diagnostics
 
+    /// Checks the Core and capture storage without launching an AI turn.
+    /// Stored events are evidence of past capture, not proof of a live subscription.
+    public func testIntegrationConnection() async -> String {
+        do {
+            let result = try await core.doctor().data
+            doctor = .loaded(result)
+            let sessions = try await core.sessions(project: nil).data.sessions
+            let failures = result.findings.filter { $0.level == "error" }.map(\.message)
+            if let error = result.capture.configError { return "Capture configuration error: \(error)" }
+            if !failures.isEmpty { return failures.joined(separator: "\n") }
+            guard result.storage.writable else { return "Capture storage is not writable." }
+            let codex = sessions.filter { $0.provider == .codex }.count
+            return "Core responds; capture storage is writable. \(result.capture.enabledProjects.count) projects enabled; \(codex) Codex sessions recorded. Hook execution and client trust still require a real session. No AI task was started."
+        } catch {
+            return "Connection check failed: \(Self.coreError(error).localizedDescription)"
+        }
+    }
+
     public func loadDoctor() {
         doctor = doctor.reloading
         Task {
@@ -1529,6 +1568,9 @@ public final class AppModel {
     }
 
     public func buildPack(_ ref: ReportRef, detail: ContextDetail) async -> Result<BuiltPack, PackFailure> {
+        if case .local(let key, let turn) = ref, autoSelectResultAttachments {
+            if let shown = try? await core.show(sessionKey: key, turn: turn) { prepareResultAttachments(shown.data) }
+        }
         let attached = attachments(for: ref).filter(\.isSelected)
         let selectedMaterials = materials(for: ref).filter(\.selected)
         let names = handoffNames(for: ref)

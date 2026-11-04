@@ -4,6 +4,20 @@ import Foundation
 /// Phase 5: typed attachments, Claude's suggested materials, interactive
 /// mockups and the two-step hand-off to ChatGPT (ADR-016).
 extension AppModel {
+    func prepareResultAttachments(_ show: ShowData) {
+        guard autoSelectResultAttachments, let store = reportStore else { return }
+        do {
+            if try store.prepareResults(show) > 0 { attachmentsVersion += 1 }
+        } catch { attachmentMessage = "Some result files could not be prepared. You can add them manually." }
+    }
+
+    public var currentSourceLabel: String {
+        if let imported = selectedImport {
+            return "Imported · " + (imported.assistantTitle ?? "Unknown") + " · " + (imported.host?.title ?? "Unknown")
+        }
+        return detail.value?.session.sourceLabel ?? selectedSession?.sourceLabel ?? "Unknown"
+    }
+
     // MARK: Materials (links, mockups)
 
     public func materials(for ref: ReportRef?) -> [ReportMaterial] {
@@ -170,7 +184,7 @@ extension AppModel {
         for path in observed.shownFiles where !seen.contains(path) && !addedPaths.contains(display(path)) {
             seen.insert(path)
             out.append(Suggestion(id: "shown:" + path, kind: .file, title: (path as NSString).lastPathComponent,
-                                  reason: "Claude showed it to you", path: path, exists: exists(path), artifact: nil))
+                                  reason: "The agent showed it to you", path: path, exists: exists(path), artifact: nil))
         }
         for artifact in observed.artifacts {
             let key = artifact.url ?? artifact.sourcePath ?? ""
@@ -189,7 +203,7 @@ extension AppModel {
                                                            + #"(?![\w-])"#, options: .regularExpression) != nil else { continue }
             seen.insert(file.path)
             out.append(Suggestion(id: "named:" + file.path, kind: .file, title: name,
-                                  reason: "Claude wrote it and named it in the answer", path: file.path,
+                                  reason: "Observed file change; named in the answer", path: file.path,
                                   exists: exists(file.path), artifact: nil))
         }
         // Named in the answer and present in the project, but not written by
@@ -234,7 +248,7 @@ extension AppModel {
             guard let path = suggestion.path else { return }
             do {
                 try store.addFile(from: URL(fileURLWithPath: path), to: ref,
-                                  source: suggestion.id.hasPrefix("found:") ? .named : .claude,
+                                  source: suggestion.id.hasPrefix("found:") ? .named : .agentObserved,
                                   displayPath: Self.displayPath(path, root: root))
                 attachmentMessage = nil
             } catch let error as ReportStoreError {

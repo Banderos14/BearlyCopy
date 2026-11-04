@@ -133,12 +133,12 @@ struct DetailsView: View {
     private var emptyState: some View {
         if model.projects.value?.isEmpty == true {
             MessageCard(title: "Choose a project to capture",
-                        detail: "Prompt Relay keeps Claude Code's final answers for projects you turn on. Nothing is captured until you do.",
+                        detail: "Prompt Relay keeps agent final answers for projects you turn on. Nothing is captured until you do.",
                         symbol: "folder.badge.plus", tint: Island.accent,
                         action: ("Capture Settings", { model.navigate(to: .capture) }))
         } else {
             MessageCard(title: "No answer yet",
-                        detail: "When Claude Code finishes in a captured project, its answer appears here.",
+                        detail: "When a connected agent finishes in a captured project, its answer appears here.",
                         symbol: "text.bubble", tint: Island.secondary, action: nil)
         }
     }
@@ -216,7 +216,7 @@ struct SessionHeader: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Project \(projectTitle), session \(sessionTitle ?? "none"). Choose project and session")
-            .islandHelp("Choose a project and a Claude Code session")
+            .islandHelp("Choose a project and an agent session")
             Spacer(minLength: 6)
             if let other = model.newAnswerElsewhere {
                 NewElsewhereChip(model: model, answer: other)
@@ -508,10 +508,10 @@ struct HandoffContentsCard: View {
         }()
         let imported = model.selectedImport != nil
         rows.append(Row(symbol: "text.quote", title: "Request & answer", detail: taskDetail, explanation: Explanation(
-            what: "Your request and Claude's complete answer, each included once, character for character.",
-            source: imported ? "The text you pasted into Import AI Result." : "Claude Code's UserPromptSubmit and Stop hooks, stored on this Mac.",
+            what: "Your request and the agent's complete answer, each included once, character for character.",
+            source: imported ? "The text you pasted into Import AI Result." : "The source adapter's prompt and final-response events, stored on this Mac.",
             checked: imported ? "Nothing beyond storing it as you pasted it." : "That both belong to this session and turn (by prompt id or order, as labelled).",
-            unknown: "Whether what the answer claims is true: those claims are marked “Reported by Claude”.")))
+            unknown: "Whether what the answer claims is true: those claims are marked “Reported by agent”.")))
         if model.selectedImport != nil {
             rows.append(Row(symbol: "terminal", title: "Commands", detail: "not available", explanation: Explanation(
                 what: "Commands the assistant ran.",
@@ -523,20 +523,20 @@ struct HandoffContentsCard: View {
             let failed = turn.observed.map { max($0.commandsNonzero ?? 0, $0.runsNonzero) } ?? 0
             rows.append(Row(symbol: "terminal", title: "Commands", detail: commands(turn.observed, captureOn: captureOn),
                             alert: failed > 0, opensActivity: true, explanation: turn.observed == nil
-                                ? Explanation(what: "Commands Claude ran during this answer.",
+                                ? Explanation(what: "Commands observed during this answer.",
                                               source: captureOn ? "None recorded (plugin before 0.3.0, or captured before tool events)." : "None: capture is off for this project.",
                                               checked: "Nothing.",
-                                              unknown: "Whether Claude ran any commands; no record does not mean none ran.")
-                                : Explanation(what: "Each shell command Claude ran: its text, exit code and duration; › opens Failure Inspector.",
-                                              source: "Claude Code's tool hooks (PostToolUse / PostToolUseFailure) on this Mac.",
+                                              unknown: "Whether the agent ran any commands; no record does not mean none ran.")
+                                : Explanation(what: "Each observed shell command: its text, exit code and duration; › opens Failure Inspector.",
+                                              source: "The source adapter's observed tool events on this Mac.",
                                               checked: "The exit code of each command as the hook reported it; for a failed test or build, its last lines after a secret scan.",
                                               unknown: "Whether the task is done. With a pipe or `;` the exit code is the last process's. Full output is not kept.")))
             if let observed = turn.observed {
                 rows.append(Row(symbol: "doc.badge.ellipsis", title: "Files changed",
                                 detail: observed.filesChanged == 0 ? "none seen" : Labels.filesChanged(observed.filesChanged).replacingOccurrences(of: " changed", with: ""),
                                 explanation: Explanation(
-                                    what: "Files Claude edited or wrote during this answer.",
-                                    source: "The paths in Claude Code's Write / Edit tool events.",
+                                    what: "Files the agent edited or wrote during this answer.",
+                                    source: "Paths from observed file operations.",
                                     checked: "Only that an edit tool ran on each path. The files were not opened or compared.",
                                     unknown: "Whether the edits are correct, still on disk, or the only changes. Files the answer merely mentions are not listed here.")))
             }
@@ -544,7 +544,7 @@ struct HandoffContentsCard: View {
                 what: "Branch, HEAD and uncommitted files of the project.",
                 source: "Git, run read-only on this Mac when the package is built.",
                 checked: "The repository's state at that moment (no fetch, no hooks run).",
-                unknown: "Which of those changes Claude made, and anything that changed after the copy.")))
+                unknown: "Which of those changes the agent made, and anything that changed after the copy.")))
         }
         let n = model.handoffAttachments(for: model.currentRef).count
         rows.append(Row(symbol: "paperclip", title: "Attachments", detail: n == 0 ? "none chosen" : "\(n) chosen", explanation: Explanation(
@@ -626,7 +626,7 @@ struct AttachmentsCard: View {
                     ForEach(files) { AttachmentRow(model: model, attachment: $0) }
                     ForEach(materials.filter { $0.kind == .link }) { LinkRow(model: model, material: $0) }
                     if suggestions.isEmpty && files.isEmpty && materials.isEmpty {
-                        Text("Nothing attached. Documents, images and mockups Claude prepares appear here.")
+                        Text("Nothing attached. Documents, images and mockups the agent prepares appear here.")
                             .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                     }
                     if let message = model.attachmentMessage {
@@ -1010,7 +1010,7 @@ struct ActivityView: View {
                             if !detail.filesChanged.isEmpty {
                                 Hairline()
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Caption("Files Claude changed")
+                                    Caption("Observed file changes")
                                     ForEach(detail.filesChanged, id: \.path) { f in
                                         Text(AppModel.displayPath(f.path, root: model.selectedProjectPath) + (f.count > 1 ? " (\(f.count))" : ""))
                                             .font(.system(size: 11, design: .monospaced)).foregroundStyle(Island.secondary).lineLimit(1)
@@ -1117,6 +1117,8 @@ struct SessionSwitcherView: View {
         let groups = model.sessionsByProject
         let current = browsing ?? model.selectedProjectPath ?? groups.first?.project
         let height = presentation.listHeight(chrome: 50)
+        VStack(spacing: 8) {
+            ProviderFilterPicker(model: model)
         HStack(alignment: .top, spacing: 10) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -1135,10 +1137,10 @@ struct SessionSwitcherView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    if !model.imports.isEmpty {
+                    if !model.imports.isEmpty && (model.providerFilter == nil || model.providerFilter == .imported) {
                         Button { browsing = "#imports" } label: {
                             HStack {
-                                Text("Cloud imports").font(.system(size: 12.5, weight: .semibold))
+                                Text("Imports").font(.system(size: 12.5, weight: .semibold))
                                 Spacer()
                                 Text("\(model.imports.count)").font(.system(size: 11)).foregroundStyle(Island.tertiary)
                             }
@@ -1170,7 +1172,7 @@ struct SessionSwitcherView: View {
                                 SessionRowLabel(title: Wording.sessionTitle(session), meta: Wording.sessionMeta(session),
                                                 chip: session.running == true ? ("working", Island.warning) : ("stopped", Island.tertiary),
                                                 selected: session.sessionKey == model.selectedSessionKey && model.selectedImport == nil,
-                                                subtitle: session.claudeCodeTitle.map { "Claude Code: \($0)" })
+                                                subtitle: session.sourceLabel)
                             }
                             .buttonStyle(.plain)
                             .islandHelp("Open the newest answer of this session")
@@ -1184,6 +1186,7 @@ struct SessionSwitcherView: View {
             .frame(maxWidth: .infinity)
             .frame(height: height)
             .background(RoundedRectangle(cornerRadius: 12).fill(Island.card))
+        }
         }
         .islandPadding(presentation)
     }

@@ -116,7 +116,7 @@ enum ReviewPackReader {
                 }
                 continue
             }
-            if line == "## Claude final response" { sections += 1; inSection = true; continue }
+            if ["## Claude final response", "## Codex final response", "## AI final response"].contains(line) { sections += 1; inSection = true; continue }
             if line.hasPrefix("## ") { inSection = false }
             let run = line.prefix { $0 == "`" }
             if run.count >= 3 {

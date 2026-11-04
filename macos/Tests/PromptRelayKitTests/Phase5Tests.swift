@@ -470,7 +470,7 @@ final class RequestOriginTests: XCTestCase {
         var a = ReportAttachment(id: "a", reportKey: "k", originalFilename: "blue.png", storedFilename: "a.png", mimeType: "image/png",
                                  byteCount: 73, sha256: "s", addedAt: "t", provenance: "p")
         a.source = .named
-        XCTAssertEqual(ReviewPack.origin(a), "named in Claude's answer and found in the project; not seen being written in this turn [Reported by Claude]")
+        XCTAssertEqual(ReviewPack.origin(a), "named in the agent's answer and found in the project; not seen being written in this turn [Reported by agent]")
         a.source = .claude
         XCTAssertTrue(ReviewPack.origin(a).hasSuffix("[Confirmed locally]"))
     }

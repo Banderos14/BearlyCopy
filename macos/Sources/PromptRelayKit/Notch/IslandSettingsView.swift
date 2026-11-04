@@ -21,7 +21,7 @@ struct IslandSettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 // Capture → Clipboard → Appearance → Notifications → Privacy → Advanced → About.
                 section("Capture") {
-                    rowButton("Projects", detail: "Which folders Prompt Relay captures Claude Code's answers from. New folders start off.", value: captureSummary) {
+                    rowButton("Projects", detail: "Which folders Prompt Relay captures agent answers from. New folders start off.", value: captureSummary) {
                         model.navigate(to: .capture)
                     }
                     Hairline()
@@ -31,6 +31,7 @@ struct IslandSettingsView: View {
                                if on { model.selectSession(model.selectedSessionKey) } else { model.unpinSession() }
                            }))
                 }
+                IntegrationsView(model: model)
                 section("Clipboard") {
                     toggle("Keep the last 5 copied images",
                            detail: "Screenshots and image files you copy anywhere, kept on this Mac for 24 hours to copy or drag later. Text from other apps is never read; password-manager items are skipped. Turning it off deletes them.",

@@ -121,6 +121,8 @@ public struct SessionSummary: Decodable, Equatable, Hashable, Identifiable, Send
     /// active in the last 30 minutes. Background tasks at a Stop do not count.
     public let running: Bool?
 
+    public var source: AgentSource? = nil
+
     public var id: String { sessionKey }
 
     enum CodingKeys: String, CodingKey {
@@ -128,7 +130,7 @@ public struct SessionSummary: Decodable, Equatable, Hashable, Identifiable, Send
         case firstEventAt = "first_event_at", lastEventAt = "last_event_at"
         case eventCount = "event_count", turnCount = "turn_count", cwds
         case lastTurn = "last_turn", integrity, title
-        case claudeCodeTitle = "claude_code_title", answeredCount = "answered_count", running
+        case claudeCodeTitle = "claude_code_title", answeredCount = "answered_count", running, source
     }
 }
 
@@ -249,6 +251,7 @@ public struct TurnError: Decodable, Equatable, Hashable, Sendable {
 }
 
 public struct Turn: Decodable, Equatable, Hashable, Identifiable, Sendable {
+    public var nativeTurnID: String? = nil
     public let index: Int
     public let status: TurnStatus
     public let link: LinkQuality
@@ -277,6 +280,7 @@ public struct Turn: Decodable, Equatable, Hashable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
+        case nativeTurnID = "native_turn_id"
         case index, status, link, request, error, observed
         case finalResponse = "final_response", responseEventCount = "response_event_count"
         case backgroundTasks = "background_tasks", candidateRequestTurns = "candidate_request_turns"

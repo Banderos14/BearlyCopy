@@ -11,7 +11,7 @@ import Foundation
 /// inside a fence longer than any fence it contains.
 public enum ReviewPack {
     static let confirmed = "Confirmed locally"
-    static let reported = "Reported by Claude"
+    static let reported = "Reported by agent"
     static let notVerified = "Not verified"
     static let unavailable = "Unavailable"
     static let userSupplied = "Supplied by you"
@@ -34,12 +34,12 @@ public enum ReviewPack {
                               materials: [ReportMaterial] = [], names: [String: String] = [:]) -> String {
         var lines: [String] = []
         func add(_ s: String = "") { lines.append(s) }
-        add("# Copy with Context: Claude Code result for an independent check")
+        add("# Copy with Context: AI result for an independent check")
         add("Exported by Prompt Relay at \(exportedAt). No AI service was used.")
         add()
         add("Provenance labels: [\(confirmed)] = recorded on this machine by Prompt Relay; "
             + "[\(userSupplied)] = typed or pasted into Prompt Relay by the user; "
-            + "[\(reported)] = Claude's own words, not checked; [\(notVerified)] = no independent source; "
+            + "[\(reported)] = the agent's own words, not checked; [\(notVerified)] = no independent source; "
             + "[\(unavailable)] = could not be determined.")
         add()
         add("## Session")
@@ -51,6 +51,7 @@ public enum ReviewPack {
         }
         add("- Project: \(report.projectName ?? "not specified") [\(report.projectName == nil ? unavailable : userSupplied)]")
         add("- Session or link: \(report.sessionLabel ?? "not specified") [\(report.sessionLabel == nil ? unavailable : userSupplied)]")
+        add("- Host: \(report.host?.title ?? "Unknown") [\(userSupplied)]")
         add("- Imported at: \(report.importedAt) [\(confirmed)]")
         add()
         add("## Original user request")
@@ -62,16 +63,16 @@ public enum ReviewPack {
             add("[\(unavailable)] The request was not supplied, so it is not included.")
         }
         add()
-        add("## Claude final response")
+        add("## AI final response")
         add("[\(reported)] Verbatim text as pasted by the user.")
         add()
         add(block(report.text, info: "markdown"))
         add()
         add("## Observed during this turn")
-        add("[\(unavailable)] Prompt Relay did not observe the cloud session: no commands, tests or files are known.")
+        add("[\(unavailable)] Prompt Relay did not observe this session: no commands, tests or files are known.")
         add()
         add("## Git state")
-        add("- [\(unavailable)] Not collected: the work happened in a cloud session, not in a folder on this Mac.")
+        add("- [\(unavailable)] Not collected for this manual import.")
         add()
         appendTail(&lines, attachments: attachments, materials: materials, names: names)
         return lines.joined(separator: "\n") + "\n"
@@ -108,8 +109,10 @@ public enum ReviewPack {
         switch a.effectiveSource {
         case .you: return "added by you [\(userSupplied)]"
         case .claude: return "shown or written by Claude in this turn [\(confirmed)]"
-        case .named: return "named in Claude's answer and found in the project; not seen being written in this turn [\(reported)]"
+        case .named: return "named in the agent's answer and found in the project; not seen being written in this turn [\(reported)]"
         case .clipboard: return "from your clipboard [\(userSupplied)]"
+        case .agentObserved: return "observed file; added by you [\(confirmed)]"
+        case .agentResult: return "observed result file, snapshotted locally [\(confirmed)]"
         }
     }
 

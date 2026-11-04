@@ -341,7 +341,7 @@ struct ReportFacts {
 
     var source: ReportSource? {
         if model.selectedImport != nil { return .cloudManualImport }
-        return model.selectedTurn == nil ? nil : .localClaudeCode
+        return model.selectedTurn == nil ? nil : (model.selectedSession?.provider == .codex ? .localCodex : .localClaudeCode)
     }
 
     var at: String? {
@@ -420,8 +420,8 @@ struct SourceLine: View {
         HStack(spacing: 6) {
             Image(systemName: facts.source == .cloudManualImport ? "icloud.and.arrow.down" : "laptopcomputer")
                 .font(.system(size: 10, weight: .semibold))
-            Text(facts.source?.label ?? "")
-            if facts.source == .localClaudeCode, let project = model.selectedProject, !project.captureEnabled {
+            Text(model.currentSourceLabel)
+            if facts.source != .cloudManualImport, let project = model.selectedProject, !project.captureEnabled {
                 Text("· capture off")
                     .foregroundStyle(Island.warning)
                     .islandHelp("Enable capture to save new answers")
@@ -1218,7 +1218,7 @@ struct ProjectsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
-            Text("Capture keeps Claude Code's final answers from a folder. New projects start with capture off; turning it off keeps their history.")
+            Text("Capture keeps connected agents' final answers from a folder. New projects start with capture off; turning it off keeps their history.")
                 .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             if let error = model.projects.error, model.projects.value == nil {
                 MessageCard(title: error.title, detail: error.detail, symbol: "exclamationmark.triangle", tint: Island.warning, action: nil)
@@ -1294,7 +1294,7 @@ struct ProjectRowView: View {
             .disabled(busy || inherited)
             .opacity(inherited ? 0.55 : 1)
             .accessibilityLabel("Capture for \(row.name)")
-            .islandHelp(inherited ? "Captured because a parent folder is on; change it there." : "Keep Claude Code answers from this folder")
+            .islandHelp(inherited ? "Captured because a parent folder is on; change it there." : "Keep agent answers from this folder")
             .padding(.trailing, 12)
         }
         .padding(.horizontal, 2)
@@ -1324,6 +1324,7 @@ struct HistoryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             searchField
+            ProviderFilterPicker(model: model)
             BoundedScroll(maxHeight: presentation.listHeight(chrome: 90)) {
                 VStack(alignment: .leading, spacing: 8) {
                     if model.historyQuery.trimmingCharacters(in: .whitespaces).isEmpty { browse } else { results }
@@ -1358,7 +1359,7 @@ struct HistoryView: View {
                 .font(.system(size: 12)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
         case .loaded(let hits):
             GroupCard {
-                ForEach(Array(hits.enumerated()), id: \.element.id) { i, hit in
+                ForEach(Array(hits.filter { model.matchesProvider($0.ref) }.enumerated()), id: \.element.id) { i, hit in
                     if i > 0 { Hairline() }
                     HistoryRow(model: model, ref: hit.ref, source: hit.source, title: hit.title,
                                detail: "\(hit.projectName) · \(Wording.relative(hit.at))")
@@ -1371,7 +1372,7 @@ struct HistoryView: View {
 
     @ViewBuilder
     private var browse: some View {
-        let pins = model.pinned.filter(model.isAvailable)
+        let pins = model.pinned.filter { model.isAvailable($0) && model.matchesProvider($0) }
         if !pins.isEmpty {
             Caption("Pinned")
             GroupCard {
@@ -1383,8 +1384,8 @@ struct HistoryView: View {
                 }
             }
         }
-        if !model.imports.isEmpty {
-            Caption("Cloud imports")
+        if !model.imports.isEmpty && (model.providerFilter == nil || model.providerFilter == .imported) {
+            Caption("Imports")
             GroupCard {
                 ForEach(Array(model.imports.enumerated()), id: \.element.id) { i, report in
                     if i > 0 { Hairline() }
@@ -1420,8 +1421,11 @@ struct HistoryView: View {
             HStack(spacing: 8) {
                 Image(systemName: open ? "chevron.down" : "chevron.right")
                     .font(.system(size: 9, weight: .bold)).foregroundStyle(Island.tertiary).frame(width: 12)
-                Text(Wording.sessionTitle(session)).font(.system(size: 12.5, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(Island.primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(Wording.sessionTitle(session)).font(.system(size: 12.5, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(Island.primary).lineLimit(1)
+                    Text(session.sourceLabel).font(.system(size: 10)).foregroundStyle(Island.tertiary).lineLimit(1)
+                }
                 Text(session.turnCount == 1 ? "1 turn" : "\(session.turnCount) turns")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 Spacer(minLength: 6)
@@ -1474,7 +1478,7 @@ struct HistoryRow: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title.isEmpty ? "Untitled" : title).font(.system(size: 12.5))
                             .foregroundStyle(failed ? Island.error : Island.primary).lineLimit(1)
-                        Text(detail).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
+                        Text(model.sourceLabel(for: ref) + " · " + detail).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
@@ -1522,6 +1526,7 @@ struct ImportView: View {
     @State private var session = ""
     @State private var projectPath: String?
     @State private var outcome: AppModel.ImportOutcome?
+    @State private var host: AgentHost = .unknown
     @State private var assistant: ImportAssistant?
     @State private var suggestProject = false
     @State private var asPlainText = false
@@ -1551,6 +1556,9 @@ struct ImportView: View {
                     projectPicker(analysis)
                     sourcePicker(analysis)
                 }
+                Picker("Host (supplied by you)", selection: $host) {
+                    ForEach(AgentHost.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
                 field("Session or link (optional)", text: $session, prompt: "a session ID or link, kept as you type it", lines: 1)
                 HStack(spacing: 10) {
                     Button("Import") { save(analysis) }
@@ -1572,10 +1580,10 @@ struct ImportView: View {
     private func save(_ analysis: ImportAnalysis) {
         let kind = analysis.isPromptRelayPackage ? (asPlainText ? "plain-text" : "historical-context") : nil
         let result = model.importReport(text: text, task: task, projectPath: projectPath, sessionLabel: session,
-                                        assistant: assistant, importedAs: kind)
+                                        assistant: assistant, importedAs: kind, host: host == .unknown ? nil : host)
         outcome = result
         if case .failed = result { return }
-        text = ""; task = ""; session = ""; projectPath = nil; assistant = nil
+        text = ""; task = ""; session = ""; projectPath = nil; assistant = nil; host = .unknown
     }
 
     /// The report scrolls inside a card of bounded height; a long report
@@ -1767,7 +1775,7 @@ struct ReaderView: View {
         let facts = ReportFacts(model: model)
         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             HStack(spacing: 8) {
-                Text([facts.source?.label, facts.characters.map { "\($0.formatted()) characters" }]
+                Text([model.currentSourceLabel, facts.characters.map { "\($0.formatted()) characters" }]
                         .compactMap { $0 }.joined(separator: " · "))
                     .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).lineLimit(1)
                 Spacer(minLength: 0)
@@ -1833,7 +1841,7 @@ struct TaskReaderView: View {
         let task = model.fullTask
         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             HStack(spacing: 8) {
-                Text([facts.source?.label, task?.characters.map { "\($0.formatted()) characters" }]
+                Text([model.currentSourceLabel, task?.characters.map { "\($0.formatted()) characters" }]
                         .compactMap { $0 }.joined(separator: " · "))
                     .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).lineLimit(1)
                 if let task, !task.complete { Tag("incomplete", tint: Island.warning) }
