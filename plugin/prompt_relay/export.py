@@ -104,7 +104,7 @@ def earlier_user_request(session: Optional[Session], turn: c.Turn) -> Optional[t
     """For a turn started by an automated message: (turn index, text) of the
     latest earlier request from the user in the same session."""
     req = request_text(turn)
-    if session is None or req is None or origin.classify(req) != origin.AUTOMATED:
+    if session is None or req is None or (turn.prompt and turn.prompt.source and turn.prompt.source.get('provider') == 'codex') or origin.classify(req) != origin.AUTOMATED:
         return None
     found = origin.earlier_user_prompt(session.turns, turn.index)
     return None if found is None else (found[0], found[1].text)
@@ -179,7 +179,7 @@ def _observed_section(add, session: Session, turn: c.Turn, level: str = FULL) ->
             "later (PostToolUse / PostToolUseFailure hooks) with capture on for this project.")
         add("")
         return
-    add("Source: Claude Code PostToolUse / PostToolUseFailure hook events of this session and turn.")
+    add("Source: Codex PostToolUse hook events of this session and turn." if any(e.source and e.source.get('provider') == 'codex' for e in session.events) else "Source: Claude Code PostToolUse / PostToolUseFailure hook events of this session and turn.")
     main = [x for x in commands if not x["agent_type"]]
     sub = [x for x in commands if x["agent_type"]]
     important = [x for x in main if x["kind"] in ("test", "build", "git") or x["outcome"] != "ok" or x["background"]]
@@ -221,7 +221,7 @@ def _observed_section(add, session: Session, turn: c.Turn, level: str = FULL) ->
         "successful run does not show that every earlier failure was fixed.")
     add("")
     files = detail["files_changed"]
-    add(f"## Files Claude changed (Edit/Write tool calls) [{CONFIRMED}]")
+    add(f"## Files changed (observed tool results) [{CONFIRMED}]" if any(e.source and e.source.get('provider') == 'codex' for e in session.events) else f"## Files Claude changed (Edit/Write tool calls) [{CONFIRMED}]")
     if files:
         for f in files:
             edits = f" ({f['count']} edits)" if f["count"] > 1 else ""
@@ -242,6 +242,13 @@ def _request_section(add, session: Session, turn: c.Turn) -> None:
         add("")
         return
     tag = CONFIRMED if turn.link == c.LINK_PROMPT_ID else f"{CONFIRMED}; link inferred"
+    if turn.prompt and turn.prompt.source and turn.prompt.source.get('provider') == 'codex':
+        add("## Original request")
+        add(f"[{tag}] Captured prompt; human or automatic initiation was not independently established.")
+        add("")
+        add(_block(req))
+        add("")
+        return
     kind = origin.classify(req)
     if origin.is_user(kind):
         add("## Original user request")
@@ -283,31 +290,38 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
         raise ValueError(f"unknown detail level {detail!r}")
     final = turn.final_response
     lines: List[str] = []
+    source = next((ev.source for ev in session.events if ev.source), None)
+    provider = "Codex" if source and source.get("provider") == "codex" else "Claude Code"
+    agent = "Codex" if provider == "Codex" else "Claude"
     add = lines.append
-    add("# Copy with Context: Claude Code result for an independent check")
+    add(f"# Copy with Context: {provider} result for an independent check")
     add(f"Exported by Prompt Relay at {exported_at}. No AI service was used.")
     if detail == STANDARD:
         add("Detail: Standard. The request and the response are complete. Left out: command output, routine and "
             "git commands (counted below) and the list of uncommitted files; Full Context has them.")
     add("")
     add("Provenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; "
-        "[Reported by Claude] = Claude's own words, not checked; "
+        f"[Reported by {agent}] = {agent}'s own words, not checked; "
         "[Not verified] = no independent source; [Unavailable] = could not be determined.")
     add("")
     add("## Session")
-    add(f"- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [{CONFIRMED}]")
+    add(f"- Source: {provider} on this Mac, captured by the Prompt Relay hooks [{CONFIRMED}]")
+    if source:
+        add("- Host: " + source.get("host", "unknown"))
+        add("- Native session: " + source.get("native_session_id", "unknown"))
+        add("- Native turn: " + (turn.last_event.native_turn_id or "unknown"))
     add(f"- Project: {session.project_name} [{CONFIRMED if session.project_dir else UNAVAILABLE}]")
     add(f"- Session ID: {session.session_id or UNAVAILABLE} [{CONFIRMED if session.session_id else UNAVAILABLE}]")
     add(f"- Turn: {turn.index} of {len(session.turns)}")
     when = final.received_at if final else (turn.last_event.received_at if turn.last_event else "")
     add(f"- Response captured at: {when or UNAVAILABLE} [{CONFIRMED if when else UNAVAILABLE}]")
-    add(f"- Response status: {status_text(turn)} [{CONFIRMED}]")
+    add(f"- Response status: {status_text(turn).replace('Claude', agent)} [{CONFIRMED}]")
     if len(turn.responses) > 1:
         add(f"- Response events in this turn: {len(turn.responses)} (stop-hook continuations or background wake-ups); the last Stop is shown")
     if final and final.has_background_tasks:
         add(f"- Background tasks at Stop: {len(final.work_tasks)} still in flight [{CONFIRMED}]")
     elif final and final.background_tasks is None:
-        add(f"- Background tasks at Stop: not reported by Claude Code [{UNAVAILABLE}]")
+        add(f"- Background tasks at Stop: not reported by {provider} [{UNAVAILABLE}]")
     if final and final.watchers:
         add(f"- Watchers at Stop: {final.watchers} (monitors such as an artifact's live updates; not work in flight) [{CONFIRMED}]")
     add(f"- Request ↔ response link: {LINK_TEXT.get(turn.link, turn.link)}")
@@ -315,9 +329,9 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
 
     _request_section(add, session, turn)
 
-    add("## Claude final response")
+    add(f"## {agent} final response")
     if final is not None and final.text is not None:
-        add(f"[{REPORTED}] Verbatim text of Claude's last message for this turn.")
+        add(f"[Reported by {agent}] Verbatim text of {agent}'s last message for this turn.")
         add("")
         add(_block(final.text, "markdown"))
     else:
@@ -341,19 +355,19 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
             add(_block("\n".join(git.changed_files)))
         else:
             add(f"- Uncommitted changes: none [{CONFIRMED}]")
-        add("- Note: this is the state when exported, which may differ from the state when Claude finished.")
+        add(f"- Note: this is the state when exported, which may differ from the state when {agent} finished.")
     else:
         add(f"- [{UNAVAILABLE}] {git.reason}")
     add("")
 
     add("## Not checked")
-    add(f"- Claude's claims of success, passing tests or completed work: [{NOT_VERIFIED}]. Compare them with the "
-        "observed commands above; Prompt Relay does not interpret Claude's text.")
+    add(f"- {agent}'s claims of success, passing tests or completed work: [{NOT_VERIFIED}]. Compare them with the "
+        f"observed commands above; Prompt Relay does not interpret {agent}'s text.")
     add(f"- CI: no source is connected [{UNAVAILABLE}]")
-    add(f"- Completion signal: Claude Code Stop hook event, which only means Claude stopped responding [{CONFIRMED}]")
+    add(f"- Completion signal: {provider} Stop hook event, which only means {agent} stopped responding [{CONFIRMED}]")
     add("")
     add("## Request for review")
     add("Please review this result independently. Check whether the response actually fulfils the original "
-        "request, compare Claude's claims with the observed commands, point out unsupported claims, risks and "
-        "missing verification, and propose the next concrete step or follow-up prompt for Claude Code.")
+        f"request, compare {agent}'s claims with the observed commands, point out unsupported claims, risks and "
+        f"missing verification, and propose the next concrete step or follow-up prompt for {provider}.")
     return "\n".join(lines) + "\n"

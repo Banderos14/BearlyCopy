@@ -57,6 +57,8 @@ class Event:
     tool: Optional[Dict[str, Any]] = None
     # UserPromptSubmit.session_title: a title Claude Code gave the session.
     session_title: Optional[str] = None
+    source: Optional[Dict[str, Any]] = None
+    native_turn_id: Optional[str] = None
 
     @property
     def tool_name(self) -> Optional[str]:
@@ -118,6 +120,8 @@ def from_record(record: Dict[str, Any]) -> Optional[Event]:
         error_details=_str(payload.get("error_details")),
         agent_id=_nonempty_str(payload.get("agent_id")),
         received_at_epoch=_epoch(record.get("received_at_epoch")),
+        source=payload.get("source") if isinstance(payload.get("source"), dict) else None,
+        native_turn_id=_nonempty_str(payload.get("native_turn_id")),
         tool=dict(payload) if kind == "tool" else None,
         session_title=_nonempty_str(payload.get("session_title")) if kind == "prompt" else None,
     )

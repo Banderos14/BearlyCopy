@@ -109,6 +109,7 @@ def session_summary(s: Session) -> Dict[str, Any]:
         "claude_code_title": claude_title,
         "answered_count": sum(1 for t in s.turns if t.final_response is not None),
         "running": session_running(s),
+        **({"source": next(ev.source for ev in s.events if ev.source)} if any(ev.source for ev in s.events) else {}),
         "session_id": s.session_id,
         "session_key": s.key,
         "project": project_ref(s.project_dir),
@@ -156,6 +157,7 @@ def turn_object(t: c.Turn, full: bool = False, turns: Optional[List[c.Turn]] = N
         background = {"reported": reported, "count": len(last_stop.work_tasks) if reported else None,
                       "watchers": last_stop.watchers if reported else None}
     return {
+        **({"native_turn_id": t.last_event.native_turn_id} if t.last_event and t.last_event.native_turn_id else {}),
         "index": t.index,
         "status": t.status,
         "link": t.link,
@@ -164,7 +166,7 @@ def turn_object(t: c.Turn, full: bool = False, turns: Optional[List[c.Turn]] = N
         # Ambiguous responses get a turn without a prompt (candidates counted).
         "request": _request_ref(t.prompt, full) if t.prompt is not None else None,
         # user | user_pasted | automated | unknown (origin.py); null without a request.
-        "request_origin": origin.classify(t.prompt.text) if t.prompt is not None else None,
+        "request_origin": ("unknown" if t.prompt.source and t.prompt.source.get("provider") == "codex" else origin.classify(t.prompt.text)) if t.prompt is not None else None,
         "earlier_user_request": _earlier(t, turns, full),
         "final_response": _text_ref(final, full) if final is not None else None,
         "response_event_count": len(t.responses),

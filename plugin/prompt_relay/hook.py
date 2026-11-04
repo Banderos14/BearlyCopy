@@ -21,6 +21,7 @@ from typing import Any, Dict, Mapping, Optional, Tuple
 
 from prompt_relay import config as _config
 from prompt_relay.events import KIND_BY_EVENT
+from prompt_relay.adapters import normalize
 from prompt_relay.paths import data_dir
 from prompt_relay.store import SCHEMA_VERSION, Store, StoreError, fingerprint
 from prompt_relay.tools import TOOL_EVENTS, reduce as reduce_tool_event
@@ -37,9 +38,9 @@ def _utc_iso(epoch: float) -> str:
 
 def build_record(payload: Dict[str, Any], env: Mapping[str, str], now: float) -> Dict[str, Any]:
     context: Dict[str, Any] = {}
-    if env.get("CLAUDE_PROJECT_DIR"):
+    if env.get("PROMPT_RELAY_PROVIDER", "claude_code") == "claude_code" and env.get("CLAUDE_PROJECT_DIR"):
         context["claude_project_dir"] = env["CLAUDE_PROJECT_DIR"]
-    if env.get("CLAUDE_CODE_REMOTE"):
+    if env.get("PROMPT_RELAY_PROVIDER", "claude_code") == "claude_code" and env.get("CLAUDE_CODE_REMOTE"):
         context["claude_code_remote"] = env["CLAUDE_CODE_REMOTE"]
     session_id = payload.get("session_id")
     return {
@@ -87,14 +88,13 @@ def process(raw: bytes, env: Mapping[str, str], now: Optional[float] = None, roo
     cfg = _config.load(root)
     if cfg.error:
         return label, cfg.error
-    project_dir = env.get("CLAUDE_PROJECT_DIR") or payload.get("cwd")
+    project_dir = (env.get("CLAUDE_PROJECT_DIR") if env.get("PROMPT_RELAY_PROVIDER", "claude_code") == "claude_code" else None) or payload.get("cwd")
     if not isinstance(project_dir, str) or not _config.is_enabled(cfg, project_dir):
         return label, "project_not_enabled"
 
-    if payload.get("hook_event_name") in TOOL_EVENTS:
-        # Only the reduced form is stored: no file contents, no command output
-        # except a short, secret-scanned tail of a failed test or build.
-        payload = reduce_tool_event(payload)
+    payload = normalize(payload, env)
+    if payload is None:
+        return label, "unsupported_source_event"
     record = build_record(payload, env, time.time() if now is None else now)
     try:
         return label, Store(root).append(record)

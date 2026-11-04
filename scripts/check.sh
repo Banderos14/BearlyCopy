@@ -12,6 +12,7 @@ for py in $PYTHONS; do
   echo "== $("$py" --version 2>&1) ($py)"
   "$py" -m compileall -q plugin bin >/dev/null
   if ! "$py" -m unittest discover -s tests; then status=1; fi
+  if ! "$py" -m unittest discover -s macos/Integrations -p "test_*.py"; then status=1; fi
 done
 
 echo "== hook latency (50 runs, synthetic Stop, isolated data dir)"

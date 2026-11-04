@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Banderos14/prompt-relay/docs/api/api-v1.schema.json",
   "title": "Prompt Relay CLI JSON API, version 1",
-  "description": "Envelope written by every `prompt-relay <command> --json`. `data` follows $defs/<command>_data (see docs/JSON_API.md §3). Closed for the producer; consumers must ignore unknown fields and unknown enum values.",
+  "description": "Envelope written by every `prompt-relay <command> --json`. `data` follows $defs/<command>_data (see docs/JSON_API.md \u00a73). Closed for the producer; consumers must ignore unknown fields and unknown enum values.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -272,6 +272,39 @@
         },
         "running": {
           "type": "boolean"
+        },
+        "source": {
+          "type": "object",
+          "required": [
+            "provider",
+            "host",
+            "capabilities",
+            "capture"
+          ],
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "native_session_id": {
+              "type": "string"
+            },
+            "installation_id": {
+              "type": "string"
+            },
+            "capture": {
+              "type": "string"
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
         }
       }
     },
@@ -534,6 +567,9 @@
               "type": "null"
             }
           ]
+        },
+        "native_turn_id": {
+          "type": "string"
         }
       }
     },
@@ -699,6 +735,9 @@
               "type": "null"
             }
           ]
+        },
+        "native_turn_id": {
+          "type": "string"
         }
       }
     },

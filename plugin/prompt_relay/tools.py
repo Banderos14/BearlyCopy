@@ -163,7 +163,15 @@ def unique_paths(events: List[Any]) -> List[Dict[str, Any]]:
     """Paths of edit events in first-seen order with edit counts."""
     seen: Dict[str, Dict[str, Any]] = {}
     for ev in events:
-        if ev.tool_name in EDIT_TOOLS and ev.tool_path:
+        for path in (ev.tool or {}).get("paths_changed", []):
+            if isinstance(path, str):
+                if not path.startswith("/") and ev.cwd:
+                    path = ev.cwd.rstrip("/") + "/" + path
+                entry = seen.setdefault(path, {"path": path, "tools": [], "count": 0})
+                entry["count"] += 1
+                if ev.tool_name not in entry["tools"]:
+                    entry["tools"].append(ev.tool_name)
+        if ev.tool_name in EDIT_TOOLS and ev.tool_path and (ev.tool or {}).get("outcome") == "ok":
             entry = seen.setdefault(ev.tool_path, {"path": ev.tool_path, "tools": [], "count": 0})
             entry["count"] += 1
             if ev.tool_name not in entry["tools"]:
