@@ -129,7 +129,8 @@ class AdaptersTests(unittest.TestCase):
         self.assertIn(request, text)
         self.assertIn(answer, text)
         self.assertEqual(text.count(answer), 1)
-        self.assertIn('Host: xcode', text)
+        self.assertIn('Host: Xcode [Confirmed locally]', text)
+        self.assertIn('- Source: Codex · Xcode · This Mac', text)
         self.assertIn('Reported by Codex', text)
         self.assertNotIn('Source: Claude Code', text)
 
@@ -152,7 +153,7 @@ class AdaptersTests(unittest.TestCase):
         self.assertEqual(api.session_summary(session)['source']['provider'], 'claude_code')
         text = export.render_context(session, session.turns[0], GitInfo(False, 'not a repository'), 'now')
         self.assertIn('Source: Claude Code', text)
-        self.assertIn('Host: vscode', text)
+        self.assertIn('Host: VS Code [Confirmed locally]', text)
         self.assertNotIn('Source: Codex', text)
 
     def test_failure_tail_and_unknown_format(self):

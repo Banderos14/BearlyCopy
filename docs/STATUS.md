@@ -1,5 +1,20 @@
 # Status
 
+## 2026-11-05 — Phase 9.3: one Latest across agents, logical projects, smart attachments
+
+Latest now follows the newest *completed* answer with text from Claude Code or
+Codex (`last_turn.answered_at`); the provider filter that blocked it is gone.
+Pinning is an explicit Behavior setting ("Stay on the session I choose"), off
+for new installs; an existing saved pin is migrated to On and kept, with
+Follow Latest / Jump to Latest one click away. An unfinished file hand-off
+holds its report. The Core reports a `logical_project` (enabled project → Git
+root → workspace → folder, stat only), so `prompt-relay/macos` joins
+`prompt-relay`. Named result files that changed during the turn are
+auto-selected as "named · changed this turn". Short continuations keep their
+request and get labelled earlier-task context. Details, checks and limits:
+[Phase 9.3](../macos/PHASE9.3.md). Installed app not updated (owner consent
+needed). Earlier checkpoints below are historical.
+
 ## 2026-11-04 — Phase 9.2 delivery diagnosis
 
 Real Xcode UserPromptSubmit/PostToolUse now reach storage and Swift AppModel

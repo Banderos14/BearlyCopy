@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Banderos14/prompt-relay/docs/api/api-v1.schema.json",
   "title": "Prompt Relay CLI JSON API, version 1",
-  "description": "Envelope written by every `prompt-relay <command> --json`. `data` follows $defs/<command>_data (see docs/JSON_API.md \u00a73). Closed for the producer; consumers must ignore unknown fields and unknown enum values.",
+  "description": "Envelope written by every `prompt-relay <command> --json`. `data` follows $defs/<command>_data (see docs/JSON_API.md §3). Closed for the producer; consumers must ignore unknown fields and unknown enum values.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -223,6 +223,9 @@
                 },
                 "status": {
                   "$ref": "#/$defs/status"
+                },
+                "answered_at": {
+                  "$ref": "#/$defs/timestamp"
                 }
               }
             },
@@ -305,6 +308,9 @@
             }
           },
           "additionalProperties": false
+        },
+        "logical_project": {
+          "$ref": "#/$defs/logical_project"
         }
       }
     },
@@ -570,6 +576,10 @@
         },
         "native_turn_id": {
           "type": "string"
+        },
+        "continues_request": {
+          "description": "Phase 9.3, optional: for a short continuation request (such as \"continue\"), the latest earlier substantive request of the same session, offered as labelled context; the turn's own request stays verbatim.",
+          "$ref": "#/$defs/earlier_text_summary"
         }
       }
     },
@@ -738,6 +748,10 @@
         },
         "native_turn_id": {
           "type": "string"
+        },
+        "continues_request": {
+          "description": "Phase 9.3, optional: for a short continuation request (such as \"continue\"), the latest earlier substantive request of the same session, offered as labelled context; the turn's own request stays verbatim.",
+          "$ref": "#/$defs/earlier_text_full"
         }
       }
     },
@@ -807,6 +821,9 @@
               },
               "last_event_at": {
                 "$ref": "#/$defs/timestamp_or_null"
+              },
+              "logical_project": {
+                "$ref": "#/$defs/logical_project"
               }
             }
           }
@@ -1787,6 +1804,27 @@
         }
       },
       "description": "A request from an earlier turn of the same session, with that turn's number."
+    },
+    "logical_project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "name",
+        "basis"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string",
+          "description": "enabled_project | git_root | workspace | directory (Phase 9.3); readers accept unknown values"
+        }
+      }
     }
   }
 }

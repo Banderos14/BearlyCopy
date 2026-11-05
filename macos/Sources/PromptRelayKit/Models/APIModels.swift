@@ -85,9 +85,27 @@ public struct ProjectRef: Decodable, Equatable, Hashable, Sendable {
     public let name: String?
 }
 
+/// Phase 9.3: the logical project a folder belongs to (the Core's
+/// `logical_project`): an enabled project, a verified Git root, a workspace
+/// root or the folder itself. The raw `cwd` stays in `project`/`cwds`.
+public struct LogicalProject: Codable, Equatable, Hashable, Sendable {
+    public let path: String
+    public let name: String
+    /// enabled_project | git_root | workspace | directory (open: unknown values kept).
+    public let basis: String
+
+    public init(path: String, name: String, basis: String) {
+        self.path = path; self.name = name; self.basis = basis
+    }
+}
+
 public struct LastTurn: Decodable, Equatable, Hashable, Sendable {
     public let index: Int
     public let status: TurnStatus
+    /// When the turn's final response was stored (Core 0.3.x, Phase 9.3).
+    public var answeredAt: String? = nil
+
+    enum CodingKeys: String, CodingKey { case index, status, answeredAt = "answered_at" }
 }
 
 public struct Integrity: Decodable, Equatable, Hashable, Sendable {
@@ -122,11 +140,13 @@ public struct SessionSummary: Decodable, Equatable, Hashable, Identifiable, Send
     public let running: Bool?
 
     public var source: AgentSource? = nil
+    /// Phase 9.3: absent from older Cores (then the raw project path is used).
+    public var logicalProject: LogicalProject? = nil
 
     public var id: String { sessionKey }
 
     enum CodingKeys: String, CodingKey {
-        case sessionID = "session_id", sessionKey = "session_key", project
+        case sessionID = "session_id", sessionKey = "session_key", project, logicalProject = "logical_project"
         case firstEventAt = "first_event_at", lastEventAt = "last_event_at"
         case eventCount = "event_count", turnCount = "turn_count", cwds
         case lastTurn = "last_turn", integrity, title
@@ -270,6 +290,10 @@ public struct Turn: Decodable, Equatable, Hashable, Identifiable, Sendable {
     public let requestOrigin: RequestOrigin?
     /// For a turn Claude Code started itself: the user's latest earlier request.
     public let earlierUserRequest: EarlierRequest?
+    /// Phase 9.3: for a short continuation request ("continue"), the latest
+    /// earlier substantive request of the same session — context only; the
+    /// turn's own request stays its request.
+    public var continuesRequest: EarlierRequest? = nil
 
     public var id: Int { index }
 
@@ -286,6 +310,7 @@ public struct Turn: Decodable, Equatable, Hashable, Identifiable, Sendable {
         case backgroundTasks = "background_tasks", candidateRequestTurns = "candidate_request_turns"
         case notificationCount = "notification_count", observedDetail = "observed_detail"
         case requestOrigin = "request_origin", earlierUserRequest = "earlier_user_request"
+        case continuesRequest = "continues_request"
     }
 }
 
@@ -305,9 +330,11 @@ public struct EarlierRequest: Decodable, Equatable, Hashable, Sendable {
     public let preview: String
     public let displayPreview: String?
     public let receivedAt: String?
+    /// Only in `show` (full): the whole earlier request, verbatim.
+    public var text: String? = nil
 
     enum CodingKeys: String, CodingKey {
-        case turn, preview
+        case turn, preview, text
         case displayPreview = "display_preview", receivedAt = "received_at"
     }
 }
@@ -321,13 +348,24 @@ public struct ProjectInfo: Decodable, Equatable, Hashable, Identifiable, Sendabl
     public let explicitlyEnabled: Bool
     public let sessionCount: Int
     public let lastEventAt: String?
+    /// Phase 9.3: the logical project this folder belongs to.
+    public var logicalProject: LogicalProject? = nil
+    /// Phase 9.3, app side: the raw folders merged into this logical project.
+    public var memberPaths: [String] = []
 
     public var id: String { path ?? "" }
+
+    public init(path: String?, name: String?, captureEnabled: Bool, explicitlyEnabled: Bool,
+                sessionCount: Int, lastEventAt: String?, logicalProject: LogicalProject? = nil, memberPaths: [String] = []) {
+        self.path = path; self.name = name; self.captureEnabled = captureEnabled
+        self.explicitlyEnabled = explicitlyEnabled; self.sessionCount = sessionCount; self.lastEventAt = lastEventAt
+        self.logicalProject = logicalProject; self.memberPaths = memberPaths
+    }
 
     enum CodingKeys: String, CodingKey {
         case path, name
         case captureEnabled = "capture_enabled", explicitlyEnabled = "explicitly_enabled"
-        case sessionCount = "session_count", lastEventAt = "last_event_at"
+        case sessionCount = "session_count", lastEventAt = "last_event_at", logicalProject = "logical_project"
     }
 }
 

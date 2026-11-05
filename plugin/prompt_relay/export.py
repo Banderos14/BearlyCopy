@@ -18,6 +18,7 @@ are longer than any fence run in the text, so the content cannot break out.
 
 from __future__ import annotations
 
+import os
 import re
 from typing import List, Optional
 
@@ -118,6 +119,9 @@ def sensitive_findings(turn: c.Turn, request: bool = True, session: Optional[Ses
     earlier = earlier_user_request(session, turn) if request else None
     if earlier and earlier[1]:
         findings += scan(earlier[1], "request")
+    continued = origin.continued_prompt(session.turns, turn.index) if request and session is not None else None
+    if continued and continued[1].text:
+        findings += scan(continued[1].text, "request")
     final = turn.final_response
     if final and final.text:
         findings += scan(final.text, "response")
@@ -232,6 +236,20 @@ def _observed_section(add, session: Session, turn: c.Turn, level: str = FULL) ->
     add("")
 
 
+def _continuation_section(add, session: Session, turn: c.Turn) -> None:
+    """Phase 9.3: the request above only continues earlier work; show the
+    earlier substantive request of this session as context, never instead."""
+    found = origin.continued_prompt(session.turns, turn.index)
+    if found is None:
+        return
+    add("### Earlier task this request continues")
+    add(f"[{CONFIRMED}; turn {found[0]} of this session] The request above is a short continuation. For context only, "
+        "the latest earlier substantive request in the same session, verbatim (it does not replace the request above):")
+    add("")
+    add(_block(found[1].text or ""))
+    add("")
+
+
 def _request_section(add, session: Session, turn: c.Turn) -> None:
     """The request, labelled by its origin (origin.py). A turn Claude Code
     started itself is never presented as the user's request."""
@@ -248,6 +266,7 @@ def _request_section(add, session: Session, turn: c.Turn) -> None:
         add("")
         add(_block(req))
         add("")
+        _continuation_section(add, session, turn)
         return
     kind = origin.classify(req)
     if origin.is_user(kind):
@@ -257,6 +276,7 @@ def _request_section(add, session: Session, turn: c.Turn) -> None:
         add("")
         add(_block(req))
         add("")
+        _continuation_section(add, session, turn)
         return
     if kind == origin.UNKNOWN:
         add("## Request (source not established)")
@@ -285,11 +305,18 @@ def _request_section(add, session: Session, turn: c.Turn) -> None:
     add("")
 
 
-def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: str, detail: str = FULL) -> str:
+HOST_TITLES = {"claude_desktop": "Claude Desktop", "xcode": "Xcode", "terminal": "Terminal", "vscode": "VS Code",
+               "other": "Other", "unknown": "Unknown"}
+
+
+def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: str, detail: str = FULL,
+                   project_root: Optional[str] = None) -> str:
     if detail not in DETAILS:
         raise ValueError(f"unknown detail level {detail!r}")
     final = turn.final_response
     lines: List[str] = []
+    # Phase 9.3: the logical project (Git root, enabled project), when given.
+    project_name = os.path.basename(project_root.rstrip(os.sep)) if project_root else None
     source = next((ev.source for ev in session.events if ev.source), None)
     provider = "Codex" if source and source.get("provider") == "codex" else "Claude Code"
     agent = "Codex" if provider == "Codex" else "Claude"
@@ -304,13 +331,19 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
         f"[Reported by {agent}] = {agent}'s own words, not checked; "
         "[Not verified] = no independent source; [Unavailable] = could not be determined.")
     add("")
-    add("## Session")
-    add(f"- Source: {provider} on this Mac, captured by the Prompt Relay hooks [{CONFIRMED}]")
+    add("## Source, host and project")
+    host = HOST_TITLES.get((source or {}).get("host", "unknown"), "Unknown")
+    add(f"- Source: {provider} · {host} · This Mac, captured by the Prompt Relay hooks [{CONFIRMED}]")
     if source:
-        add("- Host: " + source.get("host", "unknown"))
+        add(f"- Host: {host}" + ("" if host != "Unknown" else " (not recorded by the hook configuration)")
+            + f" [{CONFIRMED if host != 'Unknown' else UNAVAILABLE}]")
         add("- Native session: " + source.get("native_session_id", "unknown"))
         add("- Native turn: " + (turn.last_event.native_turn_id or "unknown"))
-    add(f"- Project: {session.project_name} [{CONFIRMED if session.project_dir else UNAVAILABLE}]")
+    else:
+        add(f"- Host: Unknown (older Claude Code hooks do not record it) [{UNAVAILABLE}]")
+    add(f"- Project: {project_name or session.project_name} [{CONFIRMED if session.project_dir else UNAVAILABLE}]")
+    if project_name and session.project_dir and project_name != session.project_name:
+        add(f"- Working folder: {_relative(session.project_dir, project_root) or session.project_name} inside the project [{CONFIRMED}]")
     add(f"- Session ID: {session.session_id or UNAVAILABLE} [{CONFIRMED if session.session_id else UNAVAILABLE}]")
     add(f"- Turn: {turn.index} of {len(session.turns)}")
     when = final.received_at if final else (turn.last_event.received_at if turn.last_event else "")
@@ -360,13 +393,13 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
         add(f"- [{UNAVAILABLE}] {git.reason}")
     add("")
 
-    add("## Not checked")
+    add("## Not checked (provenance and verification limits)")
     add(f"- {agent}'s claims of success, passing tests or completed work: [{NOT_VERIFIED}]. Compare them with the "
         f"observed commands above; Prompt Relay does not interpret {agent}'s text.")
     add(f"- CI: no source is connected [{UNAVAILABLE}]")
     add(f"- Completion signal: {provider} Stop hook event, which only means {agent} stopped responding [{CONFIRMED}]")
     add("")
-    add("## Request for review")
+    add("## Request for independent review")
     add("Please review this result independently. Check whether the response actually fulfils the original "
         f"request, compare {agent}'s claims with the observed commands, point out unsupported claims, risks and "
         f"missing verification, and propose the next concrete step or follow-up prompt for {provider}.")

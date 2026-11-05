@@ -117,7 +117,7 @@ final class LongReportIntegrationTests: XCTestCase {
         await model.copySelectedContext()
         let pack = try XCTUnwrap(board.string(forType: .string))
         XCTAssertTrue(pack.hasPrefix("# Copy with Context:"))
-        XCTAssertTrue(pack.contains("- Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]"))
+        XCTAssertTrue(pack.contains("- Source: Claude Code · Unknown · This Mac, captured by the Prompt Relay hooks [Confirmed locally]"))
         let packed = try XCTUnwrap(ReviewPackReader.response(in: pack), "the pack has one response section")
         XCTAssertEqual(Data(packed.utf8), Data(report.utf8), "the response read back from the pack is the original, byte for byte")
         XCTAssertEqual(pack.components(separatedBy: report).count - 1, 1, "the report appears once")

@@ -78,3 +78,39 @@ def earlier_user_prompt(turns: List, index: int) -> Optional[tuple]:
         if p is not None and is_user(classify(p.text)):
             return t.index, p
     return None
+
+
+# Phase 9.3: a short request that only continues earlier work ("продолжи где
+# остановился", "continue"). Its text stays the turn's request, verbatim; the
+# latest earlier substantive request of the same session is offered beside
+# it as labelled context, never in its place.
+CONTINUATION_MAX_CHARS = 120
+_CONTINUATION = re.compile(
+    r"^\s*(?:please\s+|пожалуйста[,\s]+|ну\s+)?"
+    r"(?:продолж(?:и|ай|им|ите|айте|ить|аем)|дальше|далее|давай\s+дальше|continue|go\s+on|keep\s+going|carry\s+on|resume|proceed)"
+    r"(?![\w-])",
+    re.IGNORECASE)
+
+
+def is_continuation(text: Optional[str]) -> bool:
+    if not text:
+        return False
+    rest = _WRAPPER.sub("", strip_harness(text)).strip()
+    return 0 < len(rest) <= CONTINUATION_MAX_CHARS and _CONTINUATION.match(rest) is not None
+
+
+def continued_prompt(turns: List, index: int) -> Optional[tuple]:
+    """For a short continuation request at turn ``index``: (turn index, prompt)
+    of the latest earlier request in the same session that is neither a
+    continuation nor automated; None otherwise."""
+    if index < 2 or index > len(turns):
+        return None
+    current = turns[index - 1].prompt
+    if current is None or not is_continuation(current.text):
+        return None
+    for t in reversed(turns[: index - 1]):
+        p: Optional[Event] = t.prompt
+        if p is None or not p.text or classify(p.text) == AUTOMATED or is_continuation(p.text):
+            continue
+        return t.index, p
+    return None

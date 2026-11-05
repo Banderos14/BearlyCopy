@@ -58,8 +58,11 @@ public final class AppModel {
 
     // MARK: Ready answer (notch indicator, notifications)
 
-    /// The newest answer Claude Code finished in any captured project, from
-    /// the sessions' `last_turn` (the Core's correlation, not re-derived).
+    /// The newest answer any connected agent (Claude Code, Codex) finished in
+    /// any captured project, from the sessions' `last_turn` (the Core's
+    /// correlation, not re-derived). Phase 9.3: `at` is when the final
+    /// response was stored (completion), not the session's latest activity,
+    /// and `projectPath` is the logical project (Git root, enabled project).
     public struct ReadyAnswer: Equatable, Sendable {
         public let sessionKey: String
         public let projectPath: String?
@@ -67,6 +70,9 @@ public final class AppModel {
         public let turnIndex: Int
         public let status: TurnStatus
         public let at: String
+        public var provider: AgentProvider = .claudeCode
+        /// "Codex · Xcode · This Mac"; the host stays Unknown unless recorded.
+        public var sourceLabel: String = "Claude Code · Unknown · This Mac"
     }
 
     public private(set) var readyAnswer: ReadyAnswer?
@@ -91,6 +97,24 @@ public final class AppModel {
     /// another project, session or answer; on again once they pick the newest
     /// one or every surface is closed.
     public private(set) var followsLatest = true
+    /// Phase 9.3, Behavior → "Stay on the session I choose". Off (default):
+    /// Quick Peek follows the newest answer of any agent; a pick only holds
+    /// while the island is open. On: a pick pins its session (Phase 5 R7)
+    /// and newer answers elsewhere wait behind "New in …". Existing users
+    /// with a saved pin are migrated to On, so their pin is kept, never
+    /// silently changed; Settings shows it and offers Follow Latest.
+    public var staysOnChosenSession = false {
+        didSet {
+            guard staysOnChosenSession != oldValue else { return }
+            stateDefaults?.set(staysOnChosenSession, forKey: Self.staysKey)
+            if staysOnChosenSession {
+                if selectedSessionKey != nil { pinSelection() }
+            } else if sessionPinned {
+                unpinSession()
+            }
+        }
+    }
+    static let staysKey = "behavior.staysOnChosenSession"
     private var lastFollowedAt: String?
     /// The user chose this project/session (Project → Session → Turn). A new
     /// answer in another session never replaces it: it shows as
@@ -101,7 +125,10 @@ public final class AppModel {
     /// The newest answer finished in a session other than the pinned one,
     /// until the user opens it or dismisses the chip.
     public var newAnswerElsewhere: ReadyAnswer? {
-        guard sessionPinned, let answer = readyAnswer, answer.sessionKey != selectedSessionKey,
+        // Pinned, reading another report while the island is open, or holding
+        // an unfinished file transfer (Phase 9.3).
+        guard holdsSelection, let answer = readyAnswer,
+              answer.sessionKey != selectedSessionKey || selectedImportID != nil,
               answer.at != elsewhereAcknowledgedAt else { return nil }
         if let seen = pinnedAt, !Self.isNewer(answer.at, than: seen) { return nil }
         return answer
@@ -148,7 +175,16 @@ public final class AppModel {
         imports = reportStore?.imports() ?? []
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
         pinned = Self.decode([ReportRef].self, stateDefaults?.data(forKey: Self.pinsKey)) ?? []
-        if let saved = Self.decode(SavedSelection.self, stateDefaults?.data(forKey: Self.selectionKey)) {
+        let saved = Self.decode(SavedSelection.self, stateDefaults?.data(forKey: Self.selectionKey))
+        if let explicit = stateDefaults?.object(forKey: Self.staysKey) as? Bool {
+            staysOnChosenSession = explicit
+        } else {
+            // Migration (Phase 9.3): before this setting every pick pinned.
+            // A saved pin keeps that behaviour; nothing saved: Follow Latest.
+            staysOnChosenSession = saved != nil
+            if let defaults = stateDefaults, saved != nil { defaults.set(true, forKey: Self.staysKey) }
+        }
+        if let saved, staysOnChosenSession {
             selectedProjectPath = saved.projectPath
             selectedSessionKey = saved.sessionKey
             pinnedAt = saved.pinnedAt
@@ -177,9 +213,12 @@ public final class AppModel {
         }
     }
 
-    /// Pins the current project and session (a manual pick).
+    /// Pins the current project and session (a manual pick), when the user
+    /// chose "Stay on the session I choose". Otherwise the pick only holds
+    /// while a surface is open; `pinnedAt` still marks what is "new" since.
     private func pinSelection() {
         pinnedAt = readyAnswer?.at ?? pinnedAt
+        guard staysOnChosenSession else { return }
         if sessionPinned { saveSelection() } else { sessionPinned = true }
     }
 
@@ -335,6 +374,14 @@ public final class AppModel {
         if visibleSurfaces == 0 {
             stopPolling()
             followsLatest = true   // nobody is browsing: the next answer may take over
+            // Phase 9.3, Follow Latest: the next Quick Peek opens on the newest
+            // answer again — unless the user pinned, or a hand-off of the
+            // report shown is unfinished (it must still be there on return).
+            if !staysOnChosenSession, !sessionPinned, handoffStep == nil, isOffLatest, let answer = readyAnswer {
+                lastFollowedAt = answer.at
+                select(answer)
+                Task { await loadSessions() }
+            }
         }
     }
 
@@ -414,13 +461,21 @@ public final class AppModel {
         projects = projects.reloading
         do {
             let result = try await core.projects()
+            rawProjects = result.data.projects
             // Projects with history first (newest activity), then enabled ones without history.
-            let list = result.data.projects.sorted { a, b in
+            let list = Self.logicalProjects(result.data.projects).sorted { a, b in
                 let da = Wording.date(a.lastEventAt) ?? .distantPast, db = Wording.date(b.lastEventAt) ?? .distantPast
                 if da != db { return da > db }
                 return Wording.projectName(a) < Wording.projectName(b)
             }
             projects = .loaded(list)
+            // A saved folder (for example `<repo>/macos`) now belongs to its
+            // logical project: keep the pick, under its new row.
+            if let saved = selectedProjectPath, !list.contains(where: { $0.path == saved }),
+               let owner = list.first(where: { $0.memberPaths.contains(saved) })?.path {
+                selectedProjectPath = owner
+                if sessionPinned { saveSelection() }
+            }
             if selectedProjectPath == nil || !list.contains(where: { $0.path == selectedProjectPath }) {
                 selectedProjectPath = list.first(where: { $0.sessionCount > 0 })?.path ?? list.first?.path
             }
@@ -441,7 +496,9 @@ public final class AppModel {
         do {
             let result = try await core.sessions(project: project)
             guard project == selectedProjectPath else { return }  // selection changed meanwhile
-            let list = result.data.sessions
+            // The Core matches folders by prefix; a nested project of its own
+            // (another enabled folder or repository) is not this one.
+            let list = result.data.sessions.filter { projectPath(for: $0).map { $0 == project } ?? true }
             sessions = .loaded(list)
             if selectedSessionKey == nil || !list.contains(where: { $0.sessionKey == selectedSessionKey }) {
                 selectedSessionKey = list.first?.sessionKey
@@ -521,9 +578,12 @@ public final class AppModel {
         // At launch and for each newer answer: select it, unless the user is
         // looking at something else right now.
         // A pinned session is followed only within itself: an answer from
-        // another session waits behind the "New in …" chip.
-        let sameProvider = selectedSession == nil || allSessions.first(where: { $0.sessionKey == answer.sessionKey })?.provider == selectedSession?.provider
-        if followsLatest, sameProvider, lastFollowedAt != at, !sessionPinned || answer.sessionKey == selectedSessionKey {
+        // another session waits behind the "New in …" chip. Phase 9.3: the
+        // provider does not matter — a Claude Code answer after a Codex one
+        // (or the reverse) becomes Latest the same way.
+        // An unfinished hand-off of the report shown keeps it (Phase 9.3).
+        if followsLatest, handoffStep == nil || currentRef == ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex),
+           lastFollowedAt != at, !sessionPinned || answer.sessionKey == selectedSessionKey {
             lastFollowedAt = at
             select(answer)
         }
@@ -550,15 +610,13 @@ public final class AppModel {
             guard let last = session.lastTurn, let lastAt = session.lastEventAt else { continue }
             var candidate: ReadyAnswer?
             if finished(last.status) {
-                candidate = ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
-                                        projectName: Wording.projectName(session.project), turnIndex: last.index,
-                                        status: last.status, at: lastAt)
+                // Completion time when the Core reports it (Phase 9.3); a later
+                // tool event of the same session does not make it "newer".
+                candidate = readyAnswer(session, turn: last.index, status: last.status, at: last.answeredAt ?? lastAt)
             } else if last.index > 1,
                       let turn = await cachedTurns(session).last(where: { finished($0.status) && $0.finalResponse != nil }),
                       let at = turn.finalResponse?.receivedAt {
-                candidate = ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
-                                        projectName: Wording.projectName(session.project), turnIndex: turn.index,
-                                        status: turn.status, at: at)
+                candidate = readyAnswer(session, turn: turn.index, status: turn.status, at: at)
             }
             if let candidate {
                 answers.append(candidate)
@@ -567,14 +625,24 @@ public final class AppModel {
                 if let baseline = lastSeenAt, Self.isNewer(lastAt, than: baseline), candidate.turnIndex > 1 {
                     for turn in await cachedTurns(session) where turn.index < candidate.turnIndex && finished(turn.status) {
                         guard let at = turn.finalResponse?.receivedAt, Self.isNewer(at, than: baseline) else { continue }
-                        answers.append(ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
-                                                   projectName: Wording.projectName(session.project), turnIndex: turn.index,
-                                                   status: turn.status, at: at))
+                        answers.append(readyAnswer(session, turn: turn.index, status: turn.status, at: at))
                     }
                 }
             }
         }
-        return answers.sorted { Self.isNewer($0.at, than: $1.at) }
+        // Newest completion first; equal times keep a stable order (no flicker).
+        return answers.sorted {
+            if $0.at != $1.at { return Self.isNewer($0.at, than: $1.at) }
+            return ($0.sessionKey, $0.turnIndex) < ($1.sessionKey, $1.turnIndex)
+        }
+    }
+
+    private func readyAnswer(_ session: SessionSummary, turn: Int, status: TurnStatus, at: String) -> ReadyAnswer {
+        let path = projectPath(for: session) ?? session.project.path
+        let name = (projects.value ?? []).first { $0.path == path && path != nil }.map(Wording.projectName)
+            ?? session.logicalProject?.name ?? Wording.projectName(session.project)
+        return ReadyAnswer(sessionKey: session.sessionKey, projectPath: path, projectName: name, turnIndex: turn,
+                           status: status, at: at, provider: session.provider, sourceLabel: session.sourceLabel)
     }
 
     static func isNewer(_ a: String, than b: String) -> Bool {
@@ -595,6 +663,9 @@ public final class AppModel {
         /// when its turns are loaded, otherwise false; whether background
         /// work was still running when it stopped.
         case ready(sessions: Int, automated: Bool, backgroundPending: Bool)
+        /// Phase 9.3: capture cannot be read (the Core failed): a warning,
+        /// never the green "answer available" dot.
+        case attention
     }
 
     /// A waiting prompt older than this is not shown as work (an interrupted
@@ -602,6 +673,7 @@ public final class AppModel {
     static let workingWindow: TimeInterval = 20 * 60
 
     public var readyIndicator: ReadyIndicator {
+        if projects.error != nil, projects.value == nil { return .attention }
         let unseen = unseenAnswers
         if let answer = unseen.first {
             let turns = answer.sessionKey == selectedSessionKey ? turns.value : turnCache[answer.sessionKey]?.turns
@@ -668,7 +740,47 @@ public final class AppModel {
         sessionPinned = false
         pinnedAt = nil
         followsLatest = true
+        lastFollowedAt = nil   // the current Latest is shown at once
         refresh()
+    }
+
+    /// Phase 9.3: what keeps the shown report from following Latest: a pin,
+    /// browsing while a surface is open, an import, or an unfinished
+    /// hand-off of this report (Persistent Handoff must not be taken away).
+    public var holdsSelection: Bool {
+        sessionPinned || !followsLatest || selectedImportID != nil || handoffStep != nil
+    }
+
+    /// Phase 9.3: the selection is not the newest answer (pinned or browsing).
+    public var isOffLatest: Bool {
+        guard let answer = readyAnswer else { return false }
+        return selectedImportID != nil || answer.sessionKey != selectedSessionKey || answer.turnIndex != selectedTurnIndex
+    }
+
+    /// "Jump to Latest": open the newest answer of any agent. With "Stay on
+    /// the session I choose" on, its session becomes the pinned one (the
+    /// user chose it); otherwise Prompt Relay follows Latest again.
+    public func jumpToLatest() {
+        guard let answer = readyAnswer else { return }
+        elsewhereAcknowledgedAt = answer.at
+        followsLatest = true
+        lastFollowedAt = answer.at
+        select(answer)
+        pinnedAt = answer.at
+        if staysOnChosenSession { pinSelection() }
+        route = .home
+        Task {
+            await loadSessions()
+            if let shown = detail.value, shown.session.sessionKey == answer.sessionKey,
+               shown.turn.index == answer.turnIndex { acknowledgeReadyAnswer() }
+        }
+    }
+
+    /// Settings → Follow Latest: turn pinning off and show the newest answer.
+    public func followLatestNow() {
+        staysOnChosenSession = false
+        if sessionPinned { unpinSession() }
+        jumpToLatest()
     }
 
     /// Points the selection at `answer` without loading (the caller loads).
@@ -857,20 +969,63 @@ public final class AppModel {
     /// The newest unseen answer belongs to this project (or a folder inside it).
     public func hasNewAnswer(inProject path: String?) -> Bool {
         guard let path else { return false }
-        return unseenAnswers.contains { answer in
-            answer.projectPath.map { Self.path($0, isInside: path) } ?? false
-        }
+        return newAnswerCount(inProject: path) > 0
+    }
+
+    /// Unseen answers whose logical project is `path` (Project and Session).
+    public func newAnswerCount(inProject path: String?) -> Int {
+        guard let path else { return 0 }
+        return unseenAnswers.filter { $0.projectPath == path }.count
     }
 
     static func path(_ path: String, isInside root: String) -> Bool {
         path == root || path.hasPrefix(root.hasSuffix("/") ? root : root + "/")
     }
 
-    /// The enabled project (exact, or the longest enabled root) a session's folder belongs to.
+    /// The listed project a folder belongs to: exact, a logical project
+    /// that merged this folder (Phase 9.3), else the longest listed root.
     func projectPath(containing path: String?) -> String? {
         guard let path else { return nil }
-        let paths = (projects.value ?? []).compactMap(\.path)
-        return paths.first { $0 == path } ?? paths.filter { Self.path(path, isInside: $0) }.max { $0.count < $1.count }
+        let list = projects.value ?? []
+        let paths = list.compactMap(\.path)
+        if paths.contains(path) { return path }
+        if let owner = list.first(where: { $0.memberPaths.contains(path) })?.path { return owner }
+        return paths.filter { Self.path(path, isInside: $0) }.max { $0.count < $1.count }
+    }
+
+    /// The logical project a session belongs to (Phase 9.3): the Core's
+    /// `logical_project` when listed, else as before by its folder.
+    func projectPath(for session: SessionSummary) -> String? {
+        if let logical = session.logicalProject?.path, (projects.value ?? []).contains(where: { $0.path == logical }) {
+            return logical
+        }
+        return projectPath(containing: session.project.path)
+    }
+
+    /// Phase 9.3: one row per logical project. Folders the Core reports
+    /// separately (`<repo>` and `<repo>/macos`) merge when their
+    /// `logical_project` is the same; different repositories never merge.
+    /// Raw rows stay in `rawProjects` (Settings → Capture).
+    static func logicalProjects(_ raw: [ProjectInfo]) -> [ProjectInfo] {
+        var order: [String] = []
+        var groups: [String: [ProjectInfo]] = [:]
+        var unknown: [ProjectInfo] = []
+        for p in raw {
+            guard let key = p.logicalProject?.path ?? p.path else { unknown.append(p); continue }
+            if groups[key] == nil { order.append(key) }
+            groups[key, default: []].append(p)
+        }
+        let merged = order.map { key -> ProjectInfo in
+            let members = groups[key] ?? []
+            let own = members.first { $0.path == key }
+            let last = members.compactMap(\.lastEventAt).max { a, b in AppModel.isNewer(b, than: a) }
+            return ProjectInfo(path: key, name: members.first?.logicalProject?.name ?? own?.name ?? (key as NSString).lastPathComponent,
+                               captureEnabled: members.contains { $0.captureEnabled },
+                               explicitlyEnabled: own?.explicitlyEnabled ?? false,
+                               sessionCount: members.reduce(0) { $0 + $1.sessionCount }, lastEventAt: last,
+                               logicalProject: members.first?.logicalProject, memberPaths: members.compactMap(\.path))
+        }
+        return merged + unknown
     }
 
     // MARK: All sessions (All Responses, Recent)
@@ -888,23 +1043,49 @@ public final class AppModel {
     }
     public func sourceLabel(for ref: ReportRef) -> String {
         switch ref {
-        case .imported(let id): return "Imported · " + (imports.first { $0.id == id }?.assistantTitle ?? "Unknown")
+        case .imported(let id): return "Imported by you · " + (imports.first { $0.id == id }?.assistantTitle ?? "Unknown")
         case .local(let key, _): return allSessions.first { $0.sessionKey == key }?.sourceLabel ?? "Unknown"
         }
     }
 
 
     /// Sessions grouped by project for All Responses, projects by recent activity.
+    /// Phase 9.3: grouped by logical project; within a project the newest
+    /// activity first (a finished answer moves its session up).
     public var sessionsByProject: [(project: String, name: String, sessions: [SessionSummary])] {
         var groups: [String: [SessionSummary]] = [:]
         var names: [String: String] = [:]
         for session in allSessions where providerFilter == nil || session.provider == providerFilter {
-            let key = projectPath(containing: session.project.path) ?? session.project.path ?? "?"
+            let key = projectPath(for: session) ?? session.logicalProject?.path ?? session.project.path ?? "?"
             groups[key, default: []].append(session)
-            names[key] = (projects.value ?? []).first { $0.path == key }.map(Wording.projectName) ?? Wording.projectName(session.project)
+            names[key] = (projects.value ?? []).first { $0.path == key }.map(Wording.projectName)
+                ?? session.logicalProject?.name ?? Wording.projectName(session.project)
         }
-        return groups.map { (project: $0.key, name: names[$0.key] ?? $0.key, sessions: $0.value) }
-            .sorted { (Wording.date($0.sessions.first?.lastEventAt) ?? .distantPast) > (Wording.date($1.sessions.first?.lastEventAt) ?? .distantPast) }
+        func activity(_ s: SessionSummary) -> Date {
+            [Wording.date(s.lastTurn?.answeredAt), Wording.date(s.lastEventAt)].compactMap { $0 }.max() ?? .distantPast
+        }
+        return groups.map { key, list in
+            (project: key, name: names[key] ?? key, sessions: list.sorted {
+                let a = activity($0), b = activity($1)
+                return a != b ? a > b : $0.sessionKey < $1.sessionKey
+            })
+        }
+        .sorted { a, b in
+            let da = a.sessions.first.map(activity) ?? .distantPast, db = b.sessions.first.map(activity) ?? .distantPast
+            return da != db ? da > db : a.name < b.name
+        }
+    }
+
+    /// Phase 9.3: what a session row says about its state. Stop means the
+    /// agent stopped, not that the task succeeded; `0 answers` is never shown
+    /// as finished.
+    public enum SessionState: Equatable, Sendable { case working, answered, noAnswer, failed }
+    public func sessionState(_ session: SessionSummary) -> SessionState {
+        if session.running == true { return .working }
+        switch session.lastTurn?.status {
+        case .apiError?: return (session.answeredCount ?? 0) > 0 ? .answered : .failed
+        default: return (session.answeredCount ?? 0) > 0 ? .answered : .noAnswer
+        }
     }
 
     /// Show a session from All Responses: its project and its newest answer
@@ -912,7 +1093,7 @@ public final class AppModel {
     public func focusSession(_ session: SessionSummary) {
         selectedImportID = nil
         guard session.sessionKey != selectedSessionKey else { return }
-        if let path = projectPath(containing: session.project.path), path != selectedProjectPath {
+        if let path = projectPath(for: session), path != selectedProjectPath {
             selectedProjectPath = path
             sessions = .idle
         }
@@ -933,7 +1114,7 @@ public final class AppModel {
         case .local(let key, let turn):
             selectedImportID = nil
             if let session = allSessions.first(where: { $0.sessionKey == key }),
-               let path = projectPath(containing: session.project.path), path != selectedProjectPath {
+               let path = projectPath(for: session), path != selectedProjectPath {
                 selectedProjectPath = path
                 sessions = .idle
             }
@@ -1392,8 +1573,12 @@ public final class AppModel {
     }
     private var memoryAddedProjects: [String] = []
 
+    /// The Core's rows, one per folder (before logical merging): capture
+    /// switches stay per folder.
+    public private(set) var rawProjects: [ProjectInfo] = []
+
     public var projectRows: [ProjectRow] {
-        let core = (projects.value ?? []).compactMap { p -> ProjectRow? in
+        let core = rawProjects.compactMap { p -> ProjectRow? in
             guard let path = p.path else { return nil }
             return ProjectRow(path: path, name: Wording.projectName(p), captureEnabled: p.captureEnabled,
                               explicitlyEnabled: p.explicitlyEnabled, sessionCount: p.sessionCount,

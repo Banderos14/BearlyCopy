@@ -28,6 +28,11 @@
               "index": 1,
               "status": "awaiting_response"
             },
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
             "project": {
               "name": "project-a",
               "path": "__PROJECT_A__"
@@ -88,6 +93,11 @@
           "last_turn": {
             "index": 1,
             "status": "awaiting_response"
+          },
+          "logical_project": {
+            "basis": "enabled_project",
+            "name": "project-a",
+            "path": "__PROJECT_A__"
           },
           "project": {
             "name": "project-a",

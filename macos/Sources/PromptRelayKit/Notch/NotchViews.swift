@@ -272,10 +272,12 @@ struct ReadyIndicatorView: View {
             case .ready(let sessions, let automated, let background):
                 HStack(spacing: 3) {
                     ZStack {
+                        // Phase 9.3: green = an answer with text is available
+                        // (not "task succeeded"); the palette's success tone.
                         if automated {
-                            Circle().strokeBorder(Color.white.opacity(0.85), lineWidth: 1.5)
+                            Circle().strokeBorder(Island.success, lineWidth: 1.5)
                         } else {
-                            Circle().fill(Color.white.opacity(0.92))
+                            Circle().fill(Island.success)
                         }
                         if background {
                             Circle().strokeBorder(Island.warning, lineWidth: 1.2).frame(width: 11, height: 11)
@@ -288,6 +290,13 @@ struct ReadyIndicatorView: View {
                     }
                 }
                 .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
+            case .attention:
+                Image(systemName: "exclamationmark")
+                    .font(.system(size: 8, weight: .heavy))
+                    .foregroundStyle(Island.warning)
+                    .frame(width: 11, height: 11)
+                    .background(Circle().strokeBorder(Island.warning, lineWidth: 1.2))
+                    .transition(.opacity)
             }
         }
         .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.62), value: indicator)
@@ -296,7 +305,8 @@ struct ReadyIndicatorView: View {
     static func label(_ indicator: AppModel.ReadyIndicator) -> String {
         switch indicator {
         case .none: return "Prompt Relay"
-        case .working(let n): return "Prompt Relay: Claude is working" + (n > 1 ? " in \(n) sessions" : "")
+        case .working(let n): return "Prompt Relay: an agent is working" + (n > 1 ? " in \(n) sessions" : "")
+        case .attention: return "Prompt Relay: capture needs attention. Open Settings → Advanced."
         case .ready(let n, let automated, let background):
             return "Prompt Relay: " + (automated ? "an answer to a turn Claude Code started itself" : "a new answer")
                 + (background ? ", background work was still running" : "")

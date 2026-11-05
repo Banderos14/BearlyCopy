@@ -27,9 +27,18 @@ public struct FullTask: Equatable, Sendable {
     /// False when only the Core's short preview is at hand.
     public let complete: Bool
     /// Where it came from and what is missing, in plain words.
-    public let notes: [String]
+    public var notes: [String]
     /// For an automatic turn: the user's request before it (a preview).
     public let earlierRequest: String?
+    /// Phase 9.3: the request only continues earlier work; the earlier
+    /// substantive request of this session (turn, verbatim text or preview).
+    public var continued: (turn: Int, text: String)? = nil
+
+    public static func == (a: FullTask, b: FullTask) -> Bool {
+        a.origin == b.origin && a.original == b.original && a.display == b.display && a.complete == b.complete
+            && a.notes == b.notes && a.earlierRequest == b.earlierRequest
+            && a.continued?.turn == b.continued?.turn && a.continued?.text == b.continued?.text
+    }
 
     /// Copy Original Task copies only a request the user wrote or supplied.
     public var canCopy: Bool { original != nil && origin != .automated }
@@ -39,7 +48,7 @@ public struct FullTask: Equatable, Sendable {
     ///   - request: the turn's request as the list returned it (`preview`).
     ///   - fullText: `request.text` from `show`, when loaded for this turn.
     public static func local(request: TextRef?, fullText: String?, requestOrigin: RequestOrigin?, link: LinkQuality,
-                             earlier: EarlierRequest?) -> FullTask {
+                             earlier: EarlierRequest?, continues: EarlierRequest? = nil, continuesText: String? = nil) -> FullTask {
         guard let request else {
             return FullTask(origin: .inferred, original: nil, display: nil, complete: false,
                             notes: ["No request was captured for this answer (\((Wording.link(link) ?? "not captured").lowercased()))."],
@@ -75,9 +84,15 @@ public struct FullTask: Equatable, Sendable {
                          ? "Formatted hides the paste wrapper; Markdown Source shows the stored text exactly."
                          : "Formatted hides the blocks Claude Code added (such as system reminders); Markdown Source shows the stored text exactly.")
         }
-        return FullTask(origin: origin, original: text, display: origin == .automated ? nil : shown.text,
-                        complete: complete, notes: notes,
-                        earlierRequest: origin == .automated ? earlier.map { $0.displayPreview ?? Wording.requestForDisplay($0.preview).text } : nil)
+        var task = FullTask(origin: origin, original: text, display: origin == .automated ? nil : shown.text,
+                            complete: complete, notes: notes,
+                            earlierRequest: origin == .automated ? earlier.map { $0.displayPreview ?? Wording.requestForDisplay($0.preview).text } : nil)
+        if let continues, origin != .automated {
+            let earlierText = continuesText ?? continues.text ?? continues.displayPreview ?? continues.preview
+            task.continued = (continues.turn, earlierText)
+            task.notes.append("This request is a short continuation. The earlier task of this session (turn \(continues.turn)) is shown for context; it does not replace this request.")
+        }
+        return task
     }
 
     public static func imported(task: String?) -> FullTask {
@@ -106,8 +121,10 @@ extension AppModel {
     public var fullTask: FullTask? {
         if let report = selectedImport { return .imported(task: report.task) }
         guard let turn = selectedTurn else { return nil }
+        let shown = detail.value.flatMap { $0.turn.index == turn.index && $0.session.sessionKey == selectedSessionKey ? $0.turn : nil }
         return .local(request: turn.request, fullText: selectedRequestText, requestOrigin: turn.requestOrigin, link: turn.link,
-                      earlier: turn.earlierUserRequest)
+                      earlier: turn.earlierUserRequest, continues: shown?.continuesRequest ?? turn.continuesRequest,
+                      continuesText: shown?.continuesRequest?.text)
     }
 
     static func taskToken(_ ref: ReportRef?) -> String { "task|\(ref?.key ?? "-")" }

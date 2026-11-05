@@ -23,6 +23,7 @@
           },
           "last_event_at": "2026-01-01T00:00:02.000000Z",
           "last_turn": {
+            "answered_at": "2026-01-01T00:00:02.000000Z",
             "index": 3,
             "status": "stop_received"
           },
@@ -111,8 +112,14 @@
           },
           "last_event_at": "2026-01-01T00:00:02.000000Z",
           "last_turn": {
+            "answered_at": "2026-01-01T00:00:02.000000Z",
             "index": 3,
             "status": "stop_received"
+          },
+          "logical_project": {
+            "basis": "enabled_project",
+            "name": "project-a",
+            "path": "__PROJECT_A__"
           },
           "project": {
             "name": "project-a",

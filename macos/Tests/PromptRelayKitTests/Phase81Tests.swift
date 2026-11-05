@@ -216,6 +216,7 @@ struct Phase81ReadyTests {
         core.sessionsByProject["/a"] = [first]
         core.turnsBySession["a"] = [turn(1)]
         let model = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        model.staysOnChosenSession = true   // Phase 9.3: pinning is explicit
         await model.refreshNow()
         model.open(.local(sessionKey: "a", turn: 1))
         #expect(model.sessionPinned)

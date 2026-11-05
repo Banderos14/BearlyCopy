@@ -531,6 +531,12 @@ struct TaskCard: View {
                 }
             case .linked(let text), .inferred(let text), .supplied(let text), .unknownSource(let text):
                 body(text: text.trimmingCharacters(in: .whitespacesAndNewlines))
+                if let continued = facts.model.selectedTurn?.continuesRequest, facts.model.selectedImport == nil {
+                    Text("Continues turn \(continued.turn): \(continued.displayPreview ?? Wording.requestForDisplay(continued.preview).text)")
+                        .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1).truncationMode(.tail)
+                        .accessibilityLabel("This request continues the task of turn \(continued.turn)")
+                        .islandHelp("A short continuation. View Full Task shows the earlier task of this session for context.")
+                }
             case .unavailable(let why):
                 Text(why.isEmpty ? "Unavailable" : "Unavailable: \(why)").font(.system(size: 12)).foregroundStyle(Island.tertiary)
             }
@@ -1856,6 +1862,11 @@ struct TaskReaderView: View {
                     if let earlier = task.earlierRequest {
                         Text("Your request before it (first characters): \(earlier)").font(.system(size: 11))
                             .foregroundStyle(Island.secondary).lineLimit(2)
+                    }
+                    if let continued = task.continued {
+                        Text("Earlier task (turn \(continued.turn), this session): \(Wording.requestForDisplay(continued.text).text)")
+                            .font(.system(size: 11)).foregroundStyle(Island.secondary).lineLimit(4).textSelection(.enabled)
+                            .islandFrame("task.continued")
                     }
                 }
                 .islandFrame("task.notes")

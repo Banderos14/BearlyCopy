@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 
 from prompt_relay import __version__, api
 from prompt_relay import config as _config
+from prompt_relay import projects as _projects
 from prompt_relay import export, gitinfo, history, integration, retention, runtime
 from prompt_relay.clipboard import ClipboardError, get_backend
 from prompt_relay.paths import ENV_HOME, data_dir
@@ -204,6 +205,7 @@ def cmd_projects(args: argparse.Namespace) -> int:
     for s in sessions:
         by_path.setdefault(s.project_dir, []).append(s)
     paths = set(by_path) | set(cfg.enabled_projects)
+    resolver = _projects.Resolver(cfg.enabled_projects)
     projects = []
     for path in sorted(paths, key=lambda p: (p is None, p or "")):
         group = by_path.get(path, [])
@@ -214,6 +216,9 @@ def cmd_projects(args: argparse.Namespace) -> int:
             "session_count": len(group),
             "last_event_at": max((s.last_at for s in group if s.last_at), default=None),
         })
+        logical = resolver.resolve(path)
+        if logical:
+            ref["logical_project"] = logical
         projects.append(ref)
     warnings = []
     if cfg.retention_error:
@@ -222,10 +227,18 @@ def cmd_projects(args: argparse.Namespace) -> int:
     return _emit(args, data, warnings)
 
 
+def _resolver() -> "_projects.Resolver":
+    """Logical projects (Phase 9.3). An unusable config binds nothing."""
+    cfg = _config.load(data_dir())
+    return _projects.Resolver([] if cfg.error else cfg.enabled_projects)
+
+
 def cmd_sessions(args: argparse.Namespace) -> int:
     sessions = history.filter_sessions(history.load_all(_store()), project=args.project)
     if _json(args):
-        return _emit(args, {"project_filter": args.project, "sessions": [api.session_summary(s) for s in sessions]})
+        resolver = _resolver()
+        return _emit(args, {"project_filter": args.project,
+                            "sessions": [api.session_summary(s, resolver) for s in sessions]})
     if not sessions:
         print("no captured sessions")
         return 0
@@ -243,7 +256,7 @@ def cmd_turns(args: argparse.Namespace) -> int:
         raise CommandError(EXIT_NOTHING, api.NOT_FOUND, "no captured sessions match the selection")
     sess = sessions[0]
     if _json(args):
-        data = {"session": api.session_summary(sess), "turns": [api.turn_object(t, turns=sess.turns) for t in sess.turns]}
+        data = {"session": api.session_summary(sess, _resolver()), "turns": [api.turn_object(t, turns=sess.turns) for t in sess.turns]}
         return _emit(args, data, api.integrity_warnings(sess))
     print(f"session {sess.session_id or sess.key}  project {sess.project_dir or '-'}")
     for t in sess.turns:
@@ -307,7 +320,10 @@ def _context(args: argparse.Namespace):
     git = gitinfo.collect(sess.project_dir)
     exported_at = _now()
     detail = getattr(args, "detail", None) or export.FULL
-    return sess, turn, warnings, git, exported_at, export.render_context(sess, turn, git, exported_at, detail)
+    logical = _resolver().resolve(sess.project_dir)
+    root = logical["path"] if logical else None
+    return sess, turn, warnings, git, exported_at, export.render_context(sess, turn, git, exported_at, detail,
+                                                                         project_root=root)
 
 
 def cmd_context(args: argparse.Namespace) -> int:

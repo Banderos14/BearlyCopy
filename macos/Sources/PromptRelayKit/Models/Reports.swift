@@ -91,6 +91,9 @@ public enum AttachmentSource: String, Codable, Sendable {
     case clipboard
     case agentResult
     case agentObserved
+    /// Phase 9.3: named in the answer, inside the project, and changed during
+    /// this turn (local file time). Not proof the agent created it.
+    case namedVerified
     public var label: String {
         switch self {
         case .you: return "you"
@@ -99,6 +102,7 @@ public enum AttachmentSource: String, Codable, Sendable {
         case .clipboard: return "clipboard"
         case .agentResult: return "observed result"
         case .agentObserved: return "observed file"
+        case .namedVerified: return "named · changed this turn"
         }
     }
 }

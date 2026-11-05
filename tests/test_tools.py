@@ -212,8 +212,9 @@ class ContextDetailTests(IsolatedTestCase):
         self.assertIn(show["final_response"]["text"], standard, "the response is never shortened")
         if show["request"] and show["request"].get("text"):
             self.assertIn(show["request"]["text"], standard)
-        for section in ("## Session", "## Claude final response", "## Observed during this turn", "## Files Claude changed",
-                        "## Git state", "## Not checked", "## Request for review"):
+        for section in ("## Source, host and project", "## Claude final response", "## Observed during this turn",
+                        "## Files Claude changed", "## Git state", "## Not checked (provenance and verification limits)",
+                        "## Request for independent review"):
             self.assertIn(section, standard)
 
     def test_standard_says_what_it_left_out_and_keeps_failures(self):

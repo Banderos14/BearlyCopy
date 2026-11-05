@@ -18,7 +18,7 @@ public enum AgentHost: String, Codable, CaseIterable, Sendable {
         switch self {
         case .claudeDesktop: return "Claude Desktop"
         case .xcode: return "Xcode"
-        case .terminal: return "CLI"
+        case .terminal: return "Terminal"
         case .vscode: return "VS Code"
         case .other: return "Other"
         case .unknown: return "Unknown"

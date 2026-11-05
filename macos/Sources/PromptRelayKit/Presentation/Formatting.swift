@@ -61,7 +61,8 @@ public enum Wording {
 
     /// "2 min ago · 3 answers · captured from 14:02"
     public static func sessionMeta(_ session: SessionSummary) -> String {
-        var parts = ["this Mac", relative(session.lastEventAt)]
+        // Provider and host are on the line above (sourceLabel).
+        var parts = [relative(session.lastTurn?.answeredAt ?? session.lastEventAt)]
         let answers = session.answeredCount ?? session.turnCount
         parts.append(answers == 1 ? "1 answer" : "\(answers) answers")
         return parts.joined(separator: " · ")
@@ -86,9 +87,12 @@ public enum Wording {
         return f
     }()
 
+    /// Timestamps without fractional seconds (older imports, other tools).
+    private static let wholeSeconds = ISO8601DateFormatter()
+
     public static func date(_ iso: String?) -> Date? {
         guard let iso else { return nil }
-        return parser.date(from: iso)
+        return parser.date(from: iso) ?? wholeSeconds.date(from: iso)
     }
 
     public static func relative(_ iso: String?, now: Date = Date()) -> String {

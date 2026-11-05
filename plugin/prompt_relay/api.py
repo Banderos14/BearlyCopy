@@ -97,8 +97,9 @@ def session_running(s: Session, now: Optional[float] = None) -> bool:
     return last is not None and (time.time() if now is None else now) - last < ACTIVE_GRACE_S
 
 
-def session_summary(s: Session) -> Dict[str, Any]:
+def session_summary(s: Session, resolver: Optional[Any] = None) -> Dict[str, Any]:
     last = s.turns[-1] if s.turns else None
+    logical = resolver.resolve(s.project_dir) if resolver is not None else None
     claude_title = next((ev.session_title for ev in reversed(s.events) if ev.session_title), None)
     first = next((t.prompt for t in s.turns if t.prompt is not None and t.prompt.text), None)
     # A session started by another one opens with Claude Code's own text, not
@@ -113,12 +114,19 @@ def session_summary(s: Session) -> Dict[str, Any]:
         "session_id": s.session_id,
         "session_key": s.key,
         "project": project_ref(s.project_dir),
+        **({"logical_project": logical} if logical else {}),
         "first_event_at": s.first_at or None,
         "last_event_at": s.last_at or None,
         "event_count": len(s.events),
         "turn_count": len(s.turns),
         "cwds": list(s.cwds),
-        "last_turn": None if last is None else {"index": last.index, "status": last.status},
+        # answered_at (Phase 9.3): when the turn's final response was stored,
+        # so "latest" means latest completed answer, not latest activity.
+        "last_turn": None if last is None else {
+            "index": last.index, "status": last.status,
+            **({"answered_at": last.final_response.received_at}
+               if last.final_response is not None and last.final_response.received_at else {}),
+        },
         "integrity": {
             "corrupt_lines": s.corrupt_lines,
             "unsupported_lines": s.unsupported_lines,
@@ -168,6 +176,7 @@ def turn_object(t: c.Turn, full: bool = False, turns: Optional[List[c.Turn]] = N
         # user | user_pasted | automated | unknown (origin.py); null without a request.
         "request_origin": ("unknown" if t.prompt.source and t.prompt.source.get("provider") == "codex" else origin.classify(t.prompt.text)) if t.prompt is not None else None,
         "earlier_user_request": _earlier(t, turns, full),
+        **_continues(t, turns, full),
         "final_response": _text_ref(final, full) if final is not None else None,
         "response_event_count": len(t.responses),
         "candidate_request_turns": list(t.candidate_turns),
@@ -177,6 +186,14 @@ def turn_object(t: c.Turn, full: bool = False, turns: Optional[List[c.Turn]] = N
         "observed": tools.observed_counts(t),
         **({"observed_detail": tools.observed_detail(t)} if full else {}),
     }
+
+
+def _continues(t: c.Turn, turns: Optional[List[c.Turn]], full: bool) -> Dict[str, Any]:
+    """Phase 9.3: ``continues_request`` for a short continuation prompt."""
+    if turns is None:
+        return {}
+    found = origin.continued_prompt(turns, t.index)
+    return {} if found is None else {"continues_request": {"turn": found[0], **_request_ref(found[1], full)}}
 
 
 def _earlier(t: c.Turn, turns: Optional[List[c.Turn]], full: bool) -> Optional[Dict[str, Any]]:

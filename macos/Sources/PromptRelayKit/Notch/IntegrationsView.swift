@@ -41,10 +41,6 @@ struct IntegrationsView: View {
                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
                 Hairline()
                 VStack(alignment: .leading, spacing: 6) {
-                    Toggle("Auto-select result attachments", isOn: Binding(
-                        get: { model.autoSelectResultAttachments }, set: { model.autoSelectResultAttachments = $0 }))
-                    Text("Automatically prepare available result files for sharing. You can remove any attachment.")
-                        .font(.system(size: 11)).foregroundStyle(Island.tertiary)
                     Button("Test Connection") {
                         Task {
                             xcodeConfiguration = .inspect(at: CodexHookConfiguration.xcodeURL)

@@ -13,6 +13,11 @@
             "capture_enabled": true,
             "explicitly_enabled": true,
             "last_event_at": null,
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
             "name": "project-a",
             "path": "__PROJECT_A__",
             "session_count": 0
@@ -21,6 +26,11 @@
             "capture_enabled": true,
             "explicitly_enabled": true,
             "last_event_at": null,
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
             "name": "project-b",
             "path": "__PROJECT_B__",
             "session_count": 0

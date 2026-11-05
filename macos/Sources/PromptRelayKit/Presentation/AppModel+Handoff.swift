@@ -13,7 +13,7 @@ extension AppModel {
 
     public var currentSourceLabel: String {
         if let imported = selectedImport {
-            return "Imported · " + (imported.assistantTitle ?? "Unknown") + " · " + (imported.host?.title ?? "Unknown")
+            return "Imported by you · " + (imported.assistantTitle ?? "Unknown") + " · " + (imported.host?.title ?? "Unknown")
         }
         return detail.value?.session.sourceLabel ?? selectedSession?.sourceLabel ?? "Unknown"
     }

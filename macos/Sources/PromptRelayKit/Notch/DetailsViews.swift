@@ -1123,7 +1123,19 @@ struct SessionSwitcherView: View {
         let current = browsing ?? model.selectedProjectPath ?? groups.first?.project
         let height = presentation.listHeight(chrome: 50)
         VStack(spacing: 8) {
-            ProviderFilterPicker(model: model)
+            HStack(spacing: 8) {
+                ProviderFilterPicker(model: model)
+                if model.isOffLatest, let latest = model.readyAnswer {
+                    Button { model.jumpToLatest() } label: {
+                        HStack(spacing: 4) {
+                            Circle().fill(Island.success).frame(width: 6, height: 6)
+                            Text("Jump to Latest").lineLimit(1)
+                        }
+                    }
+                    .buttonStyle(IslandPillStyle(prominent: false))
+                    .islandHelp("Open the newest answer: \(latest.sourceLabel), \(latest.projectName)")
+                }
+            }
         HStack(alignment: .top, spacing: 10) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -1132,7 +1144,11 @@ struct SessionSwitcherView: View {
                             HStack(spacing: 6) {
                                 Text(group.name).font(.system(size: 12.5, weight: .semibold)).lineLimit(1).truncationMode(.middle)
                                 Spacer(minLength: 2)
-                                if model.hasNewAnswer(inProject: group.project) { Circle().fill(Island.accent).frame(width: 6, height: 6) }
+                                let fresh = model.newAnswerCount(inProject: group.project)
+                                if fresh > 0 {
+                                    Text("\(fresh) new").font(.system(size: 10, weight: .medium)).foregroundStyle(Island.success)
+                                        .accessibilityLabel("\(fresh) new answers")
+                                }
                                 Text("\(group.sessions.count)").font(.system(size: 11)).foregroundStyle(Island.tertiary)
                             }
                             .foregroundStyle(Island.primary)
@@ -1167,7 +1183,8 @@ struct SessionSwitcherView: View {
                             Button { model.open(report.ref) } label: {
                                 SessionRowLabel(title: report.task.map { Wording.requestForDisplay($0).text } ?? "Imported report",
                                                 meta: "Imported by you · \(Wording.relative(report.importedAt))",
-                                                chip: nil, selected: model.selectedImportID == report.id, subtitle: nil)
+                                                chip: nil, selected: model.selectedImportID == report.id,
+                                                subtitle: "\(report.assistantTitle ?? "AI") · \(report.host?.title ?? "Unknown") · pasted, not captured")
                             }
                             .buttonStyle(.plain)
                         }
@@ -1175,9 +1192,10 @@ struct SessionSwitcherView: View {
                         ForEach(group.sessions) { session in
                             Button { model.focusSession(session); model.route = .home } label: {
                                 SessionRowLabel(title: Wording.sessionTitle(session), meta: Wording.sessionMeta(session),
-                                                chip: session.running == true ? ("working", Island.warning) : ("stopped", Island.tertiary),
+                                                chip: Self.chip(model.sessionState(session)),
                                                 selected: session.sessionKey == model.selectedSessionKey && model.selectedImport == nil,
-                                                subtitle: session.sourceLabel)
+                                                subtitle: session.sourceLabel,
+                                                latest: model.readyAnswer?.sessionKey == session.sessionKey)
                             }
                             .buttonStyle(.plain)
                             .islandHelp("Open the newest answer of this session")
@@ -1195,6 +1213,17 @@ struct SessionSwitcherView: View {
         }
         .islandPadding(presentation)
     }
+
+    /// Phase 9.3: running, answered, or stopped without an answer — `0
+    /// answers` never looks finished; "answered" says nothing about success.
+    static func chip(_ state: AppModel.SessionState) -> (String, Color) {
+        switch state {
+        case .working: return ("working", Island.warning)
+        case .answered: return ("answered", Island.secondary)
+        case .noAnswer: return ("no answer", Island.tertiary)
+        case .failed: return ("API error", Island.error)
+        }
+    }
 }
 
 struct SessionRowLabel: View {
@@ -1203,6 +1232,8 @@ struct SessionRowLabel: View {
     let chip: (String, Color)?
     let selected: Bool
     let subtitle: String?
+    /// Phase 9.3: this session holds the newest answer of any agent.
+    var latest: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -1210,6 +1241,10 @@ struct SessionRowLabel: View {
                 if selected { Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(Island.accent) }
                 Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(Island.primary).lineLimit(1)
                 Spacer(minLength: 4)
+                if latest {
+                    Text("Latest").font(.system(size: 10, weight: .semibold)).foregroundStyle(Island.success)
+                        .padding(.horizontal, 6).frame(height: 16).background(Capsule().fill(Island.cardRaised))
+                }
                 if let chip {
                     Text(chip.0).font(.system(size: 10, weight: .medium)).foregroundStyle(chip.1)
                         .padding(.horizontal, 6).frame(height: 16).background(Capsule().fill(Island.cardRaised))

@@ -150,6 +150,8 @@ final class FollowLatestTests: XCTestCase {
     func testNewAnswerIsFollowedUnlessTheUserBrowsesElsewhere() async throws {
         let c = core()
         let m = AppModel(core: c, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil)
+        // Phase 9.3: pinning is the explicit "Stay on the session I choose" mode.
+        m.staysOnChosenSession = true
         await m.refreshNow()
 
         // A new answer in /busy: followed (nobody picked anything).
@@ -209,6 +211,7 @@ final class FollowLatestTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "pr-pin-\(UUID().uuidString)"))
         let c = core()
         let first = AppModel(core: c, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        first.staysOnChosenSession = true
         await first.refreshNow()
         first.selectProject("/done")
         try await waitUntil { first.selectedSessionKey != nil }

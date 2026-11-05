@@ -13,6 +13,11 @@
             "capture_enabled": true,
             "explicitly_enabled": true,
             "last_event_at": "2026-01-01T00:00:03.000000Z",
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
             "name": "project-a",
             "path": "__PROJECT_A__",
             "session_count": 1
@@ -21,6 +26,11 @@
             "capture_enabled": true,
             "explicitly_enabled": true,
             "last_event_at": "2026-01-01T00:00:02.000000Z",
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
             "name": "project-b",
             "path": "__PROJECT_B__",
             "session_count": 1
@@ -62,8 +72,14 @@
             },
             "last_event_at": "2026-01-01T00:00:03.000000Z",
             "last_turn": {
+              "answered_at": "2026-01-01T00:00:03.000000Z",
               "index": 1,
               "status": "stop_received"
+            },
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-a",
+              "path": "__PROJECT_A__"
             },
             "project": {
               "name": "project-a",
@@ -90,8 +106,14 @@
             },
             "last_event_at": "2026-01-01T00:00:02.000000Z",
             "last_turn": {
+              "answered_at": "2026-01-01T00:00:02.000000Z",
               "index": 1,
               "status": "stop_received"
+            },
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-b",
+              "path": "__PROJECT_B__"
             },
             "project": {
               "name": "project-b",
@@ -138,8 +160,14 @@
             },
             "last_event_at": "2026-01-01T00:00:02.000000Z",
             "last_turn": {
+              "answered_at": "2026-01-01T00:00:02.000000Z",
               "index": 1,
               "status": "stop_received"
+            },
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-b",
+              "path": "__PROJECT_B__"
             },
             "project": {
               "name": "project-b",
@@ -184,6 +212,7 @@
           },
           "last_event_at": "2026-01-01T00:00:03.000000Z",
           "last_turn": {
+            "answered_at": "2026-01-01T00:00:03.000000Z",
             "index": 1,
             "status": "stop_received"
           },
@@ -280,6 +309,7 @@
           },
           "last_event_at": "2026-01-01T00:00:02.000000Z",
           "last_turn": {
+            "answered_at": "2026-01-01T00:00:02.000000Z",
             "index": 1,
             "status": "stop_received"
           },

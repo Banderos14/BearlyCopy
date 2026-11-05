@@ -42,9 +42,9 @@ public enum ReviewPack {
             + "[\(reported)] = the agent's own words, not checked; [\(notVerified)] = no independent source; "
             + "[\(unavailable)] = could not be determined.")
         add()
-        add("## Session")
-        add("- Source: \(report.assistantTitle ?? "an AI assistant (not specified)"), imported manually: the user pasted this report "
-            + "into Prompt Relay. Prompt Relay did not observe the session. [\(userSupplied)]")
+        add("## Source, host and project")
+        add("- Source: \(report.assistantTitle ?? "an AI assistant (not specified)"), imported manually (imported by you): the user pasted this report "
+            + "into Prompt Relay. Prompt Relay did not observe the session; it was not captured automatically. [\(userSupplied)]")
         if report.isHistoricalPackage {
             add("- The pasted text is itself an earlier Prompt Relay package. Its labels (such as “\(confirmed)”) describe "
                 + "the machine and the time it was made; here the whole text counts as pasted by the user. [\(userSupplied)]")
@@ -86,7 +86,8 @@ public enum ReviewPack {
                               materials: [ReportMaterial] = [], names: [String: String] = [:]) -> String {
         guard !attachments.isEmpty || !materials.isEmpty else { return coreText }
         let section = attachmentsSection(attachments, materials: materials, names: names) + "\n\n"
-        if let anchor = coreText.range(of: "\n## Not checked\n", options: .backwards) {
+        if let anchor = coreText.range(of: "\n## Not checked (provenance and verification limits)\n", options: .backwards)
+            ?? coreText.range(of: "\n## Not checked\n", options: .backwards) {
             var text = coreText
             text.insert(contentsOf: section, at: text.index(after: anchor.lowerBound))
             return text
@@ -113,6 +114,7 @@ public enum ReviewPack {
         case .clipboard: return "from your clipboard [\(userSupplied)]"
         case .agentObserved: return "observed file; added by you [\(confirmed)]"
         case .agentResult: return "observed result file, snapshotted locally [\(confirmed)]"
+        case .namedVerified: return "named in the agent's answer; file changed during this turn (local time), snapshotted locally; who wrote it is not observed [\(reported)]"
         }
     }
 
@@ -199,15 +201,15 @@ public enum ReviewPack {
             lines.append(attachmentsSection(attachments, materials: materials, names: names))
             lines.append("")
         }
-        lines.append("## Not checked")
-        lines.append("- Claude's claims of success, passing tests or completed work: [\(notVerified)]. "
-                     + "Nothing about this cloud session was observed by Prompt Relay.")
+        lines.append("## Not checked (provenance and verification limits)")
+        lines.append("- The AI's claims of success, passing tests or completed work: [\(notVerified)]. "
+                     + "Nothing about this session was observed by Prompt Relay; the text was imported by you.")
         lines.append("- CI: no source is connected [\(unavailable)]")
         lines.append("- Completion signal: none observed by Prompt Relay; the report was imported by the user [\(unavailable)]")
         lines.append("")
-        lines.append("## Request for review")
+        lines.append("## Request for independent review")
         lines.append("Please review this result independently. Check whether the response actually fulfils the original "
                      + "request, point out unsupported claims, risks and missing verification, and propose the next concrete "
-                     + "step or follow-up prompt for Claude Code.")
+                     + "step or follow-up prompt for the AI that produced it.")
     }
 }

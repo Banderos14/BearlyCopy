@@ -24,14 +24,9 @@ struct IslandSettingsView: View {
                     rowButton("Projects", detail: "Which folders Prompt Relay captures agent answers from. New folders start off.", value: captureSummary) {
                         model.navigate(to: .capture)
                     }
-                    Hairline()
-                    toggle("Stay on the session I choose",
-                           detail: "On: a new answer in another session shows as “New in …” and never replaces the one you are reading. Off: Prompt Relay follows the newest answer.",
-                           isOn: Binding(get: { model.sessionPinned }, set: { on in
-                               if on { model.selectSession(model.selectedSessionKey) } else { model.unpinSession() }
-                           }))
                 }
                 IntegrationsView(model: model)
+                behavior
                 section("Clipboard") {
                     toggle("Keep the last 5 copied images",
                            detail: "Screenshots and image files you copy anywhere, kept on this Mac for 24 hours to copy or drag later. Text from other apps is never read; password-manager items are skipped. Turning it off deletes them.",
@@ -132,6 +127,40 @@ struct IslandSettingsView: View {
                     }
                 }
         }
+    }
+
+    /// Phase 9.3: Follow Latest vs Stay on Session, stated plainly, with
+    /// the current pin and a one-click way back to Latest.
+    private var behavior: some View {
+        section("Behavior") {
+            toggle("Stay on the session I choose",
+                   detail: "Off (Follow Latest): Quick Peek shows the newest finished answer from Claude Code or Codex; a session you open holds only while the island is open. On: the session you pick stays; newer answers wait as “New in …”.",
+                   isOn: Binding(get: { model.staysOnChosenSession }, set: { model.staysOnChosenSession = $0 }))
+            if model.sessionPinned {
+                Hairline()
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Pinned: \(pinnedTitle)").font(.system(size: 12.5)).foregroundStyle(Island.primary).lineLimit(1)
+                        Text(model.newAnswerElsewhere.map { "A newer answer is waiting: \($0.sourceLabel), \($0.projectName)." }
+                             ?? "New answers from other sessions do not replace it.")
+                            .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Button("Follow Latest") { model.followLatestNow() }.buttonStyle(IslandPillStyle(prominent: true))
+                }
+                .padding(.horizontal, 12).padding(.vertical, 7)
+            }
+            Hairline()
+            toggle("Auto-select result attachments",
+                   detail: "Result files an agent verifiably wrote and named in its answer (Markdown, PDF, images, text) are prepared for Copy with Context. Files it only mentions are offered, not chosen. You can uncheck any.",
+                   isOn: Binding(get: { model.autoSelectResultAttachments }, set: { model.autoSelectResultAttachments = $0 }))
+        }
+    }
+
+    private var pinnedTitle: String {
+        let project = model.selectedProject.map(Wording.projectName) ?? "—"
+        let session = model.selectedSession.map(Wording.sessionTitle) ?? "session"
+        return "\(project) · \(session)"
     }
 
     private var privacy: some View {
