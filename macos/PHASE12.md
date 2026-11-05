@@ -359,3 +359,91 @@ live checks — then #5 must wait for it.
 Code-side acceptance: yes — all automated checks green on `88a1e73`, the
 Inbox defect fixed. Formal closure needs the owner: consent to install, the
 version decision, and manual checks 1–9 (10 belongs to Phase 11).
+
+## 17. Version 0.4.0 and code closure (2026-11-05)
+
+`7db1e4b`: Core `__version__`, `plugin.json`, Xcode `MARKETING_VERSION` /
+`CURRENT_PROJECT_VERSION` → **0.4.0**; JSON `api_version` stays **1**
+(additive changes only). A new test pins Core = plugin.json = Xcode and
+API v1. Texts like "needs the plugin 0.3.0 or later" are minimum versions
+for tool hooks and stay. `docs/PLUGIN.md` §1b, `docs/JSON_API.md` updated.
+
+| Check at `7db1e4b` | Result |
+|---|---|
+| Targeted: version test, `test_api` (schema + golden), `test_plugin`, macOS integrations; Swift Phase11 (About/version), CoreIntegration, Decoding, CoreClient, Phase 12 | all pass |
+| `scripts/check.sh` Python 3.14.0 / 3.9.6 | 213 + 15 each, OK (1 skipped, Linux-only) |
+| `swift test` | XCTest 271, 16 skipped, 0 failures; Swift Testing 90/90; prefs files 11,331 → 11,331 |
+| `xcodebuild` Debug / Release | BUILD SUCCEEDED; Release 0.4.0, `7db1e4b`, not dirty |
+| `claude plugin validate plugin` and `.` (read-only) | passed |
+| `install-local.sh --dry-run` | 0.4.0 = Core 0.4.0, Core digest `5719914b…` = checkout, commit = HEAD; backup target and rollback shown; nothing changed |
+
+### The active Claude Code plugin (read-only findings)
+
+- Installed: `prompt-relay@prompt-relay` **0.3.0**, user scope, from
+  `~/.claude/plugins/cache/prompt-relay/prompt-relay/0.3.0` (0.2.0 also
+  cached). That copy has no `profiles.py`: **today's hook does not record
+  profiles** — live check #5 needs the update.
+- Marketplace `prompt-relay`: source type `directory`, path = this checkout.
+  Claude Code 2.1.268.
+- `~/.claude/settings.json`: no Prompt Relay hooks (plugin only); other
+  tools' hooks exist (counts only, not read further).
+
+**Safe update (owner runs it, after consent; not done):**
+1. Keep the checkout clean at a committed 0.4.0 — the directory marketplace
+   copies the working tree as it is at that moment.
+2. `claude plugin marketplace update prompt-relay`
+3. `claude plugin update prompt-relay@prompt-relay` → new cache folder
+   `…/0.4.0`; `installed_plugins.json` points to it.
+4. Restart Claude Code sessions (Desktop: quit and reopen) — running
+   sessions keep the old hook until then.
+5. Check: `bin/prompt-relay doctor` (plugin record 0.4.0, launcher found);
+   after one answer, `bin/prompt-relay sessions --json` shows `profile`.
+
+What it touches: only `~/.claude/plugins/` (marketplace timestamp,
+`installed_plugins.json`, the new cache folder). It does not change
+`settings.json`, other tools' hooks, trust records or credentials; Codex
+hooks are separate and unaffected. Same hook events and matchers as 0.3.0.
+Undo: the 0.3.0 cache folder stays; to go back, check out a 0.3.0 commit and
+run steps 2–3, or `claude plugin uninstall prompt-relay@prompt-relay` and
+install again. History in the data dir is never touched; records without a
+profile simply read as Unassigned.
+
+### App install (prepared, not done)
+
+`scripts/install-local.sh` (builds the current HEAD, verifies, asks, backs
+up `~/Applications/Prompt Relay.app` 0.3.0 `3287bc3` to
+`~/Library/Application Support/PromptRelay-AppBackups/`, quits only the
+Release copy after a second yes, installs, opens, checks one copy). The
+Debug build from Xcode is never quit. Undo: `scripts/install-local.sh
+--rollback`.
+
+### Short manual checks (after app install + plugin update)
+
+1. **Inbox** (⌘I): answers from two agents → open one; only it loses the dot.
+   A background task left unfinished > 2 h appears under *Attention*, without
+   a dot. Copy with Context from an Inbox row → paste → that agent's request
+   and answer.
+2. **By Agent**: Project and Session → *By Agent* menu → rows per profile;
+   a second Claude profile (`CLAUDE_CONFIG_DIR=~/.claude-work claude`, plugin
+   installed there) appears as its own row; name it in Settings → Agents &
+   Projects → Agent profiles.
+3. **Go To** (⌘K): type part of a title, ↑↓, ↩; Esc returns.
+4. **Keys**: ⌘I, ⌘J, ⌘[, Esc in the island; Settings → General → Keyboard
+   shortcuts → turn on Go To, press ⌃⌥⌘K in another app; turn off → nothing.
+5. **Open at Login**: Settings → General → On → System Settings → Login
+   Items lists it (approve if asked) → log out/in → one copy → Off removes it.
+6. **In-memory screenshot** (Phase 11): Answer → paperclip → Capture Final
+   Window → pick a window (consent dialog first time) → Copy Files → paste
+   into a browser chat → quit/reopen: the image is gone, no PNG in the data
+   dir.
+
+### Status
+
+- **Verified (this Mac, automated):** everything in the tables above and
+  §16; layout of the new screens offscreen.
+- **Not verified:** anything in the live GUI; the real plugin update and a
+  hook run with a non-default `CLAUDE_CONFIG_DIR`; global hot keys against
+  other apps; login item; snapshot picker (Phase 11).
+- **Phase 12 is closed on the code side** at `7db1e4b` (+ this report).
+  Formal closure waits for the owner's install, plugin update and the six
+  checks. Phase 13 not started.

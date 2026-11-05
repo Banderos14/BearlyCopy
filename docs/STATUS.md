@@ -1,5 +1,14 @@
 # Status
 
+## 2026-11-05 — Version 0.4.0; Phase 12 closed on the code side
+
+Core, plugin and Xcode at 0.4.0 (`7db1e4b`), JSON API still v1. Python
+213+15 (3.14, 3.9), XCTest 271/0 failures, Swift Testing 90/90, Xcode
+Debug/Release, plugin manifests valid, install dry-run verified (0.4.0 =
+Core, digest, commit). Claude Code still runs plugin 0.3.0 (no profile
+capture until the owner runs `claude plugin update`); app not installed.
+Both wait for the owner's consent: [Phase 12 §17](../macos/PHASE12.md).
+
 ## 2026-11-05 — Phase 12 acceptance pass
 
 Inbox now separates Finished from **Needs attention** (completion unknown:
