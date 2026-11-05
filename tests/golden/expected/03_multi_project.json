@@ -82,6 +82,13 @@
               "name": "project-a",
               "path": "__PROJECT_A__"
             },
+            "profile": {
+              "basis": "default_home",
+              "default": true,
+              "hint": "~/.claude",
+              "id": "cc-default",
+              "provider": "claude_code"
+            },
             "project": {
               "name": "project-a",
               "path": "__PROJECT_A__"
@@ -116,6 +123,13 @@
               "basis": "enabled_project",
               "name": "project-b",
               "path": "__PROJECT_B__"
+            },
+            "profile": {
+              "basis": "default_home",
+              "default": true,
+              "hint": "~/.claude",
+              "id": "cc-default",
+              "provider": "claude_code"
             },
             "project": {
               "name": "project-b",
@@ -172,6 +186,13 @@
               "name": "project-b",
               "path": "__PROJECT_B__"
             },
+            "profile": {
+              "basis": "default_home",
+              "default": true,
+              "hint": "~/.claude",
+              "id": "cc-default",
+              "provider": "claude_code"
+            },
             "project": {
               "name": "project-b",
               "path": "__PROJECT_B__"
@@ -219,6 +240,13 @@
             "completion": "answer",
             "index": 1,
             "status": "stop_received"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
           },
           "project": {
             "name": "project-a",
@@ -318,6 +346,13 @@
             "completion": "answer",
             "index": 1,
             "status": "stop_received"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
           },
           "project": {
             "name": "project-b",

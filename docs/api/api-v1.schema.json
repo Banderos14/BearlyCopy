@@ -58,7 +58,8 @@
     "delete": "plan_data",
     "prune": "plan_data",
     "retention": "retention_data",
-    "doctor": "doctor_data"
+    "doctor": "doctor_data",
+    "results": "results_data"
   },
   "$defs": {
     "timestamp": {
@@ -320,6 +321,13 @@
         },
         "logical_project": {
           "$ref": "#/$defs/logical_project"
+        },
+        "profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "native_session_id": {
+          "type": "string",
+          "description": "Phase 12: the agent's own session id when the stored key was scoped to a non-default profile."
         }
       }
     },
@@ -1877,6 +1885,252 @@
         "basis": {
           "type": "string",
           "description": "enabled_project | git_root | workspace | directory (Phase 9.3); readers accept unknown values"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "provider",
+        "basis",
+        "default"
+      ],
+      "description": "Phase 12: the local agent profile = the agent's configuration home (CLAUDE_CONFIG_DIR / CODEX_HOME). Never an account; credentials are never read. Absent for older Claude Code records (Unassigned).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "cc-default | cx-default | cc-<16 hex> | cx-<16 hex>"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string",
+          "description": "config_dir | default_home | installation"
+        },
+        "default": {
+          "type": "boolean"
+        },
+        "hint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "~/<folder> under the home folder, else the last path component; never a user name"
+        }
+      }
+    },
+    "result_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_key",
+        "turn",
+        "answered_at",
+        "status",
+        "completion",
+        "conversation",
+        "project",
+        "request",
+        "response",
+        "observed"
+      ],
+      "properties": {
+        "session_key": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "answered_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "completion": {
+          "type": "string"
+        },
+        "continued_in_turn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "conversation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "session_id"
+          ],
+          "properties": {
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "session_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "source": {
+          "type": "object",
+          "required": [
+            "provider",
+            "host",
+            "capabilities",
+            "capture"
+          ],
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "native_session_id": {
+              "type": "string"
+            },
+            "installation_id": {
+              "type": "string"
+            },
+            "capture": {
+              "type": "string"
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "native_session_id": {
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/project_ref"
+        },
+        "logical_project": {
+          "$ref": "#/$defs/logical_project"
+        },
+        "request": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "turn",
+                "own",
+                "display_preview",
+                "char_count"
+              ],
+              "properties": {
+                "turn": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "own": {
+                  "type": "boolean"
+                },
+                "display_preview": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "char_count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          ]
+        },
+        "response": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preview",
+            "truncated",
+            "char_count"
+          ],
+          "properties": {
+            "preview": {
+              "type": "string"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "char_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "observed": {
+          "$ref": "#/$defs/observed_counts"
+        }
+      }
+    },
+    "results_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_filter",
+        "provider_filter",
+        "profile_filter",
+        "total",
+        "limit",
+        "results"
+      ],
+      "description": "Phase 12: final results of every session, newest answer first.",
+      "properties": {
+        "project_filter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_filter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "profile_filter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/result_summary"
+          }
         }
       }
     }

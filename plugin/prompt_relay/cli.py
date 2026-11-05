@@ -250,6 +250,26 @@ def cmd_sessions(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_results(args: argparse.Namespace) -> int:
+    """Phase 12: final results of every session (the app's Results Inbox),
+    newest first, in one call. Read-only."""
+    limit = args.limit
+    if limit < 1 or limit > api.RESULTS_MAX_LIMIT:
+        raise CommandError(EXIT_USAGE, api.USAGE_ERROR, f"--limit must be between 1 and {api.RESULTS_MAX_LIMIT}")
+    sessions = history.filter_sessions(history.load_all(_store()), project=args.project)
+    data = api.results_data(sessions, _resolver(), limit, args.project, args.provider, args.profile)
+    if _json(args):
+        return _emit(args, data)
+    if not data["results"]:
+        print("no final results")
+        return 0
+    for r in data["results"]:
+        who = (r.get("source") or {}).get("provider", "claude_code") + "/" + (r.get("profile") or {}).get("id", "unassigned")
+        req = (r.get("request") or {}).get("display_preview")
+        print(f"{r['answered_at']}  {who}  {r['session_key']}#{r['turn']}  request: {_preview(req, 40)!s}")
+    return 0
+
+
 def cmd_turns(args: argparse.Namespace) -> int:
     sessions = history.filter_sessions(history.load_all(_store()), session=args.session, project=args.project)
     if not sessions:
@@ -649,6 +669,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project")
     _add_json(p)
     p.set_defaults(func=cmd_sessions)
+    p = sub.add_parser("results", help="list final results of all sessions, newest first (Results Inbox)")
+    p.add_argument("--project")
+    p.add_argument("--provider", choices=["claude_code", "codex"])
+    p.add_argument("--profile", help="profile id (cc-default, cx-…) or 'unassigned'")
+    p.add_argument("--limit", type=int, default=api.RESULTS_DEFAULT_LIMIT)
+    _add_json(p)
+    p.set_defaults(func=cmd_results)
     p = sub.add_parser("turns", help="list turns of a session (latest session by default)")
     p.add_argument("--session")
     p.add_argument("--project")

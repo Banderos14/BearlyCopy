@@ -24,7 +24,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from prompt_relay import correlation as c
-from prompt_relay import export, origin, tools
+from prompt_relay import export, origin, profiles, tools
 from prompt_relay.events import Event
 from prompt_relay.history import Session, display_title, session_title  # noqa: F401 (display_title re-exported)
 from prompt_relay.retention import ACTIVE_GRACE_S
@@ -97,22 +97,58 @@ def session_running(s: Session, now: Optional[float] = None) -> bool:
     return last is not None and (time.time() if now is None else now) - last < ACTIVE_GRACE_S
 
 
-def session_summary(s: Session, resolver: Optional[Any] = None) -> Dict[str, Any]:
-    last = s.turns[-1] if s.turns else None
-    logical = resolver.resolve(s.project_dir) if resolver is not None else None
+def _titles(s: Session) -> tuple:
     claude_title = next((ev.session_title for ev in reversed(s.events) if ev.session_title), None)
     first = next((t.prompt for t in s.turns if t.prompt is not None and t.prompt.text), None)
     # A session started by another one opens with Claude Code's own text, not
     # the user's: its title then says more than that text (Phase 5.11).
     by_user = first is not None and origin.is_user(origin.classify(first.text))
+    return (session_title(s) if by_user or not claude_title else claude_title), claude_title
+
+
+def session_source(s: Session) -> Optional[Dict[str, Any]]:
+    return next((ev.source for ev in s.events if ev.source), None)
+
+
+def session_profile(s: Session, env: Optional[Any] = None) -> Optional[Dict[str, Any]]:
+    """Phase 12: the local profile the session ran under (profiles.py). Older
+    Codex records map through their installation_id; older Claude Code ones
+    have none (the app shows them as Unassigned, never guessed)."""
+    found = next((ev.profile for ev in s.events if ev.profile), None)
+    if found is not None:
+        return found
+    source = session_source(s)
+    if source and source.get("provider") == "codex":
+        return profiles.from_installation(source.get("installation_id"), os.environ if env is None else env)
+    return None
+
+
+def _identity(s: Session) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    source = session_source(s)
+    if source:
+        out["source"] = source
+    profile = session_profile(s)
+    if profile:
+        out["profile"] = profile
+    native = next((ev.native_session_id for ev in s.events if ev.native_session_id), None)
+    if native:
+        out["native_session_id"] = native
+    return out
+
+
+def session_summary(s: Session, resolver: Optional[Any] = None) -> Dict[str, Any]:
+    last = s.turns[-1] if s.turns else None
+    logical = resolver.resolve(s.project_dir) if resolver is not None else None
+    title, claude_title = _titles(s)
     return {
-        "title": session_title(s) if by_user or not claude_title else claude_title,
+        "title": title,
         "claude_code_title": claude_title,
         # Phase 9.4: final answers only; an intermediate Stop is not an answer.
         "answered_count": sum(1 for t in s.turns if t.final_response is not None
                               and completion(t, s.turns)["completion"] in (COMPLETION_ANSWER, COMPLETION_ANSWER_BACKGROUND)),
         "running": session_running(s),
-        **({"source": next(ev.source for ev in s.events if ev.source)} if any(ev.source for ev in s.events) else {}),
+        **_identity(s),
         "session_id": s.session_id,
         "session_key": s.key,
         "project": project_ref(s.project_dir),
@@ -344,3 +380,92 @@ def plan_object(plan, dry_run: bool) -> Dict[str, Any]:
             "bytes_freed": freed,
         },
     }
+
+
+# -- results (Phase 12: Results Inbox) -----------------------------------------
+
+# A turn is a result when it ends a user task with an answer: a plain final
+# answer, or one the user moved on from while work still ran. A Stop that
+# waits for its own background work is listed with that completion (the app
+# shows it only once the wait expired); intermediate Stops never are.
+RESULT_COMPLETIONS = (COMPLETION_ANSWER, COMPLETION_ANSWER_BACKGROUND, COMPLETION_WAITING)
+RESULTS_DEFAULT_LIMIT = 500
+RESULTS_MAX_LIMIT = 10000
+
+
+def _result_request(t: c.Turn, turns: List[c.Turn]) -> Optional[Dict[str, Any]]:
+    """The request a person would name the result by: the turn's own when a
+    person wrote it; for a turn the harness started (a background
+    follow-up), the request that started the work chain, labelled with its
+    turn. Display text only; exports keep the verbatim request."""
+    p = t.prompt
+    own = p is not None and origin.classify(p.text) != origin.AUTOMATED
+    if own:
+        return {"turn": t.index, "own": True, "display_preview": origin.display_preview(p.text, PREVIEW_CHARS),
+                "char_count": len(p.text or "")}
+    chain = _work_chain(t, turns).get("work_chain")
+    start = turns[chain["from_turn"] - 1] if chain else None
+    if start is not None and start.prompt is not None:
+        return {"turn": start.index, "own": False, "display_preview": origin.display_preview(start.prompt.text, PREVIEW_CHARS),
+                "char_count": len(start.prompt.text or "")}
+    found = origin.earlier_user_prompt(turns, t.index)
+    if found is not None:
+        return {"turn": found[0], "own": False, "display_preview": origin.display_preview(found[1].text, PREVIEW_CHARS),
+                "char_count": len(found[1].text or "")}
+    return None
+
+
+def session_results(s: Session, resolver: Optional[Any] = None) -> List[Dict[str, Any]]:
+    """Every final result of one session, oldest first. Reads only this
+    session's turns (invariant 3)."""
+    out: List[Dict[str, Any]] = []
+    title = None
+    identity = None
+    logical = None
+    for t in s.turns:
+        final = t.final_response
+        if final is None:
+            continue
+        info = completion(t, s.turns)
+        if info["completion"] not in RESULT_COMPLETIONS:
+            continue
+        if identity is None:
+            title = _titles(s)[0]
+            identity = _identity(s)
+            logical = resolver.resolve(s.project_dir) if resolver is not None else None
+        text = final.text or ""
+        out.append({
+            "session_key": s.key,
+            "turn": t.index,
+            "answered_at": final.received_at or None,
+            "status": t.status,
+            **info,
+            "conversation": {"title": title, "session_id": s.session_id},
+            **identity,
+            "project": project_ref(s.project_dir),
+            **({"logical_project": logical} if logical else {}),
+            "request": _result_request(t, s.turns),
+            "response": {"preview": text[:PREVIEW_CHARS], "truncated": len(text) > PREVIEW_CHARS,
+                         "char_count": len(text)},
+            "observed": tools.observed_counts(t),
+        })
+    return out
+
+
+def results_data(sessions: List[Session], resolver: Optional[Any], limit: int, project: Optional[str],
+                 provider: Optional[str], profile: Optional[str]) -> Dict[str, Any]:
+    """Final results across sessions, newest answer first; equal times keep a
+    stable order (session key, turn). Hook redelivery never doubles a result:
+    the store drops duplicate events and one turn is one result."""
+    rows: List[Dict[str, Any]] = []
+    for s in sessions:
+        for r in session_results(s, resolver):
+            if provider and (r.get("source") or {}).get("provider", "claude_code") != provider:
+                continue
+            if profile and (r.get("profile") or {}).get("id", "unassigned") != profile:
+                continue
+            rows.append(r)
+    rows.sort(key=lambda r: (r["session_key"], r["turn"]))
+    rows.sort(key=lambda r: r["answered_at"] or "", reverse=True)
+    return {"project_filter": project, "provider_filter": provider, "profile_filter": profile,
+            "total": len(rows), "limit": limit, "results": rows[:limit]}

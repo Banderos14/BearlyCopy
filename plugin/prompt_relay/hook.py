@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple
 
 from prompt_relay import config as _config
+from prompt_relay import profiles as _profiles
 from prompt_relay.events import KIND_BY_EVENT
 from prompt_relay.adapters import normalize, PROVIDERS, HOSTS
 from prompt_relay.paths import data_dir
@@ -43,17 +44,33 @@ def build_record(payload: Dict[str, Any], env: Mapping[str, str], now: float) ->
     if env.get("PROMPT_RELAY_PROVIDER", "claude_code") == "claude_code" and env.get("CLAUDE_CODE_REMOTE"):
         context["claude_code_remote"] = env["CLAUDE_CODE_REMOTE"]
     session_id = payload.get("session_id")
-    return {
+    session_id = session_id if isinstance(session_id, str) and session_id else None
+    record: Dict[str, Any] = {
         "schema": SCHEMA_VERSION,
         "record_id": os.urandom(16).hex(),
         "received_at": _utc_iso(now),
         "received_at_epoch": now,
         "hook_event_name": payload.get("hook_event_name"),
-        "session_id": session_id if isinstance(session_id, str) and session_id else None,
+        "session_id": session_id,
         "fingerprint": fingerprint(payload),
         "context": context,
         "payload": payload,
     }
+    # Phase 12: the local profile (the agent's config home, never an account)
+    # goes into the envelope; the payload stays exactly as received. A
+    # non-default Claude Code home scopes the stored session key, so equal
+    # session ids from two homes never share a history file; the default home
+    # keeps the plain key (existing history is unchanged).
+    provider = env.get("PROMPT_RELAY_PROVIDER", "claude_code")
+    profile = _profiles.from_env(provider, env)
+    if profile is not None:
+        record["agent_profile"] = profile
+        if provider == "claude_code":
+            scoped = _profiles.scoped_session_id(session_id, profile)
+            if scoped != session_id:
+                record["session_id"] = scoped
+                record["native_session_id"] = session_id
+    return record
 
 
 def _event_label(payload: Dict[str, Any]) -> str:

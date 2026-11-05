@@ -28,6 +28,13 @@
             "index": 3,
             "status": "stop_received"
           },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
           "project": {
             "name": "project-a",
             "path": "__PROJECT_A__"
@@ -123,6 +130,13 @@
             "basis": "enabled_project",
             "name": "project-a",
             "path": "__PROJECT_A__"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
           },
           "project": {
             "name": "project-a",

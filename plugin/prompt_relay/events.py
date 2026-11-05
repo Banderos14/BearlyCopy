@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from prompt_relay import profiles as _profiles
+
 # Events the hook handler stores. Everything else is ignored, not persisted.
 KIND_BY_EVENT = {
     "UserPromptSubmit": "prompt",
@@ -59,6 +61,10 @@ class Event:
     session_title: Optional[str] = None
     source: Optional[Dict[str, Any]] = None
     native_turn_id: Optional[str] = None
+    # Phase 12: the local agent profile (profiles.py), allowlisted fields only.
+    profile: Optional[Dict[str, Any]] = None
+    # Phase 12: the agent's own session id when the stored key was scoped.
+    native_session_id: Optional[str] = None
 
     @property
     def tool_name(self) -> Optional[str]:
@@ -107,7 +113,10 @@ def from_record(record: Dict[str, Any]) -> Optional[Event]:
         record_id=str(record.get("record_id", "")),
         received_at=str(record.get("received_at", "")),
         kind=kind,
-        session_id=_nonempty_str(payload.get("session_id")),
+        # Phase 12: a scoped record (non-default Claude Code profile) is read
+        # under its envelope key; the payload keeps the agent's own id.
+        session_id=(_nonempty_str(record.get("session_id")) if _nonempty_str(record.get("native_session_id"))
+                    else _nonempty_str(payload.get("session_id"))),
         prompt_id=_nonempty_str(payload.get("prompt_id")),
         cwd=cwd,
         project_dir=project_dir,
@@ -122,6 +131,8 @@ def from_record(record: Dict[str, Any]) -> Optional[Event]:
         received_at_epoch=_epoch(record.get("received_at_epoch")),
         source=payload.get("source") if isinstance(payload.get("source"), dict) else None,
         native_turn_id=_nonempty_str(payload.get("native_turn_id")),
+        profile=_profiles.valid(record.get("agent_profile")),
+        native_session_id=_nonempty_str(record.get("native_session_id")),
         tool=dict(payload) if kind == "tool" else None,
         session_title=_nonempty_str(payload.get("session_title")) if kind == "prompt" else None,
     )

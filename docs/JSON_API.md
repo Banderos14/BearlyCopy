@@ -68,6 +68,7 @@ fractional digits and a `Z` suffix: `2026-10-29T14:04:18.117766Z`.
 | `delete` | `--session ID\|KEY` or `--all`; `--dry-run`, `--yes`, `--force-active` | `plan_data` |
 | `prune` | `--older-than-days N` (default: the retention setting), `--yes` | `plan_data` |
 | `retention` | `--days N` or `--off` | `retention_data` |
+| `results` | `--project DIR`, `--provider claude_code\|codex`, `--profile ID\|unassigned`, `--limit N` (1–10000, default 500) | `results_data` (Phase 12): final results of every session, newest `answered_at` first (ties: session key, turn); `total` before the limit. A result is a turn with a final response whose `completion` is `answer`, `answer_background_running` or `waiting_background` (the app shows the last only after its wait expired); intermediate Stops never. Each `result_summary`: `session_key`, `turn`, `answered_at`, `status`, `completion`, `conversation{title,session_id}`, `source?`, `profile?`, `native_session_id?`, `project`, `logical_project?`, `request{turn,own,display_preview,char_count}` (for a turn the harness started: the request that began the work chain, `own:false`), `response{preview,truncated,char_count}`, `observed`. Previews only; `show`/`context` give the verbatim texts |
 | `doctor` | `--project DIR` (default: the current directory), `--no-project` | `doctor_data`: `core` (Python, pinned hook interpreter), `storage`, `capture`, `configuration` (plugin install records, settings files: Prompt Relay hooks, **counts** of other hooks, `enabledPlugins` for prompt-relay), `observed` (handler.log by `via` and outcome), `findings[]` (`level`, `code`, `message`), `unverified[]`. Every finding is also in `warnings`. Added in Phase 2B; a compatible addition |
 
 ### Session summary
@@ -99,6 +100,22 @@ stable file key; pass it to `--session` to address any session),
   tests and builds).
 - Session `title`: Claude Code's `session_title` when the first request is not the user's and a
   title exists.
+
+### Phase 12 additions (compatible)
+- Session summary and result: `profile{id,provider,basis,default,hint}` — the local agent
+  profile, i.e. the configuration folder the agent ran with (`CLAUDE_CONFIG_DIR` / `CODEX_HOME`, or
+  the provider's default). `id` is `cc-default` / `cx-default` for the default folder, else the
+  provider prefix and 16 hex digits of SHA-256 over the folder's real path; `basis` is
+  `config_dir`, `default_home` or `installation` (older Codex records, from `installation_id`);
+  `hint` is `~/<folder>` under the home folder, else the last path component — never a user name.
+  **Not an account**: credentials are never read. Absent for Claude Code records written before
+  Phase 12 (the app shows them as Unassigned).
+- `native_session_id`: the agent's own session id when the stored key was scoped. A Claude Code
+  session from a non-default config folder is stored as `<session_id>.<12 hex of the profile>`,
+  so equal ids from two folders never share a history; the default folder keeps the plain id
+  (existing keys unchanged). The hook payload itself is stored verbatim; profile and scoping
+  live in the record envelope (`agent_profile`, `session_id`, `native_session_id`).
+- New command `results` (above).
 
 ### Turn
 | Field | Meaning |
