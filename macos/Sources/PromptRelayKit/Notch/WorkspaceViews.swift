@@ -19,13 +19,17 @@ struct InboxView: View {
                 Picker("Show", selection: Binding(get: { model.inboxFilter }, set: { model.inboxFilter = $0 })) {
                     Text("All").tag(AppModel.InboxFilter.all)
                     Text(model.unreadResultCount > 0 ? "Unread (\(model.unreadResultCount))" : "Unread").tag(AppModel.InboxFilter.unread)
+                    let attention = model.inboxNeedsAttention.count
+                    if attention > 0 || model.inboxFilter == .attention {
+                        Text("Attention (\(attention))").tag(AppModel.InboxFilter.attention)
+                    }
                 }
                 .pickerStyle(.segmented).fixedSize().labelsHidden()
                 .accessibilityLabel("Show all or unread results")
                 ProfileFilterMenu(model: model)
                 Spacer(minLength: 4)
                 if entries.contains(where: model.isUnread) {
-                    Button("Mark All as Read") { model.markInboxRead() }
+                    Button("Mark Read") { model.markInboxRead() }
                         .buttonStyle(IslandPillStyle(prominent: false))
                         .islandHelp("Mark the results listed here as read")
                 }
@@ -48,7 +52,12 @@ struct InboxView: View {
             MessageCard(title: "Results could not be loaded", detail: error.detail, symbol: "exclamationmark.triangle",
                         tint: Island.warning, action: ("Try Again", { Task { await model.loadInbox() } }))
         default:
-            if entries.isEmpty {
+            let attention = model.inboxFilter == .all ? model.inboxNeedsAttention : []
+            if entries.isEmpty && model.inboxFilter == .attention {
+                MessageCard(title: "Nothing needs attention",
+                            detail: "Results whose completion is unknown appear here: the agent stopped while its own work was running and nothing followed.",
+                            symbol: "checkmark.circle", tint: Island.secondary, action: nil)
+            } else if entries.isEmpty && attention.isEmpty {
                 MessageCard(title: model.inboxFilter == .unread ? "Nothing unread" : "No final results yet",
                             detail: model.inboxFilter == .unread
                                 ? "Every result listed has been opened. Switch to All to see them."
@@ -57,7 +66,21 @@ struct InboxView: View {
             } else {
                 BoundedScroll(maxHeight: presentation.listHeight(chrome: 76)) {
                     LazyVStack(alignment: .leading, spacing: 1) {
+                        if model.inboxFilter == .attention {
+                            AttentionNote()
+                        }
                         ForEach(entries) { r in InboxRow(model: model, result: r) }
+                        if !attention.isEmpty {
+                            HStack(spacing: 5) {
+                                Image(systemName: "exclamationmark.triangle").font(.system(size: 10, weight: .semibold))
+                                Text("Needs attention · \(attention.count)").font(.system(size: 11.5, weight: .semibold))
+                            }
+                            .foregroundStyle(Island.warning)
+                            .padding(.horizontal, 9).padding(.top, entries.isEmpty ? 4 : 10).padding(.bottom, 2)
+                            .islandFrame("inbox.attention")
+                            AttentionNote()
+                            ForEach(attention) { r in InboxRow(model: model, result: r) }
+                        }
                         footer(shown: entries.count)
                     }
                     .padding(4)
@@ -88,18 +111,25 @@ struct InboxRow: View {
 
     var body: some View {
         let unread = model.isUnread(result)
+        let attention = AppModel.inboxSection(result) == .needsAttention
         let current = model.currentRef == result.ref
         let files = model.attachments(for: result.ref).count + (result.observed?.filesChanged ?? 0)
         Button { model.openResult(result) } label: {
             HStack(alignment: .top, spacing: 7) {
-                Circle().fill(unread ? Island.success : .clear).frame(width: 6, height: 6).padding(.top, 5)
-                    .accessibilityHidden(true)
+                if attention {
+                    Image(systemName: "questionmark.circle").font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Island.warning).frame(width: 6, height: 12).padding(.top, 2)
+                        .accessibilityHidden(true)
+                } else {
+                    Circle().fill(unread ? Island.success : .clear).frame(width: 6, height: 6).padding(.top, 5)
+                        .accessibilityHidden(true)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(title).font(.system(size: 12, weight: unread ? .semibold : .medium))
-                            .foregroundStyle(Island.primary).lineLimit(1).truncationMode(.tail)
+                            .foregroundStyle(attention ? Island.secondary : Island.primary).lineLimit(1).truncationMode(.tail)
                         Spacer(minLength: 4)
-                        if model.readyAnswer?.sessionKey == result.sessionKey, model.readyAnswer?.turnIndex == result.turn {
+                        if !attention, model.readyAnswer?.sessionKey == result.sessionKey, model.readyAnswer?.turnIndex == result.turn {
                             Text("Latest").font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.success)
                         }
                         Text(Wording.relative(result.answeredAt)).font(.system(size: 11)).foregroundStyle(Island.tertiary)
@@ -123,8 +153,8 @@ struct InboxRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel((unread ? "Unread. " : "") + title + ". " + meta)
-        .islandHelp("Open this result")
+        .accessibilityLabel((attention ? "Completion unknown. " : unread ? "Unread. " : "") + title + ". " + meta)
+        .islandHelp(attention ? "Completion unknown: open to see the last message and what was observed" : "Open this result")
         .contextMenu {
             Button("Open") { model.openResult(result) }
             Button(model.isPinned(result.ref) ? "Unpin" : "Pin") { model.togglePin(result.ref) }
@@ -149,7 +179,7 @@ struct InboxRow: View {
     private var stateTag: String? {
         switch result.completion {
         case .answerBackgroundRunning: return "work was running"
-        case .waitingBackground: return "completion unknown"
+        case .waitingBackground: return "completion unknown · not finished"
         default: return nil
         }
     }
@@ -396,5 +426,14 @@ struct WorkspaceModeMenu: View {
         .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         .accessibilityLabel("Group conversations: \(model.workspaceMode.rawValue)")
         .islandHelp("Group conversations by project or by agent profile")
+    }
+}
+
+/// Why a result is under Needs attention (one line, no blame).
+struct AttentionNote: View {
+    var body: some View {
+        Text("The agent stopped while its own work (tests, builds) was still running, and nothing followed. Its last message is kept; whether the task finished is unknown.")
+            .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 9).padding(.bottom, 4)
     }
 }

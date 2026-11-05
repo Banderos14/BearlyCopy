@@ -177,6 +177,49 @@ import Testing
         #expect(m.inboxEntries.count == 4, "no hidden filter from another screen")
     }
 
+    @Test func completionUnknownIsSeparateFromFinishedResults() async throws {
+        let defaults = MemorySettingsStore()
+        defaults.set("2026-11-01T00:00:00Z", forKey: AppModel.lastSeenKey)
+        let core = fourAgents()
+        // Codex stopped while its tests ran and nothing followed for > 2 h.
+        core.sessionsByProject["/app"] = [Self.session("codex", provider: "codex", host: "xcode", profile: "cx-fedcba9876543210",
+                                                       project: "/app", last: "2026-11-05T12:30:00Z", title: "Build the app",
+                                                       completion: "waiting_background")]
+        core.turnsBySession["codex"] = [turn(1, request: "Build the app", at: "2026-11-05T12:30:00Z", completion: "waiting_background")]
+        let (m, board) = model(core, defaults: defaults)
+        defer { board.releaseGlobally() }
+        await m.refreshNow()
+        m.surfaceAppeared()
+        m.navigate(to: .inbox)
+        try await waitUntil { m.inbox.value != nil }
+        let finished = m.inboxEntries.map(\.sessionKey)
+        #expect(!finished.contains("codex"), "completion unknown is never listed as finished")
+        #expect(m.inboxNeedsAttention.map(\.sessionKey) == ["codex"], "kept, in its own section")
+        if let visuals = ProcessInfo.processInfo.environment["PROMPT_RELAY_VISUALS"] {
+            let island = IslandHost(model: m, maxContentHeight: 448)
+            defer { island.close() }
+            island.presentation.reduceMotion = true
+            island.settle()
+            try island.png("\(visuals)/phase12-inbox-attention-448.png")
+        }
+        let unknown = try #require(m.inboxNeedsAttention.first)
+        #expect(!m.isUnread(unknown), "never counted as a new result")
+        #expect(AppModel.inboxSection(unknown) == .needsAttention)
+        m.inboxFilter = .unread
+        #expect(!m.inboxEntries.contains { $0.sessionKey == "codex" })
+        m.inboxFilter = .all
+        m.markInboxRead()
+        m.inboxFilter = .attention
+        #expect(m.inboxEntries.map(\.sessionKey) == ["codex"])
+        m.switcherQuery = "build"
+        #expect(!m.switcherItems().contains { $0.kind == .result && $0.title == "Build the app" && $0.unread })
+        // Still openable: history and diagnostics are not lost.
+        m.openResult(unknown)
+        try await waitUntil { m.selectedResponseText == "codex#1" }
+        // A wait that has not expired yet is not listed anywhere.
+        #expect(AppModel.inboxSection(unknown, now: Wording.date("2026-11-05T13:00:00Z")!) == nil)
+    }
+
     @Test func readingOneResultLeavesTheOthersUnreadAcrossRestarts() async throws {
         let defaults = MemorySettingsStore()
         defaults.set("2026-11-01T00:00:00Z", forKey: AppModel.lastSeenKey)    // everything here is new

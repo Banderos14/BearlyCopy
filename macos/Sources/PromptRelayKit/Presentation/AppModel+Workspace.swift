@@ -147,15 +147,27 @@ extension AppModel {
         Task { await loadInbox() }
     }
 
-    /// A result the Inbox shows: a final answer, or a background wait that
-    /// expired with no continuation (completion unknown). Never an
-    /// intermediate Stop.
-    nonisolated public static func isInboxResult(_ r: ResultSummary, now: Date = Date()) -> Bool {
+    /// Where a result belongs in the Inbox (nil: not listed at all).
+    /// - finished: a final answer (also one the user moved on from while its
+    ///   work still ran — tagged, but the agent did finish its turn);
+    /// - needsAttention: the agent stopped while its own background work ran
+    ///   and nothing followed within the wait limit — completion unknown. It
+    ///   is kept (history, diagnostics, copy) but never looks finished, never
+    ///   counts as unread and is never Latest.
+    /// Intermediate Stops and turns still waiting are not listed.
+    public enum InboxSection: Equatable, Sendable { case finished, needsAttention }
+
+    nonisolated public static func inboxSection(_ r: ResultSummary, now: Date = Date()) -> InboxSection? {
         switch r.completion {
-        case .answer, .answerBackgroundRunning: return true
-        case .waitingBackground: return waitExpired(r.answeredAt, now: now)
-        default: return false
+        case .answer, .answerBackgroundRunning: return .finished
+        case .waitingBackground: return waitExpired(r.answeredAt, now: now) ? .needsAttention : nil
+        default: return nil
         }
+    }
+
+    /// Finished results only (Go To, unread).
+    nonisolated public static func isInboxResult(_ r: ResultSummary, now: Date = Date()) -> Bool {
+        inboxSection(r, now: now) == .finished
     }
 
     /// Read state of one result. The same rule as the notch and Project and
@@ -170,17 +182,29 @@ extension AppModel {
         return seenAnswers[ref.key] == nil
     }
 
-    /// Inbox rows after the filters, newest first.
-    public var inboxEntries: [ResultSummary] {
+    private func inboxRows(_ section: InboxSection) -> [ResultSummary] {
         let now = Date()
         return (inbox.value ?? []).filter { r in
-            guard Self.isInboxResult(r, now: now) else { return false }
+            guard Self.inboxSection(r, now: now) == section else { return false }
             // Only the Inbox's own, visible filters (never the agent filter
             // of Project and Session or History, which is not shown here).
             if let p = inboxProfile, r.profileKey != p { return false }
-            return inboxFilter == .all || isUnread(r)
+            return true
         }
     }
+
+    /// Finished results (newest first) for All / Unread, or the
+    /// Needs Attention rows for that filter.
+    public var inboxEntries: [ResultSummary] {
+        switch inboxFilter {
+        case .all: return inboxRows(.finished)
+        case .unread: return inboxRows(.finished).filter(isUnread)
+        case .attention: return inboxRows(.needsAttention)
+        }
+    }
+
+    /// Results whose completion is unknown (shown apart, under All too).
+    public var inboxNeedsAttention: [ResultSummary] { inboxRows(.needsAttention) }
 
     /// Unseen final answers of every agent (Inbox tab badge).
     public var unreadResultCount: Int { unseenAnswers.count }

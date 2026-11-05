@@ -1524,7 +1524,7 @@ public final class AppModel {
     public internal(set) var inboxTotal = 0
     public internal(set) var inboxLimit = AppModel.inboxPage
     public static let inboxPage = 300
-    public enum InboxFilter: String, CaseIterable, Sendable { case all = "All", unread = "Unread" }
+    public enum InboxFilter: String, CaseIterable, Sendable { case all = "All", unread = "Unread", attention = "Needs Attention" }
     public var inboxFilter: InboxFilter = .all
     /// Inbox: only this provider · profile (nil: every agent).
     public var inboxProfile: ProfileKey?

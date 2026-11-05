@@ -82,6 +82,18 @@ class ProfileTests(IsolatedTestCase):
         shown = json.loads(self.cli("show", "--session", work["session_key"], "--json").stdout)["data"]["turn"]
         self.assertEqual(shown["final_response"]["text"], "Work answer")
 
+    def test_copy_with_context_of_a_work_profile_result_is_that_result(self) -> None:
+        self.say("same-uuid", "p1", "Fix the login bug", "Personal answer", self.personal_env)
+        self.say("same-uuid", "p1", "Fix the login bug", "Work answer", self.work_env)
+        work = next(r for r in self.results()["results"] if r["profile"]["id"] != "cc-default")
+        doc = json.loads(self.cli("context", "--session", work["session_key"], "--turn", str(work["turn"]), "--json").stdout)
+        self.assertTrue(doc["ok"], doc)
+        self.assertIn("Work answer", doc["data"]["text"])
+        self.assertNotIn("Personal answer", doc["data"]["text"], "never another profile's answer")
+        self.assertEqual(self.cli("copy-context", "--session", work["session_key"], "--turn", "1").returncode, 0)
+        self.assertIn(b"Work answer", self.clip.read_bytes())
+        self.assertNotIn(b"Personal answer", self.clip.read_bytes())
+
     def test_payload_is_stored_verbatim_and_profile_lives_in_the_envelope(self) -> None:
         self.say("sid-1", "p1", "Q", "A", self.work_env)
         key = self.sessions()[0]["session_key"]
