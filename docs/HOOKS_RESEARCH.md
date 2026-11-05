@@ -215,3 +215,14 @@ processes it starts; in Claude Desktop's Code tab it was `claude-desktop`
 reads only the values `claude-desktop`, `cli` and `claude-vscode` as a host;
 anything else is not treated as host evidence. If a hook ever lacks the
 variable, the host stays Unknown.
+
+### Phase 12 (2026-11-05): config folders as profiles — expected, not observed
+`CLAUDE_CONFIG_DIR` (Claude Code's documented settings-folder variable) and
+`CODEX_HOME` (Codex) are read from the hook's environment. Hooks are child
+processes of the agent and inherit its environment; with neither set, the
+documented defaults `~/.claude` / `~/.codex` apply. **Not yet observed on a
+live hook run with a non-default `CLAUDE_CONFIG_DIR`** — record the outcome
+here after the owner's check (Phase 12 report, live checks). Claude Desktop
+does not pass the *shell* environment to hooks (D4); whether it sets its own
+`CLAUDE_CONFIG_DIR` is unknown. Nothing in a payload or a credential file is
+used to identify a profile.

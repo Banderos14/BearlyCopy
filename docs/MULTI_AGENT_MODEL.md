@@ -1,9 +1,12 @@
-# Multi-agent workspace: identity model (Phase 11 proposal)
+# Multi-agent workspace: identity model
 
-Not implemented. This records how Prompt Relay should tell agents apart
-when one person uses several accounts of the same provider (Claude
-Personal / Claude Work, Codex Personal / Codex Work, other local agents),
-so today's data stays compatible.
+**Implemented in Phase 12** (`plugin/prompt_relay/profiles.py`, ADR-023,
+`macos/PHASE12.md`). Proposed in Phase 11; the sections below describe
+what was built. Differences from the proposal: the profile id is
+`cc-default` / `cx-default` for the default folder (no hash), the profile
+lives in the record envelope (the payload stays verbatim), and a
+non-default Claude Code folder scopes the session key so equal native ids
+never share a history.
 
 ## Entities
 
@@ -30,10 +33,10 @@ when the hook is set up:
 
 - Claude Code: `CLAUDE_CONFIG_DIR` (default `~/.claude`). The plugin
   launcher can pass the directory it was installed under; the hook records
-  `profile_home_hash = sha256(realpath(config dir))[:12]`.
+  the profile id (`cc-default`, or `cc-` + 16 hex of SHA-256 over the folder's real path).
 - Codex: `CODEX_HOME` (default `~/.codex`; Xcode uses
   `~/Library/Developer/Xcode/CodingAssistant/codex`). The hook command
-  written by `configure-codex.py` can carry `PROMPT_RELAY_PROFILE=<hash>`.
+  runs inside Codex's environment, so `CODEX_HOME` is read directly (`cx-…`); no extra variable is needed.
 - The user names profiles in Prompt Relay ("Work", "Personal"); the label
   is local UI state, never sent to the agent.
 
@@ -58,9 +61,17 @@ happened in this repo".
 "what did my work Claude do today". Same data, a different grouping in
 Project and Session; Latest stays global unless the user filters.
 
-## Implementation order (future)
+## As built (Phase 12)
 
-1. Core: optional `profile` in `source`, set from an allowlisted env var.
-2. Setup: one row per detected config home (existence checks only).
-3. App: profile chip in the source line; By Agent grouping.
-4. Labels: user-editable names stored in app preferences.
+1. Core: `agent_profile` in the record envelope from `CLAUDE_CONFIG_DIR` /
+   `CODEX_HOME` (relative or empty values = default). Older Codex records
+   map through `installation_id`; older Claude Code records have none
+   (Unassigned).
+2. App: By Project / By Agent in Project and Session (two columns:
+   provider · profile → conversations under project headers); the profile
+   appears in rows only when more than one profile of a provider exists.
+3. Labels: Settings → Agents & Projects → Agent profiles; local only;
+   removing a name keeps all history.
+4. Not built: Setup rows per detected config folder (Setup still checks
+   the default locations only), explicit re-assignment of Unassigned
+   conversations to a profile.

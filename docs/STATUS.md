@@ -1,5 +1,22 @@
 # Status
 
+## 2026-11-05 — Phase 12: multi-agent workspace, Results Inbox, daily workflow
+
+Local agent profiles = the agent's config folder (`CLAUDE_CONFIG_DIR`,
+`CODEX_HOME`), stored in the record envelope (payload verbatim); never an
+account, no credentials read (ADR-023). Equal native ids from two folders
+never share a history; old Claude Code records read as Unassigned, old Codex
+records map by `installation_id`; nothing rewritten. New read-only Core
+command `results`. App: By Project / By Agent, Results Inbox with per-result
+read state, Go To (⌘K), ⌘I / ⌘J, optional global shortcuts (off by default),
+Follow Latest never replaces the answer being read, Open at Login via
+SMAppService (off by default, installed Release only, ADR-024), "What can be
+trusted?" card with the old Evidence sections under Details. Tests and
+offscreen renders only — **nothing verified in the live GUI**; installed app
+not updated; nothing pushed. Details and owner checks:
+[Phase 12](../macos/PHASE12.md). Next agreed stage: owner live checks of
+Phases 11–12; Phase 13 (Universal Handoff) only after approval.
+
 ## 2026-11-05 — Phase 11: installable app, first-run setup, release preparation
 
 `scripts/install-local.sh` builds, verifies (signature, version = Core,

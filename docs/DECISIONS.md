@@ -737,3 +737,56 @@ allowlist, no write tools, no file contents beyond the Context Pack the user
 could copy.
 
 **Consequences.** No new process or protocol surface in the beta.
+
+## ADR-023: Local agent profiles from config folders; one history, several views
+
+**Context.** Phase 12: several Claude Code and Codex set-ups run side by
+side on one Mac (Claude Personal, Claude Work, Codex in Xcode and in
+Terminal). Results must never mix, and the user must see which agent,
+profile, host, project and conversation produced each one.
+
+**Decision.**
+1. A *profile* is the agent's configuration folder: `CLAUDE_CONFIG_DIR`
+   (default `~/.claude`) or `CODEX_HOME` (default `~/.codex`), read from
+   the hook's own environment (`profiles.py`). Its id is `cc-default` /
+   `cx-default` or a prefix plus 16 hex digits of SHA-256 over the real
+   path; only a `~/…` hint is kept. It is **not an account**: no
+   credentials, tokens, `auth.json`, keychain items or e-mails are read, and
+   two accounts used in one folder are indistinguishable (documented in the
+   UI). Names ("Work") are local app labels.
+2. The profile goes into the record envelope (`agent_profile`); the payload
+   stays verbatim (invariant 2). A non-default Claude Code folder scopes the
+   stored session key (`<id>.<12 hex>`), so equal native ids never share a
+   file (invariant 3); the default folder keeps plain keys, so no existing
+   history changes. Codex keys already include `CODEX_HOME`.
+3. Records without a profile are read as they are: Claude Code →
+   Unassigned (never guessed); Codex → the profile its `installation_id`
+   maps to. No migration rewrites any file.
+4. By Project, By Agent, the Results Inbox and the Quick Switcher are views
+   of the same Core data; the Inbox reads one new read-only command,
+   `results`, loaded only while it (or the switcher) is on screen.
+5. Read state stays per result (`answers.seenReports`); the notch keeps its
+   single green dot.
+
+**Consequences.** A Claude Code session that is in progress while the
+plugin is updated *and* runs with a non-default `CLAUDE_CONFIG_DIR` continues
+under a new key (its earlier turns stay in the old conversation). Whether
+Claude Code passes `CLAUDE_CONFIG_DIR` to hooks is expected from its
+documented environment inheritance but **not yet observed live**
+(HOOKS_RESEARCH). If Claude Desktop runs its bundled Claude Code with its own
+folder, those sessions form their own profile, which is correct.
+
+## ADR-024: Open at Login through SMAppService, installed Release copy only
+
+**Context.** Phase 12 asks for optional start at login, no second instance,
+no Xcode dependency.
+
+**Decision.** `SMAppService.mainApp` (system login items), off by default,
+only for the Release bundle at `~/Applications` or `/Applications`; Debug
+builds and copies elsewhere show why the switch is unavailable. Turning it
+off unregisters the same item. A "requires approval" status is shown with a
+button to System Settings → Login Items. No helper app, no LaunchAgent plist.
+
+**Consequences.** Registration was **not exercised live** in Phase 12 (it
+changes the user's login items; needs the owner's consent on the installed
+app). Ad-hoc signed builds may need approval in System Settings.
