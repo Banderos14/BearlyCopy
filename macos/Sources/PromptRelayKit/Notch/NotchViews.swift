@@ -237,7 +237,7 @@ public struct NotchRootView: View {
 
     /// Turns of the selected session that have something to show, newest first.
     static func answerTurns(_ model: AppModel) -> [Int] {
-        model.turnsNewestFirst.filter { $0.finalResponse != nil || $0.status == .apiError }.map(\.index)
+        model.turnsNewestFirst.filter(AppModel.isVisibleAnswer).map(\.index)
     }
 
     /// Positive steps go to older answers, negative to newer ones.
@@ -266,16 +266,12 @@ struct ReadyIndicatorView: View {
                 EmptyView()
             case .waitingBackground:
                 // Phase 9.4: stopped, but its own background work is still
-                // running — the same calm dots in the waiting tone; not ready.
-                HStack(spacing: 2.5) {
-                    ForEach(0..<3, id: \.self) { _ in Circle().fill(Island.warning.opacity(0.55)).frame(width: 3, height: 3) }
-                }
-                .transition(.opacity)
+                // running — the same calm loading dots in the waiting tone.
+                LoadingDots(color: NSColor(Island.warning), reduceMotion: reduceMotion)
+                    .transition(.opacity)
             case .working:
-                HStack(spacing: 2.5) {
-                    ForEach(0..<3, id: \.self) { _ in Circle().fill(Color.white.opacity(0.42)).frame(width: 3, height: 3) }
-                }
-                .transition(.opacity)
+                LoadingDots(color: NSColor(white: 1, alpha: 0.75), reduceMotion: reduceMotion)
+                    .transition(.opacity)
             case .ready(let sessions, let automated, let background):
                 HStack(spacing: 3) {
                     ZStack {
@@ -290,7 +286,7 @@ struct ReadyIndicatorView: View {
                             Circle().strokeBorder(Island.warning, lineWidth: 1.2).frame(width: 11, height: 11)
                         }
                     }
-                    .frame(width: 7, height: 7)
+                    .frame(width: 6, height: 6)   // about a macOS status dot
                     if sessions > 1 {
                         Text("\(sessions)").font(.system(size: 9, weight: .semibold).monospacedDigit())
                             .foregroundStyle(Color.white.opacity(0.8))

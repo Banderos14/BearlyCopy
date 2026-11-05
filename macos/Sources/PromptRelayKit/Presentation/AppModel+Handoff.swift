@@ -11,6 +11,14 @@ extension AppModel {
         } catch { attachmentMessage = "Some result files could not be prepared. You can add them manually." }
     }
 
+    /// Phase 9.4: the header's version — no unconfirmed "Unknown" host.
+    public var currentCompactSourceLabel: String {
+        if let imported = selectedImport {
+            return "Imported by you · " + (imported.assistantTitle ?? "AI")
+        }
+        return detail.value?.session.compactSourceLabel ?? selectedSession?.compactSourceLabel ?? "This Mac"
+    }
+
     public var currentSourceLabel: String {
         if let imported = selectedImport {
             return "Imported by you · " + (imported.assistantTitle ?? "Unknown") + " · " + (imported.host?.title ?? "Unknown")

@@ -37,6 +37,10 @@ public struct AgentSource: Codable, Equatable, Hashable, Sendable {
     public var agent: AgentProvider { AgentProvider(rawValue: provider) ?? .unknown }
     public var environment: AgentHost { AgentHost(rawValue: host) ?? .unknown }
     public var label: String { "\(agent.title) · \(environment.title) · This Mac" }
+    /// Phase 9.4: for tight headers — an unconfirmed host is left out, not shown as "Unknown".
+    public var compactLabel: String {
+        environment == .unknown ? "\(agent.title) · This Mac" : "\(agent.title) · \(environment.title) · This Mac"
+    }
     enum CodingKeys: String, CodingKey {
         case provider, host, capabilities, capture
         case nativeSessionID = "native_session_id", installationID = "installation_id"
@@ -46,4 +50,5 @@ public struct AgentSource: Codable, Equatable, Hashable, Sendable {
 extension SessionSummary {
     public var provider: AgentProvider { source?.agent ?? .claudeCode }
     public var sourceLabel: String { source?.label ?? "Claude Code · Unknown · This Mac" }
+    public var compactSourceLabel: String { source?.compactLabel ?? "Claude Code · This Mac" }
 }

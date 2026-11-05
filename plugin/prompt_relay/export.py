@@ -288,6 +288,14 @@ def _request_section(add, session: Session, turn: c.Turn) -> None:
         return
     add("## Original user request")
     earlier = earlier_user_request(session, turn)
+    continues_work = turn.index > 1 and session.turns[turn.index - 2].status == c.STATUS_BACKGROUND
+    if earlier is not None and continues_work:
+        add(f"[{CONFIRMED}; from turn {earlier[0]} of this session] This answer finishes that request: the agent "
+            "stopped while its background work ran, and Claude Code resumed the session when the work ended.")
+        add("")
+        add(_block(earlier[1] or ""))
+        add("")
+        return
     if earlier is not None:
         add(f"[{CONFIRMED}; from turn {earlier[0]} of this session] This turn was not started by the user. "
             "The latest earlier request from the user in this session:")

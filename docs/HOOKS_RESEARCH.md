@@ -207,3 +207,11 @@ nothing.
 | D7 | A prompt blocked by *another* UserPromptSubmit hook (hooks run in parallel) is still stored by Prompt Relay but gets no Stop. Without `prompt_id`, the next answer becomes `ambiguous` | By design (the handler cannot see other hooks' decisions); documented |
 | D8 | Interrupted turns (Esc) produce no Stop. Without `prompt_id`, the next answer becomes `ambiguous` instead of being guessed | By design; `prompt_id` avoids it |
 | D9 | Does an authentication failure fire StopFailure? | **Observed** in CLI 2.1.268 (`-p`, expired OAuth): UserPromptSubmit fired, **no** Stop and **no** StopFailure. The turn stays `awaiting_response`, which is correct (no answer is invented) |
+
+### Observed 2026-11-05: `CLAUDE_CODE_ENTRYPOINT`
+Not in the hooks documentation. Claude Code sets it in the environment of the
+processes it starts; in Claude Desktop's Code tab it was `claude-desktop`
+(seen in a tool process; hooks are started the same way). The Claude adapter
+reads only the values `claude-desktop`, `cli` and `claude-vscode` as a host;
+anything else is not treated as host evidence. If a hook ever lacks the
+variable, the host stays Unknown.

@@ -617,3 +617,168 @@ struct Phase94AttachmentTests {
         #expect(try store.prepareResults(data) == 0, "files go with the final answer, not the intermediate one")
     }
 }
+
+/// Phase 9.4 continuation: final-only UI, conversations, Latest across agents, window capture.
+@Suite(.serialized)
+@MainActor
+struct Phase94UITests {
+    private func board() -> NSPasteboard { NSPasteboard(name: .init("PromptRelay94ui-\(UUID().uuidString)")) }
+    private static let iso: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]; return f
+    }()
+    private func ago(_ s: TimeInterval) -> String { Self.iso.string(from: Date(timeIntervalSinceNow: -s)) }
+
+    /// One user task in five technical turns, then a second user request.
+    private func technicalTurns() -> [Turn] {
+        [turn(1, at: ago(900), completion: "intermediate", continuedIn: 2, origin: "user"),
+         turn(2, at: ago(800), completion: "intermediate", continuedIn: 3, origin: "automated"),
+         turn(3, at: ago(700), completion: "intermediate", continuedIn: 4, origin: "automated"),
+         turn(4, at: ago(600), completion: "intermediate", continuedIn: 5, origin: "automated"),
+         turn(5, preview: "Final report", at: ago(500), completion: "answer", origin: "automated"),
+         turn(6, preview: "Docs updated", at: ago(100), completion: "answer", origin: "user")]
+    }
+
+    @Test func intermediateTurnsAreNotAnswersAnywhere() async throws {
+        let b = board(); defer { b.releaseGlobally() }
+        let core = FakeCore(projects: [project("/repo", sessions: 1, last: ago(100))])
+        core.showResult = { [unowned core] key, i in
+            .success(CoreResult(data: ShowData(session: try! core.session(key), turn: turn(i, text: "\(key)#\(i)")), warnings: []))
+        }
+        core.sessionsByProject["/repo"] = [sessionSummary("s", project: "/repo", last: ago(100), lastTurn: 6, completion: "answer")]
+        core.turnsBySession["s"] = technicalTurns()
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: b), dataDirectory: nil)
+        await m.refreshNow()
+        #expect(NotchRootView.answerTurns(m) == [6, 5], "two user requests, two answers; no 4/5 counter of technical turns")
+        #expect(AnswerStepper.position(m, turn: 6)?.1 == 2)
+        let intermediate = technicalTurns()[0]
+        #expect(!AppModel.isVisibleAnswer(intermediate))
+        #expect(AppModel.copyBlocker(for: intermediate) != nil, "no plain Copy Answer for an intermediate message")
+        #expect(AppModel.isVisibleAnswer(technicalTurns()[4]))
+        let hits = await m.search("report")
+        #expect(hits.allSatisfy { $0.ref != .local(sessionKey: "s", turn: 1) })
+        // Conversations list the same two final answers.
+        let session = core.sessionsByProject["/repo"]![0]
+        m.toggleConversation(session)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        #expect(m.conversationAnswers(session)?.map(\.index) == [6, 5])
+    }
+
+    @Test func conversationsGroupSortAndRememberExpansion() async throws {
+        let suite = "PromptRelay94conv.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let b = board(); defer { b.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        let core = FakeCore(projects: [Phase93Tests.info("/repo", logical: "/repo", sessions: 3, last: ago(10)),
+                                       Phase93Tests.info("/repo/macos", logical: "/repo", sessions: 1, last: ago(10), enabled: false)])
+        let claudeA = Phase93Tests.session("claude-a", provider: "claude_code", host: "claude_desktop", project: "/repo", logical: "/repo",
+                                           last: ago(300), answeredAt: ago(300))
+        // Newest activity, but its last Stop is waiting: sorted by its last real answer.
+        let claudeB = Phase93Tests.session("claude-b", provider: "claude_code", host: "claude_desktop", project: "/repo", logical: "/repo",
+                                           last: ago(10), status: "stop_received_background_tasks_pending", answered: 0)
+        let codex = Phase93Tests.session("codex", provider: "codex", host: "xcode", project: "/repo/macos", logical: "/repo",
+                                         last: ago(60), answeredAt: ago(60))
+        core.sessionsByProject["/repo"] = [claudeA, claudeB, codex]
+        for k in ["claude-a", "codex"] { core.turnsBySession[k] = [turn(1, at: ago(60))] }
+        core.turnsBySession["claude-b"] = [turn(1, status: "stop_received_background_tasks_pending", at: ago(10))]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: b), dataDirectory: nil, stateDefaults: defaults)
+        await m.refreshNow()
+        let group = try #require(m.sessionsByProject.first { $0.project == "/repo" })
+        #expect(group.sessions.map(\.sessionKey) == ["codex", "claude-a", "claude-b"], "by the last real final answer")
+        #expect(Set(group.sessions.map(\.sessionKey)).count == 3, "no duplicates, native sessions kept apart")
+        m.providerFilter = .codex
+        #expect(m.sessionsByProject.first?.sessions.map(\.sessionKey) == ["codex"])
+        m.providerFilter = nil
+        m.toggleConversation(codex)
+        let again = AppModel(core: core, clipboard: ClipboardService(pasteboard: b), dataDirectory: nil, stateDefaults: defaults)
+        #expect(again.expandedConversations == ["codex"], "expansion is remembered")
+    }
+
+    @Test func codexClaudeCodexMovesLatestEachTime() async throws {
+        let b = board(); defer { b.releaseGlobally() }
+        let core = FakeCore(projects: [project("/repo", sessions: 2, last: ago(30))])
+        core.showResult = { [unowned core] key, i in
+            .success(CoreResult(data: ShowData(session: try! core.session(key), turn: turn(i, text: "\(key)#\(i)")), warnings: []))
+        }
+        func codex(_ turns: Int, _ at: String) -> SessionSummary {
+            Phase93Tests.session("codex", provider: "codex", host: "xcode", project: "/repo", last: at, answeredAt: at, turns: turns)
+        }
+        func claude(_ at: String) -> SessionSummary {
+            Phase93Tests.session("claude", provider: "claude_code", host: "claude_desktop", project: "/repo", last: at, answeredAt: at)
+        }
+        let t1 = ago(300), t2 = ago(200), t3 = ago(100)
+        core.sessionsByProject["/repo"] = [codex(1, t1)]
+        core.turnsBySession["codex"] = [turn(1, at: t1)]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: b), dataDirectory: nil)
+        await m.refreshNow()
+        #expect(m.readyAnswer?.sessionKey == "codex")
+        core.sessionsByProject["/repo"] = [claude(t2), codex(1, t1)]
+        core.turnsBySession["claude"] = [turn(1, at: t2)]
+        await m.refreshNow()
+        #expect(m.readyAnswer?.sessionKey == "claude" && m.selectedSessionKey == "claude")
+        #expect(m.readyAnswer?.sourceLabel == "Claude Code · Claude Desktop · This Mac")
+        core.sessionsByProject["/repo"] = [codex(2, t3), claude(t2)]
+        core.turnsBySession["codex"] = [turn(1, at: t1), turn(2, at: t3)]
+        await m.refreshNow()
+        try await waitFor { m.selectedResponseText == "codex#2" }
+        #expect(m.readyAnswer?.sessionKey == "codex" && m.readyAnswer?.turnIndex == 2)
+    }
+
+    private func waitFor(_ condition: @MainActor () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(2)
+        while !condition() { guard Date() < deadline else { Issue.record("timed out"); return }; try await Task.sleep(nanoseconds: 10_000_000) }
+    }
+
+    @Test func viewingTheReadyAnswerTurnsTheIndicatorNeutral() async throws {
+        let suite = "PromptRelay94ind.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let b = board(); defer { b.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        let core = FakeCore(projects: [project("/repo", sessions: 1, last: ago(300))])
+        core.showResult = { [unowned core] key, i in
+            .success(CoreResult(data: ShowData(session: try! core.session(key), turn: turn(i, text: "\(key)#\(i)")), warnings: []))
+        }
+        core.sessionsByProject["/repo"] = [sessionSummary("s", project: "/repo", last: ago(300))]
+        core.turnsBySession["s"] = [turn(1, at: ago(300))]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: b), dataDirectory: nil, stateDefaults: defaults)
+        await m.refreshNow()
+        core.sessionsByProject["/repo"] = [sessionSummary("s", project: "/repo", last: ago(5), lastTurn: 2)]
+        core.turnsBySession["s"] = [turn(1, at: ago(300)), turn(2, at: ago(5))]
+        await m.refreshNow()
+        guard case .ready = m.readyIndicator else { Issue.record("expected the green dot"); return }
+        m.surfaceAppeared()
+        await m.refreshNow()                                  // the refresh opening starts
+        await m.revealReadyAnswer()
+        #expect(m.readyIndicator == .none, "viewed: neutral \(m.readyIndicator) \(String(describing: m.selectedTurnIndex)) \(String(describing: m.readyAnswer))")
+        m.surfaceDisappeared()
+    }
+
+    final class FakeCapture: WindowCapturing {
+        var result: Result<WindowCapture.Shot, Error>?
+        var calls = 0
+        func captureWindow(completion: @escaping @MainActor (Result<WindowCapture.Shot, Error>?) -> Void) {
+            calls += 1; completion(result)
+        }
+    }
+
+    @Test func captureFinalWindowAddsOnlyWhatTheUserPicked() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr94w-" + UUID().uuidString)
+        let b = board(); defer { b.releaseGlobally(); try? FileManager.default.removeItem(at: root) }
+        let core = FakeCore(projects: [project("/repo", sessions: 1, last: ago(60))])
+        core.sessionsByProject["/repo"] = [sessionSummary("s", project: "/repo", last: ago(60))]
+        core.turnsBySession["s"] = [turn(1, at: ago(60))]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: b), dataDirectory: nil, reportStore: ReportStore(root: root))
+        await m.refreshNow()
+        let fake = FakeCapture()
+        m.windowCapture = fake
+        fake.result = nil                                     // the user cancelled the picker
+        m.captureFinalWindow()
+        #expect(m.attachments(for: m.currentRef).isEmpty)
+        #expect(!m.isPresentingSystemDialog)
+        fake.result = .failure(WindowCaptureError.failed)
+        m.captureFinalWindow()
+        #expect(m.attachments(for: m.currentRef).isEmpty, "a failed capture never adds another screen")
+        fake.result = .success(.init(png: TypedAttachmentTests.png(.red), label: "Window"))
+        m.captureFinalWindow()
+        let added = m.attachments(for: m.currentRef)
+        #expect(added.count == 1 && added[0].isSelected && added[0].effectiveSource == .you)
+        #expect(fake.calls == 3)
+    }
+}

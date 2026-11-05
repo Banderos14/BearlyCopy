@@ -114,3 +114,47 @@ class CompletionTests(IsolatedTestCase):
         self.assertIsNotNone(chain["started_at"])
         first = json.loads(self.cli("show", "--session", "w", "--turn", "1", "--json").stdout)["data"]["turn"]
         self.assertNotIn("work_chain", first)
+
+
+class ClaudeHostTests(IsolatedTestCase):
+    def source_for(self, extra):
+        env = dict(self.env, **extra)
+        self.assertHookOk(self.hook({"hook_event_name": "UserPromptSubmit", "session_id": "h-" + str(len(extra)) + str(sorted(extra.items())),
+                                     "prompt_id": "p", "cwd": self.project, "prompt": "x"}, env=env))
+        rows = json.loads(self.cli("sessions", "--json").stdout)["data"]["sessions"]
+        return rows[0].get("source")
+
+    def test_desktop_entrypoint_names_the_host(self) -> None:
+        src = self.source_for({"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"})
+        self.assertEqual((src["provider"], src["host"]), ("claude_code", "claude_desktop"))
+
+    def test_unknown_entrypoint_is_not_a_host_claim(self) -> None:
+        self.assertIsNone(self.source_for({"CLAUDE_CODE_ENTRYPOINT": "sdk-ts"}))
+
+    def test_configured_launcher_host_wins(self) -> None:
+        src = self.source_for({"CLAUDE_CODE_ENTRYPOINT": "claude-desktop", "PROMPT_RELAY_HOST": "vscode"})
+        self.assertEqual(src["host"], "vscode")
+
+
+class FinalOnlyTests(IsolatedTestCase):
+    prompt = CompletionTests.prompt
+    stop = CompletionTests.stop
+    """Five technical turns of one user task count as one answer."""
+
+    def test_four_intermediate_turns_and_one_final_count_once(self) -> None:
+        self.prompt("f", "p0", "Run the long suites and report")
+        self.stop("f", "p0", "Waiting for the tests.", SHELL)
+        for i in range(1, 4):
+            self.prompt("f", f"p{i}", NOTE)
+            self.stop("f", f"p{i}", "Still waiting.", SHELL)
+        self.prompt("f", "p4", NOTE)
+        self.stop("f", "p4", "Final report: 269 passed.", [])
+        self.prompt("f", "p5", "Now update the docs")          # a real second request
+        self.stop("f", "p5", "Docs updated.", [])
+        row = next(s for s in json.loads(self.cli("sessions", "--json").stdout)["data"]["sessions"] if s["session_id"] == "f")
+        self.assertEqual(row["answered_count"], 2, "one final answer per user request")
+        self.assertEqual(row["turn_count"], 6, "technical turns are kept for correlation")
+        ctx = self.cli("context", "--session", "f", "--turn", "5").stdout.decode()
+        self.assertIn("This answer finishes that request", ctx)
+        self.assertIn("Run the long suites and report", ctx)
+        self.assertNotIn("### Automated message that started this turn", ctx, "the notification is not repeated as the task")

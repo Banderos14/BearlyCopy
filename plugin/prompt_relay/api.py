@@ -108,7 +108,9 @@ def session_summary(s: Session, resolver: Optional[Any] = None) -> Dict[str, Any
     return {
         "title": session_title(s) if by_user or not claude_title else claude_title,
         "claude_code_title": claude_title,
-        "answered_count": sum(1 for t in s.turns if t.final_response is not None),
+        # Phase 9.4: final answers only; an intermediate Stop is not an answer.
+        "answered_count": sum(1 for t in s.turns if t.final_response is not None
+                              and completion(t, s.turns)["completion"] in (COMPLETION_ANSWER, COMPLETION_ANSWER_BACKGROUND)),
         "running": session_running(s),
         **({"source": next(ev.source for ev in s.events if ev.source)} if any(ev.source for ev in s.events) else {}),
         "session_id": s.session_id,

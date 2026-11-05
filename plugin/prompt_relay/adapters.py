@@ -42,12 +42,27 @@ def _xcode_write_result(response: Any) -> Optional[str]:
     return None
 
 
+# Phase 9.4: Claude Code tells its child processes (hooks included) which
+# client started it in CLAUDE_CODE_ENTRYPOINT. Observed 2026-11-05 on this Mac:
+# "claude-desktop" inside Claude Desktop's Code tab. Only these exact values
+# name a host; anything else (sdk-*, remote, new values) is not a host claim.
+ENTRYPOINT_HOSTS = {'claude-desktop': 'claude_desktop', 'cli': 'terminal', 'claude-vscode': 'vscode'}
+
+
+def claude_host(env: Mapping[str, str]) -> Optional[str]:
+    """A configured launcher host first, else the entrypoint Claude Code set."""
+    host = env.get('PROMPT_RELAY_HOST')
+    if host in HOSTS:
+        return host
+    return ENTRYPOINT_HOSTS.get(env.get('CLAUDE_CODE_ENTRYPOINT', ''))
+
+
 def _claude(payload: Dict[str, Any], env: Mapping[str, str]) -> Optional[Dict[str, Any]]:
     out = tools.reduce(payload) if payload.get('hook_event_name') in tools.TOOL_EVENTS else dict(payload)
     out.pop('source', None)
     # Existing Claude session keys remain stable across upgrades. Host is only
-    # accepted from a launcher configured for that client, never guessed.
-    host = env.get('PROMPT_RELAY_HOST')
+    # accepted from a configured launcher or Claude Code's own entrypoint, never guessed.
+    host = claude_host(env)
     if host in HOSTS:
         out['source'] = dict(provider='claude_code', host=host,
                              native_session_id=payload.get('session_id') or 'unknown',

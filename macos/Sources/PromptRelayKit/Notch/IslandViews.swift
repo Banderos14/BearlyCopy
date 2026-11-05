@@ -227,7 +227,11 @@ struct IslandContent: View {
                         .frame(width: size, height: size)
                         .islandFrame("band.mascot")
                     }
-                    if model.route != .home { BackButton(model: model) }
+                    if model.route != .home {
+                        BackButton(model: model)
+                    } else if presentation.surface == .expanded, let peek = presentation.showQuickPeek {
+                        QuickPeekButton(action: peek)
+                    }
                 }
             } trailing: {
                 if model.route == .home {
@@ -284,6 +288,26 @@ struct IslandBand<Leading: View, Trailing: View>: View {
         }
         .padding(.horizontal, leadingInset)
         .frame(height: presentation.notchSize.height)
+    }
+}
+
+/// Phase 9.4: Details → Quick Peek; the island then reopens on Quick Peek.
+struct QuickPeekButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: "chevron.up").font(.system(size: 9, weight: .bold))
+                Text("Quick Peek").font(.system(size: 12, weight: .medium)).lineLimit(1)
+            }
+            .foregroundStyle(Island.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back to Quick Peek")
+        .islandHelp("Back to Quick Peek; the island opens on it next time")
+        .islandFrame("band.quickPeek")
     }
 }
 
@@ -354,6 +378,9 @@ struct ReportFacts {
         case automated(earlier: String?, turn: Int?)
         /// Automated blocks mixed with other text: who wrote it is not known.
         case unknownSource(String)
+        /// Phase 9.4: the final answer of the user's request of `turn`, which
+        /// Claude Code resumed after background work (not a new request).
+        case continued(String, turn: Int)
     }
 
     /// Claude Code started the turn itself (never shown as the user's request).
@@ -370,6 +397,13 @@ struct ReportFacts {
             return report.task.map(TaskText.supplied) ?? .unavailable("not supplied when importing")
         }
         guard let turn = model.selectedTurn else { return .unavailable("") }
+        // Phase 9.4: a turn resumed after background work answers the user's
+        // earlier request: that request is the task (labelled), and the
+        // notification that resumed it is never shown as a request.
+        if turn.requestOrigin == .automated, let earlier = turn.earlierUserRequest,
+           (model.turns.value ?? []).contains(where: { $0.continuedInTurn == turn.index && $0.completion == .intermediate }) {
+            return .continued(earlier.displayPreview ?? Wording.requestForDisplay(earlier.preview).text, turn: earlier.turn)
+        }
         switch turn.requestOrigin {
         case .automated?:
             return .automated(earlier: turn.earlierUserRequest.map { $0.displayPreview ?? Wording.requestForDisplay($0.preview).text },
@@ -418,7 +452,8 @@ struct SourceLine: View {
         HStack(spacing: 6) {
             Image(systemName: facts.source == .cloudManualImport ? "icloud.and.arrow.down" : "laptopcomputer")
                 .font(.system(size: 10, weight: .semibold))
-            Text(model.currentSourceLabel)
+            Text(model.currentCompactSourceLabel)
+                .islandHelp(model.currentSourceLabel)
             if facts.source != .cloudManualImport, let project = model.selectedProject, !project.captureEnabled {
                 Text("· capture off")
                     .foregroundStyle(Island.warning)
@@ -426,13 +461,16 @@ struct SourceLine: View {
             }
             if model.selectedImport == nil, let turn = model.selectedTurn, turn.status == .stopReceivedBackgroundTasksPending {
                 // A fact about the Stop, not about now: the work may have ended since.
-                Text("· background work at Stop").foregroundStyle(Island.warning)
-                    .islandHelp("Background work was still running when the answer arrived")
+                // Phase 9.4: an icon, so it never truncates beside the source.
+                Image(systemName: "hourglass").font(.system(size: 9.5, weight: .semibold)).foregroundStyle(Island.warning)
+                    .accessibilityLabel("Background work was running when the agent stopped")
+                    .islandHelp("Background work was still running when the agent stopped")
             }
         }
         .font(.system(size: 11.5))
         .foregroundStyle(Island.tertiary)
         .lineLimit(1)
+        .fixedSize()   // short by design; the session title gives way first
     }
 }
 
@@ -481,6 +519,7 @@ struct TaskCard: View {
         switch facts.task {
         case .linked(let t), .inferred(let t), .supplied(let t), .unknownSource(let t): return PeekContent.oneLine(TaskExcerpt.text(t))
         case .automated(let earlier, _): return earlier.map { "Started automatically · after: " + PeekContent.oneLine($0) } ?? "Started automatically"
+        case .continued(let t, _): return PeekContent.oneLine(TaskExcerpt.text(t))
         case .unavailable(let why): return why.isEmpty ? "Unavailable" : "Unavailable: \(why)"
         }
     }
@@ -493,6 +532,7 @@ struct TaskCard: View {
                 case .inferred: Tag("inferred from order", tint: Island.warning)
                 case .supplied: Tag("entered by you", tint: Island.secondary)
                 case .automated: Tag("started automatically", tint: Island.warning)
+                case .continued(_, let turn): Tag("from turn \(turn) · after background work", tint: Island.secondary)
                 case .unknownSource: Tag("source not established", tint: Island.warning)
                 default: EmptyView()
                 }
@@ -529,7 +569,7 @@ struct TaskCard: View {
                 if let earlier {
                     body(text: "Your request before it (turn \(turn ?? 0)): \(earlier.trimmingCharacters(in: .whitespacesAndNewlines))")
                 }
-            case .linked(let text), .inferred(let text), .supplied(let text), .unknownSource(let text):
+            case .linked(let text), .inferred(let text), .supplied(let text), .unknownSource(let text), .continued(let text, _):
                 body(text: text.trimmingCharacters(in: .whitespacesAndNewlines))
                 if let continued = facts.model.selectedTurn?.continuesRequest, facts.model.selectedImport == nil {
                     Text("Continues turn \(continued.turn): \(continued.displayPreview ?? Wording.requestForDisplay(continued.preview).text)")
@@ -574,7 +614,7 @@ struct TaskCard: View {
 
     private var canExpand: Bool {
         switch facts.task {
-        case .linked(let t), .inferred(let t), .supplied(let t), .unknownSource(let t): return t.count > 110 || t.contains("\n")
+        case .linked(let t), .inferred(let t), .supplied(let t), .unknownSource(let t), .continued(let t, _): return t.count > 110 || t.contains("\n")
         case .automated(let t?, _): return t.count > 80 || t.contains("\n")
         case .automated, .unavailable: return false
         }
@@ -827,7 +867,7 @@ struct PeekContent: View {
     private func taskLine(_ facts: ReportFacts) -> some View {
         let text: String? = {
             switch facts.task {
-            case .linked(let t), .inferred(let t), .supplied(let t): return t
+            case .linked(let t), .inferred(let t), .supplied(let t), .continued(let t, _): return t
             case .unknownSource(let t): return "Source not established · " + t
             case .automated(let earlier, _):
                 return earlier.map { "Started automatically · after: " + $0 } ?? "Started automatically by Claude Code"
@@ -1455,7 +1495,7 @@ struct HistoryView: View {
 
     @ViewBuilder
     private var answers: some View {
-        let turns = model.turnsNewestFirst.filter { $0.finalResponse != nil || $0.status == .apiError }
+        let turns = model.turnsNewestFirst.filter(AppModel.isVisibleAnswer)
         if model.turns.value == nil {
             ProgressView().controlSize(.small).padding(.leading, 34).padding(.vertical, 4)
         } else if turns.isEmpty {

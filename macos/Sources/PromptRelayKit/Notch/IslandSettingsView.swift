@@ -133,8 +133,8 @@ struct IslandSettingsView: View {
     /// the current pin and a one-click way back to Latest.
     private var behavior: some View {
         section("Behavior") {
-            toggle("Stay on the session I choose",
-                   detail: "Off (Follow Latest): Quick Peek shows the newest finished answer from Claude Code or Codex; a session you open holds only while the island is open. On: the session you pick stays; newer answers wait as “New in …”.",
+            toggle("Stay on the conversation I open",
+                   detail: "Off — Follow Latest: Quick Peek shows the newest final answer of any agent. On: your conversation stays; new answers appear as “New in …”.",
                    isOn: Binding(get: { model.staysOnChosenSession }, set: { model.staysOnChosenSession = $0 }))
             if model.sessionPinned {
                 Hairline()

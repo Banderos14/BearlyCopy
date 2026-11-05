@@ -206,11 +206,12 @@ struct SessionHeader: View {
             Button { model.navigate(to: .projects) } label: {
                 HStack(spacing: 5) {
                     Text(projectTitle).font(.system(size: 13, weight: .semibold)).foregroundStyle(Island.primary)
-                        .lineLimit(1).truncationMode(.middle)
+                        .lineLimit(1).truncationMode(.middle).layoutPriority(2)
                     if let session = sessionTitle {
                         Text("·").foregroundStyle(Island.tertiary)
+                        // Lowest priority: the session title truncates before source and status.
                         Text(session).font(.system(size: 12.5)).foregroundStyle(Island.secondary)
-                            .lineLimit(1).truncationMode(.tail)
+                            .lineLimit(1).truncationMode(.tail).layoutPriority(0)
                     }
                     Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary)
                 }
@@ -603,6 +604,7 @@ struct AttachmentsCard: View {
                 Menu {
                     Button("Files…") { model.chooseFiles() }
                     Button("From Clipboard…") { model.openClipboard(.images) }
+                    Button("Capture Final Window…") { model.captureFinalWindow() }
                 } label: {
                     Image(systemName: "paperclip").font(.system(size: 11, weight: .medium))
                 }
@@ -1190,15 +1192,7 @@ struct SessionSwitcherView: View {
                         }
                     } else if let group = groups.first(where: { $0.project == current }) {
                         ForEach(group.sessions) { session in
-                            Button { model.focusSession(session); model.route = .home } label: {
-                                SessionRowLabel(title: Wording.sessionTitle(session), meta: Wording.sessionMeta(session),
-                                                chip: Self.chip(model.sessionState(session)),
-                                                selected: session.sessionKey == model.selectedSessionKey && model.selectedImport == nil,
-                                                subtitle: session.sourceLabel,
-                                                latest: model.readyAnswer?.sessionKey == session.sessionKey)
-                            }
-                            .buttonStyle(.plain)
-                            .islandHelp("Open the newest answer of this session")
+                            ConversationRow(model: model, session: session)
                         }
                     } else {
                         Text("No sessions captured yet.").font(.system(size: 11.5)).foregroundStyle(Island.tertiary).padding(10)
@@ -1223,6 +1217,80 @@ struct SessionSwitcherView: View {
         case .answered: return ("answered", Island.secondary)
         case .noAnswer: return ("no answer", Island.tertiary)
         case .failed: return ("API error", Island.error)
+        }
+    }
+}
+
+/// Phase 9.4: Logical project → conversation (one native agent session) →
+/// its final answers. Intermediate Stops and background turns never appear.
+struct ConversationRow: View {
+    let model: AppModel
+    let session: SessionSummary
+
+    var body: some View {
+        let open = model.expandedConversations.contains(session.sessionKey)
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 2) {
+                Button { model.toggleConversation(session) } label: {
+                    Image(systemName: open ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .bold)).foregroundStyle(Island.tertiary)
+                        .frame(width: 18, height: 30).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(open ? "Collapse conversation" : "Show the final answers of this conversation")
+                Button { model.focusSession(session); model.route = .home } label: {
+                    SessionRowLabel(title: "\(session.provider.title) · \(Wording.sessionTitle(session))",
+                                    meta: meta, chip: SessionSwitcherView.chip(model.sessionState(session)),
+                                    selected: session.sessionKey == model.selectedSessionKey && model.selectedImport == nil,
+                                    subtitle: nil,
+                                    latest: model.readyAnswer?.sessionKey == session.sessionKey && model.readyAnswer?.completion.isFinal == true)
+                }
+                .buttonStyle(.plain)
+                .islandHelp("Open the newest final answer of this conversation")
+            }
+            if open { answers }
+        }
+    }
+
+    /// "Claude Desktop · 5 min ago · 2 answers"; an unconfirmed host is left out.
+    private var meta: String {
+        var parts: [String] = []
+        if let host = session.source?.environment, host != .unknown { parts.append(host.title) }
+        parts.append(Wording.relative(model.lastFinalAnswerAt(session) ?? session.lastEventAt))
+        let n = session.answeredCount ?? 0
+        parts.append(n == 1 ? "1 answer" : "\(n) answers")
+        return parts.joined(separator: " · ")
+    }
+
+    @ViewBuilder
+    private var answers: some View {
+        if let turns = model.conversationAnswers(session) {
+            if turns.isEmpty {
+                Text("No final answer yet").font(.system(size: 11)).foregroundStyle(Island.tertiary).padding(.leading, 30).padding(.vertical, 3)
+            }
+            ForEach(turns) { turn in
+                let ref = ReportRef.local(sessionKey: session.sessionKey, turn: turn.index)
+                Button { model.open(ref) } label: {
+                    HStack(spacing: 6) {
+                        if model.currentRef == ref { Image(systemName: "checkmark").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.accent) }
+                        Text(AppModel.oneLine(turn.userRequestPreview ?? turn.finalResponse?.preview ?? "Answer"))
+                            .font(.system(size: 11.5)).foregroundStyle(Island.secondary).lineLimit(1)
+                        Spacer(minLength: 4)
+                        if model.readyAnswer?.sessionKey == session.sessionKey, model.readyAnswer?.turnIndex == turn.index,
+                           model.readyAnswer?.completion.isFinal == true {
+                            Text("Latest").font(.system(size: 9.5, weight: .semibold)).foregroundStyle(Island.success)
+                        }
+                        Text(Wording.short(turn.finalResponse?.receivedAt)).font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    }
+                    .padding(.leading, 30).padding(.trailing, 9).frame(height: 24)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(model.currentRef == ref ? Island.selected : .clear))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .islandHelp("Open this final answer")
+            }
+        } else {
+            ProgressView().controlSize(.small).padding(.leading, 30).padding(.vertical, 3)
         }
     }
 }

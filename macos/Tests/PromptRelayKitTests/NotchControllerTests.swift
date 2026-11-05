@@ -183,6 +183,46 @@ final class NotchControllerTests: XCTestCase {
         controller.stop()
     }
 
+    /// Phase 9.4: Details → pointer leaves (auto close) → hover → Details;
+    /// Quick Peek → pointer leaves → hover → Quick Peek. Views inside Details
+    /// do not reset the level; the auto close still happens.
+    func testHoverReopensTheLevelTheUserLeft() async throws {
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        controller.interaction.pointerEntered()
+        clock.advance(0.2)
+        XCTAssertEqual(controller.presentation.surface, .peek)
+        controller.interaction.focus()                      // Details
+        XCTAssertEqual(controller.presentation.surface, .expanded)
+        let reading = model.currentRef
+        model.navigate(to: .history)                        // a view inside Details
+        model.goBack()
+        controller.interaction.pointerExited()
+        clock.advance(1)
+        XCTAssertEqual(controller.interaction.phase, .compact, "auto close is unchanged")
+
+        controller.interaction.pointerEntered()
+        clock.advance(0.2)
+        XCTAssertEqual(controller.presentation.surface, .expanded, "Details again, not Quick Peek")
+        XCTAssertEqual(controller.presentation.islandWidth, controller.presentation.detailsWidth)
+        XCTAssertEqual(model.route, .home)
+        XCTAssertEqual(model.currentRef, reading, "the same report")
+
+        controller.presentation.showQuickPeek?()            // "Quick Peek" in Details
+        XCTAssertEqual(controller.presentation.surface, .peek)
+        XCTAssertTrue(controller.interaction.phase.isExpanded, "stays open")
+        controller.interaction.pointerExited()
+        clock.advance(1)
+        XCTAssertEqual(controller.interaction.phase, .compact)
+        controller.interaction.pointerEntered()
+        clock.advance(0.2)
+        XCTAssertEqual(controller.presentation.surface, .peek, "Quick Peek again")
+        controller.interaction.pointerExited()
+        clock.advance(1)
+        controller.stop()
+    }
+
     func testHoverOpensQuickPeekAndAClickOpensTheIslandOnHome() async throws {
         let controller = makeController()
         controller.start()

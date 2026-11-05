@@ -17,6 +17,12 @@ public final class NotchPresentation {
 
     public internal(set) var isExpanded = false
     public internal(set) var surface: Surface = .peek
+    /// Phase 9.4: the level the island reopens on after it closed itself —
+    /// Details once the user opened it, Quick Peek again after "Quick Peek".
+    /// Views inside Details (Settings, History…) do not change it.
+    public internal(set) var preferredSurface: Surface = .peek
+    /// Details → Quick Peek in the open island (set by the controller).
+    @ObservationIgnored public var showQuickPeek: (() -> Void)?
     public internal(set) var isFocused = false
     public internal(set) var reduceMotion = false
     /// Size of the camera housing on the active display.
@@ -228,6 +234,7 @@ public final class NotchController {
         follower.onMove = { [weak self] point in self?.follow(globalPoint: point) }
         follower.onRest = { [weak self] in self?.pointerLeft() }
         presentation.onContentHeight = { [weak self] height in self?.resize(to: height) }
+        presentation.showQuickPeek = { [weak self] in self?.returnToQuickPeek() }
     }
 
     /// Number of registered notification observers (leak checks in tests).
@@ -501,16 +508,22 @@ public final class NotchController {
             if !old.isExpanded {
                 // Hover opens the peek; a click, the shortcut or the menu bar
                 // the expanded island, on Home unless a view was asked for.
-                presentation.surface = focused ? .expanded : .peek
-                presentation.islandWidth = focused ? presentation.detailsWidth : presentation.peekWidth
+                // Phase 9.4: hover reopens the level the user left (Details
+                // stays Details after an automatic close).
+                let details = focused || presentation.preferredSurface == .expanded || pendingRoute != nil
+                presentation.surface = details ? .expanded : .peek
+                presentation.islandWidth = details ? presentation.detailsWidth : presentation.peekWidth
+                if details { presentation.preferredSurface = .expanded }
                 model.route = pendingRoute ?? .home
                 pendingRoute = nil
             } else if focused, presentation.surface == .peek {
+                presentation.preferredSurface = .expanded
                 withAnimation(presentation.animation) {
                     presentation.surface = .expanded
                     presentation.islandWidth = presentation.detailsWidth
                 }
             }
+            model.detailsPreferred = presentation.preferredSurface == .expanded
             placePanel(for: phase)
             if !old.isExpanded {
                 model.surfaceAppeared()
@@ -520,6 +533,20 @@ public final class NotchController {
             withAnimation(presentation.animation) { presentation.isExpanded = true }
             if focused { panel?.makeKey() }
         }
+    }
+
+    /// Phase 9.4, "Quick Peek" in Details: back to the peek, and from now on
+    /// the island reopens on Quick Peek. Stays open; pointer rules unchanged.
+    public func returnToQuickPeek() {
+        guard interaction.phase.isExpanded else { presentation.preferredSurface = .peek; return }
+        presentation.preferredSurface = .peek
+        model.detailsPreferred = false
+        model.route = .home
+        withAnimation(presentation.animation) {
+            presentation.surface = .peek
+            presentation.islandWidth = presentation.peekWidth
+        }
+        placePanel(for: interaction.phase)
     }
 
     public func toggleFromKeyboard() {

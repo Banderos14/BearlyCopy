@@ -76,3 +76,68 @@ credential-like paths, symlinks, secrets in text.
 
 Not verified live: a new real Claude Code background-test run against the new
 build (the installed app is still older; installation needs the owner's OK).
+
+# Phase 9.4, continuation — final-only UI, status dots, Details, host, conversations
+
+Starting HEAD `19231c6`; backup `refs/backup/phase9.4b-start` and
+`~/Projects/prompt-relay-backups/phase9.4b-start-20261105-153858/`. Sections
+0–2 above were kept; only the places below changed.
+
+**Installed build (checked, nothing replaced).** One copy runs: the Xcode
+Debug build from DerivedData (built and started 15:29). Its bundled Core
+already had part 1 of Phase 9.4, so the owner's "4/5 · waiting for the final
+run" was part-1 behaviour (intermediate Stops were still in the carousel),
+not an old binary. `~/Applications/Prompt Relay.app` is the Nov 4 build.
+Claude Code itself runs the plugin from `~/.claude/plugins/cache/prompt-relay/
+prompt-relay/0.3.0` (updated Oct 30), which has no source adapters: that is
+why Claude sessions show no host. Updating it is the owner's step
+(`claude plugin update`), not done here.
+
+**Final-only UI.** `AppModel.isVisibleAnswer` is the single rule: a final
+answer (`answer`, `answer_background_running`), an API error, or a background
+wait that expired with no continuation. The Answer carousel and its `n/m`
+counter, the default selection, History, search, the conversation list and
+plain Copy Answer use it; Copy Answer explains why an intermediate message is
+not offered. The Core's `answered_count` now counts final answers only. The
+answer of a turn resumed after background work shows the user's earlier
+request as its Task ("from turn N · after background work"), and the pack
+says "This answer finishes that request" instead of repeating the
+`<task-notification>` as a request. All turns stay stored for correlation.
+
+**Status dots.** `LoadingDots`: three 3.5-pt dots, each grows to 1.45× and
+brightens in turn (1.2 s period, ease in/out), as Core Animation keyframes —
+no per-frame app work; removed with the view, so the animation stops when
+work ends. Working = white, waiting for background work = the waiting tone;
+Reduce Motion = still dots. Ready = a 6-pt dot in the theme's success green;
+viewed = nothing; capture error = the `!` ring. SwiftUI fades between them.
+
+**Details is remembered.** `NotchPresentation.preferredSurface`: opening
+Details sets it; hover then reopens on Details (same report, route Home) after
+the automatic close. "Quick Peek" (top band of Details, left) returns to Quick
+Peek and resets it. Settings/History/Clipboard do not change it. With Details
+preferred, closing never moves the selection to Latest and keeps a manual pick.
+
+**Host.** Claude Code sets `CLAUDE_CODE_ENTRYPOINT` for its child processes;
+observed `claude-desktop` in Claude Desktop's Code tab (2026-11-05). The
+Claude adapter maps only `claude-desktop`, `cli`, `claude-vscode`; a configured
+`PROMPT_RELAY_HOST` wins; anything else records no host. Old events keep no
+host; compact headers then show "Claude Code · This Mac" (full label in the
+tooltip). The background-work note became an hourglass icon; the source line
+does not truncate, the session title gives way first.
+
+**Conversations.** Project and Session's right column lists conversations
+(one native session each) with a disclosure: "Claude Code · <title>",
+host · time of the last final answer · N answers, state chip, `Latest`.
+Expanded, it lists that conversation's final answers (newest first; Latest
+tag; click opens). Order: newest real final answer; conversations without one
+follow. Expansion is kept in `projects.expandedConversations`. Filters and
+logical-project grouping are unchanged from 9.3.
+
+**Capture Final Window.** Attachments → 📎 → "Capture Final Window…" opens
+macOS's own window picker (`SCContentSharingPicker`, single window); the
+system handles consent. One still image of that window (`SCScreenshotManager`)
+is stored locally as an attachment added by you (selected; uncheck/remove as
+usual). Cancel or failure adds nothing. No automatic or background capture.
+**Not tried live** — the picker and consent flow need the owner at the Mac.
+
+**Labels.** Behavior → "Stay on the conversation I open"; off = Follow Latest.

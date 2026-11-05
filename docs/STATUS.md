@@ -1,5 +1,17 @@
 # Status
 
+## 2026-11-05 — Phase 9.4 completed (final-only UI, dots, Details, host, conversations)
+
+Intermediate Stops no longer appear as answers anywhere (carousel/counter,
+History, search, Copy Answer, counts); one user task with several technical
+turns shows one final answer. Animated Core Animation dots while working or
+waiting, a small green dot only for a final answer. Hover reopens Details
+after an automatic close; "Quick Peek" returns. Claude host from
+`CLAUDE_CODE_ENTRYPOINT` (needs the owner's plugin update to reach Claude
+Code). Project and Session: expandable conversations with their final
+answers. Capture Final Window via the system picker (not tried live).
+Details: [Phase 9.4](../macos/PHASE9.4.md). Nothing installed.
+
 ## 2026-11-05 — Phase 9.4 (sections 0–2): intermediate Stops, attachments without Add
 
 A Stop that reports running `shell`/agent work is no longer an answer: the

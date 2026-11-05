@@ -178,6 +178,7 @@ public final class AppModel {
         handoffs = reportStore.map(Self.loadHandoffs) ?? [:]
         imports = reportStore?.imports() ?? []
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
+        expandedConversations = Set(stateDefaults?.stringArray(forKey: Self.expandedConversationsKey) ?? [])
         pinned = Self.decode([ReportRef].self, stateDefaults?.data(forKey: Self.pinsKey)) ?? []
         let saved = Self.decode(SavedSelection.self, stateDefaults?.data(forKey: Self.selectionKey))
         if let explicit = stateDefaults?.object(forKey: Self.staysKey) as? Bool {
@@ -335,8 +336,29 @@ public final class AppModel {
         return show.turn.finalResponse?.text
     }
 
+    /// Phase 9.4: a turn the user sees as an answer (Answer carousel, its
+    /// count, History, search, Copy Answer): a final result, an API error, or
+    /// a background wait that expired with no continuation (shown with an
+    /// unknown completion). An intermediate Stop ("waiting for the tests") is
+    /// kept for correlation and diagnostics only.
+    nonisolated public static func isVisibleAnswer(_ turn: Turn) -> Bool {
+        if turn.status == .apiError { return true }
+        guard turn.finalResponse != nil else { return false }
+        switch turn.completion {
+        case .answer, .answerBackgroundRunning: return true
+        case .waitingBackground: return waitExpired(turn.finalResponse?.receivedAt)
+        default: return false
+        }
+    }
+
     /// Why Copy Response is unavailable for a turn, or nil when it can copy.
     nonisolated public static func copyBlocker(for turn: Turn) -> String? {
+        switch turn.completion {
+        case .intermediate: return "An intermediate message; the final answer came in a later turn."
+        case .waitingBackground where !waitExpired(turn.finalResponse?.receivedAt):
+            return "The agent is waiting for its background work; the final answer has not arrived."
+        default: break
+        }
         switch turn.status {
         case .apiError: return "The turn ended with an API error; there is no answer to copy."
         case .awaitingResponse: return "Claude has not answered yet."
@@ -377,11 +399,14 @@ public final class AppModel {
         visibleSurfaces = max(0, visibleSurfaces - 1)
         if visibleSurfaces == 0 {
             stopPolling()
-            followsLatest = true   // nobody is browsing: the next answer may take over
+            // Nobody is browsing: the next answer may take over — unless the
+            // user reads an older report in Details (Phase 9.4): it is still
+            // there on the next hover.
+            if !(detailsPreferred && !followsLatest) { followsLatest = true }
             // Phase 9.3, Follow Latest: the next Quick Peek opens on the newest
             // answer again — unless the user pinned, or a hand-off of the
             // report shown is unfinished (it must still be there on return).
-            if !staysOnChosenSession, !sessionPinned, handoffStep == nil, isOffLatest, let answer = readyAnswer {
+            if !staysOnChosenSession, !sessionPinned, !detailsPreferred, handoffStep == nil, isOffLatest, let answer = readyAnswer {
                 lastFollowedAt = answer.at
                 select(answer)
                 Task { await loadSessions() }
@@ -528,8 +553,9 @@ public final class AppModel {
             let list = result.data.turns
             turns = .loaded(list)
             if selectedTurnIndex == nil || !list.contains(where: { $0.index == selectedTurnIndex }) {
-                // Default: the newest turn that has a copyable answer, else the newest turn.
-                selectedTurnIndex = list.last(where: { Self.copyBlocker(for: $0) == nil })?.index ?? list.last?.index
+                // Default: the newest visible final answer, else the newest turn.
+                selectedTurnIndex = list.last(where: { Self.isVisibleAnswer($0) && Self.copyBlocker(for: $0) == nil })?.index
+                    ?? list.last?.index
             }
         } catch {
             turns = turns.failing(Self.coreError(error))
@@ -653,7 +679,7 @@ public final class AppModel {
     /// without a continuation. Long test runs fit; a forgotten server does
     /// not keep the island waiting forever.
     static let backgroundWaitLimit: TimeInterval = 2 * 60 * 60
-    static func waitExpired(_ at: String?, now: Date = Date()) -> Bool {
+    nonisolated static func waitExpired(_ at: String?, now: Date = Date()) -> Bool {
         guard let date = Wording.date(at) else { return true }
         return now.timeIntervalSince(date) >= backgroundWaitLimit
     }
@@ -780,6 +806,10 @@ public final class AppModel {
     /// Phase 9.3: what keeps the shown report from following Latest: a pin,
     /// browsing while a surface is open, an import, or an unfinished
     /// hand-off of this report (Persistent Handoff must not be taken away).
+    /// Phase 9.4: the island reopens on Details (set by the notch
+    /// controller). Closing it then keeps the report being read.
+    public var detailsPreferred = false
+
     public var holdsSelection: Bool {
         sessionPinned || !followsLatest || selectedImportID != nil || handoffStep != nil
     }
@@ -957,6 +987,37 @@ public final class AppModel {
     /// Brings an open picker forward (the shortcut or the menu bar while it is up).
     @ObservationIgnored public var bringFilePickerForward: @MainActor () -> Void = LiveFilePicker.bringForward
 
+    /// Phase 9.4: the window capturer (the system picker); replaceable in tests.
+    @ObservationIgnored public lazy var windowCapture: WindowCapturing = WindowCapture()
+
+    /// Capture Final Window: the user picks one window in macOS's picker; its
+    /// still image is kept locally with the report shown now, as an
+    /// attachment added by the user (selected; uncheck or remove like any
+    /// other). Cancel adds nothing; nothing is captured otherwise.
+    public func captureFinalWindow() {
+        guard let ref = currentRef, let store = reportStore, !isPresentingSystemDialog else { return }
+        isPresentingSystemDialog = true
+        windowCapture.captureWindow { [weak self] result in
+            guard let self else { return }
+            self.isPresentingSystemDialog = false
+            switch result {
+            case nil: break
+            case .success(let shot)?:
+                let f = DateFormatter()
+                f.dateFormat = "yyyy-MM-dd HH.mm.ss"
+                do {
+                    _ = try store.addData(shot.png, name: "\(shot.label) \(f.string(from: Date())).png", to: ref, source: .you)
+                    self.attachmentMessage = nil
+                } catch {
+                    self.attachmentMessage = "The window image could not be saved."
+                }
+                self.attachmentsVersion += 1
+            case .failure?:
+                self.attachmentMessage = "The window could not be captured. You can add a screenshot with Files…"
+            }
+        }
+    }
+
     /// Images for the report shown now. The report is remembered when the
     /// picker opens, so the images go to it even if the island changes
     /// meanwhile. One dialog at a time.
@@ -1094,8 +1155,10 @@ public final class AppModel {
             names[key] = (projects.value ?? []).first { $0.path == key }.map(Wording.projectName)
                 ?? session.logicalProject?.name ?? Wording.projectName(session.project)
         }
+        // Phase 9.4: by the newest real final answer; conversations with none
+        // yet follow, by their latest activity.
         func activity(_ s: SessionSummary) -> Date {
-            [Wording.date(s.lastTurn?.answeredAt), Wording.date(s.lastEventAt)].compactMap { $0 }.max() ?? .distantPast
+            Wording.date(lastFinalAnswerAt(s)) ?? Wording.date(s.lastEventAt).map { $0.addingTimeInterval(-10 * 365 * 86_400) } ?? .distantPast
         }
         return groups.map { key, list in
             (project: key, name: names[key] ?? key, sessions: list.sorted {
@@ -1178,6 +1241,42 @@ public final class AppModel {
     /// when History searches; navigation itself never starts the Core.
     private var turnCache: [String: (lastEventAt: String?, turns: [Turn])] = [:]
 
+    // MARK: Conversations (Project and Session, Phase 9.4)
+
+    static let expandedConversationsKey = "projects.expandedConversations"
+    /// Conversations opened in Project and Session; kept across launches.
+    public private(set) var expandedConversations: Set<String> = [] {
+        didSet { stateDefaults?.set(Array(expandedConversations).sorted(), forKey: Self.expandedConversationsKey) }
+    }
+
+    public func toggleConversation(_ session: SessionSummary) {
+        if expandedConversations.contains(session.sessionKey) {
+            expandedConversations.remove(session.sessionKey)
+        } else {
+            expandedConversations.insert(session.sessionKey)
+            Task { _ = await cachedTurns(session) }
+        }
+    }
+
+    /// The final answers of a conversation, newest first (nil until loaded).
+    /// Intermediate Stops and background turns are not listed.
+    public func conversationAnswers(_ session: SessionSummary) -> [Turn]? {
+        guard let hit = turnCache[session.sessionKey], hit.lastEventAt == session.lastEventAt else {
+            if expandedConversations.contains(session.sessionKey) { Task { _ = await cachedTurns(session) } }
+            return nil
+        }
+        return hit.turns.filter(Self.isVisibleAnswer).reversed()
+    }
+
+    /// When the conversation's newest final answer arrived (for sorting).
+    func lastFinalAnswerAt(_ session: SessionSummary) -> String? {
+        if let last = session.lastTurn, last.completion.isFinal { return last.answeredAt ?? session.lastEventAt }
+        if let hit = turnCache[session.sessionKey], hit.lastEventAt == session.lastEventAt {
+            return hit.turns.last(where: Self.isVisibleAnswer)?.finalResponse?.receivedAt
+        }
+        return nil
+    }
+
     private func cachedTurns(_ session: SessionSummary) async -> [Turn] {
         if let hit = turnCache[session.sessionKey], hit.lastEventAt == session.lastEventAt { return hit.turns }
         guard let turns = try? await core.turns(sessionKey: session.sessionKey).data.turns else { return [] }
@@ -1247,7 +1346,7 @@ public final class AppModel {
         for session in allSessions {
             let name = Wording.projectName(session.project)
             let sessionMatches = has(name) || has(session.sessionID)
-            for turn in await cachedTurns(session) where turn.finalResponse != nil {
+            for turn in await cachedTurns(session) where turn.finalResponse != nil && Self.isVisibleAnswer(turn) {
                 guard sessionMatches || has(turn.request?.preview) || has(turn.finalResponse?.preview) else { continue }
                 hits.append(HistoryHit(ref: .local(sessionKey: session.sessionKey, turn: turn.index), source: .localClaudeCode,
                                        projectName: name, title: Self.oneLine(turn.userRequestPreview ?? turn.finalResponse?.preview ?? ""),
