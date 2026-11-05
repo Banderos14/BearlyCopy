@@ -1,7 +1,7 @@
 {
   "name": "prompt-relay",
   "displayName": "Prompt Relay",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Captures Claude Code's final answers locally (opt-in per project) so you can copy them verbatim into another chat. No network, no extra API calls.",
   "author": {
     "name": "Banderos14"

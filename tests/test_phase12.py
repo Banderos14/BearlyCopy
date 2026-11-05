@@ -229,3 +229,23 @@ class ProfileTests(IsolatedTestCase):
         stamps = [r["answered_at"] for r in data["results"]]
         self.assertEqual(stamps, sorted(stamps, reverse=True))
         self.assertLess(elapsed, 8.0, f"results took {elapsed:.2f}s")
+
+
+class VersionTests(IsolatedTestCase):
+    """0.4.0 (Phase 12): one version everywhere; the JSON API stays v1."""
+
+    def test_core_plugin_and_xcode_versions_agree_and_api_stays_v1(self) -> None:
+        import re
+        from prompt_relay import __version__, api
+        repo = Path(__file__).resolve().parent.parent
+        plugin = json.loads((repo / "plugin" / ".claude-plugin" / "plugin.json").read_text())
+        pbx = (repo / "macos" / "Xcode" / "PromptRelay.xcodeproj" / "project.pbxproj").read_text()
+        self.assertEqual(__version__, "0.4.0")
+        self.assertEqual(plugin["version"], __version__)
+        self.assertEqual(set(re.findall(r"MARKETING_VERSION = ([0-9.]+);", pbx)), {__version__})
+        self.assertEqual(set(re.findall(r"CURRENT_PROJECT_VERSION = ([0-9.]+);", pbx)), {__version__})
+        self.assertEqual(api.API_VERSION, 1)
+        out = self.cli("--version")
+        self.assertIn(b"prompt-relay 0.4.0", out.stdout + out.stderr)
+        doc = json.loads(self.cli("results", "--json").stdout)
+        self.assertEqual(doc["api_version"], 1)

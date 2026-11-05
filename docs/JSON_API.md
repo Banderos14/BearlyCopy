@@ -101,7 +101,7 @@ stable file key; pass it to `--session` to address any session),
 - Session `title`: Claude Code's `session_title` when the first request is not the user's and a
   title exists.
 
-### Phase 12 additions (compatible)
+### Phase 12 additions (compatible, 0.4.0; `api_version` stays 1)
 - Session summary and result: `profile{id,provider,basis,default,hint}` — the local agent
   profile, i.e. the configuration folder the agent ran with (`CLAUDE_CONFIG_DIR` / `CODEX_HOME`, or
   the provider's default). `id` is `cc-default` / `cx-default` for the default folder, else the

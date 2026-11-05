@@ -30,6 +30,16 @@ prompt-relay/                      ← marketplace root
   not in the plugin root, which changes with every version, and not in
   `${CLAUDE_PLUGIN_DATA}`, which Claude Code deletes on uninstall.
 
+## 1b. Version 0.4.0: local agent profiles (Phase 12, ADR-023)
+The hook records the profile (the agent's config folder: `CLAUDE_CONFIG_DIR`
+/ `CODEX_HOME`, never an account) in the record envelope; a non-default
+Claude Code folder scopes the stored session key. The Core adds the
+read-only `results` command. JSON `api_version` stays 1 (additive). Hook
+events and matchers are unchanged from 0.3.0. Claude Code keeps an installed
+plugin per version, so the new hook code reaches it only after
+`claude plugin update prompt-relay@prompt-relay` (the owner runs it; Prompt
+Relay never does).
+
 ## 1a. Version 0.3.0: observed tool results (ADR-013)
 `hooks/hooks.json` adds `PostToolUse` (matcher `Bash|Write|Edit|MultiEdit|NotebookEdit|SendUserFile|Artifact`)
 and `PostToolUseFailure` (`Bash|Write|Edit|MultiEdit|NotebookEdit`), both `async: true`, so they never delay
