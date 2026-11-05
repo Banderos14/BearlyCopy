@@ -13,7 +13,7 @@ struct FailureSection: View {
             VStack(alignment: .leading, spacing: Island.Space.s) {
                 HStack(spacing: 5) {
                     Caption("Did not exit 0", role: Island.error)
-                    Text(Self.summary(entries)).font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                    Text(Self.summary(entries)).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
                 }
                 .islandFrame("failures.header")
                 ForEach(entries) { FailureCard(entry: $0) }
@@ -42,18 +42,18 @@ struct FailureCard: View {
                 Text(CommandDiagnostics.safeText(c) ?? "(command withheld)").font(.system(size: 11, design: .monospaced)).foregroundStyle(Island.primary)
                     .lineLimit(2).truncationMode(.middle).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text(facts(c)).font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Island.tertiary).lineLimit(1).fixedSize()
+                Text(facts(c)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Island.tertiary).lineLimit(1).fixedSize()
             }
             line(entry.meaning, color: Island.secondary)
             ForEach(entry.caveats, id: \.self) { line("¹ " + $0, color: Island.tertiary) }
             if c.tailWithheld == nil, let tail = c.outputTail {
                 BoundedScroll(maxHeight: 96) {
-                    Text(tail).font(.system(size: 10.5, design: .monospaced)).foregroundStyle(Island.secondary)
+                    Text(tail).font(.system(size: 11, design: .monospaced)).foregroundStyle(Island.secondary)
                         .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true).padding(.trailing, 4)
                 }
                 .padding(7)
-                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Island.code))
+                .background(RoundedRectangle(cornerRadius: Island.smallRadius, style: .continuous).fill(Island.code))
                 .accessibilityLabel("Last lines of the output")
             }
             if let later = entry.later { laterLine(later) }

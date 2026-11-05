@@ -52,7 +52,7 @@ struct PackagePreviewView: View {
             HStack(spacing: 6) {
                 Caption(Labels.copyWithContext, role: Island.accent)
                 Text("\(pack.text.unicodeScalars.count.formatted()) characters · built \(Wording.clock(pack.builtAt))")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
                 Spacer(minLength: 0)
                 sectionMenu(pack)
             }
@@ -60,7 +60,7 @@ struct PackagePreviewView: View {
                 ReaderModePicker(source: $source)
                     .islandFrame("preview.mode")
                 Text("Full context · Both views share this snapshot. Copy uses its exact Markdown source.")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             if !pack.findings.isEmpty {
                 Label("Possible secrets found: you will be asked before it is copied.", systemImage: "exclamationmark.shield")
@@ -86,7 +86,7 @@ struct PackagePreviewView: View {
         } label: {
             HStack(spacing: 3) {
                 Image(systemName: "list.bullet").font(.system(size: 9.5, weight: .semibold))
-                Text("Sections").font(.system(size: 10.5, weight: .medium))
+                Text("Sections").font(.system(size: 11, weight: .medium))
             }
             .foregroundStyle(Island.secondary)
         }
@@ -132,7 +132,7 @@ struct AttachmentPreviewView: View {
                     .clipShape(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous))
                     .islandFrame("attachment.preview")
                 if let note = note(a) {
-                    Label(note, systemImage: "info.circle").font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    Label(note, systemImage: "info.circle").font(.system(size: 11)).foregroundStyle(Island.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
@@ -151,9 +151,9 @@ struct AttachmentPreviewView: View {
                 Text(a.originalFilename).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Island.primary)
                     .lineLimit(1).truncationMode(.middle)
                 Text("\(ReviewPack.type(a)) · \(ReviewPack.size(a.byteCount)) · \(a.effectiveSource.label)")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
                 Text(a.originalPath.map { "\(a.provenance) · \($0)" } ?? a.provenance)
-                    .font(.system(size: 10)).foregroundStyle(Island.tertiary)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary)
                     .lineLimit(2).textSelection(.enabled)
             }
             Spacer(minLength: 4)

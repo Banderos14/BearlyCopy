@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from prompt_relay import config as _config
+from prompt_relay.adapters import HOSTS
 from prompt_relay import runtime
 from prompt_relay.paths import data_dir
 
@@ -147,8 +148,11 @@ def observed(root: Path) -> Dict[str, Any]:
         slot["last_at"] = parts[0]
         # Only launcher-controlled, allowlisted labels establish attribution.
         # Historical lines without these fields never prove Codex execution.
-        if "provider=codex" in parts and "host=xcode" in parts:
-            source = by_source.setdefault("codex:xcode", {"events": 0})
+        # Phase 11: one slot per allowlisted host ("codex:xcode",
+        # "codex:terminal", …) so a CLI run never counts as Xcode delivery.
+        host = next((p[5:] for p in parts if p.startswith("host=") and p[5:] in HOSTS), None)
+        if "provider=codex" in parts and host:
+            source = by_source.setdefault("codex:" + host, {"events": 0})
             source.update(events=source["events"] + 1, last_at=parts[0],
                           last_event=parts[1], last_outcome=outcome.split(":")[0])
             if outcome in ("stored", "duplicate"):

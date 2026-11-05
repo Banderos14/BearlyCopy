@@ -9,8 +9,8 @@ enum Labels {
     static let copyWithContext = "Copy with Context"
     static let copied = "Copied!"
 
-    static let copyAnswerHelp = "Copy the original answer"
-    static let copyWithContextHelp = "Copy the answer with project context"
+    static let copyAnswerHelp = "Only the answer, exactly as written · ⇧⌘C"
+    static let copyWithContextHelp = "Answer + request, project, checks; files next · ⌥⌘C"
 
     /// Phase 7 (was "Import Saved Result"): one finished result from another
     /// AI, pasted by the user. Nothing is captured automatically through it.

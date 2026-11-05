@@ -169,7 +169,7 @@ enum AuditRender {
         p.surface = .expanded
         p.showsMascot = true
         p.maxContentHeight = unbounded ? 3000 : 568
-        let settings = NotchSettings(defaults: UserDefaults(suiteName: "PromptRelayAudit-\(UUID().uuidString)")!)
+        let settings = NotchSettings(defaults: TestDefaults.named("PromptRelayAudit-\(UUID().uuidString)")!)
         for _ in 0..<3 {
             let size = NSSize(width: NotchLayout.expandedWidth, height: 32 + p.contentHeight)
             let host = NSHostingView(rootView: NotchRootView(model: model, presentation: p,

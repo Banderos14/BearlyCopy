@@ -42,7 +42,7 @@ struct CompactHelpTests {
     @Test
     func layoutStates() async throws {
         let suite = "PromptRelayTests.compactHelp.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: NSPasteboard.Name(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer {

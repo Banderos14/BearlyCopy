@@ -103,17 +103,32 @@ enum RelayRender {
     }
 }
 
-/// Phase 10: clears a test's UserDefaults suite AND deletes its plist.
-/// `removePersistentDomain` alone leaves an empty
-/// `~/Library/Preferences/<suite>.plist` behind; earlier runs left ~11,000
-/// of them on the development Mac. Only a suite name this test made is
-/// touched (it must start with "PromptRelay" and be a plain name).
+/// Phase 11: tests never create real UserDefaults suites. A suite name maps
+/// to one shared in-memory store for the life of the test process, so a test
+/// that builds a second model "after a restart" with the same name sees the
+/// same values, exactly as with a real suite — but `cfprefsd` is never asked
+/// for a domain and no plist appears in `~/Library/Preferences`.
+enum TestDefaults {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var stores: [String: MemorySettingsStore] = [:]
+
+    /// Optional only so call sites written for the old real-suite initializer
+    /// (`try #require`, `XCTUnwrap`, `!`) keep compiling; never nil.
+    static func named(_ suite: String) -> MemorySettingsStore? {
+        lock.lock(); defer { lock.unlock() }
+        if let store = stores[suite] { return store }
+        let store = MemorySettingsStore()
+        stores[suite] = store
+        return store
+    }
+
+    static func remove(_ suite: String) {
+        lock.lock(); defer { lock.unlock() }
+        stores[suite] = nil
+    }
+}
+
+/// Forgets a test's in-memory suite. Touches nothing on disk.
 func removeTestDefaults(_ suite: String) {
-    UserDefaults.standard.removePersistentDomain(forName: suite)
-    UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
-    guard suite.hasPrefix("PromptRelay") || suite.hasPrefix("pr-"), !suite.contains("/"), !suite.contains("..") else { return }
-    CFPreferencesAppSynchronize(suite as CFString)
-    let file = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Preferences/\(suite).plist")
-    try? FileManager.default.removeItem(at: file)
+    TestDefaults.remove(suite)
 }

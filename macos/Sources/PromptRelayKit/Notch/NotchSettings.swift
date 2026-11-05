@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import Observation
 
-/// Interface preferences, persisted in UserDefaults.
+/// Interface preferences, persisted in UserDefaults (tests: `MemorySettingsStore`).
 @MainActor
 @Observable
 public final class NotchSettings {
@@ -57,7 +57,7 @@ public final class NotchSettings {
         static let relayWithoutNotch = "relay.withoutNotch"
     }
 
-    private let defaults: UserDefaults
+    private let defaults: any SettingsStore
 
     /// The resting island at the notch opens on hover. Off: Prompt Relay
     /// opens only from the menu-bar item or the hotkey. On by default since
@@ -92,7 +92,7 @@ public final class NotchSettings {
         }
     }
 
-    public init(defaults: UserDefaults = .standard) {
+    public init(defaults: any SettingsStore = UserDefaults.standard) {
         self.defaults = defaults
         notchEnabled = defaults.object(forKey: Key.notchEnabled) as? Bool ?? true   // default: on
         notifyWhenReady = defaults.bool(forKey: Key.notifyWhenReady)    // default: off

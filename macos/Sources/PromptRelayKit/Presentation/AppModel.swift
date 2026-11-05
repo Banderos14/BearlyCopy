@@ -149,7 +149,7 @@ public final class AppModel {
     public static let pollSeconds = 30
     static let lastSeenKey = "answers.lastSeenAt"
     static let seenAnswersKey = "answers.seenReports"
-    let stateDefaults: UserDefaults?
+    let stateDefaults: (any SettingsStore)?
 
     private let core: CoreProviding
     let clipboard: ClipboardService
@@ -168,7 +168,7 @@ public final class AppModel {
     /// `reportStore` keeps imported reports and attachments (nil: imports
     /// are unavailable, e.g. in most tests).
     public init(core: CoreProviding, clipboard: ClipboardService, dataDirectory: URL?,
-                stateDefaults: UserDefaults? = nil, reportStore: ReportStore? = nil) {
+                stateDefaults: (any SettingsStore)? = nil, reportStore: ReportStore? = nil) {
         self.core = core
         self.clipboard = clipboard
         self.dataDirectory = dataDirectory
@@ -306,7 +306,7 @@ public final class AppModel {
     public static func live() -> AppModel {
         let locator = CoreLocator()
         let model = AppModel(core: CoreClient.live(locator: locator), clipboard: ClipboardService(),
-                             dataDirectory: locator.dataDirectory, stateDefaults: .standard,
+                             dataDirectory: locator.dataDirectory, stateDefaults: UserDefaults.standard,
                              reportStore: ReportStore.live(dataDirectory: locator.dataDirectory))
         let history = ClipboardImageHistory.live(dataDirectory: locator.dataDirectory)
         model.clipboardImages = history
@@ -949,6 +949,8 @@ public final class AppModel {
         case taskReader
         /// Evidence Check, Artifact Completeness and the Review Checklist.
         case evidence
+        /// Phase 11: first-run setup (agents, project, first capture).
+        case setup
         public var id: String { rawValue }
         public var title: String {
             switch self {
@@ -967,6 +969,7 @@ public final class AppModel {
             case .reader: return "Full Report"
             case .taskReader: return "Full Task"
             case .evidence: return "Evidence & Review"
+            case .setup: return "Set Up"
             }
         }
     }

@@ -11,7 +11,16 @@ struct CodexHookConfiguration: Equatable {
             .appendingPathComponent("Library/Developer/Xcode/CodingAssistant/codex/hooks.json")
     }
 
-    static func inspect(at url: URL) -> Self {
+    /// Codex CLI's user-level hooks (CODEX_HOME defaults to ~/.codex).
+    static var cliURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks.json")
+    }
+
+    static func inspect(at url: URL) -> Self { inspect(at: url, host: "xcode") }
+
+    /// Counts Prompt Relay's own definitions for one host label; other
+    /// hooks in the file are never read beyond their command strings.
+    static func inspect(at url: URL, host: String) -> Self {
         guard FileManager.default.fileExists(atPath: url.path) else { return Self(state: .absent) }
         do {
             let data = try Data(contentsOf: url)
@@ -23,7 +32,7 @@ struct CodexHookConfiguration: Equatable {
                     (group["hooks"] as? [[String: Any]] ?? []).contains { hook in
                         guard hook["type"] as? String == "command", let command = hook["command"] as? String else { return false }
                         return command.contains("PROMPT_RELAY_PROVIDER=codex")
-                            && command.contains("PROMPT_RELAY_HOST=xcode")
+                            && command.contains("PROMPT_RELAY_HOST=\(host)")
                             && command.contains("/plugin/hooks/run-hook")
                     }
                 }

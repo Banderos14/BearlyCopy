@@ -33,7 +33,7 @@ struct AdaptiveIslandHeightTests {
     @Test func severalBlocksAndScreenLimit() async throws {
         _ = NSApplication.shared
         let suite = "PromptRelayTests.adaptiveStack.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: .init(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer {
@@ -124,7 +124,7 @@ struct AdaptiveIslandHeightTests {
     @Test func bannersAndDismissal() async throws {
         _ = NSApplication.shared
         let suite = "PromptRelayTests.adaptive.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: .init(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer {

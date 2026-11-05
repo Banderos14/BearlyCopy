@@ -20,7 +20,7 @@ final class FakeScreens: ScreenProviding {
 @MainActor
 final class NotchControllerTests: XCTestCase {
     var suite: String!
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var settings: NotchSettings!
     var screens: FakeScreens!
     var clock: ManualScheduler!
@@ -33,7 +33,7 @@ final class NotchControllerTests: XCTestCase {
     override func setUp() async throws {
         _ = NSApplication.shared
         suite = "PromptRelayTests.controller.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
         settings = NotchSettings(defaults: defaults)
         settings.animation = .reduced
         settings.mascotEnabled = false     // geometry tests: no ears unless a test turns the mascot on
@@ -798,7 +798,7 @@ final class NotchControllerTests: XCTestCase {
 final class ReadyAnswerTests: XCTestCase {
     func testNewAnswerIsAnnouncedOnceAndRememberedAcrossRestarts() async throws {
         let suite = "PromptRelayTests.ready.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let defaults = try XCTUnwrap(TestDefaults.named(suite))
         defer { removeTestDefaults(suite) }
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayReady-\(UUID().uuidString)"))
         defer { board.releaseGlobally() }

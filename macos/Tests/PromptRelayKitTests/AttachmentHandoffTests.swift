@@ -22,7 +22,7 @@ final class AttachmentHandoffTests: XCTestCase {
 
     override func tearDown() async throws {
         board.releaseGlobally()
-        UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        removeTestDefaults(suite)
         try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: root.appendingPathComponent("app").path)
         try? FileManager.default.removeItem(at: root)
     }
@@ -122,7 +122,7 @@ final class AttachmentHandoffTests: XCTestCase {
 
     func testRemovalFailureIsShownAndTheTextIsUntouched() async throws {
         let model = AppModel(core: FakeCore(projects: []), clipboard: ClipboardService(pasteboard: board), dataDirectory: nil,
-                             stateDefaults: UserDefaults(suiteName: suite), reportStore: store)
+                             stateDefaults: TestDefaults.named(suite), reportStore: store)
         await model.refreshNow()
         let text = "# Отчёт\n\n```swift\nlet x = 1\n```\n"
         _ = model.importReport(text: text, task: nil, projectPath: nil, sessionLabel: nil)
@@ -148,7 +148,7 @@ final class AttachmentHandoffTests: XCTestCase {
 
     func testCopyImageGivesImageDataAndTheFileUnderItsOriginalName() async throws {
         let model = AppModel(core: FakeCore(projects: []), clipboard: ClipboardService(pasteboard: board), dataDirectory: nil,
-                             stateDefaults: UserDefaults(suiteName: suite), reportStore: store)
+                             stateDefaults: TestDefaults.named(suite), reportStore: store)
         _ = model.importReport(text: "Report", task: nil, projectPath: nil, sessionLabel: nil)
         let ref = try XCTUnwrap(model.currentRef)
         model.addAttachments([try image("Снимок экрана 1.png"), try image("two.png", color: .red)], to: ref)

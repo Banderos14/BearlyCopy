@@ -38,8 +38,10 @@ public struct AgentSource: Codable, Equatable, Hashable, Sendable {
     public var environment: AgentHost { AgentHost(rawValue: host) ?? .unknown }
     public var label: String { "\(agent.title) · \(environment.title) · This Mac" }
     /// Phase 9.4: for tight headers — an unconfirmed host is left out, not shown as "Unknown".
+    /// Phase 11: "This Mac" is left out too (the laptop icon says it, and it
+    /// is the only possible value today); the full `label` is the tooltip.
     public var compactLabel: String {
-        environment == .unknown ? "\(agent.title) · This Mac" : "\(agent.title) · \(environment.title) · This Mac"
+        environment == .unknown ? agent.title : "\(agent.title) · \(environment.title)"
     }
     enum CodingKeys: String, CodingKey {
         case provider, host, capabilities, capture
@@ -50,5 +52,5 @@ public struct AgentSource: Codable, Equatable, Hashable, Sendable {
 extension SessionSummary {
     public var provider: AgentProvider { source?.agent ?? .claudeCode }
     public var sourceLabel: String { source?.label ?? "Claude Code · Unknown · This Mac" }
-    public var compactSourceLabel: String { source?.compactLabel ?? "Claude Code · This Mac" }
+    public var compactSourceLabel: String { source?.compactLabel ?? "Claude Code" }
 }

@@ -9,14 +9,14 @@ import XCTest
 @MainActor
 final class IslandLayoutTests: XCTestCase {
     var suite: String!
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var board: NSPasteboard!
     var root: URL!
 
     override func setUp() async throws {
         _ = NSApplication.shared
         suite = "PromptRelayTests.layout.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
         board = NSPasteboard(name: NSPasteboard.Name("PromptRelayLayout-\(UUID().uuidString)"))
         root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-layout-\(UUID().uuidString)")
     }
@@ -380,7 +380,7 @@ final class IslandHost {
             }
         }
         let size = NSSize(width: width, height: 32 + (availableHeight ?? maxContentHeight + 40))
-        let settings = NotchSettings(defaults: UserDefaults(suiteName: "PromptRelayLayout-\(UUID().uuidString)")!)
+        let settings = NotchSettings(defaults: TestDefaults.named("PromptRelayLayout-\(UUID().uuidString)")!)
         settings.theme = theme
         host = NSHostingView(rootView: NotchRootView(model: model, presentation: presentation,
                                                      interaction: NotchInteraction(scheduler: MainQueueScheduler()),

@@ -34,3 +34,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: PYTHONS=/usr/bin/python3 scripts/check.sh
+      - name: Swift build and tests
+        run: cd macos && swift build && swift test
+      - name: Release packaging check (ad-hoc, never published)
+        # Proves the packaging script runs; the artifact is marked
+        # UNSIGNED-NOT-FOR-RELEASE and is not uploaded.
+        run: scripts/release-build.sh --unsigned-test
+
+  secrets:
+    # Cheap guard: no real-looking keys outside the scanner's own fixtures.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          if git ls-files -z | grep -zvE '^(tests/|macos/Tests/|plugin/prompt_relay/sensitive.py|macos/Sources/PromptRelayKit/Services/SecretScanner.swift)' \
+             | xargs -0 grep -nE '(sk-ant-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'; then
+            echo "possible secret committed"; exit 1
+          fi

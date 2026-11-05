@@ -15,12 +15,14 @@ struct ProviderFilterPicker: View {
 
 struct IntegrationsView: View {
     let model: AppModel
+    /// Inside Settings → Agents & Projects (no caption, no own card).
+    var embedded = false
     @State private var diagnostic: String?
     @State private var xcodeConfiguration = CodexHookConfiguration(state: .absent)
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Caption("Integrations")
-            GroupCard {
+            if !embedded { Caption("Integrations") }
+            card {
                 IntegrationStatusRow(model: model, provider: .claudeCode)
                 Hairline()
                 IntegrationStatusRow(model: model, provider: .codex)
@@ -30,15 +32,15 @@ struct IntegrationsView: View {
                 Text(delivery.summary)
                     .font(.system(size: 11, weight: .semibold)).padding(.horizontal, 12)
                 Text(delivery.detail)
-                    .font(.system(size: 10.5)).foregroundStyle(Island.secondary).padding(.horizontal, 12)
+                    .font(.system(size: 11)).foregroundStyle(Island.secondary).padding(.horizontal, 12)
                 Text("This app: PID \(ProcessInfo.processInfo.processIdentifier) · \(Bundle.main.bundleURL.path)")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
                 if !AppBuild.otherBuildsRunning().isEmpty {
                     Text("Another Prompt Relay build is running. An older build may not recognize Codex. Manage running copies in Settings → About.")
                         .font(.system(size: 11)).foregroundStyle(Island.secondary).padding(.horizontal, 12)
                 }
                 Text("Definitions do not prove trust. Saved Xcode events confirm delivery at the displayed time; Test Connection starts no AI task.")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
                 Hairline()
                 VStack(alignment: .leading, spacing: 6) {
                     Button("Test Connection") {
@@ -58,6 +60,13 @@ struct IntegrationsView: View {
     }
 }
 
+extension IntegrationsView {
+    @ViewBuilder
+    fileprivate func card<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        if embedded { VStack(alignment: .leading, spacing: 6) { content() } } else { GroupCard { content() } }
+    }
+}
+
 struct IntegrationStatusRow: View {
     let model: AppModel
     let provider: AgentProvider
@@ -71,7 +80,7 @@ struct IntegrationStatusRow: View {
                     .font(.system(size: 11)).foregroundStyle(Island.secondary)
             }
             Text("Source adapter: installed in Prompt Relay")
-                .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                .font(.system(size: 11)).foregroundStyle(Island.tertiary)
             if sessions.isEmpty {
                 Text("No recorded hook events. Setup and a real session are required.")
                     .font(.system(size: 11)).foregroundStyle(Island.secondary)
@@ -86,14 +95,14 @@ struct IntegrationStatusRow: View {
             }
             if let source = sessions.first?.source {
                 Text("Source capabilities: " + source.capabilities.joined(separator: ", "))
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary)
             }
             Text(provider == .codex
                  ? "Requires reviewed Codex hooks and project capture enabled. Delivery stages above distinguish configuration, execution, storage and the final Stop."
                  : "UserPromptSubmit, Stop, PostToolUse and PostToolUseFailure through the existing Claude Code plugin.")
                 .font(.system(size: 11)).foregroundStyle(Island.tertiary)
             Text("To stop capture, disable the project in Projects or disable Prompt Relay hooks in the agent. Saved history stays available.")
-                .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                .font(.system(size: 11)).foregroundStyle(Island.tertiary)
         }.padding(12)
     }
 }

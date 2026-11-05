@@ -13,34 +13,20 @@ struct IslandSettingsView: View {
     let actions: SurfaceActions
     @State private var screens: [ScreenDescriptor] = []
     @State private var note: String?
+    @State private var relayOptions = false
+    @State private var connectionDetails = false
 
     static let repository = URL(string: "https://github.com/Banderos14/prompt-relay")!
 
     var body: some View {
         BoundedScroll(maxHeight: presentation.listHeight(chrome: 16)) {
             VStack(alignment: .leading, spacing: 8) {
-                // Capture → Clipboard → Appearance → Notifications → Privacy → Advanced → About.
-                section("Capture") {
-                    rowButton("Projects", detail: "Which folders Prompt Relay captures agent answers from. New folders start off.", value: captureSummary) {
-                        model.navigate(to: .capture)
-                    }
-                }
-                IntegrationsView(model: model)
-                behavior
-                section("Clipboard") {
-                    toggle("Keep the last 5 copied images",
-                           detail: "Screenshots and image files you copy anywhere, kept on this Mac for 24 hours to copy or drag later. Text from other apps is never read; password-manager items are skipped. Turning it off deletes them.",
-                           isOn: Binding(get: { model.clipboardHistoryEnabled }, set: { model.clipboardHistoryEnabled = $0 }))
-                    Hairline()
-                    rowButton("Open Clipboard", detail: "Your last copies in Prompt Relay and the kept images.",
-                              value: model.clipboardHistoryEnabled ? "\(model.clipboardImages?.items.count ?? 0) of \(ClipboardImageHistory.limit) images" : "") {
-                        model.navigate(to: .clipboard)
-                    }
-                }
-                if let settings {
-                    appearance(settings)
-                    notifications(settings)
-                }
+                // Phase 11: General → Appearance & Motion → Agents & Projects →
+                // Clipboard & Handoff → Privacy & Permissions → Diagnostics → About.
+                if let settings { general(settings) }
+                if let settings { appearance(settings) }
+                agentsAndProjects
+                handoff
                 privacy
                 diagnostics
                 about
@@ -60,81 +46,22 @@ struct IslandSettingsView: View {
     // MARK: Sections
 
     @ViewBuilder
-    private func notchRows(_ settings: NotchSettings) -> some View {
+    private func general(_ settings: NotchSettings) -> some View {
         @Bindable var settings = settings
-        Group {
-            toggle("Open on hover", detail: "Show the answer when the pointer rests on the notch. Off: open from the menu bar or \(HotKeyRegistration.displayString).",
+        section("General") {
+            toggle("Open on hover", detail: "Off: open from the menu bar or \(HotKeyRegistration.displayString).",
                    isOn: $settings.notchEnabled)
             Hairline()
-            picker("Display", detail: "Automatic: the built-in display's notch, else another display with a notch, else a small floating island under the menu bar of the main display. A display you choose without a notch gets the floating island there. Unplugged, Automatic is used until it returns.",
+            picker("Display", detail: "Automatic uses a notch when there is one, else a small island under the menu bar.",
                    current: displayTitle(settings.display),
                    options: [("Automatic", DisplayChoice.automatic)]
                     + screens.filter(\.hasNotch).map { ($0.name, DisplayChoice.display($0.displayID)) }) { settings.display = $0 }
             Hairline()
-            toggle("Make room for other notch apps", detail: "When another app (for example Coucou) uses the notch, open Prompt Relay from the menu bar instead.",
+            toggle("Make room for other notch apps", detail: "When another app uses the notch, open Prompt Relay from the menu bar.",
                    isOn: $settings.yieldToOtherNotchApps)
-        }
-    }
-
-    @ViewBuilder
-    private func appearance(_ settings: NotchSettings) -> some View {
-        @Bindable var settings = settings
-        section("Appearance") {
-            picker("Theme", detail: "Colors of the island. Classic is Phase 6's first look; the camera area stays black in all.",
-                   current: settings.theme.title,
-                   options: IslandTheme.allCases.map { ($0.title, $0) }) { settings.theme = $0 }
             Hairline()
-            notchRows(settings)
-            Hairline()
-            toggle("Show Relay the bear", detail: "A small companion beside the notch. It reacts to new answers and copies.",
-                   isOn: $settings.mascotEnabled)
-            if settings.mascotEnabled {
-                Hairline()
-                picker("Relay", detail: "Subtle (default): calm head turns and an idle moment every 16–34 s. Expressive: fuller turns, every 9–18 s. Off: a still bear; nothing is animated or drawn. Motion → Reduced, or Reduce Motion with Follow System, keeps it still as well.",
-                       current: settings.relayMotion.title,
-                       options: NotchSettings.RelayMotion.allCases.map { ($0.title, $0) }) { settings.relayMotion = $0 }
-                Hairline()
-                toggle("Idle moments", detail: "Now and then a glance, a look around, a smile; sleepy after a long quiet time. Never while you move the pointer.",
-                       isOn: $settings.relayIdle)
-                Hairline()
-                toggle("Follow the pointer", detail: "Relay's eyes and head turn toward the pointer near the island.",
-                       isOn: $settings.relayFollowsPointer)
-                Hairline()
-                toggle("Relay on displays without a notch", detail: "A small pill under the menu bar, centred; hover opens Quick Peek. One Relay at a time, on the display Prompt Relay uses.",
-                       isOn: $settings.relayWithoutNotch)
-            }
-            Hairline()
-            picker("Motion", detail: "Follow System (default): System Settings → Accessibility → Reduce Motion decides. Smooth: full motion even when Reduce Motion is on — only if you choose it here. Reduced: short fades, no moving or resizing, and Relay keeps still.",
-                   current: settings.animation.title,
-                   options: NotchSettings.Animation.allCases.map { ($0.title, $0) }) { settings.animation = $0 }
-        }
-    }
-
-    @ViewBuilder
-    private func notifications(_ settings: NotchSettings) -> some View {
-        @Bindable var settings = settings
-        section("Notifications") {
-            toggle("Notify when an answer is ready", detail: "The banner names the project only, never the answer.",
-                   isOn: $settings.notifyWhenReady)
-                .disabled(!(notifier?.isAvailable ?? false))
-                .onChange(of: settings.notifyWhenReady) { _, on in
-                    guard on, let notifier else { return }
-                    Task {
-                        if !(await notifier.requestAuthorization()) {
-                            settings.notifyWhenReady = false
-                            note = "Notifications are off for Prompt Relay in System Settings → Notifications."
-                        }
-                    }
-                }
-        }
-    }
-
-    /// Phase 9.3: Follow Latest vs Stay on Session, stated plainly, with
-    /// the current pin and a one-click way back to Latest.
-    private var behavior: some View {
-        section("Behavior") {
             toggle("Stay on the conversation I open",
-                   detail: "Off — Follow Latest: Quick Peek shows the newest final answer of any agent. On: your conversation stays; new answers appear as “New in …”.",
+                   detail: "Off: always show the newest final answer of any agent.",
                    isOn: Binding(get: { model.staysOnChosenSession }, set: { model.staysOnChosenSession = $0 }))
             if model.sessionPinned {
                 Hairline()
@@ -151,12 +78,95 @@ struct IslandSettingsView: View {
                 .padding(.horizontal, 12).padding(.vertical, 7)
             }
             Hairline()
+            toggle("Notify when an answer is ready", detail: "The banner names the project only, never the answer.",
+                   isOn: $settings.notifyWhenReady)
+                .disabled(!(notifier?.isAvailable ?? false))
+                .onChange(of: settings.notifyWhenReady) { _, on in
+                    guard on, let notifier else { return }
+                    Task {
+                        if !(await notifier.requestAuthorization()) {
+                            settings.notifyWhenReady = false
+                            note = "Notifications are off for Prompt Relay in System Settings → Notifications."
+                        }
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private func appearance(_ settings: NotchSettings) -> some View {
+        @Bindable var settings = settings
+        section("Appearance & Motion") {
+            picker("Theme", detail: "Colors of the island; the camera area stays black.",
+                   current: settings.theme.title,
+                   options: IslandTheme.allCases.map { ($0.title, $0) }) { settings.theme = $0 }
+            Hairline()
+            picker("Motion", detail: "Follow System uses Reduce Motion. Reduced: short fades only, Relay keeps still.",
+                   current: settings.animation.title,
+                   options: NotchSettings.Animation.allCases.map { ($0.title, $0) }) { settings.animation = $0 }
+            Hairline()
+            toggle("Show Relay the bear", detail: "A small companion beside the notch that reacts to new answers.",
+                   isOn: $settings.mascotEnabled)
+            if settings.mascotEnabled {
+                Hairline()
+                DisclosureGroup(isExpanded: $relayOptions) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        picker("Liveliness", detail: "Subtle: calm. Expressive: fuller, more often. Off: a still bear.",
+                               current: settings.relayMotion.title,
+                               options: NotchSettings.RelayMotion.allCases.map { ($0.title, $0) }) { settings.relayMotion = $0 }
+                        Hairline()
+                        toggle("Idle moments", detail: "A glance or a smile now and then; never while you move the pointer.",
+                               isOn: $settings.relayIdle)
+                        Hairline()
+                        toggle("Follow the pointer", detail: "Eyes and head turn toward the pointer near the island.",
+                               isOn: $settings.relayFollowsPointer)
+                        Hairline()
+                        toggle("Relay on displays without a notch", detail: "A small pill under the menu bar; hover opens Quick Peek.",
+                               isOn: $settings.relayWithoutNotch)
+                    }
+                } label: {
+                    Text("Relay options").font(.system(size: 12.5)).foregroundStyle(Island.primary)
+                        .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading).contentShape(Rectangle())
+                        .onTapGesture { relayOptions.toggle() }
+                }
+                .padding(.horizontal, 12).padding(.vertical, 4)
+            }
+        }
+    }
+
+    /// Phase 11: setup status, projects and connection details in one place.
+    private var agentsAndProjects: some View {
+        let facts = AgentFacts.gather(model: model)
+        let connected = ConnectionTarget.allCases.filter { facts.state(of: $0).isConnected }.count
+        let detected = ConnectionTarget.allCases.filter { facts.state(of: $0) != .notDetected }.count
+        return section("Agents & Projects") {
+            rowButton("Set Up Agents", detail: "Connect Claude Code or Codex and check the first capture.",
+                      value: "\(connected) of \(max(detected, 1)) connected") { model.navigate(to: .setup) }
+            Hairline()
+            rowButton("Projects", detail: "Folders whose agent answers are captured. New folders start off.", value: captureSummary) {
+                model.navigate(to: .capture)
+            }
+            Hairline()
+            DisclosureGroup(isExpanded: $connectionDetails) {
+                IntegrationsView(model: model, embedded: true)
+            } label: {
+                Text("Connection details").font(.system(size: 12.5)).foregroundStyle(Island.primary)
+                    .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading).contentShape(Rectangle())
+                    .onTapGesture { connectionDetails.toggle() }
+            }
+            .padding(.horizontal, 12).padding(.vertical, 4)
+        }
+    }
+
+    /// Phase 9.3 / 11: what Copy with Context prepares, and the clipboard.
+    private var handoff: some View {
+        section("Clipboard & Handoff") {
             toggle("Auto-select result attachments",
-                   detail: "Result files an agent verifiably wrote and named in its answer (Markdown, PDF, images, text) are prepared for Copy with Context. Files it only mentions are offered, not chosen. You can uncheck any.",
+                   detail: "Files the agent verifiably wrote and named are prepared for Copy with Context. Uncheck any.",
                    isOn: Binding(get: { model.autoSelectResultAttachments }, set: { model.autoSelectResultAttachments = $0 }))
             Hairline()
             toggle("Auto-capture final window",
-                   detail: "Off by default. On: choose the window of the open conversation's app (for example Xcode for Codex · Xcode). After each new final answer of that agent and app in this project, one still image of that window is attached and selected — kept in memory only, never saved to disk, gone when Prompt Relay quits. Other agents' answers are never captured; choose again after a restart.",
+                   detail: "Off by default. One still image of the window you choose, after each final answer of that agent in that project. Kept in memory only.",
                    isOn: Binding(get: { model.autoCaptureFinalWindow }, set: { model.autoCaptureFinalWindow = $0 }))
             if model.autoCaptureFinalWindow {
                 HStack(spacing: 8) {
@@ -170,6 +180,15 @@ struct IslandSettingsView: View {
                 }
                 .padding(.horizontal, 12).padding(.vertical, 6)
             }
+            Hairline()
+            toggle("Keep the last 5 copied images",
+                   detail: "Images you copy anywhere, kept on this Mac for 24 hours. Text from other apps is never read. Off deletes them.",
+                   isOn: Binding(get: { model.clipboardHistoryEnabled }, set: { model.clipboardHistoryEnabled = $0 }))
+            Hairline()
+            rowButton("Open Clipboard", detail: "Your last copies in Prompt Relay and the kept images.",
+                      value: model.clipboardHistoryEnabled ? "\(model.clipboardImages?.items.count ?? 0) of \(ClipboardImageHistory.limit) images" : "") {
+                model.navigate(to: .clipboard)
+            }
         }
     }
 
@@ -180,13 +199,20 @@ struct IslandSettingsView: View {
     }
 
     private var privacy: some View {
-        section("Privacy") {
+        section("Privacy & Permissions") {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Everything stays on this Mac").font(.system(size: 12.5)).foregroundStyle(Island.primary)
-                Text("No network, no account, no AI service. Answers, imports and files you add are stored in your Library folder for Prompt Relay only; window snapshots stay in memory. Nothing is sent anywhere unless you paste it.")
+                Text("No network, no account, no AI service. Answers and files you add stay in your Library folder; window snapshots stay in memory. Nothing leaves unless you paste it.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
+            Hairline()
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Screen Recording").font(.system(size: 12.5)).foregroundStyle(Island.primary)
+                Text("Asked only when you choose a window to capture; macOS shows its own picker. Manage it in System Settings → Privacy & Security.")
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 7)
             Hairline()
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -204,7 +230,7 @@ struct IslandSettingsView: View {
 
     @ViewBuilder
     private var diagnostics: some View {
-        section("Advanced") {
+        section("Diagnostics") {
             coreRow
             Hairline()
             pluginRow
@@ -277,13 +303,32 @@ struct IslandSettingsView: View {
             .padding(.horizontal, 12).frame(height: 32)
             Hairline()
             VStack(alignment: .leading, spacing: 3) {
+                let stamp = AppBuild.launchStamp
                 aboutLine("Build", AppBuild.isDebugBuild ? "Debug (Xcode)" : "Release")
-                aboutLine("Commit", AppBuild.gitCommit ?? "not recorded in this build (Xcode builds; see `git log` in the checkout)")
+                aboutLine("Commit", stamp.commit == nil ? "not recorded in this build" : stamp.commitText)
+                if let built = stamp.builtAt { aboutLine("Built", built) }
+                aboutLine("Location", (Bundle.main.bundleURL.path as NSString).abbreviatingWithTildeInPath)
+                aboutLine("Core", coreLine(stamp))
                 aboutLine("Plugin", model.doctor.value?.configuration.plugin.records.first { $0.id.hasPrefix("prompt-relay@") }?.version
-                          ?? (model.doctor.value == nil ? "open Advanced to check" : "not detected"))
+                          ?? (model.doctor.value == nil ? "checking…" : "not detected"))
                 aboutLine("Running", AppBuild.describeRunning().joined(separator: "\n"))
             }
             .padding(.horizontal, 12).padding(.vertical, 6)
+            let mismatches = AppBuild.currentDiagnostics(coreInUse: model.doctor.value?.core.promptRelayVersion)
+            if !mismatches.isEmpty {
+                Hairline()
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(mismatches, id: \.self) { note in
+                        HStack(alignment: .top, spacing: 6) {
+                            Circle().fill(Island.warning).frame(width: 6, height: 6).padding(.top, 5)
+                            Text(note).font(.system(size: 11.5)).foregroundStyle(Island.secondary)
+                                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                        }
+                    }
+                }
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .accessibilityElement(children: .combine)
+            }
             Hairline()
             Link(destination: Self.repository) {
                 HStack {
@@ -325,9 +370,17 @@ struct IslandSettingsView: View {
         }
     }
 
+    /// Bundled Core version, and the one actually answering when it differs.
+    private func coreLine(_ stamp: AppBuild.Stamp) -> String {
+        let bundled = stamp.coreVersion.map { "bundled \($0)" } ?? "bundled version unknown"
+        guard let core = model.doctor.value?.core else { return bundled }
+        let inUse = core.promptRelayVersion == stamp.coreVersion ? "" : " · in use \(core.promptRelayVersion)"
+        return "\(bundled)\(inUse) · Python \(core.python.version)"
+    }
+
     private func aboutLine(_ title: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Text(title).font(.system(size: 11.5)).foregroundStyle(Island.secondary).frame(width: 56, alignment: .leading)
+            Text(title).font(.system(size: 11.5)).foregroundStyle(Island.secondary).frame(width: 60, alignment: .leading)
             Text(value).font(.system(size: 11)).foregroundStyle(Island.tertiary).textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)

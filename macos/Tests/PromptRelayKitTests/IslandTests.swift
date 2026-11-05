@@ -8,12 +8,12 @@ import XCTest
 @MainActor
 final class IslandNavigationTests: XCTestCase {
     var suite: String!
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var board: NSPasteboard!
 
     override func setUp() async throws {
         suite = "PromptRelayTests.workspace.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
         board = NSPasteboard(name: NSPasteboard.Name("PromptRelayWorkspace-\(UUID().uuidString)"))
     }
 

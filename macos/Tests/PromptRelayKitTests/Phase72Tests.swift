@@ -143,7 +143,7 @@ final class CopyWithContextHeaderTests: XCTestCase {
     /// broke inside the word. Now one line each, at every width and height.
     func testTitleAndPreviewStayOnOneLine() async throws {
         let suite = "PromptRelayTests.p72h.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
+        let defaults = TestDefaults.named(suite)!
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP72h-\(UUID().uuidString)"))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p72h-\(UUID().uuidString)")
         defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
@@ -175,7 +175,7 @@ final class SurfaceAuditRenderTests: XCTestCase {
             throw XCTSkip("set PROMPT_RELAY_AUDIT_DIR to render the surfaces")
         }
         let suite = "PromptRelayTests.p72a.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
+        let defaults = TestDefaults.named(suite)!
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP72a-\(UUID().uuidString)"))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p72a-\(UUID().uuidString)")
         defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }

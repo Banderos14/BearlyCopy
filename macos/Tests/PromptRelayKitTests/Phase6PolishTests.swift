@@ -9,14 +9,14 @@ import XCTest
 @MainActor
 final class Phase6PolishTests: XCTestCase {
     var suite: String!
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var board: NSPasteboard!
     var root: URL!
 
     override func setUp() async throws {
         _ = NSApplication.shared
         suite = "PromptRelayTests.p6p.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
         board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP6p-\(UUID().uuidString)"))
         root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p6p-\(UUID().uuidString)")
     }

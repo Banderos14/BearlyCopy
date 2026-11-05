@@ -127,7 +127,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Copies the Python Core (bin/prompt-relay + plugin/prompt_relay) into\n# Contents/Resources/core in the repository's layout, as\n# scripts/build-macos-app.sh does. Nothing else from the repository is copied.\nset -eu\nrepo=\"${SRCROOT}/../..\"\ncore=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/core\"\nrm -rf \"$core\"\nmkdir -p \"$core/bin\" \"$core/plugin/prompt_relay\"\ncp \"$repo/bin/prompt-relay\" \"$core/bin/prompt-relay\"\ncp \"$repo\"/plugin/prompt_relay/*.py \"$core/plugin/prompt_relay/\"\nchmod 755 \"$core/bin/prompt-relay\"\n";
+			shellScript = "# Copies the Python Core (bin/prompt-relay + plugin/prompt_relay) into\n# Contents/Resources/core in the repository's layout, as\n# scripts/build-macos-app.sh does. Nothing else from the repository is copied.\nset -eu\nrepo=\"${SRCROOT}/../..\"\ncore=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/core\"\nrm -rf \"$core\"\nmkdir -p \"$core/bin\" \"$core/plugin/prompt_relay\"\ncp \"$repo/bin/prompt-relay\" \"$core/bin/prompt-relay\"\ncp \"$repo\"/plugin/prompt_relay/*.py \"$core/plugin/prompt_relay/\"\nchmod 755 \"$core/bin/prompt-relay\"\n# Phase 11: record the commit, so Settings → About can tell this build\n# from the installed app. Read-only git; nothing else is recorded.\nplist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\ncommit=$(git -C \"$repo\" rev-parse --short HEAD 2>/dev/null || echo unknown)\ndirty=no\nif [ -n \"$(git -C \"$repo\" status --porcelain --untracked-files=no -- macos/Sources bin plugin 2>/dev/null)\" ]; then dirty=yes; fi\nfor kv in \"PRGitCommit:$commit\" \"PRGitDirty:$dirty\" \"PRBuildDate:$(date -u +%Y-%m-%dT%H:%M:%SZ)\"; do\n  k=${kv%%:*}; v=${kv#*:}\n  /usr/libexec/PlistBuddy -c \"Delete :$k\" \"$plist\" >/dev/null 2>&1 || true\n  /usr/libexec/PlistBuddy -c \"Add :$k string $v\" \"$plist\"\ndone\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -191,7 +191,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 0.2.0;
+				CURRENT_PROJECT_VERSION = 0.3.0;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -201,7 +201,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.banderos14.PromptRelay.debug;
 				PRODUCT_NAME = "Prompt Relay";
 				SWIFT_VERSION = 5.0;
@@ -215,7 +215,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 0.2.0;
+				CURRENT_PROJECT_VERSION = 0.3.0;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -225,7 +225,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.banderos14.PromptRelay;
 				PRODUCT_NAME = "Prompt Relay";
 				SWIFT_VERSION = 5.0;

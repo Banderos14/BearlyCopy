@@ -79,7 +79,7 @@ struct ClipboardTextList: View {
                             Text(preview).font(.system(size: 11.5)).foregroundStyle(Island.secondary).lineLimit(1)
                         }
                         Text(available ? "\(record.label) · \(Wording.relative(record.at))" : "No longer in history")
-                            .font(.system(size: 10.5)).foregroundStyle(available ? Island.tertiary : Island.warning).lineLimit(1)
+                            .font(.system(size: 11)).foregroundStyle(available ? Island.tertiary : Island.warning).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
@@ -137,7 +137,7 @@ struct ClipboardImagesPane: View {
             }
             actions(history, selected: selected.isEmpty && preview != nil ? items.filter { $0.id == preview } : selected)
             if let message = history.message {
-                Text(message).font(.system(size: 10.5)).foregroundStyle(Island.warning)
+                Text(message).font(.system(size: 11)).foregroundStyle(Island.warning)
             }
         } else if model.clipboardImages == nil {
             MessageCard(title: "Clipboard images are unavailable", detail: "This build has no image history.",
@@ -213,7 +213,7 @@ struct ClipboardImagesPane: View {
                     .foregroundStyle(Island.primary).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 0)
                 Text("\(ReviewPack.size(item.byteCount)) · \(Wording.clock(ISO8601DateFormatter().string(from: item.capturedAt)))")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 IconLink(symbol: "arrow.up.forward.app", label: "Open in Preview", help: "Open in Preview") {
                     NSWorkspace.shared.open(history.url(for: item))
                 }
@@ -258,14 +258,14 @@ struct ClipboardThumb: View {
                         } else { Color.clear }
                     }
                     .frame(width: 96, height: 64).background(Island.code).clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous))
                     // Clipping hides the overflow of a `.fill` image but does
                     // not stop it from taking clicks and hover: a wide
                     // screenshot reached into its neighbour, so pointing at
                     // one image lit or opened another (Phase 7, found by the
                     // owner). Only the visible thumbnail is hit-testable.
-                    .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .contentShape(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous)
                         .stroke(chosen ? Island.accent : (hovering ? Island.hairline.opacity(3) : Island.hairline), lineWidth: chosen ? 2 : 1))
                 }
                 .buttonStyle(.plain)
@@ -278,9 +278,9 @@ struct ClipboardThumb: View {
             }
             .contentShape(Rectangle())
             .onDrag { history.exportFiles([item]).first.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
-            Text(item.displayName).font(.system(size: 10)).foregroundStyle(Island.secondary).lineLimit(1)
+            Text(item.displayName).font(.system(size: 11)).foregroundStyle(Island.secondary).lineLimit(1)
             Text("\(Wording.clock(ISO8601DateFormatter().string(from: item.capturedAt))) · \(ReviewPack.size(item.byteCount))")
-                .font(.system(size: 9.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
         }
         .frame(width: 96)
     }

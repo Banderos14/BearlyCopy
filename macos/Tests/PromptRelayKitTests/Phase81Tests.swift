@@ -9,7 +9,7 @@ struct Phase81Tests {
     @Test
     func helpNeverCoversContent() async throws {
         let suite = "PromptRelayTests.p81.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: NSPasteboard.Name(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer {
@@ -113,7 +113,7 @@ struct Phase81ReadyTests {
     @Test
     func readingOneSessionPreservesOtherUnreadAcrossRestartAndNewPrompt() async throws {
         let suite = "PromptRelayTests.p81.ready.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: NSPasteboard.Name(suite))
         defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let t0 = "2026-10-31T10:00:00.000000Z"
@@ -172,7 +172,7 @@ struct Phase81ReadyTests {
     @Test
     func openingNewestTurnLeavesEarlierTurnUnreadInSameSession() async throws {
         let suite = "PromptRelayTests.p81.turns.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: NSPasteboard.Name(suite))
         defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let t0 = "2026-10-31T10:00:00.000000Z"
@@ -212,7 +212,7 @@ struct Phase81ReadyTests {
     @Test
     func pinnedSessionDoesNotAcknowledgeAnUnopenedAnswer() async throws {
         let suite = "PromptRelayTests.p81.pinned.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: NSPasteboard.Name(suite))
         defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let core = FakeCore(projects: [project("/a", sessions: 2, last: "2026-10-31T10:00:00.000000Z")])

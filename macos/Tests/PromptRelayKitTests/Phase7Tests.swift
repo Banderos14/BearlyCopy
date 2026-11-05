@@ -9,14 +9,14 @@ import XCTest
 @MainActor
 final class Phase7Tests: XCTestCase {
     var suite: String!
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var board: NSPasteboard!
     var root: URL!
 
     override func setUp() async throws {
         _ = NSApplication.shared
         suite = "PromptRelayTests.p7.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
         board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7-\(UUID().uuidString)"))
         root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p7-\(UUID().uuidString)")
     }
@@ -148,7 +148,7 @@ final class Phase7ClipboardHitTests: XCTestCase {
     func testFiveWideThumbnailsDoNotOverlap() async throws {
         _ = NSApplication.shared
         let suite = "PromptRelayTests.p7c.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
+        let defaults = TestDefaults.named(suite)!
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7c-\(UUID().uuidString)"))
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p7c-\(UUID().uuidString)")
         defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: folder) }
@@ -267,13 +267,13 @@ final class FullTaskTests: XCTestCase {
 @MainActor
 final class SmartContextTests: XCTestCase {
     var board: NSPasteboard!
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var suite: String!
 
     override func setUp() async throws {
         board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7s-\(UUID().uuidString)"))
         suite = "PromptRelayTests.p7s.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
     }
 
     override func tearDown() async throws {
@@ -443,7 +443,7 @@ final class EvidenceTests: XCTestCase {
 final class ReviewCheckMarkTests: XCTestCase {
     func testTicksAreTheUsersAndRememberedPerAnswer() async throws {
         let suite = "PromptRelayTests.p7r.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
+        let defaults = TestDefaults.named(suite)!
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7r-\(UUID().uuidString)"))
         defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let core = FakeCore(projects: [project("/p", sessions: 1, last: "2026-10-31T00:00:00.000000Z")])
@@ -469,7 +469,7 @@ final class ReviewCheckMarkTests: XCTestCase {
 final class ExportBundleTests: XCTestCase {
     func testBundleHasThePackageTheChosenSnapshotsAndAManifest() async throws {
         let suite = "PromptRelayTests.p7e.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
+        let defaults = TestDefaults.named(suite)!
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7e-\(UUID().uuidString)"))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p7e-\(UUID().uuidString)")
         let out = root.appendingPathComponent("out")

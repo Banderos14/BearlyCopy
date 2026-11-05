@@ -7,12 +7,12 @@ import XCTest
 @MainActor
 final class ProjectCaptureTests: XCTestCase {
     var suite: String!
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var board: NSPasteboard!
 
     override func setUp() async throws {
         suite = "PromptRelayTests.daily.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
         board = NSPasteboard(name: NSPasteboard.Name("PromptRelayDaily-\(UUID().uuidString)"))
     }
 
@@ -208,7 +208,7 @@ final class FollowLatestTests: XCTestCase {
     }
 
     func testPinnedSessionSurvivesARestart() async throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "pr-pin-\(UUID().uuidString)"))
+        let defaults = try XCTUnwrap(TestDefaults.named("pr-pin-\(UUID().uuidString)"))
         let c = core()
         let first = AppModel(core: c, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
         first.staysOnChosenSession = true

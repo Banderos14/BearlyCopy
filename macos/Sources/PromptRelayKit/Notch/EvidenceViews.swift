@@ -14,7 +14,7 @@ struct EvidenceChip: View {
                         .font(.system(size: 9.5, weight: .semibold))
                         .foregroundStyle(failed ? Island.warning : Island.secondary)
                     Text(evidence.summary.isEmpty ? "Evidence" : evidence.summary)
-                        .font(.system(size: 10.5, weight: .medium)).lineLimit(1)
+                        .font(.system(size: 11, weight: .medium)).lineLimit(1)
                 }
                 .foregroundStyle(Island.secondary)
                 .padding(.horizontal, 6).frame(height: 18)
@@ -42,7 +42,7 @@ struct CompletenessLine: View {
                     Image(systemName: "square.stack.3d.up.trianglebadge.exclamationmark").font(.system(size: 9.5))
                         .foregroundStyle(Island.warning)
                     Text("\(first.title): \(first.text)" + (lines.count > 1 ? " · +\(lines.count - 1)" : ""))
-                        .font(.system(size: 10.5)).foregroundStyle(Island.secondary).lineLimit(2)
+                        .font(.system(size: 11)).foregroundStyle(Island.secondary).lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
@@ -104,7 +104,7 @@ struct EvidenceView: View {
                                 Text(line.text).font(.system(size: 11)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
                                 if !line.missing.isEmpty {
                                     Text("Missing or name only: " + line.missing.joined(separator: ", "))
-                                        .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                                        .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                                 }
                             }
                             .islandFrame("completeness.\(line.id)")
@@ -124,7 +124,7 @@ struct EvidenceView: View {
                                         Text(item.text).font(.system(size: 11.5, weight: .medium))
                                             .foregroundStyle(done ? Island.secondary : Island.primary)
                                             .strikethrough(done, color: Island.tertiary)
-                                        Text(done ? "Checked by you · \(item.reason)" : item.reason).font(.system(size: 10.5))
+                                        Text(done ? "Checked by you · \(item.reason)" : item.reason).font(.system(size: 11))
                                             .foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                                     }
                                 }
@@ -145,7 +145,7 @@ struct EvidenceView: View {
     private func section<C: View>(_ title: String, note: String, @ViewBuilder content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Caption(title, role: Island.accent)
-            Text(note).font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+            Text(note).font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -39,7 +39,7 @@ struct Phase93Tests {
         return p
     }
 
-    private func model(_ core: FakeCore, defaults: UserDefaults? = nil) -> (AppModel, NSPasteboard) {
+    private func model(_ core: FakeCore, defaults: MemorySettingsStore? = nil) -> (AppModel, NSPasteboard) {
         let board = NSPasteboard(name: .init("PromptRelay93-\(UUID().uuidString)"))
         return (AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults), board)
     }
@@ -220,7 +220,7 @@ struct Phase93Tests {
 
     @Test func savedPinMigratesToStayModeAndIsKept() async throws {
         let suite = "PromptRelay93.migrate.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         defer { removeTestDefaults(suite) }
         defaults.set(try JSONEncoder().encode(AppModel.SavedSelection(projectPath: "/repo/macos", sessionKey: "old", pinnedAt: nil)),
                      forKey: AppModel.selectionKey)
@@ -242,7 +242,7 @@ struct Phase93Tests {
         #expect(m.selectedSessionKey == "old")
         #expect(m.sessionPinned)
 
-        let fresh = try #require(UserDefaults(suiteName: suite + ".fresh"))
+        let fresh = try #require(TestDefaults.named(suite + ".fresh"))
         defer { removeTestDefaults(suite + ".fresh") }
         let (n, board2) = model(core, defaults: fresh)
         defer { board2.releaseGlobally() }
@@ -441,7 +441,7 @@ struct Phase93Tests {
 struct Phase94CompletionTests {
     @Test func backgroundTestsThenFollowUpUpdateLatestOnce() async throws {
         let suite = "PromptRelay94.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: .init(suite))
         defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let now = ISO8601DateFormatter()
@@ -665,7 +665,7 @@ struct Phase94UITests {
 
     @Test func conversationsGroupSortAndRememberExpansion() async throws {
         let suite = "PromptRelay94conv.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let b = board(); defer { b.releaseGlobally(); removeTestDefaults(suite) }
         let core = FakeCore(projects: [Phase93Tests.info("/repo", logical: "/repo", sessions: 3, last: ago(10)),
                                        Phase93Tests.info("/repo/macos", logical: "/repo", sessions: 1, last: ago(10), enabled: false)])
@@ -729,7 +729,7 @@ struct Phase94UITests {
 
     @Test func viewingTheReadyAnswerTurnsTheIndicatorNeutral() async throws {
         let suite = "PromptRelay94ind.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let b = board(); defer { b.releaseGlobally(); removeTestDefaults(suite) }
         let core = FakeCore(projects: [project("/repo", sessions: 1, last: ago(300))])
         core.showResult = { [unowned core] key, i in
@@ -772,7 +772,7 @@ struct Phase94UITests {
 
     @Test func autoCaptureIsOptInBoundToAgentHostAndProjectAndNeverFallsBack() async throws {
         let suite = "PromptRelay94cap.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr94a-" + UUID().uuidString)
         let b = board(); defer { b.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
         func codex(_ turns: Int, _ at: String) -> SessionSummary {

@@ -117,7 +117,7 @@ struct Phase10SnapshotTests {
     /// Context → hand-off step 2 puts the image on the clipboard as data.
     @Test func autoSnapshotReachesTheHandoffWithoutDetailsOrFiles() async throws {
         let suite = "PromptRelay10h.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let root = tempRoot()
         let b = board(); defer { b.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
         let core = FakeCore(projects: [project("/a", sessions: 1, last: ago(300))])
@@ -195,7 +195,7 @@ struct Phase10IndicatorTests {
     /// and only a newer answer lights the dot again — also after a restart.
     @Test func openingTheIslandClearsTheNotchButNotPerProjectUnread() async throws {
         let suite = "PromptRelay10n.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let b = board(); defer { b.releaseGlobally(); removeTestDefaults(suite) }
         let core = FakeCore(projects: [project("/repo", sessions: 3, last: ago(600))])
         core.showResult = { [unowned core] key, i in

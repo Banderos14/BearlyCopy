@@ -254,7 +254,7 @@ final class NotchGeometryTests: XCTestCase {
 final class NotchSettingsTests: XCTestCase {
     func testDefaultsAndPersistence() throws {
         let suite = "PromptRelayTests.settings.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let defaults = try XCTUnwrap(TestDefaults.named(suite))
         defer { removeTestDefaults(suite) }
 
         let first = NotchSettings(defaults: defaults)
@@ -279,7 +279,7 @@ final class NotchSettingsTests: XCTestCase {
 
     func testReduceMotion() throws {
         let suite = "PromptRelayTests.motion.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let defaults = try XCTUnwrap(TestDefaults.named(suite))
         defer { removeTestDefaults(suite) }
         let s = NotchSettings(defaults: defaults)
         XCTAssertTrue(s.reducesMotion(systemReduceMotion: true))

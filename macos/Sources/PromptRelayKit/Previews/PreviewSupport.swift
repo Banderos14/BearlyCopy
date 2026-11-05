@@ -119,7 +119,7 @@ public enum PreviewFixtures {
 #Preview("Notch · Expanded") {
     NotchRootView(model: PreviewFixtures.model(), presentation: PreviewFixtures.notch(expanded: true, peek: false),
                   interaction: NotchInteraction(scheduler: MainQueueScheduler()), actions: PreviewFixtures.actions,
-                  settings: NotchSettings(defaults: UserDefaults(suiteName: "PromptRelayPreview")!))
+                  settings: NotchSettings(defaults: MemorySettingsStore()))
         .frame(width: 440, height: 300)
         .background(Color.gray.opacity(0.4))
 }

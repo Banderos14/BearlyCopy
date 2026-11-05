@@ -253,13 +253,13 @@ final class ReportStoreTests: XCTestCase {
 @MainActor
 final class ReportWorkflowTests: XCTestCase {
     var suite: String!
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var board: NSPasteboard!
     var root: URL!
 
     override func setUp() async throws {
         suite = "PromptRelayTests.p4.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
         board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP4-\(UUID().uuidString)"))
         root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p4-\(UUID().uuidString)")
     }

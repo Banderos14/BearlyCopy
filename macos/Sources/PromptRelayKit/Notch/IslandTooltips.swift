@@ -162,7 +162,7 @@ struct IslandTooltipOverlay: View {
                     let width = helpArea?.width ?? min(Self.maxWidth, TipPlacement.safeArea(island: size, band: band).width)
                     TipTextLayout(maxWidth: width - (helpArea == nil ? 14 : 0), balancesLines: helpArea == nil) {
                         Text(verbatim: tip.text)
-                            .font(.system(size: 10.5))
+                            .font(.system(size: 11))
                             .foregroundStyle(Island.primary.opacity(0.92))
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)

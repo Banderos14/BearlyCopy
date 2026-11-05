@@ -185,7 +185,7 @@ struct CodeBlockView: View {
         let shown = lineLimit.map { Array(lines.prefix($0)) } ?? lines
         VStack(alignment: .leading, spacing: 4) {
             if !language.isEmpty {
-                Text(language).font(.system(size: 10, weight: .semibold)).foregroundStyle(Island.tertiary)
+                Text(language).font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.tertiary)
             }
             // In the reader (no line limit) a long line shows its scroller, so it is clear there is more to the right.
             ScrollView(.horizontal, showsIndicators: lineLimit == nil) {
@@ -196,12 +196,12 @@ struct CodeBlockView: View {
                     .textSelection(.enabled)
             }
             if shown.count < lines.count {
-                Text("+\(lines.count - shown.count) more lines").font(.system(size: 10)).foregroundStyle(Island.tertiary)
+                Text("+\(lines.count - shown.count) more lines").font(.system(size: 11)).foregroundStyle(Island.tertiary)
             }
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Island.code))
+        .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(Island.code))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(language.isEmpty ? "Code" : "\(language) code")
     }

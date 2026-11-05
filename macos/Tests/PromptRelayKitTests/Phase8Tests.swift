@@ -63,7 +63,7 @@ enum Phase8Fixture {
         try! JSONDecoder().decode(Turn.self, from: JSONSerialization.data(withJSONObject: turnJSON(index, detail: detail)))
     }
 
-    static func model(defaults: UserDefaults, board: NSPasteboard, root: URL) async -> AppModel {
+    static func model(defaults: MemorySettingsStore, board: NSPasteboard, root: URL) async -> AppModel {
         let core = FakeCore(projects: [project("/a", sessions: 1, last: "2026-10-31T10:04:00.000000Z")])
         core.sessionsByProject["/a"] = [sessionSummary("sa", project: "/a", last: "2026-10-31T10:04:00.000000Z")]
         core.turnsBySession["sa"] = [turn(1, detail: false)]
@@ -81,7 +81,7 @@ enum Phase8Fixture {
 
 @MainActor
 final class Phase8Tests: XCTestCase {
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var board: NSPasteboard!
     var root: URL!
     var suite: String!
@@ -89,7 +89,7 @@ final class Phase8Tests: XCTestCase {
     override func setUp() async throws {
         _ = NSApplication.shared
         suite = "PromptRelayTests.p8.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
         board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP8-\(UUID().uuidString)"))
         root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p8-\(UUID().uuidString)")
     }
@@ -178,7 +178,8 @@ final class Phase8Tests: XCTestCase {
             return last.size
         }
         let one = measure("Copy the original answer")
-        XCTAssertLessThan(one.height, 22, "a short tip is one line")
+        // Phase 11: tooltip text is 11 pt (was 10.5), one line is 22 pt with its inset.
+        XCTAssertLessThan(one.height, 23, "a short tip is one line")
         // Just over the maximum: two balanced lines, not one full line and a stub.
         let two = measure("Answer, request, commands, files, Git and chosen attachments as Markdown")
         XCTAssertGreaterThan(two.height, one.height * 1.6)

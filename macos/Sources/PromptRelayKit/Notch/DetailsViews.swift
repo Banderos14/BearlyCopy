@@ -134,14 +134,15 @@ struct DetailsView: View {
     @ViewBuilder
     private var emptyState: some View {
         if model.projects.value?.isEmpty == true {
-            MessageCard(title: "Choose a project to capture",
-                        detail: "Prompt Relay keeps agent final answers for projects you turn on. Nothing is captured until you do.",
+            MessageCard(title: "Set up Prompt Relay",
+                        detail: "Connect Claude Code or Codex and choose a project. Nothing is captured until you do.",
                         symbol: "folder.badge.plus", tint: Island.accent,
-                        action: ("Capture Settings", { model.navigate(to: .capture) }))
+                        action: ("Set Up", { model.navigate(to: .setup) }))
         } else {
             MessageCard(title: "No answer yet",
                         detail: "When a connected agent finishes in a captured project, its answer appears here.",
-                        symbol: "text.bubble", tint: Island.secondary, action: nil)
+                        symbol: "text.bubble", tint: Island.secondary,
+                        action: ("Check Setup", { model.navigate(to: .setup) }))
         }
     }
 
@@ -353,7 +354,7 @@ struct IconLink: View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 12.5, weight: .medium))
                 .frame(width: 26, height: 26)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(hovering ? Island.hover : .clear))
+                .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(hovering ? Island.hover : .clear))
                 .overlay(alignment: .topTrailing) {
                     if badge { Circle().fill(Island.warning).frame(width: 5, height: 5).offset(x: -3, y: 3) }
                 }
@@ -430,7 +431,7 @@ struct HandoffContentsCard: View {
                     } label: {
                         Image(systemName: explained == row.title ? "info.circle.fill" : "info.circle")
                             .font(.system(size: 10)).foregroundStyle(explained == row.title ? Island.accent : Island.tertiary)
-                            .frame(width: 16, height: 16).contentShape(Rectangle())
+                            .frame(width: 22, height: 22).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(explained == row.title ? "Hide explanation" : "Explain \(row.title)")
@@ -440,15 +441,15 @@ struct HandoffContentsCard: View {
                 BoundedScroll(maxHeight: 96) {
                     VStack(alignment: .leading, spacing: 3) {
                         ForEach(open.explanation.lines, id: \.0) { label, text in
-                            (Text(label + "  ").font(.system(size: 9.5, weight: .semibold)).foregroundStyle(Island.tertiary)
-                             + Text(text).font(.system(size: 10.5)).foregroundStyle(Island.secondary))
+                            (Text(label + "  ").font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.tertiary)
+                             + Text(text).font(.system(size: 11)).foregroundStyle(Island.secondary))
                                 .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .padding(.trailing, 4)
                 }
                 .padding(7)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Island.cardRaised))
+                .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(Island.cardRaised))
                 .transition(.opacity)
                 .islandFrame("handoff.explanation")
             }
@@ -464,7 +465,7 @@ struct HandoffContentsCard: View {
         Button { Task { await model.openPackPreview() } } label: {
             HStack(spacing: 3) {
                 Image(systemName: "eye").font(.system(size: 9.5, weight: .semibold))
-                if label { Text("Preview").font(.system(size: 10.5, weight: .medium)).lineLimit(1) }
+                if label { Text("Preview").font(.system(size: 11, weight: .medium)).lineLimit(1) }
             }
             .fixedSize()
             .frame(minWidth: 18, minHeight: 18)
@@ -575,7 +576,7 @@ struct HandoffContentsCard: View {
             Image(systemName: row.symbol).font(.system(size: 10.5)).frame(width: 14).foregroundStyle(Island.tertiary)
             Text(row.title).foregroundStyle(Island.primary).lineLimit(1).fixedSize()
             Spacer(minLength: 4)
-            Text(row.detail).font(.system(size: 10.5)).foregroundStyle(row.alert ? Island.error : Island.tertiary)
+            Text(row.detail).font(.system(size: 11)).foregroundStyle(row.alert ? Island.error : Island.tertiary)
                 .lineLimit(1).truncationMode(.tail)
             if row.opensActivity { Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary) }
         }
@@ -599,7 +600,7 @@ struct AttachmentsCard: View {
                 Caption("Attachments", role: Island.review)
                 let summary = model.materialSummary(for: ref)
                 if !summary.isEmpty { Text("\(summary.documents + summary.images + summary.mockups + summary.links) selected")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary) }
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary) }
                 Spacer(minLength: 0)
                 Menu {
                     Button("Files…") { model.chooseFiles() }
@@ -607,6 +608,7 @@ struct AttachmentsCard: View {
                     Button("Capture Final Window…") { model.captureFinalWindow() }
                 } label: {
                     Image(systemName: "paperclip").font(.system(size: 11, weight: .medium))
+                        .frame(width: 24, height: 22).contentShape(Rectangle())
                 }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .disabled(model.reportStore == nil || ref == nil || model.isPresentingSystemDialog)
@@ -618,11 +620,11 @@ struct AttachmentsCard: View {
                     CompletenessLine(model: model)
                     if !suggestions.isEmpty {
                         HStack {
-                            Text("From this turn").font(.system(size: 10, weight: .semibold)).foregroundStyle(Island.tertiary)
+                            Text("From this turn").font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.tertiary)
                             Spacer()
                             if suggestions.count > 1 {
                                 Button("Add all") { model.acceptAll(suggestions) }.buttonStyle(.plain)
-                                    .font(.system(size: 10.5, weight: .medium)).foregroundStyle(Island.accent)
+                                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
                             }
                         }
                         ForEach(suggestions) { SuggestionRow(model: model, suggestion: $0) }
@@ -635,7 +637,7 @@ struct AttachmentsCard: View {
                             .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                     }
                     if let message = model.attachmentMessage {
-                        Text(message).font(.system(size: 10.5)).foregroundStyle(Island.warning)
+                        Text(message).font(.system(size: 11)).foregroundStyle(Island.warning)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -681,7 +683,7 @@ struct AttachmentRow: View {
                             .lineLimit(1).truncationMode(.middle)
                         Text(!available ? (memory ? "No longer in memory" : "Missing")
                              : "\(ReviewPack.type(attachment)) · \(ReviewPack.size(attachment.byteCount)) · \(attachment.effectiveSource.label)\(memory ? " · in memory" : "")")
-                            .font(.system(size: 10)).foregroundStyle(!available ? Island.warning : Island.tertiary).lineLimit(1)
+                            .font(.system(size: 11)).foregroundStyle(!available ? Island.warning : Island.tertiary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
@@ -702,13 +704,17 @@ struct AttachmentRow: View {
                 }
                 Divider()
                 Button("Remove from This Report") { model.removeAttachment(attachment) }
-            } label: { Image(systemName: "ellipsis").font(.system(size: 10, weight: .semibold)) }
+            } label: {
+                // Phase 11: a 24 × 24 pt target (was the ~16 pt glyph alone).
+                Image(systemName: "ellipsis").font(.system(size: 11, weight: .semibold))
+                    .frame(width: 24, height: 24).contentShape(Rectangle())
+            }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("Actions for \(attachment.originalFilename)")
         }
         .frame(height: 30)
         .padding(.horizontal, 3)
-        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(attachment.isSelected ? Island.selected : .clear))
+        .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(attachment.isSelected ? Island.selected : .clear))
         .onDrag { model.dragProvider(for: attachment) }
         .islandHelp(memory ? "Window snapshot kept in memory only — not saved as a file" : "Preview this attachment")
     }
@@ -733,8 +739,8 @@ struct KindIcon: View {
         }
         .frame(width: 24, height: 24)
         .background(Island.code)
-        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 5, style: .continuous))   // the `.fill` overflow takes no clicks
+        .clipShape(RoundedRectangle(cornerRadius: Island.smallRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: Island.smallRadius, style: .continuous))   // the `.fill` overflow takes no clicks
     }
 }
 
@@ -750,12 +756,12 @@ struct SuggestionRow: View {
                 Text(suggestion.title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
                     .lineLimit(1).truncationMode(.middle)
                 Text(suggestion.exists || suggestion.kind == .mockup ? suggestion.reason : "File no longer exists")
-                    .font(.system(size: 10)).foregroundStyle(suggestion.exists || suggestion.kind == .mockup ? Island.tertiary : Island.warning)
+                    .font(.system(size: 11)).foregroundStyle(suggestion.exists || suggestion.kind == .mockup ? Island.tertiary : Island.warning)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
             Button("Add") { model.accept(suggestion) }
-                .buttonStyle(.plain).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Island.accent)
+                .buttonStyle(.plain).font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.accent)
                 .disabled(!(suggestion.exists || suggestion.kind == .mockup))
                 .islandHelp(suggestion.kind == .mockup ? "Add this mockup"
                       : "Attach a copy of this file")
@@ -773,17 +779,17 @@ struct MockupRow: View {
         HStack(spacing: 6) {
             SelectBox(selected: material.selected) { model.setSelected(material, !material.selected) }
             Image(systemName: "rectangle.on.rectangle").font(.system(size: 11)).foregroundStyle(Island.secondary)
-                .frame(width: 24, height: 24).background(Island.code).clipShape(RoundedRectangle(cornerRadius: 5))
+                .frame(width: 24, height: 24).background(Island.code).clipShape(RoundedRectangle(cornerRadius: Island.smallRadius))
             VStack(alignment: .leading, spacing: 0) {
                 Text(material.title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary).lineLimit(1)
-                Text("\(captured) of \(material.states.count) states saved").font(.system(size: 10))
+                Text("\(captured) of \(material.states.count) states saved").font(.system(size: 11))
                     .foregroundStyle(Island.tertiary).lineLimit(1)
             }
             Spacer(minLength: 0)
             Button { model.openMockup(material) } label: {
                 HStack(spacing: 2) { Text("States"); Image(systemName: "chevron.right").font(.system(size: 7, weight: .bold)) }
             }
-            .buttonStyle(.plain).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Island.secondary)
+            .buttonStyle(.plain).font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.secondary)
         }
         .frame(height: 30)
         .islandHelp("Review this mockup")
@@ -801,7 +807,7 @@ struct LinkRow: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(material.title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary).lineLimit(1)
                 Text(material.isPrivateLink ? "Private link: the reviewer cannot open it" : "Link, not opened by Prompt Relay")
-                    .font(.system(size: 10)).foregroundStyle(material.isPrivateLink ? Island.warning : Island.tertiary).lineLimit(1)
+                    .font(.system(size: 11)).foregroundStyle(material.isPrivateLink ? Island.warning : Island.tertiary).lineLimit(1)
             }
             Spacer(minLength: 0)
             Button { model.removeMaterial(material) } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)) }
@@ -1064,7 +1070,7 @@ struct ActivityView: View {
                 Button("Back to summary") { model.goBack() }.buttonStyle(.plain)
                     .font(.system(size: 11)).foregroundStyle(Island.accent)
                 Text("Observed commands, not proof the task is complete. Pipeline exit 0 may hide earlier failures. CI not connected.")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             } else {
                 MessageCard(title: "No work observed for this answer",
                             detail: model.selectedImport != nil
@@ -1087,13 +1093,13 @@ struct CommandRow: View {
             Button { expanded.toggle() } label: {
                 HStack(spacing: 8) {
                     Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 9))
-                    Text(Wording.clock(command.at)).font(.system(size: 10.5, design: .monospaced)).foregroundStyle(Island.tertiary)
+                    Text(Wording.clock(command.at)).font(.system(size: 11, design: .monospaced)).foregroundStyle(Island.tertiary)
                     Text(CommandDiagnostics.safeText(command).map { $0.split(separator: "\n").first.map(String.init) ?? $0 }
                          ?? "(withheld: \(command.commandWithheld ?? "unavailable"))")
                         .font(.system(size: 11, design: .monospaced)).foregroundStyle(Island.primary)
                         .lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 4)
-                    Text(Wording.duration(command.durationMs)).font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    Text(Wording.duration(command.durationMs)).font(.system(size: 11)).foregroundStyle(Island.tertiary)
                     result
                 }
             }.buttonStyle(.plain)
@@ -1109,13 +1115,13 @@ struct CommandRow: View {
                     Text(FailureInspector.meaning(command)).font(.system(size: 11)).foregroundStyle(Island.secondary)
                 }
                 ForEach(FailureInspector.caveats(command), id: \.self) { caveat in
-                    Text(caveat).font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    Text(caveat).font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 }
-                Text(CommandDiagnostics.output(command)).font(.system(size: 10.5, design: .monospaced))
+                Text(CommandDiagnostics.output(command)).font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(Island.secondary).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(8).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Island.code))
+                    .background(RoundedRectangle(cornerRadius: Island.smallRadius).fill(Island.code))
             }
         }
         .padding(.horizontal, 10).padding(.vertical, 7)
@@ -1138,7 +1144,7 @@ struct CommandRow: View {
     }
 
     private func tag(_ text: String, _ tint: Color) -> some View {
-        Text(text).font(.system(size: 10, weight: .medium)).foregroundStyle(tint).lineLimit(1).fixedSize()
+        Text(text).font(.system(size: 11, weight: .medium)).foregroundStyle(tint).lineLimit(1).fixedSize()
             .padding(.horizontal, 6).frame(height: 17).background(Capsule().fill(Island.cardRaised))
     }
 }
@@ -1178,14 +1184,14 @@ struct SessionSwitcherView: View {
                                 Spacer(minLength: 2)
                                 let fresh = model.newAnswerCount(inProject: group.project)
                                 if fresh > 0 {
-                                    Text("\(fresh) new").font(.system(size: 10, weight: .medium)).foregroundStyle(Island.success)
+                                    Text("\(fresh) new").font(.system(size: 11, weight: .medium)).foregroundStyle(Island.success)
                                         .accessibilityLabel("\(fresh) new answers")
                                 }
                                 Text("\(group.sessions.count)").font(.system(size: 11)).foregroundStyle(Island.tertiary)
                             }
                             .foregroundStyle(Island.primary)
                             .padding(.horizontal, 9).frame(height: 30)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(group.project == current ? Island.selected : .clear))
+                            .background(RoundedRectangle(cornerRadius: Island.rowRadius).fill(group.project == current ? Island.selected : .clear))
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -1198,7 +1204,7 @@ struct SessionSwitcherView: View {
                                 Text("\(model.imports.count)").font(.system(size: 11)).foregroundStyle(Island.tertiary)
                             }
                             .foregroundStyle(Island.secondary).padding(.horizontal, 9).frame(height: 30)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(current == "#imports" ? Island.selected : .clear))
+                            .background(RoundedRectangle(cornerRadius: Island.rowRadius).fill(current == "#imports" ? Island.selected : .clear))
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -1207,7 +1213,7 @@ struct SessionSwitcherView: View {
                 .padding(5)
             }
             .frame(width: 180, height: height)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Island.card))
+            .background(RoundedRectangle(cornerRadius: Island.cardRadius).fill(Island.card))
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
                     if current == "#imports" {
@@ -1232,7 +1238,7 @@ struct SessionSwitcherView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Island.card))
+            .background(RoundedRectangle(cornerRadius: Island.cardRadius).fill(Island.card))
         }
         }
         .islandPadding(presentation)
@@ -1308,12 +1314,12 @@ struct ConversationRow: View {
                         Spacer(minLength: 4)
                         if model.readyAnswer?.sessionKey == session.sessionKey, model.readyAnswer?.turnIndex == turn.index,
                            model.readyAnswer?.completion.isFinal == true {
-                            Text("Latest").font(.system(size: 9.5, weight: .semibold)).foregroundStyle(Island.success)
+                            Text("Latest").font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.success)
                         }
-                        Text(Wording.short(turn.finalResponse?.receivedAt)).font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                        Text(Wording.short(turn.finalResponse?.receivedAt)).font(.system(size: 11)).foregroundStyle(Island.tertiary)
                     }
                     .padding(.leading, 30).padding(.trailing, 9).frame(height: 24)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(model.currentRef == ref ? Island.selected : .clear))
+                    .background(RoundedRectangle(cornerRadius: Island.smallRadius).fill(model.currentRef == ref ? Island.selected : .clear))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -1341,20 +1347,20 @@ struct SessionRowLabel: View {
                 Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(Island.primary).lineLimit(1)
                 Spacer(minLength: 4)
                 if latest {
-                    Text("Latest").font(.system(size: 10, weight: .semibold)).foregroundStyle(Island.success)
+                    Text("Latest").font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.success)
                         .padding(.horizontal, 6).frame(height: 16).background(Capsule().fill(Island.cardRaised))
                 }
                 if let chip {
-                    Text(chip.0).font(.system(size: 10, weight: .medium)).foregroundStyle(chip.1)
+                    Text(chip.0).font(.system(size: 11, weight: .medium)).foregroundStyle(chip.1)
                         .padding(.horizontal, 6).frame(height: 16).background(Capsule().fill(Island.cardRaised))
                 }
             }
-            if let subtitle { Text(subtitle).font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1) }
-            Text(meta).font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+            if let subtitle { Text(subtitle).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1) }
+            Text(meta).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
         }
         .padding(.horizontal, 9).padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8).fill(selected ? Island.selected : .clear))
+        .background(RoundedRectangle(cornerRadius: Island.rowRadius).fill(selected ? Island.selected : .clear))
         .contentShape(Rectangle())
     }
 }
@@ -1372,10 +1378,10 @@ struct MockupStatesView: View {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(material.title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Island.primary).lineLimit(1)
-                        Text(source(material)).font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                        Text(source(material)).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
                     }
                     Spacer()
-                    Text("Visual mockup — review required").font(.system(size: 10, weight: .semibold))
+                    Text("Visual mockup — review required").font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Island.review).padding(.horizontal, 7).frame(height: 18)
                         .background(Capsule().fill(Island.cardRaised))
                 }
@@ -1386,7 +1392,7 @@ struct MockupStatesView: View {
                     }
                     Spacer()
                     Text("\(material.states.filter { $0.status == .captured }.count) of \(material.states.count) saved · order = file order")
-                        .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                        .font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 }
                 BoundedScroll(maxHeight: presentation.listHeight(chrome: 120)) {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
@@ -1400,9 +1406,9 @@ struct MockupStatesView: View {
                         .font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 }
                 Text("Still images cannot show transitions, animations or pointer reactions; review those in the live mockup.")
-                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 if let message = model.attachmentMessage {
-                    Text(message).font(.system(size: 10.5)).foregroundStyle(Island.warning)
+                    Text(message).font(.system(size: 11)).foregroundStyle(Island.warning)
                 }
             } else {
                 MessageCard(title: "Mockup not found", detail: "It was removed from this report.", symbol: "questionmark",
@@ -1434,29 +1440,32 @@ struct StateCard: View {
                     if let url, let thumb = Thumbnails.image(for: url, maxPixels: 240) {
                         Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fill)
                     } else {
-                        Text(state.status == .failed ? "failed" : "no image").font(.system(size: 10)).foregroundStyle(Island.tertiary)
+                        Text(state.status == .failed ? "failed" : "no image").font(.system(size: 11)).foregroundStyle(Island.tertiary)
                     }
                 }
                 .frame(maxWidth: .infinity).frame(height: 54).background(Island.code).clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))   // the `.fill` overflow takes no clicks
+                .clipShape(RoundedRectangle(cornerRadius: Island.smallRadius, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: Island.smallRadius, style: .continuous))   // the `.fill` overflow takes no clicks
                 SelectBox(selected: state.selected) { model.setStateSelected(material, state: state.id, !state.selected) }
                     .padding(3)
             }
             HStack(spacing: 4) {
-                Text(String(format: "%02d · %@", number, state.title)).font(.system(size: 10.5, weight: .medium))
+                Text(String(format: "%02d · %@", number, state.title)).font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Island.primary).lineLimit(1)
                 Spacer(minLength: 0)
                 Menu {
                     Button("Import Image…") { model.importStateImage(material, state: state) }
-                } label: { Image(systemName: "ellipsis").font(.system(size: 9, weight: .semibold)) }
+                } label: {
+                    Image(systemName: "ellipsis").font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 24).contentShape(Rectangle())
+                }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             }
-            Text(statusText).font(.system(size: 9.5)).foregroundStyle(state.status == .captured ? Island.accent : Island.tertiary)
+            Text(statusText).font(.system(size: 11)).foregroundStyle(state.status == .captured ? Island.accent : Island.tertiary)
                 .lineLimit(1)
         }
         .padding(6)
-        .background(RoundedRectangle(cornerRadius: 9).fill(Island.cardRaised))
+        .background(RoundedRectangle(cornerRadius: Island.rowRadius).fill(Island.cardRaised))
         .islandHelp("Preview this mockup state")
     }
 

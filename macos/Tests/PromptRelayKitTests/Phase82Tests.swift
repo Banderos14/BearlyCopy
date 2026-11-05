@@ -34,7 +34,7 @@ struct Phase82Tests {
     @Test func exactPreviewAndPersistentTransfer() async throws {
         _ = NSApplication.shared
         let suite = "PromptRelayTests.p82.snapshot.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: .init(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
@@ -129,7 +129,7 @@ struct Phase82Tests {
     @Test func clipboardAndDynamicHelp() async throws {
         _ = NSApplication.shared
         let suite = "PromptRelayTests.p82.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = try #require(TestDefaults.named(suite))
         let board = NSPasteboard(name: .init(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }

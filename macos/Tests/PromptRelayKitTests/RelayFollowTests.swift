@@ -70,7 +70,7 @@ final class RelayPerformanceTests: XCTestCase {
         }
         _ = NSApplication.shared
         let suite = "PromptRelayPerf.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let defaults = try XCTUnwrap(TestDefaults.named(suite))
         defer { removeTestDefaults(suite) }
         let settings = NotchSettings(defaults: defaults)
         settings.mascotEnabled = true

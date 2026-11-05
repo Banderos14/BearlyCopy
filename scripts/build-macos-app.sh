@@ -2,7 +2,15 @@
 # Build "Prompt Relay.app" (Phase 3A native macOS app) from this checkout.
 #
 # Usage: scripts/build-macos-app.sh            build into macos/build/
-#        scripts/build-macos-app.sh --install  also copy the app to ~/Applications
+#        scripts/build-macos-app.sh --install  build, then install with
+#                                              scripts/install-local.sh (asks first)
+#
+# Phase 11: the bundle records what it was built from, so About and
+# scripts/install-local.sh can tell builds apart without guessing:
+#   PRGitCommit   short HEAD at build time
+#   PRGitDirty    "yes" when tracked files differed from HEAD
+#   PRBuildDate   UTC build time
+#   PRCoreDigest  SHA-256 over the bundled Core files (scripts/core-digest.sh)
 #
 # The bundle embeds a copy of the Python Core (bin/prompt-relay and
 # plugin/prompt_relay) under Contents/Resources/core, in the repository's own
@@ -12,8 +20,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-install=0
-[ "${1:-}" = "--install" ] && install=1
+if [ "${1:-}" = "--install" ]; then
+    shift
+    exec scripts/install-local.sh "$@"
+fi
 
 version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' plugin/prompt_relay/__init__.py)
 [ -n "$version" ] || { echo "cannot read the Core version" >&2; exit 1; }
@@ -31,6 +41,10 @@ cp plugin/prompt_relay/*.py "$app/Contents/Resources/core/plugin/prompt_relay/"
 chmod 755 "$app/Contents/Resources/core/bin/prompt-relay"
 
 commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+dirty=no
+if [ -n "$(git status --porcelain --untracked-files=no -- macos/Sources bin plugin 2>/dev/null)" ]; then dirty=yes; fi
+built=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+digest=$(scripts/core-digest.sh "$app/Contents/Resources/core")
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -40,6 +54,9 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>Prompt Relay</string>
   <key>CFBundleIdentifier</key><string>io.github.banderos14.PromptRelay</string>
   <key>PRGitCommit</key><string>${commit}</string>
+  <key>PRGitDirty</key><string>${dirty}</string>
+  <key>PRBuildDate</key><string>${built}</string>
+  <key>PRCoreDigest</key><string>${digest}</string>
   <key>CFBundleExecutable</key><string>PromptRelay</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${version}</string>
@@ -58,11 +75,4 @@ codesign --force --deep --sign - --timestamp=none "$app"
 codesign --verify --strict "$app"
 echo "== built $app (version $version, ad-hoc signed)"
 
-if [ "$install" = 1 ]; then
-    dest="$HOME/Applications/Prompt Relay.app"
-    mkdir -p "$HOME/Applications"
-    if pgrep -xq PromptRelay; then osascript -e 'quit app id "io.github.banderos14.PromptRelay"' >/dev/null 2>&1 || true; sleep 1; fi
-    rm -rf "$dest"
-    ditto "$app" "$dest"
-    echo "== installed $dest"
-fi
+echo "== install with: scripts/install-local.sh (or --dry-run first)"

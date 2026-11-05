@@ -8,14 +8,14 @@ import XCTest
 @MainActor
 final class Phase71Tests: XCTestCase {
     var suite: String!
-    var defaults: UserDefaults!
+    var defaults: MemorySettingsStore!
     var board: NSPasteboard!
     var root: URL!
 
     override func setUp() async throws {
         _ = NSApplication.shared
         suite = "PromptRelayTests.p71.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+        defaults = TestDefaults.named(suite)
         board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP71-\(UUID().uuidString)"))
         root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p71-\(UUID().uuidString)")
     }
@@ -180,7 +180,8 @@ final class TooltipWidthTests: XCTestCase {
         let long = measure("Copy with Context: Claude's full answer plus your request, the commands Prompt Relay saw, changed files, Git status and the chosen attachments, as Markdown for another assistant")
         XCTAssertLessThanOrEqual(long.width, IslandTooltipOverlay.maxWidth + 0.5)
         XCTAssertGreaterThan(long.height, short.height, "long text wraps")
-        XCTAssertLessThanOrEqual(long.height, 34, "help is capped at two lines plus its inset")
+        // Phase 11: 11-pt text (was 10.5): two lines plus inset are 36 pt.
+        XCTAssertLessThanOrEqual(long.height, 36, "help is capped at two lines plus its inset")
     }
 }
 
@@ -267,7 +268,7 @@ final class LivingRelayTests: XCTestCase {
     }
 
     func testRelayMotionSettings() {
-        let defaults = UserDefaults(suiteName: "PromptRelayTests.relay.\(UUID().uuidString)")!
+        let defaults = TestDefaults.named("PromptRelayTests.relay.\(UUID().uuidString)")!
         let s = NotchSettings(defaults: defaults)
         XCTAssertEqual(s.relayMotion, .subtle)
         XCTAssertTrue(s.relayIdle); XCTAssertTrue(s.relayFollowsPointer); XCTAssertTrue(s.relayWithoutNotch)

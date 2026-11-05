@@ -44,6 +44,10 @@ class AdaptersTests(unittest.TestCase):
         env['PROMPT_RELAY_HOST'] = 'terminal'
         hook.main(io.BytesIO(b'invalid'), env)
         self.assertEqual(integration.observed(self.data)['by_source']['codex:xcode']['events'], 2)
+        # Phase 11: the CLI run has its own slot; it never proves Xcode delivery.
+        self.assertEqual(integration.observed(self.data)['by_source']['codex:terminal']['events'], 1)
+        (self.data/'handler.log').write_text('2026-11-04T00:00:00Z Stop via=plugin provider=codex host=evil stored\n')
+        self.assertEqual(integration.observed(self.data)['by_source'], {})
 
     def test_legacy_log_does_not_prove_codex_execution(self):
         (self.data/'handler.log').write_text('2026-11-04T00:00:00Z Stop via=plugin stored\n')

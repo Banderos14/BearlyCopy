@@ -43,6 +43,11 @@ enum Island {
     static var onProminent: Color { palette.onProminent.color }
     // Shape and spacing
     static let cardRadius: CGFloat = 12
+    /// Phase 11: one radius per role. Rows, hover and selection fills, and
+    /// panels inside a card use `rowRadius`; thumbnails and code chips use
+    /// `smallRadius` (was an ad-hoc mix of 5, 6, 7, 8 and 9 pt).
+    static let rowRadius: CGFloat = 8
+    static let smallRadius: CGFloat = 6
     static let controlHeight: CGFloat = 28
     /// Inner padding of a card: its text never runs into the rounded edge.
     static let cardPadding = EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
@@ -259,6 +264,7 @@ struct IslandContent: View {
                 case .reader: ReaderView(model: model, presentation: presentation)
                 case .taskReader: TaskReaderView(model: model, presentation: presentation)
                 case .evidence: EvidenceView(model: model, presentation: presentation)
+                case .setup: SetupView(model: model, presentation: presentation)
                 case .packagePreview: PackagePreviewView(model: model, presentation: presentation)
                 case .attachmentPreview: AttachmentPreviewView(model: model, presentation: presentation)
                 }
@@ -551,7 +557,7 @@ struct TaskCard: View {
                 if canExpand {
                     Button { withAnimation(Island.geometry(reduceMotion: reduceMotion)) { expanded.toggle() } } label: {
                         HStack(spacing: 3) {
-                            Text(expanded ? "Less" : "More").font(.system(size: 10.5, weight: .medium))
+                            Text(expanded ? "Less" : "More").font(.system(size: 11, weight: .medium))
                             Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.system(size: 8, weight: .bold))
                         }
                         .padding(.horizontal, 6).frame(height: 18).contentShape(Rectangle())
@@ -658,7 +664,7 @@ struct ResponseCard: View {
                 Caption("Answer")
                 if let n = facts.characters, n > 0 {
                     Text("\(n.formatted()) characters" + (facts.at.map { " · " + Wording.clock($0) } ?? ""))
-                        .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
+                        .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 if model.selectedImport == nil, let turn = model.selectedTurn { AnswerStepper(model: model, turn: turn) }
@@ -774,9 +780,9 @@ struct CopyActions: View {
                 // "· 12,486 characters", "12,486 chars" when narrow, or nothing:
                 // never wider than the room left, so nothing grows.
                 ViewThatFits(in: .horizontal) {
-                    Text("· \(n.formatted()) characters").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Island.tertiary)
+                    Text("· \(n.formatted()) characters").font(.system(size: 11).monospacedDigit()).foregroundStyle(Island.tertiary)
                         .fixedSize()
-                    Text(Labels.chars(n)).font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Island.tertiary)
+                    Text(Labels.chars(n)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Island.tertiary)
                         .fixedSize()
                     EmptyView()
                 }
@@ -855,7 +861,7 @@ struct PeekContent: View {
             Spacer(minLength: 6)
             if let turn = model.selectedTurn, model.selectedImport == nil,
                let (position, count) = AnswerStepper.position(model, turn: turn.index), count > 1 {
-                Text("\(position)/\(count)").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Island.tertiary)
+                Text("\(position)/\(count)").font(.system(size: 11).monospacedDigit()).foregroundStyle(Island.tertiary)
                     .accessibilityLabel("Answer \(position) of \(count)")
             }
             let (label, tint) = status
@@ -1017,7 +1023,7 @@ struct Caption: View {
 
     var body: some View {
         Text(text.uppercased())
-            .font(.system(size: 10, weight: .semibold))
+            .font(.system(size: 11, weight: .semibold))
             .tracking(0.5)
             .foregroundStyle(Island.palette.tintedCaptions ? (role ?? Island.tertiary) : Island.tertiary)
             .accessibilityAddTraits(.isHeader)
@@ -1030,7 +1036,7 @@ struct Tag: View {
     init(_ text: String, tint: Color) { self.text = text; self.tint = tint }
 
     var body: some View {
-        Text(text).font(.system(size: 10, weight: .medium)).foregroundStyle(tint)
+        Text(text).font(.system(size: 11, weight: .medium)).foregroundStyle(tint)
             .padding(.horizontal, 6).frame(height: 16)
             .background(Capsule().fill(tint.opacity(0.14)))
     }
@@ -1103,7 +1109,7 @@ struct AnswerStepper: View {
                     if turn.requestOrigin == .automated {
                         Image(systemName: "gearshape.2").font(.system(size: 8.5)).islandHelp("Claude Code started this turn itself")
                     }
-                    Text("\(position)/\(count)").font(.system(size: 10.5).monospacedDigit())
+                    Text("\(position)/\(count)").font(.system(size: 11).monospacedDigit())
                 }
                 .foregroundStyle(Island.tertiary)
                 .accessibilityElement(children: .combine)
@@ -1416,7 +1422,7 @@ struct HistoryView: View {
             }
         }
         .padding(.horizontal, 10).frame(height: 30)
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Island.card))
+        .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(Island.card))
     }
 
     @ViewBuilder
@@ -1492,7 +1498,7 @@ struct HistoryView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(Wording.sessionTitle(session)).font(.system(size: 12.5, weight: .semibold).monospacedDigit())
                         .foregroundStyle(Island.primary).lineLimit(1)
-                    Text(session.sourceLabel).font(.system(size: 10)).foregroundStyle(Island.tertiary).lineLimit(1)
+                    Text(session.sourceLabel).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
                 }
                 Text(session.turnCount == 1 ? "1 turn" : "\(session.turnCount) turns")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary)
@@ -1661,7 +1667,7 @@ struct ImportView: View {
             HStack {
                 Caption("Report")
                 if !text.isEmpty {
-                    Text("\(CharacterCount.of(text).formatted()) characters, kept exactly").font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                    Text("\(CharacterCount.of(text).formatted()) characters, kept exactly").font(.system(size: 11)).foregroundStyle(Island.tertiary)
                 }
                 Spacer()
                 if !text.isEmpty {
@@ -1674,7 +1680,7 @@ struct ImportView: View {
             if text.isEmpty {
                 Button { paste() } label: { Label("Paste Report from Clipboard", systemImage: "doc.on.clipboard") }
                     .buttonStyle(IslandPillStyle(prominent: false))
-                Text("Reads the clipboard once, when you click.").font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+                Text("Reads the clipboard once, when you click.").font(.system(size: 11)).foregroundStyle(Island.tertiary)
             } else if showAll {
                 VerbatimTextView(text, textColor: NSColor(Island.primary), fontSize: 12)
                     .frame(height: 180)
@@ -1706,10 +1712,10 @@ struct ImportView: View {
             .pickerStyle(.radioGroup).labelsHidden().font(.system(size: 11.5))
             Text(asPlainText ? "Kept as one pasted answer, nothing explained."
                              : "Copy with Context will say that its “Confirmed locally” labels describe the machine and time it was made, not this import, so it is not mistaken for a new local check.")
-                .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Island.cardRaised))
+        .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(Island.cardRaised))
         .islandFrame("import.package")
     }
 
@@ -1740,7 +1746,7 @@ struct ImportView: View {
                         .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                 } else {
                     if analysis.projects.count > 1 {
-                        Text("Several projects match; choose one.").font(.system(size: 10.5)).foregroundStyle(Island.warning)
+                        Text("Several projects match; choose one.").font(.system(size: 11)).foregroundStyle(Island.warning)
                     }
                     ForEach(analysis.projects, id: \.self) { path in
                         let name = model.projectRows.first { $0.path == path }?.name ?? (path as NSString).lastPathComponent
@@ -1777,7 +1783,7 @@ struct ImportView: View {
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .padding(.horizontal, 10).frame(height: 31)
-            .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Island.card))
+            .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(Island.card))
             if let suggested = analysis.assistant, assistant == nil {
                 suggestion("Suggested: \(suggested.title)") { assistant = suggested }
             }
@@ -1799,7 +1805,7 @@ struct ImportView: View {
                 .font(.system(size: 12.5))
                 .foregroundStyle(Island.primary)
                 .padding(.horizontal, 10).padding(.vertical, 7)
-                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Island.card))
+                .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(Island.card))
         }
     }
 
@@ -1821,7 +1827,7 @@ struct ImportView: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .padding(.horizontal, 10).frame(height: 31)
-            .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Island.card))
+            .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(Island.card))
         }
     }
 }
