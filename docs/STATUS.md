@@ -1,5 +1,19 @@
 # Status
 
+## 2026-11-05 — Phase 10: audit, in-memory window snapshots, minimal notch status
+
+Window snapshots (Capture Final Window, opt-in auto-capture) are now kept in
+memory only: listed and selected like any attachment, copied and dragged as
+image data, never written to the attachments folder, index or hand-off
+folder, bounded (12 / 96 MB / 4 h) and gone at quit; export writes them only
+into the folder the user picks. The notch shows one green dot without a
+number and clears it when the island is opened; other conversations stay
+unread in Project and Session. Test runs no longer leave plists in
+`~/Library/Preferences`. Product, technical, UX, privacy and release audit
+with roadmap and Phase 11 proposal: [Phase 10](../macos/PHASE10.md). Picker,
+consent and paste into other AIs are **not verified live**; installed app
+not updated.
+
 ## 2026-11-05 — Phase 9.4 completed (final-only UI, dots, Details, host, conversations)
 
 Intermediate Stops no longer appear as answers anywhere (carousel/counter,

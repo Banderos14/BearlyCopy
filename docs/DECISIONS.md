@@ -597,3 +597,26 @@ such text as "Original user request" (observed 2026-10-30, HOOKS_RESEARCH §3).
 
 **Consequences.** A user who types a harness tag literally (outside a paste)
 gets `unknown`, never a false "automated"; nothing is hidden, only labelled.
+
+## ADR-018: Window snapshots are held in memory only
+
+**Context.** Phase 9.4 stored Capture Final Window and auto-capture images as
+attachments in the app data dir and copied them into `app/handoff/` for
+every drag or Copy Files. Screenshots of a working window can show anything
+on screen; the owner asked for no folder that fills with them (Phase 10).
+
+**Decision.**
+1. A window snapshot is a `ReportAttachment` with `inMemory = true`; its
+   bytes live in `ReportStore`'s process memory, bounded (12 images, 96 MB,
+   4 h; oldest first) and capped at 3200 px on the longest side.
+2. It is never written to `attachments.json`, `attachments/` or `handoff/`.
+   Copy and drag put image data on the pasteboard without a file URL. Only an
+   explicit Export writes it, into the folder the user chose.
+3. It does not survive quitting the app; a saved hand-off that used one is
+   dropped at launch rather than restored without it.
+4. Files the agent wrote (result attachments) are unchanged: they remain
+   persistent snapshots of project files.
+
+**Consequences.** Receivers that accept only file URLs get nothing from a
+snapshot (use Export). The pasteboard, Universal Clipboard and the receiving
+app may keep their own copies; Prompt Relay does not claim otherwise.
