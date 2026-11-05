@@ -221,7 +221,7 @@ struct Phase93Tests {
     @Test func savedPinMigratesToStayModeAndIsKept() async throws {
         let suite = "PromptRelay93.migrate.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { removeTestDefaults(suite) }
         defaults.set(try JSONEncoder().encode(AppModel.SavedSelection(projectPath: "/repo/macos", sessionKey: "old", pinnedAt: nil)),
                      forKey: AppModel.selectionKey)
         let core = FakeCore(projects: [Self.info("/repo", logical: "/repo", sessions: 1, last: "2026-11-05T12:00:00Z"),
@@ -243,7 +243,7 @@ struct Phase93Tests {
         #expect(m.sessionPinned)
 
         let fresh = try #require(UserDefaults(suiteName: suite + ".fresh"))
-        defer { fresh.removePersistentDomain(forName: suite + ".fresh") }
+        defer { removeTestDefaults(suite + ".fresh") }
         let (n, board2) = model(core, defaults: fresh)
         defer { board2.releaseGlobally() }
         #expect(!n.staysOnChosenSession)
@@ -443,7 +443,7 @@ struct Phase94CompletionTests {
         let suite = "PromptRelay94.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         let board = NSPasteboard(name: .init(suite))
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let now = ISO8601DateFormatter()
         now.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let t0 = now.string(from: Date(timeIntervalSinceNow: -600)), t1 = now.string(from: Date(timeIntervalSinceNow: -300))
@@ -666,7 +666,7 @@ struct Phase94UITests {
     @Test func conversationsGroupSortAndRememberExpansion() async throws {
         let suite = "PromptRelay94conv.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
-        let b = board(); defer { b.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        let b = board(); defer { b.releaseGlobally(); removeTestDefaults(suite) }
         let core = FakeCore(projects: [Phase93Tests.info("/repo", logical: "/repo", sessions: 3, last: ago(10)),
                                        Phase93Tests.info("/repo/macos", logical: "/repo", sessions: 1, last: ago(10), enabled: false)])
         let claudeA = Phase93Tests.session("claude-a", provider: "claude_code", host: "claude_desktop", project: "/repo", logical: "/repo",
@@ -730,7 +730,7 @@ struct Phase94UITests {
     @Test func viewingTheReadyAnswerTurnsTheIndicatorNeutral() async throws {
         let suite = "PromptRelay94ind.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
-        let b = board(); defer { b.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        let b = board(); defer { b.releaseGlobally(); removeTestDefaults(suite) }
         let core = FakeCore(projects: [project("/repo", sessions: 1, last: ago(300))])
         core.showResult = { [unowned core] key, i in
             .success(CoreResult(data: ShowData(session: try! core.session(key), turn: turn(i, text: "\(key)#\(i)")), warnings: []))
@@ -774,7 +774,7 @@ struct Phase94UITests {
         let suite = "PromptRelay94cap.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr94a-" + UUID().uuidString)
-        let b = board(); defer { b.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        let b = board(); defer { b.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
         func codex(_ turns: Int, _ at: String) -> SessionSummary {
             Phase93Tests.session("codex", provider: "codex", host: "xcode", project: "/a", last: at, answeredAt: at, turns: turns)
         }
@@ -863,7 +863,7 @@ struct Phase94UITests {
         fake.result = .success(.init(png: TypedAttachmentTests.png(.red), label: "Window"))
         m.captureFinalWindow()
         let added = m.attachments(for: m.currentRef)
-        #expect(added.count == 1 && added[0].isSelected && added[0].effectiveSource == .you)
+        #expect(added.count == 1 && added[0].isSelected && added[0].effectiveSource == .windowSnapshot && added[0].isInMemory)
         #expect(fake.calls == 3)
     }
 }

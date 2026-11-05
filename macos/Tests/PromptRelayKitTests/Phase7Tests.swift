@@ -23,7 +23,7 @@ final class Phase7Tests: XCTestCase {
 
     override func tearDown() async throws {
         board.releaseGlobally()
-        defaults.removePersistentDomain(forName: suite)
+        removeTestDefaults(suite)
         try? FileManager.default.removeItem(at: root)
         Island.palette = IslandTheme.warmCocoa.palette
     }
@@ -151,7 +151,7 @@ final class Phase7ClipboardHitTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7c-\(UUID().uuidString)"))
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p7c-\(UUID().uuidString)")
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: folder) }
         let history = ClipboardImageHistory(folder: folder, pasteboard: board)
         history.setEnabled(true)
         defer { history.setEnabled(false) }
@@ -190,7 +190,7 @@ final class Phase7ClipboardHitTests: XCTestCase {
                 XCTAssertTrue(after.contains(".contentShape("), "\(file.lastPathComponent):\(i + 1) has no content shape")
             }
         }
-        XCTAssertEqual(sites, 3)
+        XCTAssertEqual(sites, 4, "Phase 10 added the in-memory snapshot thumbnail in KindIcon")
     }
 }
 
@@ -278,7 +278,7 @@ final class SmartContextTests: XCTestCase {
 
     override func tearDown() async throws {
         board.releaseGlobally()
-        defaults.removePersistentDomain(forName: suite)
+        removeTestDefaults(suite)
     }
 
     static let packText = """
@@ -445,7 +445,7 @@ final class ReviewCheckMarkTests: XCTestCase {
         let suite = "PromptRelayTests.p7r.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP7r-\(UUID().uuidString)"))
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let core = FakeCore(projects: [project("/p", sessions: 1, last: "2026-10-31T00:00:00.000000Z")])
         core.sessionsByProject["/p"] = [sessionSummary("s", project: "/p", last: "2026-10-31T00:00:00.000000Z", lastTurn: 2)]
         core.turnsBySession["s"] = [turn(1), turn(2)]
@@ -474,7 +474,7 @@ final class ExportBundleTests: XCTestCase {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p7e-\(UUID().uuidString)")
         let out = root.appendingPathComponent("out")
         try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
         let core = FakeCore(projects: [project("/a", sessions: 1, last: "2026-10-31T10:00:00.000000Z")])
         let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults,
                          reportStore: ReportStore(root: root.appendingPathComponent("store")))

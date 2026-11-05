@@ -92,7 +92,8 @@ extension ReportStore {
             candidates += AppModel.suggestions(observed: observed, answer: answer, root: rootPath, addedPaths: [],
                                                addedURLs: [], exists: exists).filter { !known.contains($0.path ?? "") }
         }
-        var total = attachments(for: ref).reduce(0) { $0 + $1.byteCount }
+        // Phase 10: in-memory window snapshots do not use the result-file budget.
+        var total = attachments(for: ref).filter { !$0.isInMemory }.reduce(0) { $0 + $1.byteCount }
         var count = 0
         for candidate in candidates where candidate.kind == .file {
             guard let path = candidate.path else { continue }

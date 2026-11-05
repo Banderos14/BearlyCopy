@@ -255,7 +255,7 @@ final class NotchSettingsTests: XCTestCase {
     func testDefaultsAndPersistence() throws {
         let suite = "PromptRelayTests.settings.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { removeTestDefaults(suite) }
 
         let first = NotchSettings(defaults: defaults)
         XCTAssertTrue(first.notchEnabled, "the island opens on hover by default (Phase 3D: it is the interface)")
@@ -280,7 +280,7 @@ final class NotchSettingsTests: XCTestCase {
     func testReduceMotion() throws {
         let suite = "PromptRelayTests.motion.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { removeTestDefaults(suite) }
         let s = NotchSettings(defaults: defaults)
         XCTAssertTrue(s.reducesMotion(systemReduceMotion: true))
         XCTAssertFalse(s.reducesMotion(systemReduceMotion: false))

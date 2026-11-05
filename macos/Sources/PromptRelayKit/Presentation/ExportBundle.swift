@@ -41,7 +41,7 @@ public enum ExportBundle {
     /// Writes the bundle into a new folder inside `parent`; returns it.
     /// Never overwrites: a taken name gets " 2", " 3"…
     public static func write(into parent: URL, name: String, package: String, files: [(attachment: ReportAttachment, url: URL?)],
-                             manifest make: ([FileEntry]) -> Manifest) throws -> URL {
+                             memory: [String: Data] = [:], manifest make: ([FileEntry]) -> Manifest) throws -> URL {
         let fm = FileManager.default
         var folder = parent.appendingPathComponent(name, isDirectory: true)
         var n = 2
@@ -60,7 +60,9 @@ public enum ExportBundle {
                 var k = 2
                 while used.contains(fileName.lowercased()) { fileName = ext.isEmpty ? "\(base) \(k)" : "\(base) \(k).\(ext)"; k += 1 }
                 used.insert(fileName.lowercased())
-                if let url, let data = try? Data(contentsOf: url) {
+                // Phase 10: an in-memory snapshot is written only here, into
+                // the folder the user chose for this export.
+                if let data = memory[a.id] ?? url.flatMap({ try? Data(contentsOf: $0) }) {
                     try data.write(to: dir.appendingPathComponent(fileName))
                     entries.append(FileEntry(name: "files/" + fileName, status: "included", provenance: a.provenance, sha256: a.sha256, bytes: data.count))
                 } else {
@@ -112,7 +114,9 @@ extension AppModel {
             let name = "Prompt Relay \(ExportBundle.safe(project)) \(turn.map { "turn \($0)" } ?? "import") \(stamp.prefix(15))"
             do {
                 let folder = try ExportBundle.write(into: parent, name: name, package: pack.text,
-                                                    files: chosen.map { ($0, attachmentURL($0)) }) { entries in
+                                                    files: chosen.map { ($0, attachmentURL($0)) },
+                                                    memory: Dictionary(uniqueKeysWithValues: chosen.filter(\.isInMemory)
+                                                        .compactMap { a in attachmentData(a).map { (a.id, $0) } })) { entries in
                     ExportBundle.Manifest(exportedAt: pack.builtAt,
                                           source: selectedImport != nil ? "imported by you" : "captured on this Mac by the Prompt Relay hooks",
                                           project: project, session: label, turn: turn, detail: pack.detail.rawValue,

@@ -18,7 +18,7 @@ final class ProjectCaptureTests: XCTestCase {
 
     override func tearDown() async throws {
         board.releaseGlobally()
-        defaults.removePersistentDomain(forName: suite)
+        removeTestDefaults(suite)
     }
 
     func model(_ core: FakeCore) -> AppModel {

@@ -288,7 +288,10 @@ extension AppModel {
     public var completeness: ArtifactCompleteness {
         let ref = currentRef
         let files = attachments(for: ref)
-        let unreadable = Set(files.filter { a in attachmentURL(a).map { !FileManager.default.isReadableFile(atPath: $0.path) } ?? true }.map(\.id))
+        let unreadable = Set(files.filter { a in
+            a.isInMemory ? !isAttachmentAvailable(a)
+                : attachmentURL(a).map { !FileManager.default.isReadableFile(atPath: $0.path) } ?? true
+        }.map(\.id))
         return .make(attachments: files, unreadable: unreadable, materials: materials(for: ref),
                      published: selectedImport == nil ? (selectedObservedDetail ?? selectedTurn?.observedDetail)?.artifacts ?? [] : [])
     }

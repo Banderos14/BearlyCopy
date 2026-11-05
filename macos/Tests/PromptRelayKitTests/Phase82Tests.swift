@@ -37,7 +37,7 @@ struct Phase82Tests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         let board = NSPasteboard(name: .init(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
         let model = await Phase8Fixture.model(defaults: defaults, board: board, root: root)
         if let dir = ProcessInfo.processInfo.environment["PROMPT_RELAY_P82_RENDERS"] {
             model.route = .activity
@@ -132,7 +132,7 @@ struct Phase82Tests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         let board = NSPasteboard(name: .init(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
         let model = await Phase8Fixture.model(defaults: defaults, board: board, root: root)
         let history = ClipboardImageHistory(folder: root.appendingPathComponent("images"), pasteboard: board)
         history.setEnabled(true)

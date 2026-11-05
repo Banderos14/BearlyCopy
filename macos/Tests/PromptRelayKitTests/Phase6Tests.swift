@@ -23,7 +23,7 @@ final class Phase6Tests: XCTestCase {
 
     override func tearDown() async throws {
         board.releaseGlobally()
-        defaults.removePersistentDomain(forName: suite)
+        removeTestDefaults(suite)
         try? FileManager.default.removeItem(at: root)
     }
 

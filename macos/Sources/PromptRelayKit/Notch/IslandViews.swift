@@ -1240,6 +1240,21 @@ enum Thumbnails {
     /// Keyed by file and size: a 64 px thumbnail is never reused where 240 px is drawn.
     private static var cache: [String: NSImage] = [:]
 
+    /// Phase 10: a thumbnail of in-memory bytes (a window snapshot).
+    static func image(data: Data, key id: String, maxPixels: Int = 96) -> NSImage? {
+        let key = "\(maxPixels)@mem:\(id)"
+        if let hit = cache[key] { return hit }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                                                         kCGImageSourceCreateThumbnailWithTransform: true,
+                                                                         kCGImageSourceThumbnailMaxPixelSize: maxPixels] as CFDictionary)
+        else { return nil }
+        let image = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+        if cache.count > 64 { cache.removeAll() }
+        cache[key] = image
+        return image
+    }
+
     static func image(for url: URL, maxPixels: Int = 96) -> NSImage? {
         let key = "\(maxPixels)@\(url.path)"
         if let hit = cache[key] { return hit }

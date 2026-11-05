@@ -102,3 +102,18 @@ enum RelayRender {
         return ctx.makeImage()
     }
 }
+
+/// Phase 10: clears a test's UserDefaults suite AND deletes its plist.
+/// `removePersistentDomain` alone leaves an empty
+/// `~/Library/Preferences/<suite>.plist` behind; earlier runs left ~11,000
+/// of them on the development Mac. Only a suite name this test made is
+/// touched (it must start with "PromptRelay" and be a plain name).
+func removeTestDefaults(_ suite: String) {
+    UserDefaults.standard.removePersistentDomain(forName: suite)
+    UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+    guard suite.hasPrefix("PromptRelay") || suite.hasPrefix("pr-"), !suite.contains("/"), !suite.contains("..") else { return }
+    CFPreferencesAppSynchronize(suite as CFString)
+    let file = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Preferences/\(suite).plist")
+    try? FileManager.default.removeItem(at: file)
+}

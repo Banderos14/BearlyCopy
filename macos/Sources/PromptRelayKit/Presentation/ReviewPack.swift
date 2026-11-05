@@ -116,6 +116,7 @@ public enum ReviewPack {
         case .agentResult: return "observed result file, snapshotted locally [\(confirmed)]"
         case .namedVerified: return "named in the agent's answer; file changed during this turn (local time), snapshotted locally; who wrote it is not observed [\(reported)]"
         case .windowCapture: return "screenshot of the window the user chose, taken by Prompt Relay after the final answer [\(userSupplied)]"
+        case .windowSnapshot: return "screenshot of a window the user picked [\(userSupplied)]"
         }
     }
 

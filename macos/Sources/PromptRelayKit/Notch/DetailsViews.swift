@@ -668,29 +668,38 @@ struct AttachmentRow: View {
 
     var body: some View {
         let url = model.attachmentURL(attachment)
+        let available = model.isAttachmentAvailable(attachment)
+        let memory = attachment.isInMemory
         HStack(spacing: 6) {
             SelectBox(selected: attachment.isSelected) { model.setSelected(attachment, !attachment.isSelected) }
             Button { model.openAttachmentPreview(attachment) } label: {
                 HStack(spacing: 6) {
-                    KindIcon(kind: attachment.effectiveKind, url: url)
+                    KindIcon(kind: attachment.effectiveKind, url: url,
+                             memory: memory ? model.attachmentData(attachment).map { (attachment.id, $0) } : nil)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(attachment.originalFilename).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
                             .lineLimit(1).truncationMode(.middle)
-                        Text(url == nil ? "Missing" : "\(ReviewPack.type(attachment)) · \(ReviewPack.size(attachment.byteCount)) · \(attachment.effectiveSource.label)")
-                            .font(.system(size: 10)).foregroundStyle(url == nil ? Island.warning : Island.tertiary).lineLimit(1)
+                        Text(!available ? (memory ? "No longer in memory" : "Missing")
+                             : "\(ReviewPack.type(attachment)) · \(ReviewPack.size(attachment.byteCount)) · \(attachment.effectiveSource.label)\(memory ? " · in memory" : "")")
+                            .font(.system(size: 10)).foregroundStyle(!available ? Island.warning : Island.tertiary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(url == nil)
+            .disabled(!available)
             .accessibilityLabel("Preview \(attachment.originalFilename)")
             Menu {
-                Button("Preview") { model.openAttachmentPreview(attachment) }.disabled(url == nil)
-                Button("Open in Default App") { if let url { NSWorkspace.shared.open(url) } }.disabled(url == nil)
-                Button("Show in Finder") { model.revealAttachmentsForHandoff([attachment]) }.disabled(url == nil)
-                Button("Copy File") { model.copyAttachmentFiles([attachment]) }.disabled(url == nil)
+                Button("Preview") { model.openAttachmentPreview(attachment) }.disabled(!available)
+                if memory {
+                    // Phase 10: a snapshot in memory has no file to open or show.
+                    Button("Copy Image") { model.copyAttachment(attachment) }.disabled(!available)
+                } else {
+                    Button("Open in Default App") { if let url { NSWorkspace.shared.open(url) } }.disabled(url == nil)
+                    Button("Show in Finder") { model.revealAttachmentsForHandoff([attachment]) }.disabled(url == nil)
+                    Button("Copy File") { model.copyAttachmentFiles([attachment]) }.disabled(url == nil)
+                }
                 Divider()
                 Button("Remove from This Report") { model.removeAttachment(attachment) }
             } label: { Image(systemName: "ellipsis").font(.system(size: 10, weight: .semibold)) }
@@ -700,18 +709,22 @@ struct AttachmentRow: View {
         .frame(height: 30)
         .padding(.horizontal, 3)
         .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(attachment.isSelected ? Island.selected : .clear))
-        .onDrag { model.dragFile(for: attachment).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
-        .islandHelp("Preview this attachment")
+        .onDrag { model.dragProvider(for: attachment) }
+        .islandHelp(memory ? "Window snapshot kept in memory only — not saved as a file" : "Preview this attachment")
     }
 }
 
 struct KindIcon: View {
     let kind: AttachmentKind
     let url: URL?
+    /// Phase 10: (id, bytes) of an in-memory snapshot.
+    var memory: (id: String, data: Data)? = nil
 
     var body: some View {
         Group {
-            if kind == .image, let url, let thumb = Thumbnails.image(for: url, maxPixels: 64) {
+            if kind == .image, let memory, let thumb = Thumbnails.image(data: memory.data, key: memory.id, maxPixels: 64) {
+                Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fill)
+            } else if kind == .image, let url, let thumb = Thumbnails.image(for: url, maxPixels: 64) {
                 Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fill)
             } else {
                 Image(systemName: kind == .pdf ? "doc.richtext" : kind == .document ? "doc.text" : "photo")
@@ -904,7 +917,7 @@ struct HandoffFooter: View {
             .buttonStyle(IslandPillStyle(prominent: true))
             .islandHelp("Copy the selected files")
             FileDragButton(title: step.fileCount == 1 ? "Drag" : "Drag \(step.fileCount)",
-                           help: "Drag the files into ChatGPT, Gemini or another app") { model.handoffFileURLs() }
+                           help: "Drag the files into ChatGPT, Gemini or another app", payloads: { model.handoffDragPayloads() })
             IconLink(symbol: "folder", label: "Show in Finder", help: "Show the files in Finder") { model.revealHandoffFiles() }
         }
     }
@@ -928,7 +941,15 @@ enum DetailsHandoffText {
 struct FileDragButton: View {
     let title: String
     let help: String
-    let urls: @MainActor () -> [URL]
+    let payloads: @MainActor () -> [DragPayload]
+
+    init(title: String, help: String, payloads: @escaping @MainActor () -> [DragPayload]) {
+        self.title = title; self.help = help; self.payloads = payloads
+    }
+
+    init(title: String, help: String, urls: @escaping @MainActor () -> [URL]) {
+        self.init(title: title, help: help, payloads: { urls().map(DragPayload.file) })
+    }
 
     var body: some View {
         Label(title, systemImage: "hand.draw")
@@ -937,22 +958,23 @@ struct FileDragButton: View {
             .background(Capsule().fill(Island.control))
             .foregroundStyle(Island.primary)
             .fixedSize()
-            .overlay(FileDragSource(urls: urls))
+            .overlay(FileDragSource(payloads: payloads))
             .islandHelp(help)
             .accessibilityLabel(title)
     }
 }
 
 /// An AppKit drag source for several files (SwiftUI's onDrag carries one).
+/// Phase 10: in-memory snapshots are dragged as image data (no file).
 struct FileDragSource: NSViewRepresentable {
-    let urls: @MainActor () -> [URL]
+    let payloads: @MainActor () -> [DragPayload]
 
-    func makeNSView(context: Context) -> DragView { DragView(urls: urls) }
-    func updateNSView(_ view: DragView, context: Context) { view.urls = urls }
+    func makeNSView(context: Context) -> DragView { DragView(payloads: payloads) }
+    func updateNSView(_ view: DragView, context: Context) { view.payloads = payloads }
 
     final class DragView: NSView, NSDraggingSource {
-        var urls: @MainActor () -> [URL]
-        init(urls: @escaping @MainActor () -> [URL]) { self.urls = urls; super.init(frame: .zero) }
+        var payloads: @MainActor () -> [DragPayload]
+        init(payloads: @escaping @MainActor () -> [DragPayload]) { self.payloads = payloads; super.init(frame: .zero) }
         required init?(coder: NSCoder) { nil }
 
         func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
@@ -960,11 +982,19 @@ struct FileDragSource: NSViewRepresentable {
         }
 
         override func mouseDragged(with event: NSEvent) {
-            let files = MainActor.assumeIsolated { urls() }
-            guard !files.isEmpty else { return }
-            let items = files.enumerated().map { i, url -> NSDraggingItem in
-                let item = NSDraggingItem(pasteboardWriter: url as NSURL)
-                let icon = NSWorkspace.shared.icon(forFile: url.path)
+            let all = MainActor.assumeIsolated { payloads() }
+            guard !all.isEmpty else { return }
+            let items = all.enumerated().map { i, payload -> NSDraggingItem in
+                let item: NSDraggingItem
+                let icon: NSImage
+                switch payload {
+                case .file(let url):
+                    item = NSDraggingItem(pasteboardWriter: url as NSURL)
+                    icon = NSWorkspace.shared.icon(forFile: url.path)
+                case .image(let image):
+                    item = NSDraggingItem(pasteboardWriter: image.item())
+                    icon = NSImage(data: image.data) ?? NSImage(systemSymbolName: "photo", accessibilityDescription: nil) ?? NSImage()
+                }
                 item.setDraggingFrame(NSRect(x: CGFloat(i) * 4, y: 0, width: 32, height: 32), contents: icon)
                 return item
             }

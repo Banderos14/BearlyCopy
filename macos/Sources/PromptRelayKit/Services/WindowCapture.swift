@@ -50,11 +50,23 @@ public final class WindowCapture: NSObject, WindowCapturing, SCContentSharingPic
         }
     }
 
+    /// Phase 10: the longest side of a snapshot in pixels. A Retina window
+    /// stays sharp; a 6K full-screen window does not cost 80 MB of memory.
+    nonisolated public static let maxPixelSide: CGFloat = 3200
+
+    /// Pixel size for a window of `points` at `scale`, capped at `maxPixelSide`.
+    nonisolated static func pixelSize(points: CGSize, scale: CGFloat) -> (width: Int, height: Int) {
+        var w = points.width * scale, h = points.height * scale
+        let longest = max(w, h)
+        if longest > maxPixelSide { w *= maxPixelSide / longest; h *= maxPixelSide / longest }
+        return (max(1, Int(w.rounded())), max(1, Int(h.rounded())))
+    }
+
     static func shot(_ filter: SCContentFilter) async throws -> Shot {
         let config = SCStreamConfiguration()
-        let scale = CGFloat(filter.pointPixelScale)
-        config.width = max(1, Int(filter.contentRect.width * scale))
-        config.height = max(1, Int(filter.contentRect.height * scale))
+        let size = pixelSize(points: filter.contentRect.size, scale: CGFloat(filter.pointPixelScale))
+        config.width = size.width
+        config.height = size.height
         config.showsCursor = false
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
         guard let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {

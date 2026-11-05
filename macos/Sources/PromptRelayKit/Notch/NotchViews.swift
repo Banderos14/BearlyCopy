@@ -249,8 +249,8 @@ public struct NotchRootView: View {
 }
 
 /// Phase 8: the right ear. An unseen answer is a small light dot (a ring
-/// when Claude Code started that turn itself, not your request), with the
-/// number of sessions when more than one has one; a prompt still waiting
+/// when Claude Code started that turn itself, not your request); Phase 10
+/// dropped the session count next to it; a prompt still waiting
 /// for Claude is three dim dots. Never "done" or "success": Stop only means
 /// Claude stopped answering. Appears with one soft scale-in; no loop runs.
 struct ReadyIndicatorView: View {
@@ -270,7 +270,7 @@ struct ReadyIndicatorView: View {
             case .working:
                 LoadingDots(color: NSColor(white: 1, alpha: 0.75), reduceMotion: reduceMotion)
                     .transition(.opacity)
-            case .ready(let sessions, let automated, let background):
+            case .ready(_, let automated, let background):
                 HStack(spacing: 3) {
                     ZStack {
                         // Phase 9.3: green = an answer with text is available
@@ -285,10 +285,9 @@ struct ReadyIndicatorView: View {
                         }
                     }
                     .frame(width: 6, height: 6)   // about a macOS status dot
-                    if sessions > 1 {
-                        Text("\(sessions)").font(.system(size: 9, weight: .semibold).monospacedDigit())
-                            .foregroundStyle(Color.white.opacity(0.8))
-                    }
+                    // Phase 10: no session count on the notch; how many
+                    // conversations have unread answers is shown in Project
+                    // and Session (and spoken by the accessibility label).
                 }
                 .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
             case .attention:

@@ -160,22 +160,30 @@ struct AttachmentPreviewView: View {
             Button { model.copyAttachmentFiles([a]) } label: {
                 Label(copied ? Labels.copied : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
             }
-            .buttonStyle(IslandPillStyle(prominent: false)).disabled(url == nil)
-            .islandHelp("Copy this file")
-            FileDragButton(title: "Drag", help: "Drag the file into another app") { model.dragFile(for: a).map { [$0] } ?? [] }
-            IconLink(symbol: "folder", label: "Show in Finder", help: "Show the file in Finder") { model.revealAttachmentsForHandoff([a]) }
+            .buttonStyle(IslandPillStyle(prominent: false)).disabled(!model.isAttachmentAvailable(a))
+            .islandHelp(a.isInMemory ? "Copy this image (kept in memory only)" : "Copy this file")
+            FileDragButton(title: "Drag", help: a.isInMemory ? "Drag the image into another app" : "Drag the file into another app",
+                           payloads: { model.dragPayloads(for: [a]) })
+            if !a.isInMemory {
+                IconLink(symbol: "folder", label: "Show in Finder", help: "Show the file in Finder") { model.revealAttachmentsForHandoff([a]) }
+            }
         }
         .animation(.easeOut(duration: 0.15), value: model.copiedToken)
     }
 
     @ViewBuilder
     private func content(_ a: ReportAttachment, url: URL?) -> some View {
-        if let url {
+        if a.isInMemory {
+            if let data = model.attachmentData(a), let image = NSImage(data: data) {
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).padding(6)
+                    .onDrag { model.dragProvider(for: a) }
+            } else { unreadable }
+        } else if let url {
             switch a.effectiveKind {
             case .image:
                 if let image = NSImage(contentsOf: url) {
                     Image(nsImage: image).resizable().aspectRatio(contentMode: .fit).padding(6)
-                        .onDrag { model.dragFile(for: a).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
+                        .onDrag { model.dragProvider(for: a) }
                 } else { unreadable }
             case .pdf:
                 PDFPreview(url: url)
@@ -197,6 +205,9 @@ struct AttachmentPreviewView: View {
 
     /// What a still preview cannot show.
     private func note(_ a: ReportAttachment) -> String? {
+        if a.isInMemory {
+            return "Kept in memory only: not saved to disk, gone when Prompt Relay quits. An app you copy or drag it into may keep its own copy."
+        }
         let ext = (a.originalFilename as NSString).pathExtension.lowercased()
         if ["html", "htm"].contains(ext) { return "HTML is shown as source text; it is not run here, so its interactive behavior is not checked." }
         if a.mockupID != nil { return "A still image of a mockup state: motion, clicks and interactive states are not checked." }

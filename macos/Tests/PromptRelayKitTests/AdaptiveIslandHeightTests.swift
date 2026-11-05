@@ -37,7 +37,7 @@ struct AdaptiveIslandHeightTests {
         let board = NSPasteboard(name: .init(suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer {
-            board.releaseGlobally(); defaults.removePersistentDomain(forName: suite)
+            board.releaseGlobally(); removeTestDefaults(suite)
             try? FileManager.default.removeItem(at: root)
         }
         let model = await Phase8Fixture.model(defaults: defaults, board: board, root: root)
@@ -129,7 +129,7 @@ struct AdaptiveIslandHeightTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer {
             board.releaseGlobally()
-            defaults.removePersistentDomain(forName: suite)
+            removeTestDefaults(suite)
             try? FileManager.default.removeItem(at: root)
         }
         let model = await Phase8Fixture.model(defaults: defaults, board: board, root: root)

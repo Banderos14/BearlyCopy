@@ -8,6 +8,32 @@ public enum ClipboardError: Error, Equatable, Sendable {
     case verificationFailed
 }
 
+/// Phase 10: one image to put on the pasteboard. `file` is nil for an
+/// in-memory window snapshot: only its image data is written (PNG + TIFF),
+/// never a file URL, so no file has to exist for it.
+public struct ClipboardImage: Equatable, Sendable {
+    public let data: Data
+    public let uti: String
+    public let file: URL?
+    public init(data: Data, uti: String = "public.png", file: URL? = nil) {
+        self.data = data; self.uti = uti; self.file = file
+    }
+    public init?(file url: URL) {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        self.init(data: data, uti: UTType(filenameExtension: url.pathExtension)?.identifier ?? "public.png", file: url)
+    }
+
+    func item() -> NSPasteboardItem {
+        let item = NSPasteboardItem()
+        item.setData(data, forType: NSPasteboard.PasteboardType(uti))
+        if uti != NSPasteboard.PasteboardType.tiff.rawValue, let image = NSImage(data: data), let tiff = image.tiffRepresentation {
+            item.setData(tiff, forType: .tiff)
+        }
+        if let file { item.setString(file.absoluteString, forType: .fileURL) }
+        return item
+    }
+}
+
 /// Writes text to an NSPasteboard verbatim (`.string`, i.e.
 /// `public.utf8-plain-text`) and reads it back to confirm. The text is never
 /// trimmed, normalized or logged.
@@ -44,19 +70,16 @@ public final class ClipboardService {
     /// is up to that app; only the text is read back and confirmed.
     @discardableResult
     public func copy(_ text: String, images: [URL]) throws -> Int {
+        try copy(text, imageItems: images.compactMap(ClipboardImage.init(file:)))
+    }
+
+    /// The same with images that may exist only in memory (no file URL).
+    @discardableResult
+    public func copy(_ text: String, imageItems images: [ClipboardImage]) throws -> Int {
         pasteboard.clearContents()
         let textItem = NSPasteboardItem()
         textItem.setString(text, forType: .string)
-        var items = [textItem]
-        for url in images {
-            guard let data = try? Data(contentsOf: url) else { continue }
-            let item = NSPasteboardItem()
-            let type = NSPasteboard.PasteboardType(UTType(filenameExtension: url.pathExtension)?.identifier ?? "public.png")
-            item.setData(data, forType: type)
-            if let image = NSImage(data: data), let tiff = image.tiffRepresentation { item.setData(tiff, forType: .tiff) }
-            item.setString(url.absoluteString, forType: .fileURL)
-            items.append(item)
-        }
+        let items = [textItem] + images.map { $0.item() }
         guard pasteboard.writeObjects(items) else { throw ClipboardError.writeFailed }
         markOwn()
         guard let back = pasteboard.string(forType: .string),
@@ -80,6 +103,31 @@ public final class ClipboardService {
         item.setString(url.absoluteString, forType: .fileURL)
         item.setData(Data([1]), forType: ClipboardImageHistory.ownType)
         guard pasteboard.writeObjects([item]) else { throw ClipboardError.writeFailed }
+    }
+
+    /// Phase 10: one image from memory, as image data only (PNG + TIFF): no
+    /// file URL, no file. Read back: the clipboard holds exactly these bytes.
+    public func copyImage(_ image: ClipboardImage) throws {
+        pasteboard.clearContents()
+        let item = image.item()
+        item.setData(Data([1]), forType: ClipboardImageHistory.ownType)
+        guard pasteboard.writeObjects([item]),
+              pasteboard.data(forType: NSPasteboard.PasteboardType(image.uti)) == image.data else { throw ClipboardError.writeFailed }
+    }
+
+    /// Phase 10, hand-off step 2 with snapshots: the files as file URLs (like
+    /// ⌘C in Finder) plus each in-memory snapshot as image data, one item
+    /// each. Read back: exactly these files and this many items.
+    public func copyFiles(_ urls: [URL], images: [ClipboardImage]) throws {
+        guard !images.isEmpty else { try copyFiles(urls); return }
+        pasteboard.clearContents()
+        let objects: [NSPasteboardWriting] = urls.map { $0 as NSURL } + images.map { $0.item() }
+        guard !objects.isEmpty, pasteboard.writeObjects(objects) else { throw ClipboardError.writeFailed }
+        markOwn()
+        let back = (pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
+        guard back.map(\.standardizedFileURL) == urls.map(\.standardizedFileURL), itemCount == objects.count else {
+            throw ClipboardError.verificationFailed
+        }
     }
 
     /// Files, like ⌘C in Finder: one file URL per item.

@@ -47,7 +47,7 @@ struct CompactHelpTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer {
             board.releaseGlobally()
-            defaults.removePersistentDomain(forName: suite)
+            removeTestDefaults(suite)
             try? FileManager.default.removeItem(at: root)
         }
         _ = NSApplication.shared

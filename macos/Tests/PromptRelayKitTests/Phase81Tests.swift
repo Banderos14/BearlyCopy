@@ -14,7 +14,7 @@ struct Phase81Tests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer {
             board.releaseGlobally()
-            defaults.removePersistentDomain(forName: suite)
+            removeTestDefaults(suite)
             try? FileManager.default.removeItem(at: root)
         }
         _ = NSApplication.shared
@@ -115,7 +115,7 @@ struct Phase81ReadyTests {
         let suite = "PromptRelayTests.p81.ready.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         let board = NSPasteboard(name: NSPasteboard.Name(suite))
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let t0 = "2026-10-31T10:00:00.000000Z"
         let t1 = "2026-10-31T10:01:00.000000Z"
         let t2 = "2026-10-31T10:02:00.000000Z"
@@ -174,7 +174,7 @@ struct Phase81ReadyTests {
         let suite = "PromptRelayTests.p81.turns.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         let board = NSPasteboard(name: NSPasteboard.Name(suite))
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let t0 = "2026-10-31T10:00:00.000000Z"
         let t1 = "2026-10-31T10:01:00.000000Z"
         let t2 = "2026-10-31T10:02:00.000000Z"
@@ -214,7 +214,7 @@ struct Phase81ReadyTests {
         let suite = "PromptRelayTests.p81.pinned.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         let board = NSPasteboard(name: NSPasteboard.Name(suite))
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite) }
         let core = FakeCore(projects: [project("/a", sessions: 2, last: "2026-10-31T10:00:00.000000Z")])
         let first = sessionSummary("a", project: "/a", last: "2026-10-31T10:00:00.000000Z")
         core.sessionsByProject["/a"] = [first]

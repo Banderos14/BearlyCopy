@@ -156,7 +156,7 @@ struct IslandSettingsView: View {
                    isOn: Binding(get: { model.autoSelectResultAttachments }, set: { model.autoSelectResultAttachments = $0 }))
             Hairline()
             toggle("Auto-capture final window",
-                   detail: "Off by default. On: choose the window of the open conversation's app (for example Xcode for Codex · Xcode). After each new final answer of that agent and app in this project, one still image of that window is attached and selected. Other agents' answers are never captured; choose again after a restart.",
+                   detail: "Off by default. On: choose the window of the open conversation's app (for example Xcode for Codex · Xcode). After each new final answer of that agent and app in this project, one still image of that window is attached and selected — kept in memory only, never saved to disk, gone when Prompt Relay quits. Other agents' answers are never captured; choose again after a restart.",
                    isOn: Binding(get: { model.autoCaptureFinalWindow }, set: { model.autoCaptureFinalWindow = $0 }))
             if model.autoCaptureFinalWindow {
                 HStack(spacing: 8) {
@@ -183,7 +183,7 @@ struct IslandSettingsView: View {
         section("Privacy") {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Everything stays on this Mac").font(.system(size: 12.5)).foregroundStyle(Island.primary)
-                Text("No network, no account, no AI service. Answers, imports and images are stored in your Library folder for Prompt Relay only; nothing is sent anywhere unless you paste it.")
+                Text("No network, no account, no AI service. Answers, imports and files you add are stored in your Library folder for Prompt Relay only; window snapshots stay in memory. Nothing is sent anywhere unless you paste it.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 12).padding(.vertical, 8)

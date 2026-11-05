@@ -178,6 +178,7 @@ public final class AppModel {
         autoCaptureFinalWindow = stateDefaults?.bool(forKey: Self.autoCaptureKey) ?? false
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
         seenAnswers = stateDefaults?.dictionary(forKey: Self.seenAnswersKey) as? [String: String] ?? [:]
+        notchAcknowledgedAt = stateDefaults?.string(forKey: Self.notchAckKey)
         handoffs = reportStore.map(Self.loadHandoffs) ?? [:]
         imports = reportStore?.imports() ?? []
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
@@ -379,6 +380,7 @@ public final class AppModel {
     /// Called when a surface (menu panel, window) appears or disappears. The
     /// fallback timer only runs while something is visible.
     public func surfaceAppeared() {
+        acknowledgeNotch()
         islandOpened()
         visibleSurfaces += 1
         if visibleSurfaces == 1 {
@@ -682,7 +684,7 @@ public final class AppModel {
     /// Phase 9.4: how long a Stop with work in flight is shown as "waiting"
     /// without a continuation. Long test runs fit; a forgotten server does
     /// not keep the island waiting forever.
-    static let backgroundWaitLimit: TimeInterval = 2 * 60 * 60
+    nonisolated static let backgroundWaitLimit: TimeInterval = 2 * 60 * 60
     nonisolated static func waitExpired(_ at: String?, now: Date = Date()) -> Bool {
         guard let date = Wording.date(at) else { return true }
         return now.timeIntervalSince(date) >= backgroundWaitLimit
@@ -730,7 +732,14 @@ public final class AppModel {
 
     public var readyIndicator: ReadyIndicator {
         if projects.error != nil, projects.value == nil { return .attention }
-        let unseen = unseenAnswers
+        // Phase 10: the notch asks for attention only for answers that
+        // arrived after the island was last opened. Opening it is looking at
+        // Latest; unread answers of other conversations stay marked in
+        // Project and Session and History, but no longer keep a green dot
+        // and a session count ("7") on the notch indefinitely.
+        let unseen = unseenAnswers.filter { answer in
+            notchAcknowledgedAt.map { Self.isNewer(answer.at, than: $0) } ?? true
+        }
         if let answer = unseen.first {
             let turns = answer.sessionKey == selectedSessionKey ? turns.value : turnCache[answer.sessionKey]?.turns
             // The follow-up of background work arrives in a turn the harness
@@ -750,6 +759,19 @@ public final class AppModel {
             $0.lastTurn?.completion == .waitingBackground && !Self.waitExpired($0.lastTurn?.answeredAt ?? $0.lastEventAt, now: now)
         }
         return waiting.isEmpty ? .none : .waitingBackground(sessions: waiting.count)
+    }
+
+    /// Phase 10: the newest final answer known when the island opened. Only
+    /// answers newer than this light the notch dot again. Persisted, so a
+    /// restart does not bring back a dot for answers already looked at.
+    private(set) var notchAcknowledgedAt: String? {
+        didSet { stateDefaults?.set(notchAcknowledgedAt, forKey: Self.notchAckKey) }
+    }
+    static let notchAckKey = "answers.notchAcknowledgedAt"
+
+    func acknowledgeNotch() {
+        guard let newest = finishedAnswers.first(where: { $0.completion.isFinal })?.at else { return }
+        if notchAcknowledgedAt.map({ Self.isNewer(newest, than: $0) }) ?? true { notchAcknowledgedAt = newest }
     }
 
     /// Acknowledge only the selected report. The launch/migration baseline
@@ -1010,10 +1032,12 @@ public final class AppModel {
                 let f = DateFormatter()
                 f.dateFormat = "yyyy-MM-dd HH.mm.ss"
                 do {
-                    _ = try store.addData(shot.png, name: "\(shot.label) \(f.string(from: Date())).png", to: ref, source: .you)
+                    // Phase 10: memory only — no file in the attachments folder.
+                    _ = try store.addEphemeralImage(shot.png, name: "\(shot.label) \(f.string(from: Date())).png", to: ref,
+                                                    source: .windowSnapshot)
                     self.attachmentMessage = nil
                 } catch {
-                    self.attachmentMessage = "The window image could not be saved."
+                    self.attachmentMessage = "The window image could not be kept (too large)."
                 }
                 self.attachmentsVersion += 1
             case .failure?:
@@ -1040,6 +1064,8 @@ public final class AppModel {
     /// Claude Code answer in the same project never captures Xcode's window.
     public private(set) var autoCaptureSource: (label: String, projectPath: String, provider: AgentProvider, host: AgentHost)?
     public internal(set) var autoCaptureMessage: String?
+    /// Reports already auto-captured in this run (never twice for one answer).
+    @ObservationIgnored var autoCapturedRefs: Set<String> = []
 
     /// The open conversation can be bound to a window: its host is recorded.
     public var autoCaptureBlocker: String? {
@@ -1079,13 +1105,24 @@ public final class AppModel {
               answer.projectPath == source.projectPath, answer.provider == source.provider,
               answer.host == source.host, answer.host != .unknown, let store = reportStore else { return }
         let ref = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex)
+        // Phase 10: one snapshot per final answer per app run, however often
+        // the same answer is announced or refreshed (hook redelivery).
+        guard !autoCapturedRefs.contains(ref.key) else { return }
+        autoCapturedRefs.insert(ref.key)
         windowCapture.captureSource { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let shot):
                 let f = DateFormatter()
                 f.dateFormat = "yyyy-MM-dd HH.mm.ss"
-                _ = try? store.addData(shot.png, name: "Final window \(f.string(from: Date())).png", to: ref, source: .windowCapture)
+                // Phase 10: memory only; listed and selected like any attachment.
+                do {
+                    _ = try store.addEphemeralImage(shot.png, name: "Final window \(f.string(from: Date())).png", to: ref,
+                                                    source: .windowCapture, sourceProvider: answer.provider)
+                    self.autoCaptureMessage = nil
+                } catch {
+                    self.autoCaptureMessage = "The window snapshot was too large to keep."
+                }
                 self.attachmentsVersion += 1
             case .failure:
                 self.autoCaptureSource = nil
@@ -1586,6 +1623,35 @@ public final class AppModel {
 
     public func attachmentURL(_ attachment: ReportAttachment) -> URL? { reportStore?.fileURL(for: attachment) }
 
+    /// Phase 10: present now — an in-memory snapshot is never a file.
+    public func isAttachmentAvailable(_ attachment: ReportAttachment) -> Bool { reportStore?.isAvailable(attachment) ?? false }
+
+    /// The bytes (memory or the private copy), for previews and thumbnails.
+    public func attachmentData(_ attachment: ReportAttachment) -> Data? { reportStore?.data(for: attachment) }
+
+    /// The image of an in-memory snapshot for the pasteboard or a drag: data
+    /// only, no file URL. nil for persistent attachments or when it expired.
+    func memoryImage(_ attachment: ReportAttachment) -> ClipboardImage? {
+        guard attachment.isInMemory, let data = reportStore?.data(for: attachment) else { return nil }
+        return ClipboardImage(data: data, uti: UTType(mimeType: attachment.mimeType)?.identifier ?? "public.png")
+    }
+
+    /// Phase 10: what a drag of these attachments carries — files for
+    /// persistent ones (hand-off copies, original names), image data for
+    /// in-memory snapshots (no temporary file is created for them).
+    public func dragPayloads(for attachments: [ReportAttachment]) -> [DragPayload] {
+        handoffFiles(attachments.filter { !$0.isInMemory }).map(DragPayload.file)
+            + attachments.compactMap(memoryImage).map(DragPayload.image)
+    }
+
+    /// One attachment for SwiftUI's onDrag.
+    public func dragProvider(for attachment: ReportAttachment) -> NSItemProvider {
+        if let image = memoryImage(attachment) {
+            return NSItemProvider(item: image.data as NSData, typeIdentifier: image.uti)
+        }
+        return dragFile(for: attachment).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider()
+    }
+
     /// Images the user chose in the file picker, copied into Prompt Relay's
     /// private folder for the current report. Nothing else is read.
     public func addAttachments(_ urls: [URL]) {
@@ -1635,6 +1701,14 @@ public final class AppModel {
 
     /// Copies one attachment as an image (PNG/TIFF data and its file).
     public func copyAttachment(_ attachment: ReportAttachment) {
+        if attachment.isInMemory {
+            guard let image = memoryImage(attachment) else { finishCopy(.failed("The snapshot is no longer in memory.")); return }
+            do {
+                try clipboard.copyImage(image)
+                finishCopy(.copied(.image, characters: 0), token: Self.attachmentToken(attachment.id))
+            } catch { finishCopy(.failed("The image could not be copied.")) }
+            return
+        }
         guard let file = handoffFiles([attachment]).first else { finishCopy(.failed("The image file is missing.")); return }
         do {
             try clipboard.copyImage(at: file)
@@ -1647,10 +1721,12 @@ public final class AppModel {
     /// Copies attachments as files (like ⌘C in Finder), under their original
     /// names: for apps that take pasted files rather than image data.
     public func copyAttachmentFiles(_ attachments: [ReportAttachment]) {
-        let files = handoffFiles(attachments)
-        guard !files.isEmpty else { finishCopy(.failed("The image files are missing.")); return }
+        let files = handoffFiles(attachments.filter { !$0.isInMemory })
+        let images = attachments.compactMap(memoryImage)
+        guard !files.isEmpty || !images.isEmpty else { finishCopy(.failed("The image files are missing.")); return }
+        if files.isEmpty, images.count == 1, attachments.count == 1 { copyAttachment(attachments[0]); return }
         do {
-            try clipboard.copyFiles(files)
+            try clipboard.copyFiles(files, images: images)
             finishCopy(.copied(.files, characters: files.count), token: attachments.count == 1 ? Self.attachmentToken(attachments[0].id) : nil)
         } catch {
             finishCopy(.failed("The files could not be copied."))
@@ -1660,8 +1736,13 @@ public final class AppModel {
     /// The report's images in a Finder window, selected, under their
     /// original names: drag them into ChatGPT after pasting the text.
     public func revealAttachmentsForHandoff(_ attachments: [ReportAttachment]) {
-        let files = handoffFiles(attachments)
-        guard !files.isEmpty else { attachmentMessage = "The image files are missing."; return }
+        let files = handoffFiles(attachments.filter { !$0.isInMemory })
+        guard !files.isEmpty else {
+            attachmentMessage = attachments.contains(where: \.isInMemory)
+                ? "Window snapshots are kept in memory only, not as files. Use Copy or Drag."
+                : "The image files are missing."
+            return
+        }
         NSWorkspace.shared.activateFileViewerSelecting(files)
     }
 
@@ -1682,9 +1763,10 @@ public final class AppModel {
     public func copyResponseWithImages() async {
         guard let ref = currentRef else { return }
         guard let text = await fullText(for: ref) else { return }
-        let urls = handoffFiles(attachments(for: ref))
+        let all = attachments(for: ref)
+        let images = handoffFiles(all.filter { !$0.isInMemory }).compactMap(ClipboardImage.init(file:)) + all.compactMap(memoryImage)
         do {
-            try clipboard.copy(text, images: urls)
+            try clipboard.copy(text, imageItems: images)
             finishCopy(.copied(.responseWithImages, characters: text.unicodeScalars.count), token: Self.answerToken(ref))
             record(.response, ref: ref, characters: text.unicodeScalars.count)
         } catch {

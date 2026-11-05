@@ -36,6 +36,92 @@ public final class ReportStore {
         self.root = root
     }
 
+    // MARK: Ephemeral window snapshots (Phase 10)
+
+    /// Phase 10: window snapshots live in this process's memory only. They are
+    /// listed, selected and handed off like any attachment, but are never
+    /// written to the attachments folder, the index, the hand-off folder or
+    /// any other file by Prompt Relay, and are gone when the app quits.
+    /// Bounded by count, total bytes and age; the oldest go first.
+    public struct EphemeralLimits: Equatable, Sendable {
+        public var maxCount: Int
+        public var maxTotalBytes: Int
+        public var maxAge: TimeInterval
+        public static let standard = EphemeralLimits(maxCount: 12, maxTotalBytes: 96 * 1024 * 1024, maxAge: 4 * 60 * 60)
+    }
+    public var ephemeralLimits = EphemeralLimits.standard
+    private var ephemeral: [ReportAttachment] = []
+    private var ephemeralData: [String: Data] = [:]
+    private var ephemeralBorn: [String: Date] = [:]
+    /// Injectable clock for the age limit (tests).
+    var clock: () -> Date = Date.init
+
+    /// Total bytes held in memory now (Settings / diagnostics).
+    public var ephemeralBytes: Int { ephemeralData.values.reduce(0) { $0 + $1.count } }
+
+    /// Keeps an image in memory only and lists it with the report. The same
+    /// bytes for the same report are kept once. Over the limits the oldest
+    /// snapshots are dropped (never a persistent attachment).
+    @discardableResult
+    public func addEphemeralImage(_ data: Data, name: String, to ref: ReportRef, source: AttachmentSource,
+                                  sourceProvider: AgentProvider? = nil) throws -> ReportAttachment {
+        guard !data.isEmpty else { throw ReportStoreError.empty }
+        guard let type = Self.imageType(of: data) else { throw ReportStoreError.damagedImage(name) }
+        guard data.count <= ephemeralLimits.maxTotalBytes, data.count <= Self.maxAttachmentBytes else { throw ReportStoreError.tooLarge(name) }
+        expireEphemeral()
+        let digest = Self.sha256(data)
+        if let existing = ephemeral.first(where: { $0.reportKey == ref.key && $0.sha256 == digest }) { return existing }
+        let id = "mem-" + UUID().uuidString.lowercased()
+        var attachment = ReportAttachment(id: id, reportKey: ref.key, originalFilename: name,
+                                          storedFilename: "", mimeType: type.preferredMIMEType ?? "image/png",
+                                          byteCount: data.count, sha256: digest, addedAt: Self.now(),
+                                          provenance: Self.provenance(source) + ". Kept in memory only (not saved to disk)")
+        attachment.kind = .image
+        attachment.source = source
+        attachment.sourceProvider = sourceProvider
+        attachment.inMemory = true
+        ephemeral.append(attachment)
+        ephemeralData[id] = data
+        ephemeralBorn[id] = clock()
+        while ephemeral.count > ephemeralLimits.maxCount || ephemeralBytes > ephemeralLimits.maxTotalBytes {
+            dropEphemeral(ephemeral[0].id)
+        }
+        return attachment
+    }
+
+    /// The bytes of an attachment: memory for a snapshot, the private copy otherwise.
+    public func data(for attachment: ReportAttachment) -> Data? {
+        if attachment.isInMemory { expireEphemeral(); return ephemeralData[attachment.id] }
+        return fileURL(for: attachment).flatMap { try? Data(contentsOf: $0) }
+    }
+
+    /// Present now (in memory, or its private file exists).
+    public func isAvailable(_ attachment: ReportAttachment) -> Bool {
+        if attachment.isInMemory { expireEphemeral(); return ephemeralData[attachment.id] != nil }
+        return fileURL(for: attachment) != nil
+    }
+
+    private func expireEphemeral() {
+        let now = clock()
+        for a in ephemeral where now.timeIntervalSince(ephemeralBorn[a.id] ?? now) >= ephemeralLimits.maxAge {
+            dropEphemeral(a.id)
+        }
+    }
+
+    private func dropEphemeral(_ id: String) {
+        ephemeral.removeAll { $0.id == id }
+        ephemeralData[id] = nil
+        ephemeralBorn[id] = nil
+    }
+
+    /// Forgets every in-memory snapshot (Settings: turning auto-capture off
+    /// keeps them; this is for an explicit "Clear snapshots").
+    public func clearEphemeral() {
+        ephemeral.removeAll()
+        ephemeralData.removeAll()
+        ephemeralBorn.removeAll()
+    }
+
     /// The live location under the Core's data directory.
     public static func live(dataDirectory: URL) -> ReportStore {
         ReportStore(root: dataDirectory.appendingPathComponent("app", isDirectory: true))
@@ -110,13 +196,19 @@ public final class ReportStore {
     // MARK: Attachments
 
     public func allAttachments() -> [ReportAttachment] {
-        guard let data = try? Data(contentsOf: attachmentIndex) else { return [] }
-        return (try? JSONDecoder().decode([ReportAttachment].self, from: data)) ?? []
+        expireEphemeral()
+        return persistedAttachments() + ephemeral
     }
 
+    private func persistedAttachments() -> [ReportAttachment] {
+        guard let data = try? Data(contentsOf: attachmentIndex) else { return [] }
+        return ((try? JSONDecoder().decode([ReportAttachment].self, from: data)) ?? []).filter { !$0.isInMemory }
+    }
+
+    /// Only persistent records are ever written; in-memory snapshots never are.
     private func saveIndex(_ list: [ReportAttachment]) throws {
         try ensure(attachmentsDir)
-        try write(try JSONEncoder().encode(list), to: attachmentIndex)
+        try write(try JSONEncoder().encode(list.filter { !$0.isInMemory }), to: attachmentIndex)
     }
 
     public func attachments(for ref: ReportRef) -> [ReportAttachment] {
@@ -128,7 +220,7 @@ public final class ReportStore {
     /// never resolves outside the attachments folder.
     public func fileURL(for attachment: ReportAttachment) -> URL? {
         let name = attachment.storedFilename
-        guard !name.isEmpty, !name.hasPrefix("."), !name.contains("/"), !name.contains(":") else { return nil }
+        guard !attachment.isInMemory, !name.isEmpty, !name.hasPrefix("."), !name.contains("/"), !name.contains(":") else { return nil }
         let url = attachmentsDir.appendingPathComponent(name)
         guard url.deletingLastPathComponent().standardizedFileURL == attachmentsDir.standardizedFileURL else { return nil }
         return fm.fileExists(atPath: url.path) ? url : nil
@@ -155,7 +247,7 @@ public final class ReportStore {
         }
         guard let type = Self.imageType(of: data) else { throw ReportStoreError.damagedImage(name) }
         let digest = Self.sha256(data)
-        var index = allAttachments()
+        var index = persistedAttachments()
         if let existing = index.first(where: { $0.reportKey == ref.key && $0.sha256 == digest }) { return existing }
         try ensure(attachmentsDir)
         let id = UUID().uuidString.lowercased()
@@ -226,7 +318,7 @@ public final class ReportStore {
             throw ReportStoreError.unsupported(name)
         }
         let digest = Self.sha256(data)
-        var index = allAttachments()
+        var index = persistedAttachments()
         if let existing = index.first(where: { $0.reportKey == ref.key && $0.sha256 == digest && $0.mockupID == mockupID
                                                && $0.stateID == stateID && (source != .agentResult || $0.originalPath == displayPath) }) {
             return existing
@@ -262,12 +354,14 @@ public final class ReportStore {
         case .agentResult: return "Observed result file; automatically prepared from this turn"
         case .namedVerified: return "Named in the answer and changed during this turn (local file time); automatically prepared. Not proof the agent created it"
         case .windowCapture: return "Still image of the window you chose for auto-capture, taken after this final answer arrived"
+        case .windowSnapshot: return "Still image of the window you picked in the macOS picker"
         }
     }
 
     /// Include or exclude an attachment from Copy for ChatGPT and the hand-off.
     public func setSelected(_ id: String, _ selected: Bool) throws {
-        var index = allAttachments()
+        if let i = ephemeral.firstIndex(where: { $0.id == id }) { ephemeral[i].selected = selected; return }
+        var index = persistedAttachments()
         guard let i = index.firstIndex(where: { $0.id == id }) else { return }
         index[i].selected = selected
         try saveIndex(index)
@@ -381,7 +475,8 @@ public final class ReportStore {
     /// record uses it. The index is saved first, so a failure never leaves a
     /// record pointing at a deleted file.
     public func removeAttachment(_ id: String) throws {
-        var index = allAttachments()
+        if ephemeral.contains(where: { $0.id == id }) { dropEphemeral(id); return }
+        var index = persistedAttachments()
         guard let attachment = index.first(where: { $0.id == id }) else { return }
         index.removeAll { $0.id == id }
         do { try saveIndex(index) } catch { throw ReportStoreError.removeFailed }
@@ -402,7 +497,7 @@ public final class ReportStore {
         try ensure(handoffDir)
         var used = Set<String>()
         var urls: [URL] = []
-        for attachment in attachments {
+        for attachment in attachments where !attachment.isInMemory {
             guard let source = fileURL(for: attachment) else { continue }
             let wanted = names[attachment.id] ?? attachment.originalFilename
             let name = Self.uniqueName(Self.safeFilename(wanted, fallback: attachment.storedFilename), used: &used)

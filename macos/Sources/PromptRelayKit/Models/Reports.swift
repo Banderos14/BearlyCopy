@@ -96,6 +96,8 @@ public enum AttachmentSource: String, Codable, Sendable {
     case namedVerified
     /// Phase 9.4: auto-captured from the window the user picked, after a final answer.
     case windowCapture
+    /// Phase 10: Capture Final Window (manual pick), kept in memory only.
+    case windowSnapshot
     public var label: String {
         switch self {
         case .you: return "you"
@@ -106,6 +108,7 @@ public enum AttachmentSource: String, Codable, Sendable {
         case .agentObserved: return "observed file"
         case .namedVerified: return "named · changed this turn"
         case .windowCapture: return "window you picked"
+        case .windowSnapshot: return "window snapshot"
         }
     }
 }
@@ -136,7 +139,10 @@ public struct ReportAttachment: Codable, Identifiable, Equatable, Sendable {
     /// The mockup state this image shows, if any.
     public var mockupID: String? = nil
     public var stateID: String? = nil
+    /// Phase 10: a window snapshot held in memory only (never in the index).
+    public var inMemory: Bool? = nil
 
+    public var isInMemory: Bool { inMemory ?? false }
     public var effectiveKind: AttachmentKind { kind ?? .image }
     public var effectiveSource: AttachmentSource { source ?? .you }
     public var isSelected: Bool { selected ?? true }

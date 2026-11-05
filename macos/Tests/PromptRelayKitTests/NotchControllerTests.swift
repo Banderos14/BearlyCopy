@@ -53,7 +53,7 @@ final class NotchControllerTests: XCTestCase {
 
     override func tearDown() async throws {
         pasteboard.releaseGlobally()
-        defaults.removePersistentDomain(forName: suite)
+        removeTestDefaults(suite)
     }
 
     var neighbors = FakeNeighbors()
@@ -799,7 +799,7 @@ final class ReadyAnswerTests: XCTestCase {
     func testNewAnswerIsAnnouncedOnceAndRememberedAcrossRestarts() async throws {
         let suite = "PromptRelayTests.ready.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { removeTestDefaults(suite) }
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayReady-\(UUID().uuidString)"))
         defer { board.releaseGlobally() }
 

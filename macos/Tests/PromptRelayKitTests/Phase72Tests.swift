@@ -146,7 +146,7 @@ final class CopyWithContextHeaderTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP72h-\(UUID().uuidString)"))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p72h-\(UUID().uuidString)")
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
         let m = AppModel(core: FakeCore(projects: [project("/a", sessions: 0, last: nil)]), clipboard: ClipboardService(pasteboard: board),
                          dataDirectory: nil, stateDefaults: defaults, reportStore: ReportStore(root: root))
         await m.refreshNow()
@@ -178,7 +178,7 @@ final class SurfaceAuditRenderTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         let board = NSPasteboard(name: NSPasteboard.Name("PromptRelayP72a-\(UUID().uuidString)"))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr-p72a-\(UUID().uuidString)")
-        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        defer { board.releaseGlobally(); removeTestDefaults(suite); try? FileManager.default.removeItem(at: root) }
         let m = AppModel(core: FakeCore(projects: [project("/a", sessions: 0, last: nil)]), clipboard: ClipboardService(pasteboard: board),
                          dataDirectory: nil, stateDefaults: defaults, reportStore: ReportStore(root: root))
         await m.refreshNow()

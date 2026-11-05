@@ -420,22 +420,36 @@ extension AppModel {
         let byID = Dictionary(uniqueKeysWithValues: attachments(for: step.ref).map { ($0.id, $0) })
         let chosen = step.attachmentIDs.compactMap { byID[$0] }
         guard chosen.count == step.attachmentIDs.count else { return [] }
-        do { return try store.handoffFiles(for: chosen, names: handoffNames(for: step.ref)) } catch {
+        do { return try store.handoffFiles(for: chosen.filter { !$0.isInMemory }, names: handoffNames(for: step.ref)) } catch {
             attachmentMessage = "Prompt Relay could not prepare the files."
             return []
         }
     }
 
-    /// Step 2: the files on the clipboard, like ⌘C in Finder.
+    /// Phase 10: the in-memory snapshots of the active hand-off (image data).
+    private func preparedHandoffImages() -> [ClipboardImage]? {
+        guard let step = activeHandoff, !handoffSelectionChanged else { return [] }
+        let byID = Dictionary(uniqueKeysWithValues: attachments(for: step.ref).map { ($0.id, $0) })
+        let memory = step.attachmentIDs.compactMap { byID[$0] }.filter(\.isInMemory)
+        let images = memory.compactMap(memoryImage)
+        return images.count == memory.count ? images : nil
+    }
+
+    /// Step 2: the files on the clipboard, like ⌘C in Finder; in-memory
+    /// window snapshots go as image data next to them (no file is made).
     public func copyHandoffFiles() {
         guard !handoffSelectionChanged else {
             finishCopy(.failed("The chosen files changed. Use Copy with Context again."))
             return
         }
         let files = preparedHandoffFiles()
-        guard !files.isEmpty else { finishCopy(.failed("The files are missing.")); return }
+        guard let images = preparedHandoffImages() else {
+            finishCopy(.failed("A window snapshot is no longer in memory. Use Copy with Context again."))
+            return
+        }
+        guard !files.isEmpty || !images.isEmpty else { finishCopy(.failed("The files are missing.")); return }
         do {
-            try clipboard.copyFiles(files)
+            try clipboard.copyFiles(files, images: images)
             handoffStep?.filesCopied = true
             finishCopy(.copied(.files, characters: files.count), token: Self.handoffToken)
         } catch {
@@ -445,7 +459,12 @@ extension AppModel {
 
     public func revealHandoffFiles() {
         let files = preparedHandoffFiles()
-        guard !files.isEmpty else { attachmentMessage = "The files are missing."; return }
+        guard !files.isEmpty else {
+            attachmentMessage = (preparedHandoffImages()?.isEmpty == false)
+                ? "Window snapshots are kept in memory only, not as files. Use Copy Files or Drag."
+                : "The files are missing."
+            return
+        }
         NSWorkspace.shared.activateFileViewerSelecting(files)
     }
 
@@ -460,6 +479,11 @@ extension AppModel {
 
     /// The prepared hand-off files (for an AppKit multi-file drag).
     public func handoffFileURLs() -> [URL] { preparedHandoffFiles() }
+
+    /// Files and in-memory snapshots of the active hand-off, for a drag.
+    public func handoffDragPayloads() -> [DragPayload] {
+        preparedHandoffFiles().map(DragPayload.file) + (preparedHandoffImages() ?? []).map(DragPayload.image)
+    }
 
     // MARK: Attachment preview
 
@@ -528,4 +552,11 @@ public enum MockupStates {
         let limited: [Declaration.State] = Array(unique[..<min(unique.count, 30)])
         return Declaration(title: decl.title, states: limited)
     }
+}
+
+
+/// Phase 10: one dragged thing — a file, or image data held only in memory.
+public enum DragPayload: Equatable {
+    case file(URL)
+    case image(ClipboardImage)
 }
