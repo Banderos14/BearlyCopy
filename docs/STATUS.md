@@ -1,5 +1,13 @@
 # Status
 
+## 2026-11-05 — 0.4.0 installed for live acceptance
+
+With the owner's consent: app 0.4.0 `e75cdd5` installed (0.3.0 backed up,
+rollback available), Claude Code plugin updated 0.3.0 → 0.4.0 from a clean
+`plugin/` (byte-identical to HEAD, settings.json unchanged). The old plugin
+cache turned out to be the 2026-10-29 snapshot. Live checks pending; restart
+Claude Code sessions; stop the Xcode Debug copy. [Phase 12 §18](../macos/PHASE12.md).
+
 ## 2026-11-05 — Version 0.4.0; Phase 12 closed on the code side
 
 Core, plugin and Xcode at 0.4.0 (`7db1e4b`), JSON API still v1. Python

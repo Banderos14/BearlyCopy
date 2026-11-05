@@ -447,3 +447,32 @@ Debug build from Xcode is never quit. Undo: `scripts/install-local.sh
 - **Phase 12 is closed on the code side** at `7db1e4b` (+ this report).
   Formal closure waits for the owner's install, plugin update and the six
   checks. Phase 13 not started.
+
+## 18. 0.4.0 installed for live acceptance (2026-11-05, owner consent)
+
+- **App** (`install-local.sh --yes`): backup
+  `PromptRelay-AppBackups/Prompt Relay 0.3.0-3287bc3-20261105-232654.app`
+  (plus the older `0.3.0-6c004a2`); the Release copy quit normally; running
+  now: `~/Applications/Prompt Relay.app`, PID 2877, 0.4.0, commit `e75cdd5`
+  (clean), bundled Core 0.4.0, Core digest `5719914b…`, signature valid.
+  Undo: `scripts/install-local.sh --rollback`.
+- **Plugin audit before updating**: the marketplace copies the whole
+  `plugin/` folder as it is on disk. Acceptance files, logs, user data and the
+  staged REPORT.md are outside it; no symlinks or secrets were found inside
+  (the only match is the secret *detector* in `sensitive.py`). The only extra
+  files were ignored `__pycache__` bytecode, and the old "0.3.0" cache had
+  copied them. That cache was also **older than the 0.3.0 source**: it was
+  copied on 2026-10-29, before `adapters.py`/`projects.py` existed.
+- **Plugin update**: removed only `plugin/**/__pycache__`, checked the tree
+  was clean at `e75cdd5`, then `claude plugin marketplace update
+  prompt-relay` and `claude plugin update prompt-relay@prompt-relay` →
+  record 0.4.0, cache `…/0.4.0`, **27 files, byte-identical to `HEAD:plugin`,
+  nothing extra**; `~/.claude/settings.json` hash unchanged; no Prompt
+  Relay hooks in settings; 0.2.0/0.3.0 caches kept.
+- **Smoke test of the installed hook** (its own launcher, isolated temp data
+  dir, `CLAUDE_CONFIG_DIR=~/.claude-work`): exit 0, empty stdout, profile
+  `cc-614bf41e47cd9d4b` / `config_dir` / `~/.claude-work`, key scoped;
+  temp dir removed.
+- **Still open**: Claude Code sessions use the new hook only after a
+  restart; the Xcode Debug copy (PID 55979) was still running — the owner
+  stops it in Xcode. Live checks: §17 list.
