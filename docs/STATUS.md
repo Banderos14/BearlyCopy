@@ -1,5 +1,15 @@
 # Status
 
+## 2026-11-05 — Phase 12.1: Needs Input (0.4.1, not installed)
+
+Observer hooks for AskUserQuestion, ExitPlanMode, PermissionRequest,
+waiting notifications and SessionEnd (exit 0, no decision, no text stored);
+`attention` per session ended by the next confirmed activity, never a timer;
+static amber notch dot, "Needs input" in Quick Peek / Details, optional
+notification (off). Python 228+15 (3.14, 3.9), XCTest 271/0, Swift Testing
+98/98, Xcode Debug/Release. **No live hook payload observed yet**; installed
+app and plugin still 0.4.0. [Phase 12.1](../macos/PHASE12.1.md).
+
 ## 2026-11-05 — 0.4.0 installed for live acceptance
 
 With the owner's consent: app 0.4.0 `e75cdd5` installed (0.3.0 backed up,

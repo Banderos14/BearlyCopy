@@ -30,6 +30,17 @@ prompt-relay/                      ← marketplace root
   not in the plugin root, which changes with every version, and not in
   `${CLAUDE_PLUGIN_DATA}`, which Claude Code deletes on uninstall.
 
+## 1c. Version 0.4.1: waiting for the person (Phase 12.1, ADR-025)
+New hooks, all observers (exit 0, empty stdout = no decision; nothing is
+answered, allowed or approved, no `updatedInput`): `PreToolUse` for
+`AskUserQuestion|ExitPlanMode` and `PermissionRequest` (synchronous, ~40–60
+ms, so the signal is stored before the dialog shows); `Notification` for
+waiting/elicitation types and `SessionEnd` (async). `PostToolUse` /
+`PostToolUseFailure` now match every tool, async; evidence is still only
+the 0.3.0 tool set, other tools write a reduced "activity" record only while
+a wait is open. Only reduced records are stored — never question, plan,
+command, `message` or `permission_suggestions` text.
+
 ## 1b. Version 0.4.0: local agent profiles (Phase 12, ADR-023)
 The hook records the profile (the agent's config folder: `CLAUDE_CONFIG_DIR`
 / `CODEX_HOME`, never an account) in the record envelope; a non-default

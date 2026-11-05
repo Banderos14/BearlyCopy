@@ -117,6 +117,13 @@ stable file key; pass it to `--session` to address any session),
   live in the record envelope (`agent_profile`, `session_id`, `native_session_id`).
 - New command `results` (above).
 
+### Phase 12.1 additions (compatible, 0.4.1; `api_version` stays 1)
+- Session summary: `attention{state,kind,since,subagent}` while the agent waits for the person —
+  `kind` is `question` (AskUserQuestion), `plan_approval` (ExitPlanMode), `permission`
+  (PermissionRequest / `permission_prompt`), `elicitation` or `input`. Set by a waiting signal, ended
+  by the next confirmed activity (tool result, prompt, Stop/StopFailure, elicitation result, session
+  end); never by time. Absent otherwise. It never changes `last_turn`, `completion`, answers or results.
+
 ### Turn
 | Field | Meaning |
 |---|---|

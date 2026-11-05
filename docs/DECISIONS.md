@@ -790,3 +790,25 @@ button to System Settings → Login Items. No helper app, no LaunchAgent plist.
 **Consequences.** Registration was **not exercised live** in Phase 12 (it
 changes the user's login items; needs the owner's consent on the installed
 app). Ad-hoc signed builds may need approval in System Settings.
+
+## ADR-025: Needs Input from observed hook signals only
+
+**Context.** Phase 12.1: while Claude Code asks a question, waits for plan
+approval or a permission, the notch showed Working.
+
+**Decision.** The plugin observes `PreToolUse` (AskUserQuestion,
+ExitPlanMode), `PermissionRequest`, waiting `Notification` types and
+`SessionEnd`; Codex `PermissionRequest` in the Core. Handlers stay silent
+(exit 0, empty stdout = no decision); only reduced records without any text
+are stored. A wait ends with the next confirmed activity, never a timer.
+`PostToolUse` matches every tool so an approved tool ends the wait; tools
+outside the evidence set write only while a wait is open (marker file under
+`<data>/waiting/`). The state is `attention` on the session; it never
+touches turns, answers, results or Copy with Context. No auto-answer, no
+permission changes, no app switching.
+
+**Consequences.** Two synchronous hooks add ~40–60 ms before a question or
+permission dialog appears. More hook processes run (async) per tool call;
+they store nothing unless a wait is open. Hosts without these events keep
+their last confirmed state. A wait abandoned without any further event stays
+shown until the session continues or ends.

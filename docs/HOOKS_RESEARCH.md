@@ -226,3 +226,29 @@ here after the owner's check (Phase 12 report, live checks). Claude Desktop
 does not pass the *shell* environment to hooks (D4); whether it sets its own
 `CLAUDE_CONFIG_DIR` is unknown. Nothing in a payload or a credential file is
 used to identify a profile.
+
+### Phase 12.1 (2026-11-05): waiting signals — documented, partly observed
+From the hooks reference (code.claude.com/docs/en/hooks), read 2026-11-05:
+- `PreToolUse` matches tool names incl. `AskUserQuestion`, `ExitPlanMode`;
+  "Exit code 0 with no output means the hook has no decision to report".
+- `PermissionRequest`: `tool_name`, `tool_input`, `permission_suggestions`;
+  **no `tool_use_id`**. In sessions that cannot show a prompt (background
+  subagents, non-interactive) the hooks still run and, without a decision,
+  the call is denied — so a `PermissionRequest` from a subagent may not mean
+  the person must act (`attention.subagent` says so).
+- `Notification`: `notification_type` incl. `permission_prompt` (only after
+  ~6 s without typing), `elicitation_dialog`, `elicitation_url_dialog`,
+  `elicitation_complete`, `elicitation_response`, `agent_needs_input`,
+  `idle_prompt` (not a wait for input; ignored).
+- No event says "the person answered / approved / denied". The end of a
+  wait is inferred from the next activity. Whether `PostToolUse` fires for
+  `AskUserQuestion` is not documented (a later tool result, prompt or Stop
+  ends the wait either way).
+- Codex documents `PermissionRequest` as its only approval signal; Codex
+  in Xcode: unknown.
+
+**Observed on this Mac:** `claude plugin details` (Claude Code 2.1.268)
+registers all nine hooks of the 0.4.1 plugin from `--plugin-dir`, "no model
+context cost". **Not observed:** a live AskUserQuestion / ExitPlanMode /
+PermissionRequest payload through Prompt Relay (the active plugin is 0.4.0;
+record field names here after the owner's check).
