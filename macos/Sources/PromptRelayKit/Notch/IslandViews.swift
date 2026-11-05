@@ -265,12 +265,15 @@ struct IslandContent: View {
                 case .taskReader: TaskReaderView(model: model, presentation: presentation)
                 case .evidence: EvidenceView(model: model, presentation: presentation)
                 case .setup: SetupView(model: model, presentation: presentation)
+                case .inbox: InboxView(model: model, presentation: presentation)
+                case .switcher: QuickSwitcherView(model: model, presentation: presentation)
                 case .packagePreview: PackagePreviewView(model: model, presentation: presentation)
                 case .attachmentPreview: AttachmentPreviewView(model: model, presentation: presentation)
                 }
             }
             .transition(.opacity)
         }
+        .background(WorkspaceShortcuts(model: model))
         .animation(presentation.reduceMotion ? nil : .easeOut(duration: 0.18), value: model.route)
     }
 }

@@ -55,6 +55,8 @@ public final class NotchSettings {
         static let relayIdle = "relay.idle"
         static let relayFollows = "relay.followsPointer"
         static let relayWithoutNotch = "relay.withoutNotch"
+        static let shortcutModifiers = "shortcuts.modifiers"
+        static func shortcut(_ s: GlobalShortcut) -> String { "shortcuts.enabled." + s.rawValue }
     }
 
     private let defaults: any SettingsStore
@@ -92,8 +94,32 @@ public final class NotchSettings {
         }
     }
 
+    /// Phase 12: optional global shortcuts, all off by default.
+    public private(set) var enabledShortcuts: Set<GlobalShortcut> = []
+    public var shortcutModifiers: ShortcutModifiers = .controlOptionCommand {
+        didSet {
+            defaults.set(shortcutModifiers.rawValue, forKey: Key.shortcutModifiers)
+            if oldValue != shortcutModifiers { onShortcutsChanged?() }
+        }
+    }
+    /// Shortcuts macOS refused (another app has the keys); set by the controller.
+    public var unavailableShortcuts: Set<GlobalShortcut> = []
+    /// The controller re-registers when the user changes shortcuts.
+    @ObservationIgnored public var onShortcutsChanged: (() -> Void)?
+
+    public func setShortcut(_ shortcut: GlobalShortcut, enabled: Bool) {
+        guard enabledShortcuts.contains(shortcut) != enabled else { return }
+        if enabled { enabledShortcuts.insert(shortcut) } else { enabledShortcuts.remove(shortcut) }
+        defaults.set(enabled, forKey: Key.shortcut(shortcut))
+        onShortcutsChanged?()
+    }
+
+    public func display(_ shortcut: GlobalShortcut) -> String { shortcutModifiers.symbols + shortcut.key }
+
     public init(defaults: any SettingsStore = UserDefaults.standard) {
         self.defaults = defaults
+        enabledShortcuts = Set(GlobalShortcut.allCases.filter { defaults.bool(forKey: Key.shortcut($0)) })
+        shortcutModifiers = defaults.string(forKey: Key.shortcutModifiers).flatMap(ShortcutModifiers.init(rawValue:)) ?? .controlOptionCommand
         notchEnabled = defaults.object(forKey: Key.notchEnabled) as? Bool ?? true   // default: on
         notifyWhenReady = defaults.bool(forKey: Key.notifyWhenReady)    // default: off
         animation = defaults.string(forKey: Key.animation).flatMap(Animation.init(rawValue:)) ?? .system

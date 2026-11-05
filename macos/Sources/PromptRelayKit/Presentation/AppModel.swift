@@ -83,8 +83,8 @@ public final class AppModel {
     public private(set) var readyAnswer: ReadyAnswer?
     /// A newer answer arrived since the user last opened a surface.
     public var hasUnseenAnswer: Bool { !unseenAnswers.isEmpty }
-    private var finishedAnswers: [ReadyAnswer] = []
-    private var unseenAnswers: [ReadyAnswer] {
+    var finishedAnswers: [ReadyAnswer] = []
+    var unseenAnswers: [ReadyAnswer] {
         finishedAnswers.filter { answer in
             // Phase 9.4: only a final result lights the ready dot.
             guard answer.completion.isFinal, let baseline = lastSeenAt, Self.isNewer(answer.at, than: baseline) else { return false }
@@ -151,7 +151,7 @@ public final class AppModel {
     static let seenAnswersKey = "answers.seenReports"
     let stateDefaults: (any SettingsStore)?
 
-    private let core: CoreProviding
+    let core: CoreProviding
     let clipboard: ClipboardService
     private let dataDirectory: URL?
     private var watcher: StoreWatcher?
@@ -161,7 +161,7 @@ public final class AppModel {
     private var refreshWaiters: [CheckedContinuation<Void, Never>] = []
     private var generation = 0
     private var feedbackReset: Task<Void, Never>?
-    private var visibleSurfaces = 0
+    var visibleSurfaces = 0
 
     /// `stateDefaults` remembers which answer was last seen, so a restart
     /// does not announce old answers again (nil in tests: nothing persisted).
@@ -184,6 +184,9 @@ public final class AppModel {
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
         expandedConversations = Set(stateDefaults?.stringArray(forKey: Self.expandedConversationsKey) ?? [])
         pinned = Self.decode([ReportRef].self, stateDefaults?.data(forKey: Self.pinsKey)) ?? []
+        workspaceMode = (stateDefaults?.string(forKey: Self.workspaceModeKey)).flatMap(WorkspaceMode.init(rawValue:)) ?? .byProject
+        profileLabels = stateDefaults?.dictionary(forKey: Self.profileLabelsKey) as? [String: String] ?? [:]
+        browsingProfile = Self.decode(ProfileKey.self, stateDefaults?.data(forKey: Self.browsingProfileKey))
         let saved = Self.decode(SavedSelection.self, stateDefaults?.data(forKey: Self.selectionKey))
         if let explicit = stateDefaults?.object(forKey: Self.staysKey) as? Bool {
             staysOnChosenSession = explicit
@@ -294,10 +297,10 @@ public final class AppModel {
         data.flatMap { try? JSONDecoder().decode(type, from: $0) }
     }
 
-    private var lastSeenAt: String? {
+    var lastSeenAt: String? {
         didSet { stateDefaults?.set(lastSeenAt, forKey: Self.lastSeenKey) }
     }
-    private var seenAnswers: [String: String] {
+    var seenAnswers: [String: String] {
         didSet { stateDefaults?.set(seenAnswers, forKey: Self.seenAnswersKey) }
     }
     private var lastAnnouncedAt: String?
@@ -416,6 +419,7 @@ public final class AppModel {
                 select(answer)
                 Task { await loadSessions() }
             }
+            if !isOffLatest { deferredLatest = nil }
         }
     }
 
@@ -481,6 +485,7 @@ public final class AppModel {
             if await loadProjectList() {
                 if tracksReadyAnswers { await loadReadyAnswer() }
                 await loadSessions()
+                if inboxOnScreen { await loadInbox() }
             }
         } while refreshAgain
         refreshing = false
@@ -520,7 +525,7 @@ public final class AppModel {
         return true
     }
 
-    private func loadSessions() async {
+    func loadSessions() async {
         guard let project = selectedProjectPath else {
             sessions = .loaded([]); turns = .idle; detail = .idle
             selectedSessionKey = nil; selectedTurnIndex = nil
@@ -619,8 +624,18 @@ public final class AppModel {
         // An unfinished hand-off of the report shown keeps it (Phase 9.3).
         if followsLatest, handoffStep == nil || currentRef == ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex),
            lastFollowedAt != at, !sessionPinned || answer.sessionKey == selectedSessionKey {
-            lastFollowedAt = at
-            select(answer)
+            if isReadingReport, lastFollowedAt != nil, currentRef != ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex) {
+                // Phase 12: the user is reading an answer on screen. A newer
+                // one (any agent) never replaces it mid-read: it waits
+                // behind "New in …" / the Inbox, and Follow Latest moves on
+                // when the island closes.
+                deferredLatest = answer
+                followsLatest = false
+            } else {
+                lastFollowedAt = at
+                deferredLatest = nil
+                select(answer)
+            }
         }
         guard let seen = lastSeenAt else {
             // First run: everything already captured counts as seen.
@@ -951,6 +966,10 @@ public final class AppModel {
         case evidence
         /// Phase 11: first-run setup (agents, project, first capture).
         case setup
+        /// Phase 12: final results of every agent, newest first.
+        case inbox
+        /// Phase 12: jump to an agent, profile, project, conversation or result.
+        case switcher
         public var id: String { rawValue }
         public var title: String {
             switch self {
@@ -970,6 +989,8 @@ public final class AppModel {
             case .taskReader: return "Full Task"
             case .evidence: return "Evidence & Review"
             case .setup: return "Set Up"
+            case .inbox: return "Results Inbox"
+            case .switcher: return "Go To"
             }
         }
     }
@@ -981,6 +1002,8 @@ public final class AppModel {
             // History opens with the session being read expanded.
             if route == .history, oldValue != .history { historyExpandedKey = selectedImportID == nil ? selectedSessionKey : nil }
             if route == .home { backRoute = .home }
+            if route != oldValue, route == .inbox || route == .switcher { Task { await loadInbox() } }
+            if route != oldValue, route == .switcher { switcherQuery = "" }
         }
     }
     /// Where Back (and Esc) leads from the current view.
@@ -1263,29 +1286,10 @@ public final class AppModel {
     /// Phase 9.3: grouped by logical project; within a project the newest
     /// activity first (a finished answer moves its session up).
     public var sessionsByProject: [(project: String, name: String, sessions: [SessionSummary])] {
-        var groups: [String: [SessionSummary]] = [:]
-        var names: [String: String] = [:]
-        for session in allSessions where providerFilter == nil || session.provider == providerFilter {
-            let key = projectPath(for: session) ?? session.logicalProject?.path ?? session.project.path ?? "?"
-            groups[key, default: []].append(session)
-            names[key] = (projects.value ?? []).first { $0.path == key }.map(Wording.projectName)
-                ?? session.logicalProject?.name ?? Wording.projectName(session.project)
-        }
         // Phase 9.4: by the newest real final answer; conversations with none
-        // yet follow, by their latest activity.
-        func activity(_ s: SessionSummary) -> Date {
-            Wording.date(lastFinalAnswerAt(s)) ?? Wording.date(s.lastEventAt).map { $0.addingTimeInterval(-10 * 365 * 86_400) } ?? .distantPast
-        }
-        return groups.map { key, list in
-            (project: key, name: names[key] ?? key, sessions: list.sorted {
-                let a = activity($0), b = activity($1)
-                return a != b ? a > b : $0.sessionKey < $1.sessionKey
-            })
-        }
-        .sorted { a, b in
-            let da = a.sessions.first.map(activity) ?? .distantPast, db = b.sessions.first.map(activity) ?? .distantPast
-            return da != db ? da > db : a.name < b.name
-        }
+        // yet follow, by their latest activity (`groupByProject`, shared
+        // with By Agent so both views order alike).
+        groupByProject(allSessions.filter { providerFilter == nil || $0.provider == providerFilter })
     }
 
     /// Phase 9.3: what a session row says about its state. Stop means the
@@ -1355,7 +1359,7 @@ public final class AppModel {
 
     /// Turns per session, kept while the session is unchanged. Filled only
     /// when History searches; navigation itself never starts the Core.
-    private var turnCache: [String: (lastEventAt: String?, turns: [Turn])] = [:]
+    var turnCache: [String: (lastEventAt: String?, turns: [Turn])] = [:]
 
     // MARK: Conversations (Project and Session, Phase 9.4)
 
@@ -1393,7 +1397,7 @@ public final class AppModel {
         return nil
     }
 
-    private func cachedTurns(_ session: SessionSummary) async -> [Turn] {
+    func cachedTurns(_ session: SessionSummary) async -> [Turn] {
         if let hit = turnCache[session.sessionKey], hit.lastEventAt == session.lastEventAt { return hit.turns }
         guard let turns = try? await core.turns(sessionKey: session.sessionKey).data.turns else { return [] }
         turnCache[session.sessionKey] = (session.lastEventAt, turns)
@@ -1490,6 +1494,48 @@ public final class AppModel {
     public func togglePin(_ ref: ReportRef) {
         if let i = pinned.firstIndex(of: ref) { pinned.remove(at: i) } else { pinned.insert(ref, at: 0) }
     }
+
+    // MARK: Phase 12 — agent workspace, Results Inbox, Quick Switcher
+    // (logic in AppModel+Workspace.swift; stored state must live here)
+
+    public enum WorkspaceMode: String, CaseIterable, Sendable {
+        case byProject = "By Project", byAgent = "By Agent"
+    }
+    static let workspaceModeKey = "workspace.mode"
+    /// Project and Session: one history, two groupings. Kept across launches.
+    public var workspaceMode: WorkspaceMode = .byProject {
+        didSet { if oldValue != workspaceMode { stateDefaults?.set(workspaceMode.rawValue, forKey: Self.workspaceModeKey) } }
+    }
+    static let browsingProfileKey = "workspace.browsingProfile"
+    /// By Agent: the provider · profile row open in the left column.
+    public var browsingProfile: ProfileKey? {
+        didSet { stateDefaults?.set(browsingProfile.flatMap { try? JSONEncoder().encode($0) }, forKey: Self.browsingProfileKey) }
+    }
+    static let profileLabelsKey = "profiles.labels"
+    /// The user's names for profiles ("Work"), by `ProfileKey.id`. Local UI
+    /// state only: never sent anywhere, never proof of an account. Removing
+    /// a name never removes history.
+    public internal(set) var profileLabels: [String: String] = [:] {
+        didSet { stateDefaults?.set(profileLabels, forKey: Self.profileLabelsKey) }
+    }
+    /// Results Inbox: the Core's `results` (newest first), loaded only while
+    /// the Inbox or the Quick Switcher is on screen — never in idle.
+    public internal(set) var inbox: LoadState<[ResultSummary]> = .idle
+    public internal(set) var inboxTotal = 0
+    public internal(set) var inboxLimit = AppModel.inboxPage
+    public static let inboxPage = 300
+    public enum InboxFilter: String, CaseIterable, Sendable { case all = "All", unread = "Unread" }
+    public var inboxFilter: InboxFilter = .all
+    /// Inbox: only this provider · profile (nil: every agent).
+    public var inboxProfile: ProfileKey?
+    @ObservationIgnored var inboxLoading = false
+    @ObservationIgnored var inboxReloadAgain = false
+    /// Quick Switcher: typed text and scope (kept while the island is open).
+    public var switcherQuery = ""
+    public var switcherScope: SwitcherScope = .all
+    /// Phase 12: a newer answer arrived while the user was reading another
+    /// one; Follow Latest moves on when the island closes, never mid-read.
+    public internal(set) var deferredLatest: ReadyAnswer?
 
     // MARK: Imported reports (Cloud, manual)
 

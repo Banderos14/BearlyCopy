@@ -56,6 +56,8 @@ struct PromptRelayApp: App {
         // The fallback way in: open the island, its settings, or quit.
         MenuBarExtra {
             Button("Open Prompt Relay  \(HotKeyRegistration.displayString)") { services.present(.home) }
+            Button("Results Inbox") { services.present(.inbox) }
+            Button("Go To…") { services.present(.switcher) }
             Button("Clipboard") { services.present(.copies) }
             Button("History") { services.present(.history) }
             Button("Import AI Result…") { services.present(.importReport) }

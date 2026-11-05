@@ -36,9 +36,19 @@ final class FakeCore: CoreProviding, @unchecked Sendable {
     }
     func context(sessionKey: String, turn: Int) async throws -> CoreResult<ContextData> { try contextResult.get() }
     private(set) var contextDetails: [ContextDetail] = []
+    private(set) var contextCalls: [(String, Int)] = []
     func context(sessionKey: String, turn: Int, detail: ContextDetail) async throws -> CoreResult<ContextData> {
         contextDetails.append(detail)
+        contextCalls.append((sessionKey, turn))
         return try contextResult.get()
+    }
+    /// Phase 12: `results` (counted; built from sessions and turns unless set).
+    private(set) var resultsCalls = 0
+    var resultsOverride: Result<CoreResult<ResultsData>, CoreError>?
+    func results(limit: Int) async throws -> CoreResult<ResultsData> {
+        resultsCalls += 1
+        if let resultsOverride { return try resultsOverride.get() }
+        return try await synthesizedResults(limit: limit)
     }
     var doctorResult: Result<CoreResult<DoctorData>, CoreError> = .failure(.api(code: "internal_error", message: "n/a"))
     func doctor() async throws -> CoreResult<DoctorData> { try doctorResult.get() }

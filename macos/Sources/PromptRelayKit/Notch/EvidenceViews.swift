@@ -63,11 +63,38 @@ struct CompletenessLine: View {
 struct EvidenceView: View {
     let model: AppModel
     let presentation: NotchPresentation
+    /// Phase 12: the three original sections, unchanged, behind Details.
+    @State private var showsDetails = false
 
     var body: some View {
         BoundedScroll(maxHeight: presentation.listHeight(chrome: 8)) {
             VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
                 if let evidence = model.evidence {
+                    TrustCard(model: model, summary: TrustSummary.make(evidence: evidence, completeness: model.completeness,
+                                                                       checklist: model.reviewChecklist))
+                    DisclosureGroup(isExpanded: $showsDetails) {
+                        VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) { details(evidence) }
+                            .padding(.top, 6)
+                    } label: {
+                        Text("Details").font(.system(size: 12, weight: .medium)).foregroundStyle(Island.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading).contentShape(Rectangle())
+                            .onTapGesture { showsDetails.toggle() }
+                    }
+                    .islandFrame("evidence.details")
+                } else {
+                    MessageCard(title: "No answer selected", detail: "Open an answer in Details first.", symbol: "checklist",
+                                tint: Island.secondary, action: nil)
+                }
+            }
+            .padding(.trailing, 4)
+        }
+        .islandPadding(presentation)
+    }
+
+    /// Evidence Check, Artifact Completeness and the Review Checklist as
+    /// before Phase 12 (diagnostic detail; nothing removed).
+    @ViewBuilder
+    private func details(_ evidence: EvidenceCheck) -> some View {
                     section("Evidence Check", note: "Observed facts come from hook events on this Mac. What the answer says is listed as reported, never as proof.") {
                         ForEach(EvidenceCheck.Kind.allCases, id: \.self) { kind in
                             let items = evidence.items(kind)
@@ -132,14 +159,6 @@ struct EvidenceView: View {
                             }
                         }
                     }
-                } else {
-                    MessageCard(title: "No answer selected", detail: "Open an answer in Details first.", symbol: "checklist",
-                                tint: Island.secondary, action: nil)
-                }
-            }
-            .padding(.trailing, 4)
-        }
-        .islandPadding(presentation)
     }
 
     private func section<C: View>(_ title: String, note: String, @ViewBuilder content: () -> C) -> some View {
@@ -168,6 +187,93 @@ struct EvidenceView: View {
         case .reported: return "quote.bubble"
         case .notVerified: return "questionmark.circle"
         case .unavailable: return "minus.circle"
+        }
+    }
+}
+
+/// Phase 12: "What can be trusted?" — confirmed facts, the agent's claims and
+/// what still needs a person, in that order. Ticks are the user's own.
+struct TrustCard: View {
+    let model: AppModel
+    let summary: TrustSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Caption("What can be trusted?", role: Island.accent)
+            ForEach(TrustSummary.Group.allCases, id: \.self) { group in
+                let rows = summary.rows(group)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 5) {
+                        Image(systemName: symbol(group)).font(.system(size: 10, weight: .semibold)).foregroundStyle(tint(group))
+                        Text(group.title).font(.system(size: 11.5, weight: .semibold)).foregroundStyle(tint(group))
+                        Text(note(group)).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
+                    }
+                    if rows.isEmpty {
+                        Text(empty(group)).font(.system(size: 11.5)).foregroundStyle(Island.tertiary).padding(.leading, 15)
+                    }
+                    ForEach(rows) { row in line(row) }
+                }
+                .islandFrame("trust.\(group.rawValue)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .islandCard()
+    }
+
+    @ViewBuilder
+    private func line(_ row: TrustSummary.Row) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            if let id = row.checklistID {
+                let done = model.isReviewChecked(id)
+                SelectBox(selected: done) { model.setReviewChecked(id, !done) }
+                    .accessibilityLabel(done ? "Checked by you: \(row.text)" : "Not checked: \(row.text)")
+            } else {
+                Image(systemName: row.alert ? "xmark.octagon" : "circle.fill")
+                    .font(.system(size: row.alert ? 10 : 4)).foregroundStyle(row.alert ? Island.error : Island.tertiary)
+                    .frame(width: 10, height: 14)
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                let done = row.checklistID.map(model.isReviewChecked) ?? false
+                Text(row.text).font(.system(size: 11.5)).foregroundStyle(done ? Island.secondary : Island.primary)
+                    .strikethrough(done, color: Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                if let detail = row.detail {
+                    Text(done ? "Checked by you · \(detail)" : detail).font(.system(size: 11)).foregroundStyle(Island.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(.leading, 4)
+    }
+
+    private func tint(_ g: TrustSummary.Group) -> Color {
+        switch g {
+        case .confirmed: return Island.success
+        case .reported: return Island.review
+        case .needsVerification: return Island.warning
+        }
+    }
+
+    private func symbol(_ g: TrustSummary.Group) -> String {
+        switch g {
+        case .confirmed: return "checkmark.seal"
+        case .reported: return "quote.bubble"
+        case .needsVerification: return "person.crop.circle.badge.questionmark"
+        }
+    }
+
+    private func note(_ g: TrustSummary.Group) -> String {
+        switch g {
+        case .confirmed: return "seen on this Mac"
+        case .reported: return "the answer's own words, not proof"
+        case .needsVerification: return "for you to check"
+        }
+    }
+
+    private func empty(_ g: TrustSummary.Group) -> String {
+        switch g {
+        case .confirmed: return "Nothing was observed for this answer."
+        case .reported: return "No claims about tests, builds or completion found."
+        case .needsVerification: return "Nothing specific to check from what was recorded."
         }
     }
 }

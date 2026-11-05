@@ -15,6 +15,9 @@ struct IslandSettingsView: View {
     @State private var note: String?
     @State private var relayOptions = false
     @State private var connectionDetails = false
+    @State private var shortcutsOpen = false
+    @State private var profilesOpen = false
+    @State private var login = LoginItemController()
 
     static let repository = URL(string: "https://github.com/Banderos14/prompt-relay")!
 
@@ -41,6 +44,85 @@ struct IslandSettingsView: View {
             screens = NSScreen.screens.map(ScreenDescriptor.init)
             if model.doctor.value == nil, !model.doctor.isLoading { model.loadDoctor() }
         }
+    }
+
+    // MARK: Phase 12 rows
+
+    /// Open at Login: off until the user turns it on; system login items only.
+    @ViewBuilder private var loginRow: some View {
+        toggle("Open at login",
+               detail: login.unavailableReason
+                   ?? "Starts Prompt Relay when you log in, through macOS login items. Off removes it again.",
+               isOn: Binding(get: { login.isOn }, set: { login.set($0) }))
+            .disabled(login.unavailableReason != nil)
+            .onAppear { login.refresh() }
+        if let message = login.message {
+            HStack(spacing: 8) {
+                Text(message).font(.system(size: 11)).foregroundStyle(Island.warning).fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                if login.status == .requiresApproval {
+                    Button("Open Login Items") { login.openSystemSettings() }.buttonStyle(IslandPillStyle(prominent: false))
+                }
+            }
+            .padding(.horizontal, 12).padding(.bottom, 6)
+        }
+    }
+
+    private func shortcutsRow(_ settings: NotchSettings) -> some View {
+        DisclosureGroup(isExpanded: $shortcutsOpen) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("In the open island: ⌘K Go To · ⌘I Results Inbox · ⌘J next unread · ⇧⌘C Copy Answer · ⌥⌘C Copy with Context · ⌘[ Back · Esc close.")
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                Text("Everywhere (\(HotKeyRegistration.displayString) opens Prompt Relay). The others are off until you turn them on; none needs Accessibility access.")
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                ForEach(GlobalShortcut.allCases) { shortcut in
+                    Toggle(isOn: Binding(get: { settings.enabledShortcuts.contains(shortcut) },
+                                         set: { settings.setShortcut(shortcut, enabled: $0) })) {
+                        HStack {
+                            Text(shortcut.title).font(.system(size: 12)).foregroundStyle(Island.primary)
+                            Spacer()
+                            Text(settings.display(shortcut)).font(.system(size: 12, design: .rounded)).foregroundStyle(Island.secondary)
+                        }
+                    }
+                    .toggleStyle(IslandSwitchStyle())
+                    if settings.unavailableShortcuts.contains(shortcut) {
+                        Text("Another app already uses \(settings.display(shortcut)). Choose other modifier keys below.")
+                            .font(.system(size: 11)).foregroundStyle(Island.warning)
+                    }
+                }
+                picker("Modifier keys", detail: "Used by the shortcuts above.", current: settings.shortcutModifiers.symbols,
+                       options: ShortcutModifiers.allCases.map { ($0.symbols, $0) }) { settings.shortcutModifiers = $0 }
+                    .padding(.horizontal, -12)
+            }
+            .padding(.top, 4)
+        } label: {
+            Text("Keyboard shortcuts").font(.system(size: 12.5)).foregroundStyle(Island.primary)
+                .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading).contentShape(Rectangle())
+                .onTapGesture { shortcutsOpen.toggle() }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 4)
+    }
+
+    /// Agent profiles: one row per provider · configuration folder seen in
+    /// history. Names are local labels; removing one keeps all history.
+    private var profilesRow: some View {
+        DisclosureGroup(isExpanded: $profilesOpen) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("A profile is the configuration folder an agent ran with (CLAUDE_CONFIG_DIR, CODEX_HOME). It is not an account: Prompt Relay never reads sign-in data, so two accounts used in one folder look the same.")
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                ForEach(model.knownProfiles) { key in ProfileLabelRow(model: model, key: key) }
+            }
+            .padding(.top, 4)
+        } label: {
+            HStack {
+                Text("Agent profiles").font(.system(size: 12.5)).foregroundStyle(Island.primary)
+                Spacer()
+                Text("\(model.knownProfiles.count)").font(.system(size: 12)).foregroundStyle(Island.tertiary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading).contentShape(Rectangle())
+            .onTapGesture { profilesOpen.toggle() }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 4)
     }
 
     // MARK: Sections
@@ -77,6 +159,10 @@ struct IslandSettingsView: View {
                 }
                 .padding(.horizontal, 12).padding(.vertical, 7)
             }
+            Hairline()
+            loginRow
+            Hairline()
+            shortcutsRow(settings)
             Hairline()
             toggle("Notify when an answer is ready", detail: "The banner names the project only, never the answer.",
                    isOn: $settings.notifyWhenReady)
@@ -145,6 +231,10 @@ struct IslandSettingsView: View {
             Hairline()
             rowButton("Projects", detail: "Folders whose agent answers are captured. New folders start off.", value: captureSummary) {
                 model.navigate(to: .capture)
+            }
+            if !model.knownProfiles.isEmpty {
+                Hairline()
+                profilesRow
             }
             Hairline()
             DisclosureGroup(isExpanded: $connectionDetails) {
@@ -491,5 +581,37 @@ struct IslandSettingsView: View {
             note = "Copied. Paste it into Terminal."
         }
         .buttonStyle(IslandPillStyle(prominent: false))
+    }
+}
+
+/// One editable profile name (Settings → Agents & Projects → Agent profiles).
+struct ProfileLabelRow: View {
+    let model: AppModel
+    let key: ProfileKey
+    @State private var text = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Text(key.provider.shortTitle + " ·").font(.system(size: 12)).foregroundStyle(Island.secondary)
+                TextField("Name", text: $text, prompt: Text(model.profileName(key)).foregroundStyle(Island.tertiary))
+                    .textFieldStyle(.plain).font(.system(size: 12)).foregroundStyle(Island.primary)
+                    .padding(.horizontal, 6).frame(height: 22)
+                    .background(RoundedRectangle(cornerRadius: Island.smallRadius).fill(Island.cardRaised))
+                    .onSubmit { model.setProfileLabel(key, text) }
+                    .disabled(key.isUnassigned)
+                    .accessibilityLabel("Name for \(model.profileTitle(key))")
+                if model.profileLabels[key.id] != nil {
+                    Button("Remove Name") { model.setProfileLabel(key, nil); text = "" }
+                        .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(Island.accent)
+                        .islandHelp("Only the name is removed; conversations and results stay")
+                }
+            }
+            Text(model.profileExplanation(key)).font(.system(size: 11)).foregroundStyle(Island.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear { text = model.profileLabels[key.id] ?? "" }
+        .onChange(of: text) { _, new in if new.isEmpty, model.profileLabels[key.id] != nil { model.setProfileLabel(key, nil) } }
+        .onDisappear { if text != (model.profileLabels[key.id] ?? "") { model.setProfileLabel(key, text) } }
     }
 }

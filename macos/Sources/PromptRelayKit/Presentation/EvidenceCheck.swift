@@ -342,3 +342,64 @@ extension AppModel {
         }
     }
 }
+
+/// Phase 12: one answer to "What can be trusted?", built only from
+/// Evidence Check, Artifact Completeness and the Review Checklist above —
+/// nothing new is inferred, nothing is dropped (the full sections stay in
+/// Details), and Copy with Context is not affected.
+/// - Confirmed locally: facts read on this Mac (commands, exit codes, files,
+///   stored attachments).
+/// - Reported by the agent: what the answer says, never a fact.
+/// - Needs verification: claims without matching evidence, missing
+///   materials, and the checklist (ticks are the user's own).
+public struct TrustSummary: Equatable, Sendable {
+    public enum Group: String, CaseIterable, Sendable {
+        case confirmed, reported, needsVerification
+        public var title: String {
+            switch self {
+            case .confirmed: return "Confirmed locally"
+            case .reported: return "Reported by the agent"
+            case .needsVerification: return "Needs verification"
+            }
+        }
+    }
+
+    public struct Row: Equatable, Sendable, Identifiable {
+        public let group: Group
+        public let text: String
+        public var detail: String? = nil
+        /// A failed command or missing material.
+        public var alert = false
+        /// A Review Checklist item the user can tick.
+        public var checklistID: String? = nil
+        public var id: String { group.rawValue + "|" + (checklistID ?? text) }
+    }
+
+    public let rows: [Row]
+    public func rows(_ group: Group) -> [Row] { rows.filter { $0.group == group } }
+
+    public static func make(evidence: EvidenceCheck?, completeness: ArtifactCompleteness, checklist: ReviewChecklist?) -> TrustSummary {
+        var rows: [Row] = []
+        for item in evidence?.items ?? [] {
+            switch item.kind {
+            case .observed: rows.append(Row(group: .confirmed, text: item.text, alert: item.alert))
+            case .reported: rows.append(Row(group: .reported, text: item.text))
+            case .notVerified: rows.append(Row(group: .needsVerification, text: item.text))
+            case .unavailable: break   // Details only: what could not be observed
+            }
+        }
+        for line in completeness.lines {
+            if line.alert {
+                rows.append(Row(group: .needsVerification, text: "\(line.title): \(line.text)",
+                                detail: line.missing.isEmpty ? nil : "Missing or name only: " + line.missing.joined(separator: ", "),
+                                alert: true))
+            } else {
+                rows.append(Row(group: .confirmed, text: "\(line.title): \(line.text)"))
+            }
+        }
+        for item in checklist?.items ?? [] {
+            rows.append(Row(group: .needsVerification, text: item.text, detail: item.reason, checklistID: item.id))
+        }
+        return TrustSummary(rows: rows)
+    }
+}

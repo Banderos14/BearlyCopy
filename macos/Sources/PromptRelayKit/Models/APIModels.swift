@@ -194,10 +194,16 @@ public struct SessionSummary: Decodable, Equatable, Hashable, Identifiable, Send
     public var source: AgentSource? = nil
     /// Phase 9.3: absent from older Cores (then the raw project path is used).
     public var logicalProject: LogicalProject? = nil
+    /// Phase 12: the local agent profile (config home, never an account).
+    /// Absent for Claude Code sessions recorded before Phase 12: Unassigned.
+    public var profile: AgentProfile? = nil
+    /// Phase 12: the agent's own session id when the stored key was scoped.
+    public var nativeSessionID: String? = nil
 
     public var id: String { sessionKey }
 
     enum CodingKeys: String, CodingKey {
+        case profile, nativeSessionID = "native_session_id"
         case sessionID = "session_id", sessionKey = "session_key", project, logicalProject = "logical_project"
         case firstEventAt = "first_event_at", lastEventAt = "last_event_at"
         case eventCount = "event_count", turnCount = "turn_count", cwds

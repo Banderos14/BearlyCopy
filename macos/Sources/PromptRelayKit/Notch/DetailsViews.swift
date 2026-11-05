@@ -313,6 +313,10 @@ struct NavigationIcons: View {
 
     var body: some View {
         HStack(spacing: 2) {
+            IconLink(symbol: "tray", label: "Results Inbox", help: "Final results of every agent, newest first · ⌘I",
+                     badge: model.unreadResultCount > 0, badgeTint: Island.success) {
+                model.navigate(to: .inbox)
+            }
             IconLink(symbol: "tray.full", label: "History", help: "Browse previous tasks and answers") {
                 model.navigate(to: .history)
             }
@@ -347,6 +351,7 @@ struct IconLink: View {
     let label: String
     let help: String
     var badge = false
+    var badgeTint: Color = Island.warning
     let action: () -> Void
     @State private var hovering = false
 
@@ -356,7 +361,7 @@ struct IconLink: View {
                 .frame(width: 26, height: 26)
                 .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(hovering ? Island.hover : .clear))
                 .overlay(alignment: .topTrailing) {
-                    if badge { Circle().fill(Island.warning).frame(width: 5, height: 5).offset(x: -3, y: 3) }
+                    if badge { Circle().fill(badgeTint).frame(width: 5, height: 5).offset(x: -3, y: 3) }
                 }
                 .contentShape(Rectangle())
         }
@@ -1162,7 +1167,8 @@ struct SessionSwitcherView: View {
         let height = presentation.listHeight(chrome: 50)
         VStack(spacing: 8) {
             HStack(spacing: 8) {
-                ProviderFilterPicker(model: model)
+                WorkspaceModeMenu(model: model)
+                ProviderFilterPicker(model: model).labelsHidden()
                 if model.isOffLatest, let latest = model.readyAnswer {
                     Button { model.jumpToLatest() } label: {
                         HStack(spacing: 4) {
@@ -1174,6 +1180,9 @@ struct SessionSwitcherView: View {
                     .islandHelp("Open the newest answer: \(latest.sourceLabel), \(latest.projectName)")
                 }
             }
+        if model.workspaceMode == .byAgent {
+            AgentWorkspaceColumns(model: model, height: height)
+        } else {
         HStack(alignment: .top, spacing: 10) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -1241,6 +1250,7 @@ struct SessionSwitcherView: View {
             .background(RoundedRectangle(cornerRadius: Island.cardRadius).fill(Island.card))
         }
         }
+        }
         .islandPadding(presentation)
     }
 
@@ -1275,7 +1285,9 @@ struct ConversationRow: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(open ? "Collapse conversation" : "Show the final answers of this conversation")
                 Button { model.focusSession(session); model.route = .home } label: {
-                    SessionRowLabel(title: "\(session.provider.title) · \(Wording.sessionTitle(session))",
+                    // By Agent names the agent in the left column already.
+                    SessionRowLabel(title: model.workspaceMode == .byAgent ? Wording.sessionTitle(session)
+                                        : "\(session.provider.title) · \(Wording.sessionTitle(session))",
                                     meta: meta, chip: SessionSwitcherView.chip(model.sessionState(session)),
                                     selected: session.sessionKey == model.selectedSessionKey && model.selectedImport == nil,
                                     subtitle: nil,
@@ -1291,6 +1303,8 @@ struct ConversationRow: View {
     /// "Claude Desktop · 5 min ago · 2 answers"; an unconfirmed host is left out.
     private var meta: String {
         var parts: [String] = []
+        // Phase 12: the profile, once there is more than one to tell apart.
+        if model.showsProfiles, model.workspaceMode == .byProject { parts.append(model.profileName(session.profileKey)) }
         if let host = session.source?.environment, host != .unknown { parts.append(host.title) }
         parts.append(Wording.relative(model.lastFinalAnswerAt(session) ?? session.lastEventAt))
         let n = session.answeredCount ?? 0

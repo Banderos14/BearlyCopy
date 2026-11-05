@@ -185,6 +185,8 @@ public final class NotchController {
     private var panel: NotchPanel?
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
     private var hotKey: HotKeyRegistration?
+    private var shortcutKeys: [GlobalShortcut: HotKeyRegistration] = [:]
+    private let makeShortcut: @MainActor (GlobalShortcut, ShortcutModifiers) -> HotKeyRegistration?
     private var collapseWork: DispatchWorkItem?
     private var observingModel = false
     private var menuTracking = false
@@ -214,6 +216,7 @@ public final class NotchController {
                 center: NotificationCenter = .default,
                 workspaceCenter: NotificationCenter? = nil,
                 makeHotKey: (@MainActor () -> HotKeyRegistration?)? = nil,
+                makeShortcut: (@MainActor (GlobalShortcut, ShortcutModifiers) -> HotKeyRegistration?)? = nil,
                 neighbors: NotchNeighbors? = nil,
                 pointerEvents: PointerEvents? = nil) {
         self.model = model
@@ -223,6 +226,7 @@ public final class NotchController {
         self.center = center
         self.workspaceCenter = workspaceCenter ?? NSWorkspace.shared.notificationCenter
         self.makeHotKey = makeHotKey ?? { HotKeyRegistration.standard() }
+        self.makeShortcut = makeShortcut ?? { HotKeyRegistration.make($0, modifiers: $1) }
         self.neighbors = neighbors ?? LiveNotchNeighbors()
         self.notifier = notifier ?? ReadyNotifier()
         let scheduler = scheduler ?? MainQueueScheduler()
@@ -278,6 +282,8 @@ public final class NotchController {
         }
         hotKey = makeHotKey()
         hotKey?.onPress = { [weak self] in self?.toggleFromKeyboard() }
+        settings.onShortcutsChanged = { [weak self] in self?.registerShortcuts() }
+        registerShortcuts()
         model.onSystemDialog = { [weak self] open in self?.systemDialog(open) }
         life.apply = { [weak self] pose in self?.applyLife(pose) }
         // The user finished a transfer: a short satisfied hop, then calm.
@@ -295,6 +301,8 @@ public final class NotchController {
         observers.removeAll()
         hotKey?.unregister()
         hotKey = nil
+        unregisterShortcuts()
+        settings.onShortcutsChanged = nil
         collapseWork?.cancel()
         resizeWork?.cancel()
         menuTracking = false
@@ -583,6 +591,42 @@ public final class NotchController {
             pendingRoute = route
             interaction.toggle()
             if !interaction.phase.isExpanded { pendingRoute = nil }
+        }
+    }
+
+    // MARK: Phase 12 global shortcuts
+
+    /// Registers the shortcuts the user turned on; one macOS refuses is
+    /// reported in Settings instead of silently missing.
+    func registerShortcuts() {
+        unregisterShortcuts()
+        var refused: Set<GlobalShortcut> = []
+        for shortcut in GlobalShortcut.allCases where settings.enabledShortcuts.contains(shortcut) {
+            guard let key = makeShortcut(shortcut, settings.shortcutModifiers) else { refused.insert(shortcut); continue }
+            key.onPress = { [weak self] in self?.perform(shortcut) }
+            shortcutKeys[shortcut] = key
+        }
+        settings.unavailableShortcuts = refused
+    }
+
+    private func unregisterShortcuts() {
+        for key in shortcutKeys.values { key.unregister() }
+        shortcutKeys.removeAll()
+    }
+
+    var registeredShortcuts: Set<GlobalShortcut> { Set(shortcutKeys.keys) }
+
+    func perform(_ shortcut: GlobalShortcut) {
+        switch shortcut {
+        case .openInbox: present(.inbox)
+        case .quickSwitcher: present(.switcher)
+        case .nextUnread:
+            if model.nextUnread != nil {
+                model.openNextUnread()
+                present(.home)
+            } else {
+                present(.inbox)
+            }
         }
     }
 

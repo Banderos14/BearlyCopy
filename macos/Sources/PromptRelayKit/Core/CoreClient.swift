@@ -76,12 +76,38 @@ public protocol CoreProviding: Sendable {
     /// Copy with Context at a detail level (Phase 7); Full is `context` as before.
     func context(sessionKey: String, turn: Int, detail: ContextDetail) async throws -> CoreResult<ContextData>
     func doctor() async throws -> CoreResult<DoctorData>
+    /// Phase 12: final results of every session, newest first (`results`).
+    func results(limit: Int) async throws -> CoreResult<ResultsData>
     /// `prompt-relay enable|disable <dir>` (text commands): returns the Core's
     /// one-line confirmation. The folder's contents are never read.
     func setCapture(_ enabled: Bool, path: String) async throws -> String
 }
 
 extension CoreProviding {
+    /// Doubles (and Previews) without a `results` command: the same list,
+    /// built from `sessions` and `turns` — final answers only, newest first.
+    public func results(limit: Int) async throws -> CoreResult<ResultsData> {
+        try await synthesizedResults(limit: limit)
+    }
+
+    public func synthesizedResults(limit: Int) async throws -> CoreResult<ResultsData> {
+        var rows: [ResultSummary] = []
+        for session in try await sessions(project: nil).data.sessions {
+            guard let turns = try? await turns(sessionKey: session.sessionKey).data.turns else { continue }
+            for t in turns where t.finalResponse != nil {
+                switch t.completion {
+                case .answer, .answerBackgroundRunning, .waitingBackground: rows.append(ResultSummary(session: session, turn: t))
+                default: continue
+                }
+            }
+        }
+        rows.sort { a, b in
+            if (a.answeredAt ?? "") != (b.answeredAt ?? "") { return (a.answeredAt ?? "") > (b.answeredAt ?? "") }
+            return (a.sessionKey, a.turn) < (b.sessionKey, b.turn)
+        }
+        return CoreResult(data: ResultsData(total: rows.count, limit: limit, results: Array(rows.prefix(limit))), warnings: [])
+    }
+
     /// Doubles without detail levels build the Full package.
     public func context(sessionKey: String, turn: Int, detail: ContextDetail) async throws -> CoreResult<ContextData> {
         try await context(sessionKey: sessionKey, turn: turn)
@@ -118,6 +144,16 @@ public struct CoreClient: CoreProviding {
 
     public func turns(sessionKey: String) async throws -> CoreResult<TurnsData> {
         try await call(["turns", "--session", sessionKey])
+    }
+
+    /// Phase 12. A Core older than 0.3 + Phase 12 answers `usage_error`
+    /// (unknown command); the app then builds the list itself.
+    public func results(limit: Int) async throws -> CoreResult<ResultsData> {
+        do {
+            return try await call(["results", "--limit", String(limit)])
+        } catch CoreError.api(let code, _) where code == "usage_error" {
+            return try await synthesizedResults(limit: limit)
+        }
     }
 
     public func show(sessionKey: String, turn: Int) async throws -> CoreResult<ShowData> {
