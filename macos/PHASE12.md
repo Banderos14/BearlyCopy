@@ -289,3 +289,73 @@ verbatim guarantees.
    files), never the destination's content.
 5. **Live acceptance first**: close Phase 11/12 owner checks before
    building on them.
+
+---
+
+## 16. Acceptance pass (2026-11-05, after `7b49608`)
+
+**Fixed.** The Results Inbox listed a background wait that expired with no
+continuation ("completion unknown") among finished results, with only a small
+tag — and it could carry the "Latest" label. Now (`88a1e73`):
+- **Finished**: final answers (an answer the user moved on from while work
+  still ran stays here, tagged "work was running": the agent did end its
+  turn).
+- **Needs attention**: completion unknown — a separate section under All and
+  an **Attention (n)** filter; a one-line explanation; no unread dot, never
+  counted as new, never "Latest", not offered as a result in Go To. History
+  and diagnostics are kept: the row still opens the last message, observed
+  work and copies. A wait that has not expired is not listed at all.
+
+**Verified with tests on the final code** (`88a1e73`, logs in
+`macos/acceptance/phase12/`, not committed):
+
+| Check | Result |
+|---|---|
+| `swift test` | XCTest 271, 16 skipped (env-gated), 0 failures; Swift Testing **90/90** (20 Phase 12); `~/Library/Preferences` test files 11,331 → 11,331 |
+| `scripts/check.sh`, Python 3.14.0 and 3.9.6 | 212 + 15 each, OK, 1 skipped (Linux-only launcher case); hook median 40.7 ms |
+| `xcodebuild` Debug / Release (isolated DerivedData) | BUILD SUCCEEDED; Release stamp `88a1e73`, not dirty |
+| `git diff --check` (working tree and `3287bc3..HEAD`) | clean |
+| Profiles kept apart, names persist, removing a name keeps history | Swift tests |
+| Old Claude Code conversations stay Unassigned, nothing rewritten | Python (real CLI) + Swift |
+| Independent unread state across agents and restarts | Swift |
+| Copy with Context of an Inbox result = that session and turn | Swift (FakeCore call) + **new** Python test through the real Core: a non-default profile's `context` / `copy-context` contains its own answer, never the other profile's |
+| `install-local.sh --status` | installed 0.3.0 `3287bc3`; running Release PID 9710, Debug (Xcode) PID 55979 |
+| `install-local.sh --list-backups` | one backup: `Prompt Relay 0.3.0-6c004a2-20261105-211139.app` |
+| `install-local.sh --dry-run` | built + verified `88a1e73` (signature, 0.3.0 = Core 0.3.0, Core digest `ede637c0…`); plan: back up `3287bc3`, install, open, check one copy; **nothing changed** |
+
+**Not done (needs the owner):** the real install (consent), and every live
+check below.
+
+### Manual checks (≈ 25 min, after install)
+
+| # | Area | Do | Expect |
+|---|---|---|---|
+| 1 | Inbox | Two agents finish; open one row | only that row loses its dot; Unread (n) drops by one; Details shows that answer |
+| 2 | Inbox | Ask an agent to run long tests in the background and stop it | after 2 h without a follow-up the row is under **Needs attention**, never with a green dot |
+| 3 | Inbox | Copy with Context from a row opened in the Inbox; paste | text names that project, agent and request |
+| 4 | By Agent | Project and Session → By Agent | one row per profile (Default / named / Unassigned / Xcode); counts match; menu choice kept after relaunch |
+| 5 | Profiles | Second Claude profile: `CLAUDE_CONFIG_DIR=~/.claude-work claude` (plugin installed in that profile), one question | new row "claude-work"; `prompt-relay sessions --json` shows `profile.basis: config_dir` (record in HOOKS_RESEARCH) |
+| 6 | Go To | ⌘K, type part of a title, ↑↓, ↩ | opens it; Esc returns |
+| 7 | In-island keys | ⌘I, ⌘J, ⌘[ , Esc | Inbox, next unread, Back, close |
+| 8 | Global shortcuts | Settings → General → Keyboard shortcuts → turn on Go To; press ⌃⌥⌘K in another app; try another modifier set | island opens on Go To; a taken combination shows the warning; off = key does nothing |
+| 9 | Open at Login | Settings → General → Open at login → On; System Settings → General → Login Items; log out/in; then Off | listed (approve if asked); one copy starts; Off removes it |
+| 10 | Snapshots (Phase 11 §4, still open) | Capture Final Window → pick a window → Copy Files → paste into a browser chat; quit/reopen | picker + consent shown; image pastes; nothing written to disk; gone after restart |
+
+### When to raise 0.3.0 → 0.4.0 (proposal)
+
+Raise **before the install used for live checks**, in one small commit:
+Core `__version__`, `plugin.json`, Xcode `MARKETING_VERSION` (the install
+script refuses a mismatch). Reasons: (1) Claude Code keeps the plugin in a
+folder per version, so the new hook code (profiles in the envelope) reaches
+Claude Code only with a new version and `claude plugin update` — with 0.3.0
+the live profile check (#5) would test the old hook; (2) the Core gained a
+command and fields (additive; JSON `api_version` stays 1) and the app's About
+and the backups should tell 0.3.0 and 0.4.0 apart. Not a release: no tag, no
+push. If the owner prefers, 0.4.0 can instead be the closing commit after the
+live checks — then #5 must wait for it.
+
+### Can Phase 12 be closed?
+
+Code-side acceptance: yes — all automated checks green on `88a1e73`, the
+Inbox defect fixed. Formal closure needs the owner: consent to install, the
+version decision, and manual checks 1–9 (10 belongs to Phase 11).

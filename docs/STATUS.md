@@ -1,5 +1,15 @@
 # Status
 
+## 2026-11-05 — Phase 12 acceptance pass
+
+Inbox now separates Finished from **Needs attention** (completion unknown:
+own section and filter, never unread or Latest; history kept). Final code
+`88a1e73`: XCTest 271/0 failures (16 skipped), Swift Testing 90/90, Python
+212+15 on 3.14 and 3.9, Xcode Debug/Release, `git diff --check` clean;
+`install-local.sh --dry-run` verified, nothing installed (owner consent
+pending). Proposal: raise to 0.4.0 before the live-check install. Manual
+checks and closure: [Phase 12 §16](../macos/PHASE12.md). Phase 13 not started.
+
 ## 2026-11-05 — Phase 12: multi-agent workspace, Results Inbox, daily workflow
 
 Local agent profiles = the agent's config folder (`CLAUDE_CONFIG_DIR`,
