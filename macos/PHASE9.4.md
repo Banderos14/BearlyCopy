@@ -141,3 +141,32 @@ usual). Cancel or failure adds nothing. No automatic or background capture.
 **Not tried live** — the picker and consent flow need the owner at the Mac.
 
 **Labels.** Behavior → "Stay on the conversation I open"; off = Follow Latest.
+
+# Phase 9.4 — final fix
+
+**Details clipped after reopening (fixed).** Reproduced in the real-panel
+test harness: content identical (footer ending at y = 272), but the window
+was 245 pt instead of 290. The window height came from the open content's
+laid-out geometry, which is bounded by the window itself. On opening, the
+first layout measured short for a moment (245), the window shrank to it, and
+the later full measurement (290) could no longer change that geometry: the
+window stayed too short and clipped the footer and card bottoms. Whether it
+happened depended on the previous window size, hence "after reopening".
+Fix: `AdaptiveIslandViewport.onMeasure` reports the content's own height,
+measured inside the scroll view (independent of the window), capped by the
+budget; the window follows that. Shrinks in the first 0.35 s after opening
+are held, so an early short layout causes no dip. Regression test
+`testDetailsHasTheSameFullGeometryHoweverItOpens`: Quick Peek → Details,
+hover reopen, click reopen, after Settings, Details → Quick Peek → close →
+reopen — all the same full frame, first frame included.
+
+**Auto-capture final window (opt-in).** Settings → Behavior → "Auto-capture
+final window" (off by default) → Choose Window… opens the system picker; the
+chosen window is bound to the project selected then and kept in memory only
+(chosen again after a restart — window identity does not survive it). After
+each new final answer of that project, one still image of that window is
+attached to that answer (`window you picked`) and selected. Answers of other
+projects are not captured; if the window is gone the capture fails, nothing
+is attached and the choice is dropped — never another window or the screen.
+Turning it off forgets the window. Agent-made screenshots continue to arrive
+through result attachments. Not tried live.

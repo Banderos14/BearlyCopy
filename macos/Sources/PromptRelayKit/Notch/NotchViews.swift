@@ -202,7 +202,8 @@ public struct NotchRootView: View {
     /// Sized to its content: the island and its window follow the measured
     /// height, so no state has empty space below it.
     private var openContent: some View {
-        AdaptiveIslandViewport(budget: presentation.notchSize.height + presentation.bodyBudget) {
+        AdaptiveIslandViewport(budget: presentation.notchSize.height + presentation.bodyBudget,
+                               onMeasure: { [presentation] h in presentation.reportBodyHeight(h - presentation.notchSize.height) }) {
             if presentation.surface == .expanded {
                 IslandContent(model: model, presentation: presentation, interaction: interaction, actions: actions,
                               settings: settings, notifier: notifier)
@@ -218,10 +219,7 @@ public struct NotchRootView: View {
         }
         .animation(presentation.resizeAnimation, value: presentation.temporaryContentHeight)
         .environment(\.islandReduceMotion, presentation.reduceMotion)
-        // Read after layout; the window follows on the next display pass.
-        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { h in
-            presentation.reportBodyHeight(h - presentation.notchSize.height)
-        }
+        // The window follows the viewport's intrinsic measurement (above).
         .foregroundStyle(.white)
     }
 

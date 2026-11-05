@@ -173,6 +173,7 @@ public final class AppModel {
         self.stateDefaults = stateDefaults
         self.reportStore = reportStore
         autoSelectResultAttachments = stateDefaults?.object(forKey: "attachments.autoSelectResults") as? Bool ?? true
+        autoCaptureFinalWindow = stateDefaults?.bool(forKey: Self.autoCaptureKey) ?? false
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
         seenAnswers = stateDefaults?.dictionary(forKey: Self.seenAnswersKey) as? [String: String] ?? [:]
         handoffs = reportStore.map(Self.loadHandoffs) ?? [:]
@@ -626,6 +627,7 @@ public final class AppModel {
             if lastAnnouncedAt != at {
                 lastAnnouncedAt = at
                 onNewAnswer?(answer)
+                autoCaptureIfEnabled(for: answer)
             }
         }
     }
@@ -1014,6 +1016,62 @@ public final class AppModel {
                 self.attachmentsVersion += 1
             case .failure?:
                 self.attachmentMessage = "The window could not be captured. You can add a screenshot with Files…"
+            }
+        }
+    }
+
+    // MARK: Auto-capture final window (opt-in, Phase 9.4)
+
+    static let autoCaptureKey = "attachments.autoCaptureFinalWindow"
+    /// Off by default. When on and a source window is chosen, one still image
+    /// of that window is taken after each new final answer of its project.
+    public var autoCaptureFinalWindow = false {
+        didSet {
+            stateDefaults?.set(autoCaptureFinalWindow, forKey: Self.autoCaptureKey)
+            if !autoCaptureFinalWindow { windowCapture.forgetSource(); autoCaptureSource = nil }
+        }
+    }
+    /// The chosen window's project (memory only: after a restart the window
+    /// is chosen again, because window identity does not survive it).
+    public private(set) var autoCaptureSource: (label: String, projectPath: String)?
+    public internal(set) var autoCaptureMessage: String?
+
+    /// Settings → Choose Window…: the system picker; bound to the project shown now.
+    public func chooseAutoCaptureWindow() {
+        guard autoCaptureFinalWindow, let project = selectedProjectPath, !isPresentingSystemDialog else { return }
+        isPresentingSystemDialog = true
+        windowCapture.chooseSource { [weak self] result in
+            guard let self else { return }
+            self.isPresentingSystemDialog = false
+            switch result {
+            case .success(let label)?:
+                self.autoCaptureSource = (label, project)
+                self.autoCaptureMessage = nil
+            case .failure?:
+                self.autoCaptureMessage = "The window could not be chosen (screen capture may be off for Prompt Relay)."
+            case nil: break
+            }
+        }
+    }
+
+    /// After a new final answer: one capture of the chosen window, attached
+    /// to that answer and selected — only for the project the window was
+    /// chosen for; never a fallback to another window.
+    func autoCaptureIfEnabled(for answer: ReadyAnswer) {
+        guard autoCaptureFinalWindow, answer.completion.isFinal, let source = autoCaptureSource,
+              answer.projectPath == source.projectPath, let store = reportStore else { return }
+        let ref = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex)
+        windowCapture.captureSource { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let shot):
+                let f = DateFormatter()
+                f.dateFormat = "yyyy-MM-dd HH.mm.ss"
+                _ = try? store.addData(shot.png, name: "Final window \(f.string(from: Date())).png", to: ref, source: .windowCapture)
+                self.attachmentsVersion += 1
+            case .failure:
+                self.autoCaptureSource = nil
+                self.autoCaptureMessage = "The chosen window is no longer available. Choose it again in Settings."
             }
         }
     }

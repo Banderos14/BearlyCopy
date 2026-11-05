@@ -94,6 +94,8 @@ public enum AttachmentSource: String, Codable, Sendable {
     /// Phase 9.3: named in the answer, inside the project, and changed during
     /// this turn (local file time). Not proof the agent created it.
     case namedVerified
+    /// Phase 9.4: auto-captured from the window the user picked, after a final answer.
+    case windowCapture
     public var label: String {
         switch self {
         case .you: return "you"
@@ -103,6 +105,7 @@ public enum AttachmentSource: String, Codable, Sendable {
         case .agentResult: return "observed result"
         case .agentObserved: return "observed file"
         case .namedVerified: return "named · changed this turn"
+        case .windowCapture: return "window you picked"
         }
     }
 }

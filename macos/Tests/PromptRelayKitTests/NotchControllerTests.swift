@@ -223,6 +223,48 @@ final class NotchControllerTests: XCTestCase {
         controller.stop()
     }
 
+    /// Phase 9.4 bug: Details reopened after an automatic close came back
+    /// clipped (footer and card bottoms cut). The window followed geometry
+    /// bounded by its own frame, so after one short early measurement it could
+    /// not grow back. Every way into Details must give the same full frame,
+    /// already on the first frame, and Quick Peek must stay Quick Peek.
+    func testDetailsHasTheSameFullGeometryHoweverItOpens() async throws {
+        let controller = makeController()
+        controller.start()
+        await model.refreshNow()
+        func hover() async { controller.interaction.pointerEntered(); clock.advance(0.2) }
+        func leave() async { controller.interaction.pointerExited(); clock.advance(1); await settle(0.4) }
+
+        await hover(); await settle(0.4)
+        let peek = try XCTUnwrap(controller.panelFrame)
+        controller.interaction.focus()                       // Quick Peek → Details
+        await settle(0.6)
+        let details = try XCTUnwrap(controller.panelFrame)
+        XCTAssertGreaterThan(details.height, peek.height)
+        let footer = try XCTUnwrap(controller.presentation.layoutFrames["details.footer"])
+        XCTAssertLessThanOrEqual(footer.maxY, details.height, "the footer is inside the window")
+        await leave()
+
+        for path in ["hover", "click", "hover after Settings"] {
+            if path == "click" { controller.interaction.toggle() } else { await hover() }
+            assertFrame(controller.panelFrame, details, "\(path): first frame")
+            await settle(0.6)
+            assertFrame(controller.panelFrame, details, "\(path): settled, nothing clipped")
+            if path == "hover" { model.navigate(to: .settings); await settle(0.3); model.goBack(); await settle(0.4) }
+            if path == "click" { controller.interaction.close(); await settle(0.4) } else { await leave() }
+        }
+
+        await hover(); await settle(0.4)
+        controller.presentation.showQuickPeek?()             // Details → Quick Peek
+        await settle(0.6)
+        assertFrame(controller.panelFrame, peek, "back to the Quick Peek frame")
+        await leave()
+        await hover(); await settle(0.6)
+        assertFrame(controller.panelFrame, peek, "Quick Peek reopens as Quick Peek")
+        await leave()
+        controller.stop()
+    }
+
     func testHoverOpensQuickPeekAndAClickOpensTheIslandOnHome() async throws {
         let controller = makeController()
         controller.start()
@@ -726,7 +768,9 @@ final class NotchControllerTests: XCTestCase {
         assertFrame(controller.panelFrame, controller.layout?.compact)
 
         controller.interaction.toggle()                    // opening reveals and acknowledges it
-        try await Task.sleep(nanoseconds: 100_000_000)
+        // Wait for the reveal's loads (a fixed 100 ms was too short under full-suite load).
+        let deadline = Date().addingTimeInterval(2)
+        while model.hasUnseenAnswer, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
         XCTAssertFalse(model.hasUnseenAnswer)
         XCTAssertEqual(model.selectedTurnIndex, 2)
         controller.stop()

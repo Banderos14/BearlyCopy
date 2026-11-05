@@ -154,6 +154,22 @@ struct IslandSettingsView: View {
             toggle("Auto-select result attachments",
                    detail: "Result files an agent verifiably wrote and named in its answer (Markdown, PDF, images, text) are prepared for Copy with Context. Files it only mentions are offered, not chosen. You can uncheck any.",
                    isOn: Binding(get: { model.autoSelectResultAttachments }, set: { model.autoSelectResultAttachments = $0 }))
+            Hairline()
+            toggle("Auto-capture final window",
+                   detail: "Off by default. On: after each new final answer of the chosen project, one still image of the window you pick is attached and selected. Nothing else is captured; the window is chosen again after a restart.",
+                   isOn: Binding(get: { model.autoCaptureFinalWindow }, set: { model.autoCaptureFinalWindow = $0 }))
+            if model.autoCaptureFinalWindow {
+                HStack(spacing: 8) {
+                    Text(model.autoCaptureSource.map { "Window chosen for \(($0.projectPath as NSString).lastPathComponent)" }
+                         ?? model.autoCaptureMessage ?? "No window chosen yet")
+                        .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(2)
+                    Spacer()
+                    Button(model.autoCaptureSource == nil ? "Choose Window…" : "Change…") { model.chooseAutoCaptureWindow() }
+                        .buttonStyle(IslandPillStyle(prominent: false))
+                        .disabled(model.selectedProjectPath == nil || model.isPresentingSystemDialog)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 6)
+            }
         }
     }
 

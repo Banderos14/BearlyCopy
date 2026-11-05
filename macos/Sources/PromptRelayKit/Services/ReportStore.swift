@@ -261,6 +261,7 @@ public final class ReportStore {
         case .agentObserved: return "Observed in this turn; added by you"
         case .agentResult: return "Observed result file; automatically prepared from this turn"
         case .namedVerified: return "Named in the answer and changed during this turn (local file time); automatically prepared. Not proof the agent created it"
+        case .windowCapture: return "Still image of the window you chose for auto-capture, taken after this final answer arrived"
         }
     }
 

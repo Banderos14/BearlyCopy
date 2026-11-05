@@ -753,9 +753,70 @@ struct Phase94UITests {
     final class FakeCapture: WindowCapturing {
         var result: Result<WindowCapture.Shot, Error>?
         var calls = 0
+        var hasSource = false
+        var sourceCaptures = 0
+        var sourceFails = false
         func captureWindow(completion: @escaping @MainActor (Result<WindowCapture.Shot, Error>?) -> Void) {
             calls += 1; completion(result)
         }
+        func chooseSource(completion: @escaping @MainActor (Result<String, Error>?) -> Void) {
+            hasSource = true; completion(.success("window"))
+        }
+        func captureSource(completion: @escaping @MainActor (Result<WindowCapture.Shot, Error>) -> Void) {
+            sourceCaptures += 1
+            guard hasSource, !sourceFails else { completion(.failure(WindowCaptureError.noSource)); return }
+            completion(.success(.init(png: TypedAttachmentTests.png(.blue), label: "Window")))
+        }
+        func forgetSource() { hasSource = false }
+    }
+
+    @Test func autoCaptureIsOptInBoundToItsProjectAndNeverFallsBack() async throws {
+        let suite = "PromptRelay94cap.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr94a-" + UUID().uuidString)
+        let b = board(); defer { b.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
+        let core = FakeCore(projects: [project("/a", sessions: 1, last: ago(300)), project("/b", sessions: 1, last: ago(400))])
+        core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: ago(300))]
+        core.sessionsByProject["/b"] = [sessionSummary("b", project: "/b", last: ago(400))]
+        core.turnsBySession["a"] = [turn(1, at: ago(300))]
+        core.turnsBySession["b"] = [turn(1, at: ago(400))]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: b), dataDirectory: nil, stateDefaults: defaults,
+                         reportStore: ReportStore(root: root))
+        let fake = FakeCapture()
+        m.windowCapture = fake
+        await m.refreshNow()
+        #expect(!m.autoCaptureFinalWindow, "off by default")
+        // A new answer with the feature off: nothing captured.
+        core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: ago(200), lastTurn: 2)]
+        core.turnsBySession["a"] = [turn(1, at: ago(300)), turn(2, at: ago(200))]
+        await m.refreshNow()
+        #expect(fake.sourceCaptures == 0)
+
+        m.autoCaptureFinalWindow = true
+        m.chooseAutoCaptureWindow()                           // bound to the selected project (/a)
+        #expect(m.autoCaptureSource?.projectPath == "/a")
+        // A new answer in another project: not captured.
+        core.sessionsByProject["/b"] = [sessionSummary("b", project: "/b", last: ago(150), lastTurn: 2)]
+        core.turnsBySession["b"] = [turn(1, at: ago(400)), turn(2, at: ago(150))]
+        await m.refreshNow()
+        #expect(fake.sourceCaptures == 0)
+        #expect(m.attachments(for: .local(sessionKey: "b", turn: 2)).isEmpty)
+        // A new answer in /a: one capture, attached to that answer and selected.
+        core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: ago(100), lastTurn: 3)]
+        core.turnsBySession["a"] = [turn(1, at: ago(300)), turn(2, at: ago(200)), turn(3, at: ago(100))]
+        await m.refreshNow()
+        #expect(fake.sourceCaptures == 1)
+        let shot = m.attachments(for: .local(sessionKey: "a", turn: 3))
+        #expect(shot.count == 1 && shot[0].isSelected && shot[0].effectiveSource == .windowCapture)
+        // The window disappears: nothing attached, the source is dropped.
+        fake.sourceFails = true
+        core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: ago(50), lastTurn: 4)]
+        core.turnsBySession["a"] = [turn(1, at: ago(300)), turn(2, at: ago(200)), turn(3, at: ago(100)), turn(4, at: ago(50))]
+        await m.refreshNow()
+        #expect(m.attachments(for: .local(sessionKey: "a", turn: 4)).isEmpty)
+        #expect(m.autoCaptureSource == nil)
+        m.autoCaptureFinalWindow = false
+        #expect(!fake.hasSource, "turning it off forgets the window")
     }
 
     @Test func captureFinalWindowAddsOnlyWhatTheUserPicked() async throws {
@@ -780,5 +841,18 @@ struct Phase94UITests {
         let added = m.attachments(for: m.currentRef)
         #expect(added.count == 1 && added[0].isSelected && added[0].effectiveSource == .you)
         #expect(fake.calls == 3)
+    }
+}
+
+@MainActor
+struct LoadingDotsTests {
+    @Test func dotsAnimateOnlyWithoutReduceMotion() {
+        let view = LoadingDots.DotsView(frame: NSRect(origin: .zero, size: LoadingDots.size))
+        view.configure(color: .white, reduceMotion: false)
+        #expect(view.animating)
+        #expect(view.layer?.sublayers?.allSatisfy { $0.animation(forKey: "loading") != nil } == true)
+        view.configure(color: .white, reduceMotion: true)
+        #expect(!view.animating)
+        #expect(view.layer?.sublayers?.allSatisfy { $0.animation(forKey: "loading") == nil } == true, "Reduce Motion: still")
     }
 }

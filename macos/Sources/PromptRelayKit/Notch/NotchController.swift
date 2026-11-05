@@ -451,9 +451,26 @@ public final class NotchController {
         }
     }
 
+    /// Phase 9.4: while the island opens, its first layout can measure short
+    /// for a moment; shrinking then and growing back made a visible dip.
+    /// Shrinks in this window are held and applied once it has passed.
+    static let openSettleTime: TimeInterval = 0.35
+    private var openedAt: Date?
+    private var heldShrink: DispatchWorkItem?
+
     private func applyResize(to height: CGFloat) {
         guard interaction.phase.isExpanded, let panel, let layout else {
             presentation.contentHeight = height
+            return
+        }
+        heldShrink?.cancel(); heldShrink = nil
+        if height < presentation.contentHeight, let openedAt,
+           case let remaining = Self.openSettleTime - Date().timeIntervalSince(openedAt), remaining > 0 {
+            let work = DispatchWorkItem { [weak self] in
+                MainActor.assumeIsolated { self?.applyResize(to: height) }
+            }
+            heldShrink = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + remaining, execute: work)
             return
         }
         if presentation.reduceMotion {
@@ -524,6 +541,7 @@ public final class NotchController {
                 }
             }
             model.detailsPreferred = presentation.preferredSurface == .expanded
+            if !old.isExpanded { openedAt = Date() }
             placePanel(for: phase)
             if !old.isExpanded {
                 model.surfaceAppeared()

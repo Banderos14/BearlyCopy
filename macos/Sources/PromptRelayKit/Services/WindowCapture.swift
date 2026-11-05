@@ -8,9 +8,16 @@ import ScreenCaptureKit
 /// user starts it, and a cancelled or failed pick adds nothing.
 public protocol WindowCapturing: AnyObject {
     @MainActor func captureWindow(completion: @escaping @MainActor (Result<WindowCapture.Shot, Error>?) -> Void)
+    /// Auto-capture: the user picks the source window once (system picker);
+    /// it is remembered for this app run only. nil: cancelled.
+    @MainActor func chooseSource(completion: @escaping @MainActor (Result<String, Error>?) -> Void)
+    /// One still image of the chosen source window; fails if none was chosen
+    /// or the window is gone (never another window or the screen).
+    @MainActor func captureSource(completion: @escaping @MainActor (Result<WindowCapture.Shot, Error>) -> Void)
+    @MainActor func forgetSource()
 }
 
-public enum WindowCaptureError: Error, Equatable { case failed, noImage }
+public enum WindowCaptureError: Error, Equatable { case failed, noImage, noSource }
 
 @MainActor
 public final class WindowCapture: NSObject, WindowCapturing, SCContentSharingPickerObserver {
@@ -21,10 +28,48 @@ public final class WindowCapture: NSObject, WindowCapturing, SCContentSharingPic
     }
 
     private var completion: (@MainActor (Result<Shot, Error>?) -> Void)?
+    private var sourceCompletion: (@MainActor (Result<String, Error>?) -> Void)?
+    /// The window the user picked for auto-capture (memory only).
+    private var source: SCContentFilter?
+
+    public func chooseSource(completion: @escaping @MainActor (Result<String, Error>?) -> Void) {
+        guard self.completion == nil, sourceCompletion == nil else { return }
+        sourceCompletion = completion
+        present()
+    }
+
+    public func forgetSource() { source = nil }
+
+    public func captureSource(completion: @escaping @MainActor (Result<Shot, Error>) -> Void) {
+        guard let source else { completion(.failure(WindowCaptureError.noSource)); return }
+        Task { @MainActor in
+            do { completion(.success(try await Self.shot(source))) } catch {
+                self.source = nil   // the window is gone: never fall back to anything else
+                completion(.failure(error))
+            }
+        }
+    }
+
+    static func shot(_ filter: SCContentFilter) async throws -> Shot {
+        let config = SCStreamConfiguration()
+        let scale = CGFloat(filter.pointPixelScale)
+        config.width = max(1, Int(filter.contentRect.width * scale))
+        config.height = max(1, Int(filter.contentRect.height * scale))
+        config.showsCursor = false
+        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        guard let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+            throw WindowCaptureError.noImage
+        }
+        return Shot(png: png, label: "Window")
+    }
 
     public func captureWindow(completion: @escaping @MainActor (Result<Shot, Error>?) -> Void) {
-        guard self.completion == nil else { return }
+        guard self.completion == nil, sourceCompletion == nil else { return }
         self.completion = completion
+        present()
+    }
+
+    private func present() {
         let picker = SCContentSharingPicker.shared
         var config = SCContentSharingPickerConfiguration()
         config.allowedPickerModes = [.singleWindow]
@@ -44,30 +89,34 @@ public final class WindowCapture: NSObject, WindowCapturing, SCContentSharingPic
         done?(result)
     }
 
+    private func finishSource(_ result: Result<String, Error>?) {
+        let picker = SCContentSharingPicker.shared
+        picker.remove(self)
+        picker.isActive = false
+        let done = sourceCompletion
+        sourceCompletion = nil
+        done?(result)
+    }
+
     nonisolated public func contentSharingPicker(_ picker: SCContentSharingPicker, didCancelFor stream: SCStream?) {
-        Task { @MainActor in self.finish(nil) }
+        Task { @MainActor in if self.sourceCompletion != nil { self.finishSource(nil) } else { self.finish(nil) } }
     }
 
     nonisolated public func contentSharingPickerStartDidFailWithError(_ error: Error) {
-        Task { @MainActor in self.finish(.failure(error)) }
+        Task { @MainActor in
+            if self.sourceCompletion != nil { self.finishSource(.failure(error)) } else { self.finish(.failure(error)) }
+        }
     }
 
     nonisolated public func contentSharingPicker(_ picker: SCContentSharingPicker, didUpdateWith filter: SCContentFilter,
                                                  for stream: SCStream?) {
         Task { @MainActor in
-            let config = SCStreamConfiguration()
-            let scale = CGFloat(filter.pointPixelScale)
-            config.width = max(1, Int(filter.contentRect.width * scale))
-            config.height = max(1, Int(filter.contentRect.height * scale))
-            config.showsCursor = false
-            do {
-                let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
-                let rep = NSBitmapImageRep(cgImage: image)
-                guard let png = rep.representation(using: .png, properties: [:]) else { throw WindowCaptureError.noImage }
-                self.finish(.success(Shot(png: png, label: "Window")))
-            } catch {
-                self.finish(.failure(error))
+            if self.sourceCompletion != nil {
+                self.source = filter
+                self.finishSource(.success("the window you picked"))
+                return
             }
+            do { self.finish(.success(try await Self.shot(filter))) } catch { self.finish(.failure(error)) }
         }
     }
 }

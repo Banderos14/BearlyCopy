@@ -39,6 +39,12 @@ extension View {
 /// fixed chrome cannot fit the screen, every row remains reachable by scrolling.
 struct AdaptiveIslandViewport<Content: View>: View {
     let budget: CGFloat
+    /// Phase 9.4: the content's own height (capped by the budget), measured
+    /// inside the scroll view — independent of the window's current size.
+    /// The window follows this value. Reading the laid-out geometry instead
+    /// was bounded by the window: once an early, shorter measurement shrank
+    /// it, the full height could no longer be seen (Details reopened clipped).
+    var onMeasure: ((CGFloat) -> Void)? = nil
     @ViewBuilder let content: Content
     @State private var measuredHeight: CGFloat?
 
@@ -47,6 +53,7 @@ struct AdaptiveIslandViewport<Content: View>: View {
             HeightBudget(maxHeight: budget, allowsOverflow: true) { content }
                 .onGeometryChange(for: CGFloat.self, of: { $0.size.height.rounded(.up) }) { height in
                     if measuredHeight != height { measuredHeight = height }
+                    onMeasure?(min(height, budget))
                 }
         }
         .scrollBounceBehavior(.basedOnSize)
