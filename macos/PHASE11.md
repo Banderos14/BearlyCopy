@@ -357,4 +357,9 @@ Logs in `macos/acceptance/phase11/` (not committed).
   `macos/acceptance/phase9.1/xcode-smoke/REPORT.md` and every untracked
   `macos/acceptance/` item; new logs in `macos/acceptance/phase11/`; build
   output in `macos/build/` and `dist/` (ignored).
+- `e4211fc` — follow-ups from the automated security review: CI secrets
+  job no longer fails open; plist values sanitised in backup names and
+  backups found with `find`; Developer ID checked by code requirement in
+  `release-notarize.sh`; Codex hook detection by exact tokens and known
+  hosts (new test). Targeted Swift tests (45) passed.
 - No push, no merge, no install, no notarization, no release.
