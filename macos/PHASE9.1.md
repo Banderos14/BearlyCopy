@@ -19,7 +19,7 @@ Target: `~/Library/Developer/Xcode/CodingAssistant/codex/hooks.json`.
 Events: UserPromptSubmit, PostToolUse, Stop. Each command has timeout 5 seconds:
 
 ```text
-env PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=xcode /bin/sh /Users/admin/Projects/prompt-relay/plugin/hooks/run-hook
+env PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=xcode /bin/sh $HOME/Projects/prompt-relay/plugin/hooks/run-hook
 ```
 
 Only this file is proposed. Existing config.toml, credentials, other hooks and stored history remain untouched. The helper preserves existing hooks and creates a backup if the target exists by the time of application. Capture is still opt-in per project. This configuration is profile-wide, which is why explicit owner consent is required.

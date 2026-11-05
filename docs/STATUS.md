@@ -1,5 +1,21 @@
 # Status
 
+## 2026-11-05 — Phase 11: installable app, first-run setup, release preparation
+
+`scripts/install-local.sh` builds, verifies (signature, version = Core,
+Core digest, commit = HEAD), backs up, installs to `~/Applications`, opens
+and checks one running copy; `--dry-run`, `--status`, `--rollback`.
+Settings → About shows commit, build date, location, Core and mismatches
+with the installed app. Release scripts for Developer ID + Hardened Runtime
++ notarization exist; only an ad-hoc `--unsigned-test` package was built (no
+Developer ID certificate on this Mac). Python stays a checked system
+dependency (ADR-019). New Set Up page: per agent and host status, Connected
+only after a stored event (ADR-021). Settings regrouped; 11 pt text floor,
+24 pt menus, unified radii. Tests no longer create real UserDefaults suites
+(0 new plists per run). MCP evaluated, deferred (ADR-022). Details and the
+owner's live checks: [Phase 11](../macos/PHASE11.md). Installed app **not**
+updated; nothing pushed.
+
 ## 2026-11-05 — Phase 10: audit, in-memory window snapshots, minimal notch status
 
 Window snapshots (Capture Final Window, opt-in auto-capture) are now kept in
@@ -767,6 +783,11 @@ Formatted + Markdown Source, structured ⓘ explanations, product analysis in
 `refs/backup/phase8-start`.
 
 ## Next agreed stage
+
+**After Phase 11 (2026-11-05):** owner live acceptance (macos/PHASE11.md
+§4 and §13), the license decision, and a Developer ID certificate before any
+public beta. No Phase 12 work without approval. The text below is the
+earlier plan, kept for history.
 Phases 7–8 are committed locally; the owner checks `docs/PHASE8.md` § 8 (first:
 quit old copies). Push only when the owner asks. Verification Timeline,
 multi-turn export, Target Profiles, ADR-012 and source adapters wait for approval.

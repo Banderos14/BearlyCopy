@@ -15,7 +15,7 @@ Starting status and tracked patch: `acceptance/phase9.2-start-status.txt` and
   whether that particular Xcode process had loaded/reviewed the hooks.
   CLI Trusted/Active is not retrospective proof of Xcode delivery.
 - Real Xcode events began at 09:26:39 UTC. Two real sessions were recorded,
-  with cwd `/Users/admin/Projects/prompt-relay/macos`, not the nested smoke folder.
+  with cwd `~/Projects/prompt-relay/macos`, not the nested smoke folder.
   The repository itself is capture-enabled, so this cwd passes the existing
   opt-in rule. UserPromptSubmit and PostToolUse reach the launcher, parser,
   adapter, append-only storage and Core. No synthetic event was sent to real storage.
