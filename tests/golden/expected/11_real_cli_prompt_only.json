@@ -25,6 +25,7 @@
             },
             "last_event_at": "2026-01-01T00:00:00.000000Z",
             "last_turn": {
+              "completion": "working",
               "index": 1,
               "status": "awaiting_response"
             },
@@ -91,6 +92,7 @@
           },
           "last_event_at": "2026-01-01T00:00:00.000000Z",
           "last_turn": {
+            "completion": "working",
             "index": 1,
             "status": "awaiting_response"
           },
@@ -113,6 +115,7 @@
           {
             "background_tasks": null,
             "candidate_request_turns": [],
+            "completion": "working",
             "earlier_user_request": null,
             "error": null,
             "final_response": null,

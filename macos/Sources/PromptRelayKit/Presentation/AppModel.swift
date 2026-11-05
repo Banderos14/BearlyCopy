@@ -73,6 +73,9 @@ public final class AppModel {
         public var provider: AgentProvider = .claudeCode
         /// "Codex · Xcode · This Mac"; the host stays Unknown unless recorded.
         public var sourceLabel: String = "Claude Code · Unknown · This Mac"
+        /// Phase 9.4: `.waitingBackground` here means the wait expired with
+        /// no continuation — shown, but never announced as ready.
+        public var completion: Completion = .answer
     }
 
     public private(set) var readyAnswer: ReadyAnswer?
@@ -81,7 +84,8 @@ public final class AppModel {
     private var finishedAnswers: [ReadyAnswer] = []
     private var unseenAnswers: [ReadyAnswer] {
         finishedAnswers.filter { answer in
-            guard let baseline = lastSeenAt, Self.isNewer(answer.at, than: baseline) else { return false }
+            // Phase 9.4: only a final result lights the ready dot.
+            guard answer.completion.isFinal, let baseline = lastSeenAt, Self.isNewer(answer.at, than: baseline) else { return false }
             let key = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex).key
             // Later background events can change lastEventAt without creating a report.
             return seenAnswers[key] == nil
@@ -604,28 +608,36 @@ public final class AppModel {
     /// answer. Changed sessions with several turns also load earlier unread
     /// reports; these reads use the existing cache while the session is unchanged.
     private func latestFinishedAnswers(in sessions: [SessionSummary]) async -> [ReadyAnswer] {
-        func finished(_ status: TurnStatus) -> Bool { status == .stopReceived || status == .stopReceivedBackgroundTasksPending }
+        // Phase 9.4: only a final result counts. A Stop that reported work in
+        // flight is intermediate (kept in History) until a later turn settles
+        // it; after `backgroundWaitLimit` with no continuation it is shown
+        // with an unknown completion, never as a ready answer.
+        func eligible(_ completion: Completion, at: String?) -> Bool {
+            completion.isFinal || (completion == .waitingBackground && Self.waitExpired(at))
+        }
         var answers: [ReadyAnswer] = []
         for session in sessions {
             guard let last = session.lastTurn, let lastAt = session.lastEventAt else { continue }
             var candidate: ReadyAnswer?
-            if finished(last.status) {
+            if eligible(last.completion, at: last.answeredAt ?? lastAt) {
                 // Completion time when the Core reports it (Phase 9.3); a later
                 // tool event of the same session does not make it "newer".
-                candidate = readyAnswer(session, turn: last.index, status: last.status, at: last.answeredAt ?? lastAt)
+                candidate = readyAnswer(session, turn: last.index, status: last.status, at: last.answeredAt ?? lastAt,
+                                        completion: last.completion)
             } else if last.index > 1,
-                      let turn = await cachedTurns(session).last(where: { finished($0.status) && $0.finalResponse != nil }),
+                      let turn = await cachedTurns(session).last(where: {
+                          eligible($0.completion, at: $0.finalResponse?.receivedAt) && $0.finalResponse != nil }),
                       let at = turn.finalResponse?.receivedAt {
-                candidate = readyAnswer(session, turn: turn.index, status: turn.status, at: at)
+                candidate = readyAnswer(session, turn: turn.index, status: turn.status, at: at, completion: turn.completion)
             }
             if let candidate {
                 answers.append(candidate)
                 // Several reports can arrive before the island opens. Keep
                 // earlier unread turns too, using the existing session cache.
                 if let baseline = lastSeenAt, Self.isNewer(lastAt, than: baseline), candidate.turnIndex > 1 {
-                    for turn in await cachedTurns(session) where turn.index < candidate.turnIndex && finished(turn.status) {
+                    for turn in await cachedTurns(session) where turn.index < candidate.turnIndex && turn.completion.isFinal {
                         guard let at = turn.finalResponse?.receivedAt, Self.isNewer(at, than: baseline) else { continue }
-                        answers.append(readyAnswer(session, turn: turn.index, status: turn.status, at: at))
+                        answers.append(readyAnswer(session, turn: turn.index, status: turn.status, at: at, completion: turn.completion))
                     }
                 }
             }
@@ -637,12 +649,23 @@ public final class AppModel {
         }
     }
 
-    private func readyAnswer(_ session: SessionSummary, turn: Int, status: TurnStatus, at: String) -> ReadyAnswer {
+    /// Phase 9.4: how long a Stop with work in flight is shown as "waiting"
+    /// without a continuation. Long test runs fit; a forgotten server does
+    /// not keep the island waiting forever.
+    static let backgroundWaitLimit: TimeInterval = 2 * 60 * 60
+    static func waitExpired(_ at: String?, now: Date = Date()) -> Bool {
+        guard let date = Wording.date(at) else { return true }
+        return now.timeIntervalSince(date) >= backgroundWaitLimit
+    }
+
+    private func readyAnswer(_ session: SessionSummary, turn: Int, status: TurnStatus, at: String,
+                             completion: Completion) -> ReadyAnswer {
         let path = projectPath(for: session) ?? session.project.path
         let name = (projects.value ?? []).first { $0.path == path && path != nil }.map(Wording.projectName)
             ?? session.logicalProject?.name ?? Wording.projectName(session.project)
         return ReadyAnswer(sessionKey: session.sessionKey, projectPath: path, projectName: name, turnIndex: turn,
-                           status: status, at: at, provider: session.provider, sourceLabel: session.sourceLabel)
+                           status: status, at: at, provider: session.provider, sourceLabel: session.sourceLabel,
+                           completion: completion)
     }
 
     static func isNewer(_ a: String, than b: String) -> Bool {
@@ -658,6 +681,9 @@ public final class AppModel {
         case none
         /// A prompt is waiting for Claude in this many sessions (recently active).
         case working(sessions: Int)
+        /// Phase 9.4: the agent stopped while work it started (tests, builds)
+        /// was still running, in this many sessions; a follow-up is expected.
+        case waitingBackground(sessions: Int)
         /// Unseen answers: how many sessions have one; whether the newest was
         /// a turn Claude Code started itself (not your request) — known only
         /// when its turns are loaded, otherwise false; whether background
@@ -677,16 +703,23 @@ public final class AppModel {
         let unseen = unseenAnswers
         if let answer = unseen.first {
             let turns = answer.sessionKey == selectedSessionKey ? turns.value : turnCache[answer.sessionKey]?.turns
-            let automated = turns?.first { $0.index == answer.turnIndex }?.requestOrigin == .automated
+            // The follow-up of background work arrives in a turn the harness
+            // started; it is the result of the user's task, not a side event.
+            let continuesWork = turns?.contains { $0.continuedInTurn == answer.turnIndex && $0.completion == .intermediate } ?? false
+            let automated = !continuesWork && turns?.first { $0.index == answer.turnIndex }?.requestOrigin == .automated
             return .ready(sessions: Set(unseen.map(\.sessionKey)).count, automated: automated,
-                          backgroundPending: answer.status == .stopReceivedBackgroundTasksPending)
+                          backgroundPending: answer.completion == .answerBackgroundRunning)
         }
         let now = Date()
         let working = allSessions.filter {
             $0.lastTurn?.status == .awaitingResponse
                 && (Wording.date($0.lastEventAt).map { now.timeIntervalSince($0) < Self.workingWindow } ?? false)
         }
-        return working.isEmpty ? .none : .working(sessions: working.count)
+        if !working.isEmpty { return .working(sessions: working.count) }
+        let waiting = allSessions.filter {
+            $0.lastTurn?.completion == .waitingBackground && !Self.waitExpired($0.lastTurn?.answeredAt ?? $0.lastEventAt, now: now)
+        }
+        return waiting.isEmpty ? .none : .waitingBackground(sessions: waiting.count)
     }
 
     /// Acknowledge only the selected report. The launch/migration baseline
@@ -1079,9 +1112,12 @@ public final class AppModel {
     /// Phase 9.3: what a session row says about its state. Stop means the
     /// agent stopped, not that the task succeeded; `0 answers` is never shown
     /// as finished.
-    public enum SessionState: Equatable, Sendable { case working, answered, noAnswer, failed }
+    public enum SessionState: Equatable, Sendable { case working, waitingBackground, answered, noAnswer, failed }
     public func sessionState(_ session: SessionSummary) -> SessionState {
         if session.running == true { return .working }
+        // Phase 9.4: stopped while its own background work runs.
+        if session.lastTurn?.completion == .waitingBackground,
+           !Self.waitExpired(session.lastTurn?.answeredAt ?? session.lastEventAt) { return .waitingBackground }
         switch session.lastTurn?.status {
         case .apiError?: return (session.answeredCount ?? 0) > 0 ? .answered : .failed
         default: return (session.answeredCount ?? 0) > 0 ? .answered : .noAnswer

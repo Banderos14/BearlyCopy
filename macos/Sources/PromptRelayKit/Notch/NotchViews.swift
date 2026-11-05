@@ -264,6 +264,13 @@ struct ReadyIndicatorView: View {
             switch indicator {
             case .none:
                 EmptyView()
+            case .waitingBackground:
+                // Phase 9.4: stopped, but its own background work is still
+                // running — the same calm dots in the waiting tone; not ready.
+                HStack(spacing: 2.5) {
+                    ForEach(0..<3, id: \.self) { _ in Circle().fill(Island.warning.opacity(0.55)).frame(width: 3, height: 3) }
+                }
+                .transition(.opacity)
             case .working:
                 HStack(spacing: 2.5) {
                     ForEach(0..<3, id: \.self) { _ in Circle().fill(Color.white.opacity(0.42)).frame(width: 3, height: 3) }
@@ -306,6 +313,8 @@ struct ReadyIndicatorView: View {
         switch indicator {
         case .none: return "Prompt Relay"
         case .working(let n): return "Prompt Relay: an agent is working" + (n > 1 ? " in \(n) sessions" : "")
+        case .waitingBackground(let n): return "Prompt Relay: waiting for background work"
+            + (n > 1 ? " in \(n) sessions" : "") + ". The answer so far is intermediate."
         case .attention: return "Prompt Relay: capture needs attention. Open Settings → Advanced."
         case .ready(let n, let automated, let background):
             return "Prompt Relay: " + (automated ? "an answer to a turn Claude Code started itself" : "a new answer")

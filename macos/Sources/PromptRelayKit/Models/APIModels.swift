@@ -62,6 +62,52 @@ public enum TurnStatus: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
+/// Phase 9.4, the Core's `completion`: what a Stop means for "is the work
+/// done". Stop only says the agent stopped responding.
+public enum Completion: Equatable, Hashable, Sendable, Decodable {
+    /// Stop with text and no work in flight.
+    case answer
+    /// Work was still running, and the user then sent a new request.
+    case answerBackgroundRunning
+    /// The last turn; its Stop reported work in flight: a continuation is expected.
+    case waitingBackground
+    /// Work was in flight and the session went on automatically: not the result.
+    case intermediate
+    case working, noText, apiError
+    case unknown(String)
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        switch raw {
+        case "answer": self = .answer
+        case "answer_background_running": self = .answerBackgroundRunning
+        case "waiting_background": self = .waitingBackground
+        case "intermediate": self = .intermediate
+        case "working": self = .working
+        case "no_text": self = .noText
+        case "api_error": self = .apiError
+        default: self = .unknown(raw)
+        }
+    }
+
+    /// For an older Core without `completion`: never more complete than the
+    /// status shows (a Stop with work in flight is waiting, not done).
+    public static func from(_ status: TurnStatus) -> Completion {
+        switch status {
+        case .stopReceived: return .answer
+        case .stopReceivedBackgroundTasksPending: return .waitingBackground
+        case .awaitingResponse: return .working
+        case .stopReceivedWithoutText: return .noText
+        case .apiError: return .apiError
+        case .noMatchedResponse: return .unknown("no_matched_response")
+        case .unknown(let raw): return .unknown(raw)
+        }
+    }
+
+    /// A finished result: Latest, the green dot and notifications.
+    public var isFinal: Bool { self == .answer || self == .answerBackgroundRunning }
+}
+
 public enum LinkQuality: Equatable, Hashable, Sendable, Decodable {
     case promptID, sequence, ambiguous, none
     case unknown(String)
@@ -104,8 +150,14 @@ public struct LastTurn: Decodable, Equatable, Hashable, Sendable {
     public let status: TurnStatus
     /// When the turn's final response was stored (Core 0.3.x, Phase 9.3).
     public var answeredAt: String? = nil
+    /// Phase 9.4 (absent from older Cores: derived from `status`).
+    public var completionField: Completion? = nil
+    public var continuedInTurn: Int? = nil
+    public var completion: Completion { completionField ?? .from(status) }
 
-    enum CodingKeys: String, CodingKey { case index, status, answeredAt = "answered_at" }
+    enum CodingKeys: String, CodingKey {
+        case index, status, answeredAt = "answered_at", completionField = "completion", continuedInTurn = "continued_in_turn"
+    }
 }
 
 public struct Integrity: Decodable, Equatable, Hashable, Sendable {
@@ -233,6 +285,21 @@ public struct ObservedCommand: Decodable, Equatable, Hashable, Sendable {
     }
 }
 
+/// Phase 9.4 (`show` only): earlier turns of the session whose Stop left
+/// work running and which this turn continued — the same task.
+public struct WorkChain: Decodable, Equatable, Hashable, Sendable {
+    public let fromTurn: Int
+    public let turns: [Int]
+    public let startedAt: String?
+    public let filesChanged: [ChangedFile]
+    public let shownFiles: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case turns, fromTurn = "from_turn", startedAt = "started_at"
+        case filesChanged = "files_changed", shownFiles = "shown_files"
+    }
+}
+
 public struct ChangedFile: Decodable, Equatable, Hashable, Sendable {
     public let path: String
     public let tools: [String]
@@ -294,6 +361,11 @@ public struct Turn: Decodable, Equatable, Hashable, Identifiable, Sendable {
     /// earlier substantive request of the same session — context only; the
     /// turn's own request stays its request.
     public var continuesRequest: EarlierRequest? = nil
+    /// Phase 9.4 (absent from older Cores: derived from `status`).
+    public var completionField: Completion? = nil
+    public var continuedInTurn: Int? = nil
+    public var completion: Completion { completionField ?? .from(status) }
+    public var workChain: WorkChain? = nil
 
     public var id: Int { index }
 
@@ -311,6 +383,8 @@ public struct Turn: Decodable, Equatable, Hashable, Identifiable, Sendable {
         case notificationCount = "notification_count", observedDetail = "observed_detail"
         case requestOrigin = "request_origin", earlierUserRequest = "earlier_user_request"
         case continuesRequest = "continues_request"
+        case completionField = "completion", continuedInTurn = "continued_in_turn"
+        case workChain = "work_chain"
     }
 }
 

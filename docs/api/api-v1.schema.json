@@ -226,6 +226,15 @@
                 },
                 "answered_at": {
                   "$ref": "#/$defs/timestamp"
+                },
+                "completion": {
+                  "type": "string",
+                  "description": "Phase 9.4: answer | answer_background_running | waiting_background | intermediate | working | no_text | api_error | unknown. Stop only means the agent stopped; readers accept unknown values."
+                },
+                "continued_in_turn": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Phase 9.4: the later turn of this session that followed a Stop with work in flight."
                 }
               }
             },
@@ -580,6 +589,15 @@
         "continues_request": {
           "description": "Phase 9.3, optional: for a short continuation request (such as \"continue\"), the latest earlier substantive request of the same session, offered as labelled context; the turn's own request stays verbatim.",
           "$ref": "#/$defs/earlier_text_summary"
+        },
+        "completion": {
+          "type": "string",
+          "description": "Phase 9.4: answer | answer_background_running | waiting_background | intermediate | working | no_text | api_error | unknown. Stop only means the agent stopped; readers accept unknown values."
+        },
+        "continued_in_turn": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Phase 9.4: the later turn of this session that followed a Stop with work in flight."
         }
       }
     },
@@ -752,6 +770,42 @@
         "continues_request": {
           "description": "Phase 9.3, optional: for a short continuation request (such as \"continue\"), the latest earlier substantive request of the same session, offered as labelled context; the turn's own request stays verbatim.",
           "$ref": "#/$defs/earlier_text_full"
+        },
+        "completion": {
+          "type": "string",
+          "description": "Phase 9.4: answer | answer_background_running | waiting_background | intermediate | working | no_text | api_error | unknown. Stop only means the agent stopped; readers accept unknown values."
+        },
+        "continued_in_turn": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Phase 9.4: the later turn of this session that followed a Stop with work in flight."
+        },
+        "work_chain": {
+          "type": "object",
+          "description": "Phase 9.4, show only: earlier intermediate turns of this session continued by this one; their observed files and the request time that started the task.",
+          "properties": {
+            "from_turn": {
+              "type": "integer"
+            },
+            "turns": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "started_at": {
+              "$ref": "#/$defs/timestamp_or_null"
+            },
+            "files_changed": {
+              "type": "array"
+            },
+            "shown_files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
     },

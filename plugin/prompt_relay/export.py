@@ -353,6 +353,15 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
         add(f"- Response events in this turn: {len(turn.responses)} (stop-hook continuations or background wake-ups); the last Stop is shown")
     if final and final.has_background_tasks:
         add(f"- Background tasks at Stop: {len(final.work_tasks)} still in flight [{CONFIRMED}]")
+        later = next((x for x in session.turns[turn.index:] if x.prompt is not None), None)
+        if later is None:
+            add(f"- Completion: intermediate — {agent} stopped while that work was running; no continuation "
+                f"has been captured yet, so this is not established as the final result [{CONFIRMED}]")
+        elif origin.classify(later.prompt.text) == origin.AUTOMATED:
+            add(f"- Completion: intermediate — the session continued automatically in turn {later.index}; "
+                f"the later turn holds the follow-up [{CONFIRMED}]")
+        else:
+            add(f"- Completion: the user sent a new request (turn {later.index}) while that work was still running [{CONFIRMED}]")
     elif final and final.background_tasks is None:
         add(f"- Background tasks at Stop: not reported by {provider} [{UNAVAILABLE}]")
     if final and final.watchers:

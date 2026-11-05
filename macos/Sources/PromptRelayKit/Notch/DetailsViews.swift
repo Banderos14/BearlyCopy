@@ -1219,6 +1219,7 @@ struct SessionSwitcherView: View {
     static func chip(_ state: AppModel.SessionState) -> (String, Color) {
         switch state {
         case .working: return ("working", Island.warning)
+        case .waitingBackground: return ("waiting · background", Island.warning)
         case .answered: return ("answered", Island.secondary)
         case .noAnswer: return ("no answer", Island.tertiary)
         case .failed: return ("API error", Island.error)

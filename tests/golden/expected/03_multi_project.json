@@ -73,6 +73,7 @@
             "last_event_at": "2026-01-01T00:00:03.000000Z",
             "last_turn": {
               "answered_at": "2026-01-01T00:00:03.000000Z",
+              "completion": "answer",
               "index": 1,
               "status": "stop_received"
             },
@@ -107,6 +108,7 @@
             "last_event_at": "2026-01-01T00:00:02.000000Z",
             "last_turn": {
               "answered_at": "2026-01-01T00:00:02.000000Z",
+              "completion": "answer",
               "index": 1,
               "status": "stop_received"
             },
@@ -161,6 +163,7 @@
             "last_event_at": "2026-01-01T00:00:02.000000Z",
             "last_turn": {
               "answered_at": "2026-01-01T00:00:02.000000Z",
+              "completion": "answer",
               "index": 1,
               "status": "stop_received"
             },
@@ -213,6 +216,7 @@
           "last_event_at": "2026-01-01T00:00:03.000000Z",
           "last_turn": {
             "answered_at": "2026-01-01T00:00:03.000000Z",
+            "completion": "answer",
             "index": 1,
             "status": "stop_received"
           },
@@ -233,6 +237,7 @@
             "watchers": 0
           },
           "candidate_request_turns": [],
+          "completion": "answer",
           "earlier_user_request": null,
           "error": null,
           "final_response": {
@@ -310,6 +315,7 @@
           "last_event_at": "2026-01-01T00:00:02.000000Z",
           "last_turn": {
             "answered_at": "2026-01-01T00:00:02.000000Z",
+            "completion": "answer",
             "index": 1,
             "status": "stop_received"
           },
@@ -330,6 +336,7 @@
             "watchers": 0
           },
           "candidate_request_turns": [],
+          "completion": "answer",
           "earlier_user_request": null,
           "error": null,
           "final_response": {

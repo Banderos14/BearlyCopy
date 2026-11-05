@@ -1,5 +1,17 @@
 # Status
 
+## 2026-11-05 — Phase 9.4 (sections 0–2): intermediate Stops, attachments without Add
+
+A Stop that reports running `shell`/agent work is no longer an answer: the
+Core's new `completion` marks it `waiting_background` or `intermediate`
+(Claude Code 2.1.268 continues in a new `<task-notification>` turn, observed
+on this Mac); only the follow-up final answer becomes Latest, lights the
+green dot and is announced once. Waiting ends after 2 h as "Completion
+unknown". `show` gains `work_chain`, so files written before the background
+wait are auto-prepared with the final answer — no Add, no Details. The task
+text received ended inside section 2; later sections were not received.
+Details: [Phase 9.4](../macos/PHASE9.4.md). Installed app not updated.
+
 ## 2026-11-05 — Phase 9.3: one Latest across agents, logical projects, smart attachments
 
 Latest now follows the newest *completed* answer with text from Claude Code or

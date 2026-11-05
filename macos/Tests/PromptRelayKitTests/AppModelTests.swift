@@ -75,16 +75,18 @@ func project(_ path: String, sessions: Int, last: String?, enabled: Bool = true)
 }
 
 func sessionSummary(_ key: String, project: String, last: String, lastTurn: Int = 1,
-                    status: String = "stop_received") -> SessionSummary {
-    try! JSONDecoder().decode(SessionSummary.self, from: Data("""
+                    status: String = "stop_received", completion: String? = nil) -> SessionSummary {
+    let completionJSON = completion.map { ",\"completion\":\"\($0)\"" } ?? ""
+    return try! JSONDecoder().decode(SessionSummary.self, from: Data("""
     {"session_id":"\(key)","session_key":"\(key)","project":{"path":"\(project)","name":"p"},"first_event_at":"\(last)",
-     "last_event_at":"\(last)","event_count":2,"turn_count":\(lastTurn),"cwds":[],"last_turn":{"index":\(lastTurn),"status":"\(status)"},
+     "last_event_at":"\(last)","event_count":2,"turn_count":\(lastTurn),"cwds":[],"last_turn":{"index":\(lastTurn),"status":"\(status)"\(completionJSON)},
      "integrity":{"corrupt_lines":0,"unsupported_lines":0,"foreign_lines":0}}
     """.utf8))
 }
 
 func turn(_ index: Int, status: String = "stop_received", preview: String? = "answer…", chars: Int = 7, text: String? = nil,
-          request: String? = nil, link: String = "prompt_id", at: String = "2026-10-29T16:13:51.000000Z") -> Turn {
+          request: String? = nil, link: String = "prompt_id", at: String = "2026-10-29T16:13:51.000000Z",
+          completion: String? = nil, continuedIn: Int? = nil, origin: String? = nil) -> Turn {
     let requestJSON = request.map { r in
         "{\"preview\":\(String(data: try! JSONEncoder().encode(r), encoding: .utf8)!),\"truncated\":false,\"char_count\":\(r.count),\"utf8_bytes\":\(r.utf8.count),\"prompt_id\":\"p\(index)\",\"received_at\":\"2026-10-29T16:13:00.000000Z\"}"
     } ?? "null"
@@ -95,7 +97,7 @@ func turn(_ index: Int, status: String = "stop_received", preview: String? = "an
     let error = status == "api_error" ? #"{"type":"rate_limit","details":null,"message":"API Error: Rate limit"}"# : "null"
     return try! JSONDecoder().decode(Turn.self, from: Data("""
     {"index":\(index),"status":"\(status)","link":"\(link)","request":\(requestJSON),"final_response":\(response),
-     "response_event_count":1,"background_tasks":null,"error":\(error),"candidate_request_turns":[]}
+     "response_event_count":1,"background_tasks":null,"error":\(error),"candidate_request_turns":[]\(completion.map { ",\"completion\":\"\($0)\"" } ?? "")\(continuedIn.map { ",\"continued_in_turn\":\($0)" } ?? "")\(origin.map { ",\"request_origin\":\"\($0)\"" } ?? "")}
     """.utf8))
 }
 

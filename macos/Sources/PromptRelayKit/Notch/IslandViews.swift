@@ -908,11 +908,20 @@ struct PeekContent: View {
     private var status: (String, Color) {
         if model.selectedImport != nil { return ("Imported", Island.secondary) }
         guard let turn = model.selectedTurn else { return ("", Island.tertiary) }
+        // Phase 9.4: an intermediate Stop is never shown as the answer.
+        switch turn.completion {
+        case .intermediate:
+            return ("Intermediate · continued in turn \(turn.continuedInTurn ?? turn.index + 1)", Island.warning)
+        case .waitingBackground:
+            return AppModel.waitExpired(turn.finalResponse?.receivedAt)
+                ? ("Completion unknown", Island.warning) : ("Waiting for background work", Island.warning)
+        default: break
+        }
         if model.hasUnseenAnswer { return ("New answer", Island.accent) }
         switch turn.status {
         case .awaitingResponse: return ("Working", Island.warning)
         case .apiError: return ("API error", Island.error)
-        case .stopReceivedBackgroundTasksPending: return ("Stopped · background work", Island.warning)
+        case .stopReceivedBackgroundTasksPending: return ("Stopped · background work was running", Island.warning)
         default: return ("Stopped", Island.secondary)
         }
     }

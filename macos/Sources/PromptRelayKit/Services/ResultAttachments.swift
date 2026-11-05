@@ -54,13 +54,23 @@ extension ReportStore {
     /// Rediscovery must never reselect a checkbox or recreate a removed attachment.
     func prepareResults(_ show: ShowData) throws -> Int {
         guard let cwd = show.session.project.path, let answer = show.turn.finalResponse?.text,
-              let observed = show.turn.observedDetail else { return 0 }
+              let own = show.turn.observedDetail else { return 0 }
+        // Phase 9.4: an intermediate Stop is not the result; its files are
+        // prepared with the final answer that continues it.
+        guard show.turn.completion.isFinal || show.turn.completion == .waitingBackground && show.turn.workChain == nil
+                && AppModel.waitExpired(show.turn.finalResponse?.receivedAt) else { return 0 }
+        // The follow-up of background work: the files of the task's earlier
+        // turns (same session) count as observed for this answer.
+        let chain = show.turn.workChain
+        let observed = ObservedDetail(commands: own.commands, filesChanged: (chain?.filesChanged ?? []) + own.filesChanged,
+                                      shownFiles: (chain?.shownFiles ?? []) + own.shownFiles.filter { !(chain?.shownFiles ?? []).contains($0) },
+                                      artifacts: own.artifacts, notifications: own.notifications)
         // Phase 9.3: an agent in `<repo>/macos` may name `<repo>/docs/…`. The
         // allowed root is the logical project when it contains the folder
         // (an enabled project or a verified Git root), else the folder.
         let logical = show.session.logicalProject?.path
         let rootPath = logical.flatMap { AppModel.path(cwd, isInside: $0) ? $0 : nil } ?? cwd
-        let turnStarted = show.turn.request?.receivedAt.flatMap(Wording.date)
+        let turnStarted = (chain?.startedAt ?? show.turn.request?.receivedAt).flatMap(Wording.date)
         let ref = ReportRef.local(sessionKey: show.session.sessionKey, turn: show.turn.index)
         let ledger = root.appendingPathComponent("prepared-results.json")
         var prepared: [String: Set<String>] = [:]

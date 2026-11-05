@@ -123,7 +123,7 @@ def session_summary(s: Session, resolver: Optional[Any] = None) -> Dict[str, Any
         # answered_at (Phase 9.3): when the turn's final response was stored,
         # so "latest" means latest completed answer, not latest activity.
         "last_turn": None if last is None else {
-            "index": last.index, "status": last.status,
+            "index": last.index, "status": last.status, **completion(last, s.turns),
             **({"answered_at": last.final_response.received_at}
                if last.final_response is not None and last.final_response.received_at else {}),
         },
@@ -168,6 +168,7 @@ def turn_object(t: c.Turn, full: bool = False, turns: Optional[List[c.Turn]] = N
         **({"native_turn_id": t.last_event.native_turn_id} if t.last_event and t.last_event.native_turn_id else {}),
         "index": t.index,
         "status": t.status,
+        **completion(t, turns),
         "link": t.link,
         # The turn's own prompt. A turn holds a prompt only when it is that
         # prompt's turn; how firmly the response belongs to it is ``link``.
@@ -185,7 +186,71 @@ def turn_object(t: c.Turn, full: bool = False, turns: Optional[List[c.Turn]] = N
         "notification_count": len(t.notifications),
         "observed": tools.observed_counts(t),
         **({"observed_detail": tools.observed_detail(t)} if full else {}),
+        **(_work_chain(t, turns) if full else {}),
     }
+
+
+def _work_chain(t: c.Turn, turns: Optional[List[c.Turn]]) -> Dict[str, Any]:
+    """Phase 9.4, ``show`` only: the earlier turns of this session whose Stop
+    left work running and which this turn continued (oldest first). Their
+    observed files belong to the same task; ``started_at`` is the request
+    that started it. Only this session's turns are read."""
+    if not turns:
+        return {}
+    chain: List[c.Turn] = []
+    current = t
+    while current.index > 1:
+        prev = turns[current.index - 2]
+        info = completion(prev, turns)
+        if info.get("completion") != COMPLETION_INTERMEDIATE or info.get("continued_in_turn") != current.index:
+            break
+        chain.insert(0, prev)
+        current = prev
+    if not chain:
+        return {}
+    files: List[Dict[str, Any]] = []
+    shown: List[str] = []
+    for x in chain:
+        detail = tools.observed_detail(x)
+        files += detail.get("files_changed", [])
+        shown += [p for p in detail.get("shown_files", []) if p not in shown]
+    first = chain[0].prompt
+    return {"work_chain": {"from_turn": chain[0].index, "turns": [x.index for x in chain],
+                           "started_at": first.received_at if first is not None and first.received_at else None,
+                           "files_changed": files, "shown_files": shown}}
+
+
+# Phase 9.4: what a turn's Stop means for "is the work done". Stop only says
+# the agent stopped responding. A Stop that reports running work tasks
+# (shells, agents; never `monitor` watchers or `session_crons` schedules) is
+# not a final result while nothing has followed it.
+COMPLETION_ANSWER = "answer"                      # Stop with text, no work in flight
+COMPLETION_ANSWER_BACKGROUND = "answer_background_running"  # work was running, the user moved on
+COMPLETION_WAITING = "waiting_background"         # last turn, work in flight: continuation expected
+COMPLETION_INTERMEDIATE = "intermediate"          # work in flight, the session went on automatically
+COMPLETION_WORKING = "working"
+COMPLETION_NO_TEXT = "no_text"
+COMPLETION_API_ERROR = "api_error"
+COMPLETION_UNKNOWN = "unknown"
+
+
+def completion(t: c.Turn, turns: Optional[List[c.Turn]]) -> Dict[str, Any]:
+    """``{"completion": state, "continued_in_turn": n?}``. Uses only this
+    session's turns, in order; never another session."""
+    status = t.status
+    simple = {c.STATUS_STOPPED: COMPLETION_ANSWER, c.STATUS_AWAITING: COMPLETION_WORKING,
+              c.STATUS_NO_TEXT: COMPLETION_NO_TEXT, c.STATUS_API_ERROR: COMPLETION_API_ERROR,
+              c.STATUS_NO_MATCH: COMPLETION_UNKNOWN}
+    if status != c.STATUS_BACKGROUND:
+        return {"completion": simple.get(status, COMPLETION_UNKNOWN)}
+    following = [x for x in (turns or [])[t.index:] if x.prompt is not None]
+    if not following:
+        return {"completion": COMPLETION_WAITING}
+    nxt = following[0]
+    automated = origin.classify(nxt.prompt.text) == origin.AUTOMATED
+    if automated:
+        return {"completion": COMPLETION_INTERMEDIATE, "continued_in_turn": nxt.index}
+    return {"completion": COMPLETION_ANSWER_BACKGROUND, "continued_in_turn": nxt.index}
 
 
 def _continues(t: c.Turn, turns: Optional[List[c.Turn]], full: bool) -> Dict[str, Any]:

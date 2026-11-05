@@ -133,10 +133,14 @@ struct Phase81ReadyTests {
         }
         let model = makeModel()
         await model.refreshNow()
+        // Phase 9.4: background work was running at the Stop and the user then
+        // moved on, so it is a (flagged) answer, not an intermediate one.
         core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: t1, lastTurn: 2,
-                                                       status: "stop_received_background_tasks_pending"),
+                                                       status: "stop_received_background_tasks_pending",
+                                                       completion: "answer_background_running"),
                                         sessionSummary("b", project: "/a", last: t2)]
-        core.turnsBySession["a"] = [turn(1, at: t0), turn(2, status: "stop_received_background_tasks_pending", at: t1)]
+        core.turnsBySession["a"] = [turn(1, at: t0), turn(2, status: "stop_received_background_tasks_pending", at: t1,
+                                                     completion: "answer_background_running")]
         core.turnsBySession["b"] = [turn(1, at: t2)]
         await model.refreshNow()
         #expect(model.readyIndicator == .ready(sessions: 2, automated: false, backgroundPending: false))

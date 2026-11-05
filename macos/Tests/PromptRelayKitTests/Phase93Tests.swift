@@ -434,3 +434,186 @@ struct Phase93Tests {
         #expect(task.canCopy)
     }
 }
+
+/// Phase 9.4: a Stop with work in flight is intermediate; the follow-up is the result.
+@Suite(.serialized)
+@MainActor
+struct Phase94CompletionTests {
+    @Test func backgroundTestsThenFollowUpUpdateLatestOnce() async throws {
+        let suite = "PromptRelay94.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let board = NSPasteboard(name: .init(suite))
+        defer { board.releaseGlobally(); defaults.removePersistentDomain(forName: suite) }
+        let now = ISO8601DateFormatter()
+        now.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let t0 = now.string(from: Date(timeIntervalSinceNow: -600)), t1 = now.string(from: Date(timeIntervalSinceNow: -300))
+        let t2 = now.string(from: Date(timeIntervalSinceNow: -120)), t3 = now.string(from: Date(timeIntervalSinceNow: -60))
+        let core = FakeCore(projects: [project("/repo", sessions: 1, last: t0)])
+        core.showResult = { [unowned core] key, i in
+            .success(CoreResult(data: ShowData(session: try! core.session(key), turn: turn(i, text: "\(key)#\(i)")), warnings: []))
+        }
+        core.sessionsByProject["/repo"] = [sessionSummary("s", project: "/repo", last: t0)]
+        core.turnsBySession["s"] = [turn(1, at: t0)]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        var announced: [Int] = []
+        m.onNewAnswer = { announced.append($0.turnIndex) }
+        await m.refreshNow()                                   // baseline: turn 1 seen
+
+        // Claude starts long tests, says it is waiting, and stops.
+        core.sessionsByProject["/repo"] = [sessionSummary("s", project: "/repo", last: t1, lastTurn: 2,
+                                                          status: "stop_received_background_tasks_pending", completion: "waiting_background")]
+        core.turnsBySession["s"] = [turn(1, at: t0), turn(2, status: "stop_received_background_tasks_pending", at: t1, completion: "waiting_background")]
+        await m.refreshNow()
+        #expect(m.readyIndicator == .waitingBackground(sessions: 1), "waiting, not ready")
+        #expect(!m.hasUnseenAnswer)
+        #expect(m.readyAnswer?.turnIndex == 1, "the intermediate text is not Latest")
+        #expect(m.sessionState(core.sessionsByProject["/repo"]![0]) == .waitingBackground)
+
+        // The tests finish: the harness wakes the session (an automated turn).
+        core.sessionsByProject["/repo"] = [sessionSummary("s", project: "/repo", last: t2, lastTurn: 3, status: "awaiting_response")]
+        core.turnsBySession["s"] = [turn(1, at: t0), turn(2, status: "stop_received_background_tasks_pending", at: t1,
+                                                        completion: "intermediate", continuedIn: 3),
+                                    turn(3, status: "awaiting_response", preview: nil, origin: "automated")]
+        await m.refreshNow()
+        #expect(m.readyAnswer?.turnIndex == 1)
+        #expect(announced.isEmpty)
+
+        // Claude analyses the results and gives the real final answer.
+        core.sessionsByProject["/repo"] = [sessionSummary("s", project: "/repo", last: t3, lastTurn: 3)]
+        core.turnsBySession["s"] = [turn(1, at: t0), turn(2, status: "stop_received_background_tasks_pending", at: t1,
+                                                        completion: "intermediate", continuedIn: 3),
+                                    turn(3, at: t3, completion: "answer", origin: "automated")]
+        await m.refreshNow()
+        await m.refreshNow()                                   // redelivery / repeated refresh
+        #expect(m.readyAnswer?.turnIndex == 3)
+        #expect(announced == [3], "Latest updates once, for the final answer")
+        #expect(m.hasUnseenAnswer)
+        if case .ready(_, let automated, _) = m.readyIndicator {
+            #expect(!automated, "the follow-up of the user's task is a normal ready answer")
+        } else { Issue.record("expected ready") }
+
+        // Restart: the same states from the same history.
+        let restarted = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+        await restarted.refreshNow()
+        #expect(restarted.readyAnswer?.turnIndex == 3)
+        #expect(restarted.hasUnseenAnswer)
+    }
+
+    @Test func noContinuationEndsAsUnknownNotReady() async throws {
+        let board = NSPasteboard(name: .init(UUID().uuidString))
+        defer { board.releaseGlobally() }
+        let old = "2026-11-01T10:00:00.000000Z"
+        let core = FakeCore(projects: [project("/repo", sessions: 1, last: old)])
+        core.sessionsByProject["/repo"] = [sessionSummary("s", project: "/repo", last: old, lastTurn: 1,
+                                                          status: "stop_received_background_tasks_pending", completion: "waiting_background")]
+        core.turnsBySession["s"] = [turn(1, status: "stop_received_background_tasks_pending", at: old, completion: "waiting_background")]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil)
+        await m.refreshNow()
+        #expect(m.readyIndicator == .none, "no endless waiting")
+        #expect(m.readyAnswer?.completion == .waitingBackground, "reachable, with an unknown completion")
+        #expect(!m.hasUnseenAnswer, "never announced as ready")
+    }
+
+    @Test func olderCoreWithoutCompletionIsConservative() {
+        #expect(Completion.from(.stopReceivedBackgroundTasksPending) == .waitingBackground)
+        #expect(!Completion.from(.stopReceivedBackgroundTasksPending).isFinal)
+        #expect(Completion.from(.stopReceived).isFinal)
+    }
+}
+
+/// Phase 9.4: files of a task whose answer arrives after background work.
+@Suite(.serialized)
+@MainActor
+struct Phase94AttachmentTests {
+    private func show(root: URL, turn index: Int, completion: String, chain: Bool, requestAt: Date, taskAt: Date) throws -> ShowData {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        func text(_ v: String, _ at: Date) -> [String: Any] {
+            ["text": v, "preview": v, "truncated": false, "char_count": v.count, "utf8_bytes": v.utf8.count, "prompt_id": "p\(index)",
+             "received_at": iso.string(from: at)]
+        }
+        let empty: [String: Any] = ["commands": [], "files_changed": [], "shown_files": [], "artifacts": [], "notifications": 0]
+        var turn: [String: Any] = ["index": index, "status": "stop_received", "completion": completion, "link": "prompt_id",
+                                   "request": text("<task-notification>done</task-notification>", requestAt), "request_origin": "automated",
+                                   "final_response": text("Tests passed. See REPORT.md and screen.png.", Date()),
+                                   "response_event_count": 1, "candidate_request_turns": [], "observed_detail": empty]
+        if chain {
+            turn["work_chain"] = ["from_turn": 1, "turns": [1], "started_at": iso.string(from: taskAt),
+                                  "files_changed": [["path": root.appendingPathComponent("REPORT.md").path, "tools": ["Write"], "count": 1]],
+                                  "shown_files": []]
+        }
+        let session: [String: Any] = ["session_id": "s", "session_key": "chain", "project": ["path": root.path, "name": "p"],
+                                      "first_event_at": "2026-11-05T10:00:00Z", "last_event_at": "2026-11-05T10:01:00Z", "event_count": 4,
+                                      "turn_count": index, "cwds": [root.path], "last_turn": ["index": index, "status": "stop_received"],
+                                      "integrity": ["corrupt_lines": 0, "unsupported_lines": 0, "foreign_lines": 0]]
+        return try JSONDecoder().decode(ShowData.self, from: JSONSerialization.data(withJSONObject: ["session": session, "turn": turn]))
+    }
+
+    @Test func finalAnswerAfterBackgroundWorkGetsTheTaskFilesWithoutAdd() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr94-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let taskAt = Date(timeIntervalSinceNow: -900)
+        try Data("# Report".utf8).write(to: root.appendingPathComponent("REPORT.md"))
+        try TypedAttachmentTests.png(.red).write(to: root.appendingPathComponent("screen.png"))
+        // Both files were made during the user's turn, before the follow-up turn began.
+        for name in ["REPORT.md", "screen.png"] {
+            try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -600)],
+                                                  ofItemAtPath: root.appendingPathComponent(name).path)
+        }
+        let followUpAt = Date(timeIntervalSinceNow: -60)
+        let store = ReportStore(root: root.appendingPathComponent("store"))
+        let ref = ReportRef.local(sessionKey: "chain", turn: 3)
+
+        // Without the chain the follow-up turn could not see them (the old gap).
+        let isolated = try show(root: root, turn: 3, completion: "answer", chain: false, requestAt: followUpAt, taskAt: taskAt)
+        #expect(try ReportStore(root: root.appendingPathComponent("other")).prepareResults(isolated) == 0)
+
+        let data = try show(root: root, turn: 3, completion: "answer", chain: true, requestAt: followUpAt, taskAt: taskAt)
+        #expect(try store.prepareResults(data) == 2)
+        let prepared = store.attachments(for: ref)
+        #expect(Set(prepared.map(\.originalFilename)) == ["REPORT.md", "screen.png"])
+        #expect(prepared.allSatisfy { $0.isSelected })
+        #expect(prepared.first { $0.originalFilename == "REPORT.md" }?.effectiveSource == .agentResult)
+        #expect(prepared.first { $0.originalFilename == "screen.png" }?.effectiveSource == .namedVerified)
+    }
+
+    @Test func quickPeekCopyWithContextHandsOffTheFilesWithoutDetails() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr94-" + UUID().uuidString)
+        let board = NSPasteboard(name: .init("PromptRelay94-\(UUID().uuidString)"))
+        defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data("# Report".utf8).write(to: root.appendingPathComponent("REPORT.md"))
+        try TypedAttachmentTests.png(.red).write(to: root.appendingPathComponent("screen.png"))
+        let data = try show(root: root, turn: 3, completion: "answer", chain: true,
+                            requestAt: Date(timeIntervalSinceNow: -60), taskAt: Date(timeIntervalSinceNow: -900))
+        let core = FakeCore(projects: [project(root.path, sessions: 1, last: data.session.lastEventAt)])
+        core.sessionsByProject[root.path] = [data.session]
+        core.turnsBySession["chain"] = [data.turn]
+        core.showResult = { _, _ in .success(CoreResult(data: data, warnings: [])) }
+        core.contextResult = .success(CoreResult(data: ContextData(session: data.session, turn: data.turn, exportedAt: "now",
+            text: "# Copy with Context\n## Not checked (provenance and verification limits)\n- x\n", sensitiveFindings: [],
+            git: GitSummary(available: false, reason: "fixture", branch: nil, head: nil, changedFileCount: 0, changedFilesTruncated: false)),
+            warnings: []))
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil,
+                         reportStore: ReportStore(root: root.appendingPathComponent("store")))
+        await m.refreshNow()
+        #expect(m.currentRef == .local(sessionKey: "chain", turn: 3))
+        await m.copySelectedContext()                          // the Quick Peek button; Details never opened
+        let copied = try #require(board.string(forType: .string))
+        #expect(copied.contains("REPORT.md") && copied.contains("screen.png"), "the pack lists both files")
+        #expect(m.activeHandoff?.fileCount == 2, "file hand-off is ready")
+        #expect(m.handoffs.count == 1)
+    }
+
+    @Test func intermediateStopPreparesNothing() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr94-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data("# Report".utf8).write(to: root.appendingPathComponent("REPORT.md"))
+        let data = try show(root: root, turn: 1, completion: "intermediate", chain: true,
+                            requestAt: Date(timeIntervalSinceNow: -900), taskAt: Date(timeIntervalSinceNow: -900))
+        let store = ReportStore(root: root.appendingPathComponent("store"))
+        #expect(try store.prepareResults(data) == 0, "files go with the final answer, not the intermediate one")
+    }
+}
