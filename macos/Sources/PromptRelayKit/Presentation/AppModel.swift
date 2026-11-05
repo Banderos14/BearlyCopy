@@ -1449,12 +1449,16 @@ public final class AppModel {
             let result = try await core.doctor().data
             doctor = .loaded(result)
             let sessions = try await core.sessions(project: nil).data.sessions
+            // Connection checks must publish the same fresh evidence the status rows use.
+            allSessions = sessions.sorted {
+                (Wording.date($0.lastEventAt) ?? .distantPast) > (Wording.date($1.lastEventAt) ?? .distantPast)
+            }
             let failures = result.findings.filter { $0.level == "error" }.map(\.message)
             if let error = result.capture.configError { return "Capture configuration error: \(error)" }
             if !failures.isEmpty { return failures.joined(separator: "\n") }
             guard result.storage.writable else { return "Capture storage is not writable." }
             let codex = sessions.filter { $0.provider == .codex }.count
-            return "Core responds; capture storage is writable. \(result.capture.enabledProjects.count) projects enabled; \(codex) Codex sessions recorded. Hook execution and client trust still require a real session. No AI task was started."
+            return "Core responds; capture storage is writable. \(result.capture.enabledProjects.count) projects enabled; \(codex) Codex sessions recorded. This checks storage and recorded history, not a new AI turn. See Xcode delivery stages above."
         } catch {
             return "Connection check failed: \(Self.coreError(error).localizedDescription)"
         }

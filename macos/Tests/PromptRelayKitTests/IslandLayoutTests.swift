@@ -156,8 +156,11 @@ final class IslandLayoutTests: XCTestCase {
             XCTAssertTrue(island.contains(bar), "the step-2 bar is inside the island (\(maxContent))")
             XCTAssertGreaterThanOrEqual(island.height - bar.maxY, 12, "the step-2 footer sits above the rounded edge (\(maxContent))")
             island.assertNoOverlap(["details.header", "card.task", "card.response", "card.handoff", "card.attachments", "details.footer"])
-            XCTAssertLessThanOrEqual(island.height, 32 + maxContent)
+            XCTAssertLessThanOrEqual(island.height, 32 + maxContent + max(0, bar.height - Island.controlHeight),
+                                     "The visible transfer bar may temporarily replace the normal action row")
             m.endHandoff()
+            island.settle()
+            XCTAssertLessThanOrEqual(island.height, 32 + maxContent, "Closing the transfer restores the ordinary budget")
             island.close()
         }
     }
@@ -358,7 +361,8 @@ final class IslandHost {
     let tips: IslandTooltips
 
     init(model: AppModel, surface: NotchPresentation.Surface = .expanded, maxContentHeight: CGFloat = 568, mascot: Bool = true,
-         theme: IslandTheme = .warmCocoa, tips: IslandTooltips? = nil) {
+         theme: IslandTheme = .warmCocoa, tips: IslandTooltips? = nil, availableHeight: CGFloat? = nil,
+         onHeightRequest: ((CGFloat) -> Void)? = nil) {
         let tips = tips ?? IslandTooltips()
         self.tips = tips
         width = surface == .peek ? NotchLayout.peekWidth : NotchLayout.expandedWidth
@@ -368,7 +372,14 @@ final class IslandHost {
         presentation.surface = surface
         presentation.showsMascot = mascot
         presentation.maxContentHeight = maxContentHeight
-        let size = NSSize(width: width, height: 32 + maxContentHeight + 40)
+        if let availableHeight { presentation.maxVisibleContentHeight = availableHeight }
+        if let onHeightRequest {
+            presentation.onContentHeight = { [presentation] height in
+                onHeightRequest(height)
+                presentation.contentHeight = height
+            }
+        }
+        let size = NSSize(width: width, height: 32 + (availableHeight ?? maxContentHeight + 40))
         let settings = NotchSettings(defaults: UserDefaults(suiteName: "PromptRelayLayout-\(UUID().uuidString)")!)
         settings.theme = theme
         host = NSHostingView(rootView: NotchRootView(model: model, presentation: presentation,
@@ -425,7 +436,7 @@ final class IslandHost {
     }
 
     private func scrollViews(in view: NSView) -> [NSScrollView] {
-        (view as? NSScrollView).map { [$0] } ?? [] + view.subviews.flatMap(scrollViews)
+        ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap(scrollViews)
     }
 
     /// The Response card's scroll view: the vertical one with the most content.

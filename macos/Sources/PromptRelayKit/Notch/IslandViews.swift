@@ -75,19 +75,17 @@ extension EnvironmentValues {
     }
 }
 
-/// Offers its one child the island's whole height budget and takes the
-/// height the child uses, never more than the budget. Scroll areas inside
-/// take what is left after the fixed rows (header, footer), so nothing can
-/// grow past the island and draw over the rows below it — the cause of
-/// Phase 5's overlaps, where estimated heights left the real content taller
-/// than its frame.
+/// Offers its child a stable budget; inner scrollers share the space left
+/// after fixed rows. The adaptive viewport permits minimum-size overflow so
+/// it can scroll the complete content instead of hiding rows below a clamp.
 struct HeightBudget: Layout {
     var maxHeight: CGFloat
+    var allowsOverflow = false
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         guard let child = subviews.first else { return .zero }
         let size = child.sizeThatFits(ProposedViewSize(width: proposal.width, height: maxHeight))
-        return CGSize(width: proposal.width ?? size.width, height: min(size.height, maxHeight))
+        return CGSize(width: proposal.width ?? size.width, height: allowsOverflow ? size.height : min(size.height, maxHeight))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
@@ -795,7 +793,7 @@ struct PeekContent: View {
             }
             .islandPadding(presentation)
         }
-        .animation(.easeOut(duration: 0.15), value: model.activeHandoff)
+        .animation(presentation.resizeAnimation, value: model.activeHandoff)
     }
 
     /// Project · session, and the turn's state as a chip.

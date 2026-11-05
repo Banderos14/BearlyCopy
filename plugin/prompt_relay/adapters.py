@@ -11,6 +11,37 @@ PROVIDERS = ('claude_code', 'codex')
 HOSTS = ('claude_desktop', 'xcode', 'terminal', 'vscode', 'other', 'unknown')
 
 
+def _xcode_write_result(response: Any) -> Optional[str]:
+    """Only an explicit successful tool result with an absolute path is evidence.
+
+    Xcode navigator paths and requested input paths are not filesystem evidence.
+    MCP can return structuredContent or a JSON text content block.
+    """
+    if isinstance(response, str):
+        try:
+            response = json.loads(response)
+        except ValueError:
+            return None
+    if not isinstance(response, dict) or response.get('isError') is True:
+        return None
+    result = response.get('structuredContent', response)
+    if isinstance(result, dict) and result.get('success') is True:
+        path = result.get('absolutePath')
+        if isinstance(path, str) and os.path.isabs(path):
+            return path
+    for block in response.get('content', []) if isinstance(response.get('content'), list) else []:
+        if isinstance(block, dict) and block.get('type') == 'text' and isinstance(block.get('text'), str):
+            try:
+                result = json.loads(block['text'])
+            except ValueError:
+                continue
+            if isinstance(result, dict) and result.get('success') is True:
+                path = result.get('absolutePath')
+                if isinstance(path, str) and os.path.isabs(path):
+                    return path
+    return None
+
+
 def _claude(payload: Dict[str, Any], env: Mapping[str, str]) -> Optional[Dict[str, Any]]:
     out = tools.reduce(payload) if payload.get('hook_event_name') in tools.TOOL_EVENTS else dict(payload)
     out.pop('source', None)
@@ -93,8 +124,10 @@ def _codex(payload: Dict[str, Any], env: Mapping[str, str]) -> Optional[Dict[str
             text = response if isinstance(response, str) else ''
             out['paths_changed'] = re.findall(r'(?m)^[AM] (.+)$', text) if text.startswith('Success.') else []
         elif isinstance(tool, str) and tool.endswith(('__XcodeWrite', '__XcodeUpdate')):
-            # Xcode logical paths are not filesystem paths; don't fabricate them.
-            out['outcome'] = 'unknown'
+            path = _xcode_write_result(response)
+            out['outcome'] = 'ok' if path else 'unknown'
+            if path:
+                out['paths_changed'] = [path]
     out['source'] = source
     out['native_turn_id'] = turn
     return out

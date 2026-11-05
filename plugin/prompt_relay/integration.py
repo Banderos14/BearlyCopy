@@ -133,6 +133,7 @@ def observed(root: Path) -> Dict[str, Any]:
     except OSError:
         return {"log_file": str(path), "state": "unreadable", "lines_scanned": 0, "by_via": {}, "outcomes": {}}
     by_via: Dict[str, Dict[str, Any]] = {}
+    by_source: Dict[str, Dict[str, Any]] = {}
     outcomes: Counter = Counter()
     for line in lines:
         parts = line.split()
@@ -144,8 +145,20 @@ def observed(root: Path) -> Dict[str, Any]:
         slot = by_via.setdefault(via, {"events": 0, "last_at": None})
         slot["events"] += 1
         slot["last_at"] = parts[0]
+        # Only launcher-controlled, allowlisted labels establish attribution.
+        # Historical lines without these fields never prove Codex execution.
+        if "provider=codex" in parts and "host=xcode" in parts:
+            source = by_source.setdefault("codex:xcode", {"events": 0})
+            source.update(events=source["events"] + 1, last_at=parts[0],
+                          last_event=parts[1], last_outcome=outcome.split(":")[0])
+            if outcome in ("stored", "duplicate"):
+                source["last_stored_at"] = parts[0]
+            elif outcome not in ("ignored_event", "project_not_enabled", "disabled"):
+                source["last_error_at"] = parts[0]
+                source["last_error"] = outcome.split(":")[0]
     return {"log_file": str(path), "state": "ok" if lines else "empty", "lines_scanned": len(lines),
-            "by_via": dict(sorted(by_via.items())), "outcomes": dict(sorted(outcomes.items()))}
+            "by_via": dict(sorted(by_via.items())), "outcomes": dict(sorted(outcomes.items())),
+            "by_source": by_source}
 
 
 def diagnose(env: Mapping[str, str], project: Optional[str], python_version: Tuple[int, int, int],

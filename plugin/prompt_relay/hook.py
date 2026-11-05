@@ -21,7 +21,7 @@ from typing import Any, Dict, Mapping, Optional, Tuple
 
 from prompt_relay import config as _config
 from prompt_relay.events import KIND_BY_EVENT
-from prompt_relay.adapters import normalize
+from prompt_relay.adapters import normalize, PROVIDERS, HOSTS
 from prompt_relay.paths import data_dir
 from prompt_relay.store import SCHEMA_VERSION, Store, StoreError, fingerprint
 from prompt_relay.tools import TOOL_EVENTS, reduce as reduce_tool_event
@@ -108,7 +108,7 @@ def via_label(env: Mapping[str, str]) -> str:
     return "plugin" if env.get(ENV_VIA) == "plugin" else "direct"
 
 
-def _log(root: Path, event: str, outcome: str, via: str = "direct") -> None:
+def _log(root: Path, event: str, outcome: str, via: str = "direct", env: Optional[Mapping[str, str]] = None) -> None:
     try:
         if not root.is_dir():
             return
@@ -122,7 +122,14 @@ def _log(root: Path, event: str, outcome: str, via: str = "direct") -> None:
         try:
             # Format: <utc> <event> via=<plugin|direct> <outcome>. The outcome
             # stays the last token; older lines have no via= field.
-            os.write(fd, f"{_utc_iso(time.time())} {event} via={via} {outcome}\n".encode("ascii", "replace"))
+            env = {} if env is None else env
+            provider = env.get("PROMPT_RELAY_PROVIDER", "claude_code")
+            provider = provider if provider in PROVIDERS else "unknown"
+            host = env.get("PROMPT_RELAY_HOST", "unknown")
+            host = host if host in HOSTS else "unknown"
+            event = event if event in KIND_BY_EVENT else "-"
+            source = f" provider={provider} host={host}" if "PROMPT_RELAY_PROVIDER" in env else ""
+            os.write(fd, f"{_utc_iso(time.time())} {event} via={via}{source} {outcome}\n".encode("ascii", "replace"))
         finally:
             os.close(fd)
     except Exception:
@@ -147,5 +154,5 @@ def main(stdin: Any = None, env: Optional[Mapping[str, str]] = None) -> int:
         except Exception:
             pass
     if root is not None and outcome != "disabled":
-        _log(root, event, outcome, via_label(env))
+        _log(root, event, outcome, via_label(env), env)
     return 0

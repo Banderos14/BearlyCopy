@@ -26,7 +26,18 @@ struct IntegrationsView: View {
                 IntegrationStatusRow(model: model, provider: .codex)
                 Text(xcodeConfiguration.summary)
                     .font(.system(size: 11)).foregroundStyle(Island.secondary).padding(.horizontal, 12)
-                Text("Only hooks.json definitions are inspected. Inline/plugin hooks, client trust and policy may differ; automatic capture remains unverified until a real Xcode session delivers events.")
+                let delivery = CodexDeliveryStatus(sessions: model.allSessions, observed: model.doctor.value?.observed.bySource?["codex:xcode"])
+                Text(delivery.summary)
+                    .font(.system(size: 11, weight: .semibold)).padding(.horizontal, 12)
+                Text(delivery.detail)
+                    .font(.system(size: 10.5)).foregroundStyle(Island.secondary).padding(.horizontal, 12)
+                Text("This app: PID \(ProcessInfo.processInfo.processIdentifier) · \(Bundle.main.bundleURL.path)")
+                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
+                if !AppBuild.otherBuildsRunning().isEmpty {
+                    Text("Another Prompt Relay build is running. An older build may not recognize Codex. Manage running copies in Settings → About.")
+                        .font(.system(size: 11)).foregroundStyle(Island.secondary).padding(.horizontal, 12)
+                }
+                Text("Definitions do not prove trust. Saved Xcode events confirm delivery at the displayed time; Test Connection starts no AI task.")
                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
                 Hairline()
                 VStack(alignment: .leading, spacing: 6) {
@@ -44,7 +55,10 @@ struct IntegrationsView: View {
                 }.padding(12)
             }
         }
-        .task { xcodeConfiguration = .inspect(at: CodexHookConfiguration.xcodeURL) }
+        .task {
+            xcodeConfiguration = .inspect(at: CodexHookConfiguration.xcodeURL)
+            diagnostic = await model.testIntegrationConnection()
+        }
     }
 }
 
@@ -79,7 +93,7 @@ struct IntegrationStatusRow: View {
                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
             }
             Text(provider == .codex
-                 ? "Requires reviewed Codex hooks and project capture enabled. Xcode capture is unverified; use Import AI Result for a reliable manual handoff."
+                 ? "Requires reviewed Codex hooks and project capture enabled. Delivery stages above distinguish configuration, execution, storage and the final Stop."
                  : "UserPromptSubmit, Stop, PostToolUse and PostToolUseFailure through the existing Claude Code plugin.")
                 .font(.system(size: 11)).foregroundStyle(Island.tertiary)
             Text("To stop capture, disable the project in Projects or disable Prompt Relay hooks in the agent. Saved history stays available.")

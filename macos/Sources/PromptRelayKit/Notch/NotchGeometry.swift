@@ -9,6 +9,8 @@ public struct ScreenDescriptor: Equatable, Sendable {
     public let isBuiltIn: Bool
     /// Global AppKit coordinates (origin bottom-left of the primary display).
     public let frame: CGRect
+    /// Work area excludes a visible Dock. Used only for the growth ceiling.
+    public let visibleFrame: CGRect
     /// Height of the top safe area: > 0 only on displays with a camera housing.
     public let safeAreaTop: CGFloat
     /// Menu-bar areas left and right of the notch (`NSScreen.auxiliaryTop…Area`), global coordinates.
@@ -18,11 +20,12 @@ public struct ScreenDescriptor: Equatable, Sendable {
     public let menuBarHeight: CGFloat
 
     public init(displayID: UInt32, name: String, isBuiltIn: Bool, frame: CGRect, safeAreaTop: CGFloat,
-                auxiliaryTopLeft: CGRect?, auxiliaryTopRight: CGRect?, menuBarHeight: CGFloat = 24) {
+                auxiliaryTopLeft: CGRect?, auxiliaryTopRight: CGRect?, menuBarHeight: CGFloat = 24, visibleFrame: CGRect? = nil) {
         self.displayID = displayID
         self.name = name
         self.isBuiltIn = isBuiltIn
         self.frame = frame
+        self.visibleFrame = visibleFrame ?? frame
         self.safeAreaTop = safeAreaTop
         self.auxiliaryTopLeft = auxiliaryTopLeft
         self.auxiliaryTopRight = auxiliaryTopRight
@@ -56,7 +59,7 @@ extension ScreenDescriptor {
                   frame: frame, safeAreaTop: screen.safeAreaInsets.top,
                   auxiliaryTopLeft: global(screen.auxiliaryTopLeftArea),
                   auxiliaryTopRight: global(screen.auxiliaryTopRightArea),
-                  menuBarHeight: max(0, frame.maxY - screen.visibleFrame.maxY))
+                  menuBarHeight: max(0, frame.maxY - screen.visibleFrame.maxY), visibleFrame: screen.visibleFrame)
     }
 }
 
@@ -121,7 +124,7 @@ public struct NotchLayout: Equatable, Sendable {
     /// Displays at least this wide get the wider widths.
     public static let wideDisplay: CGFloat = 1700
     public static let minContentHeight: CGFloat = 56
-    /// The open island is never taller than this (band included)…
+    /// Ordinary content is no taller than this (band included)…
     public static let maxIslandHeight: CGFloat = 480
     /// …nor than this share of the display height below it (Phase 5: ≤ 38 %).
     public static let maxScreenShare: CGFloat = 0.38
@@ -136,7 +139,7 @@ public struct NotchLayout: Equatable, Sendable {
 
     public init?(screen: ScreenDescriptor) {
         guard let notch = screen.notchRect else { return nil }
-        self.init(notch: notch, top: screen.frame.maxY, screen: screen.frame, floating: false)
+        self.init(notch: notch, top: screen.frame.maxY, screen: screen.frame, visibleBottom: screen.visibleFrame.minY, floating: false)
     }
 
     /// The fallback on a display without a notch: the same island, centered
@@ -144,10 +147,10 @@ public struct NotchLayout: Equatable, Sendable {
     public init(floatingOn screen: ScreenDescriptor) {
         let top = screen.frame.maxY - screen.menuBarHeight - Self.floatingGap
         let band = CGRect(x: screen.frame.midX, y: top - 32, width: 0, height: 32)
-        self.init(notch: band, top: top, screen: screen.frame, floating: true)
+        self.init(notch: band, top: top, screen: screen.frame, visibleBottom: screen.visibleFrame.minY, floating: true)
     }
 
-    private init(notch: CGRect, top: CGFloat, screen: CGRect, floating: Bool) {
+    private init(notch: CGRect, top: CGFloat, screen: CGRect, visibleBottom: CGFloat, floating: Bool) {
         self.notch = notch
         screenTop = top
         isFloating = floating
@@ -161,7 +164,7 @@ public struct NotchLayout: Equatable, Sendable {
         let floor = min(Self.minIslandHeight, (top - screen.minY) * 0.6)
         let height = max(notch.height + Self.minContentHeight, min(Self.maxIslandHeight, max(available, floor)))
         maxContentHeight = height - notch.height
-        maxVisibleContentHeight = max(Self.minContentHeight, top - screen.minY - notch.height - 12)
+        maxVisibleContentHeight = max(0, top - max(screen.minY, visibleBottom) - notch.height - 12)
         var x = notch.midX - width / 2
         x = max(screen.minX, min(x, screen.maxX - width))  // stay on this display
         expanded = CGRect(x: x, y: top - height - Self.shadowInset, width: width, height: height + Self.shadowInset)
@@ -170,10 +173,10 @@ public struct NotchLayout: Equatable, Sendable {
     /// Size of the expanded island itself (without the shadow margin).
     public var expandedIslandWidth: CGFloat { expanded.width - Self.shadowInset * 2 }
 
-    /// Expanded window for a measured content height: as tall as the island,
-    /// so no empty transparent area hangs below it.
-    public func expandedFrame(contentHeight: CGFloat, peek: Bool = false, helpHeight: CGFloat = 0) -> CGRect {
-        let content = min(max(contentHeight, Self.minContentHeight), min(maxContentHeight + helpHeight, maxVisibleContentHeight))
+    /// Extra height is measured visible content (banners, handoff and help),
+    /// not a permanent allowance. The work area's bottom remains a hard cap.
+    public func expandedFrame(contentHeight: CGFloat, peek: Bool = false, extraHeight: CGFloat = 0) -> CGRect {
+        let content = min(max(contentHeight, Self.minContentHeight), min(maxContentHeight + extraHeight, maxVisibleContentHeight))
         let height = notch.height + content + Self.shadowInset
         let width = peek ? peekWidth + Self.shadowInset * 2 : expanded.width
         let x = expanded.midX - width / 2

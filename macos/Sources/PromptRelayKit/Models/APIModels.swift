@@ -463,10 +463,26 @@ public struct DoctorData: Decodable, Equatable, Sendable {
             enum CodingKeys: String, CodingKey { case events, lastAt = "last_at" }
         }
         public let state: String
+        public struct Source: Decodable, Equatable, Sendable {
+            public let events: Int
+            public let lastAt: String
+            public let lastEvent: String
+            public let lastOutcome: String
+            public let lastStoredAt: String?
+            public let lastErrorAt: String?
+            public let lastError: String?
+
+            enum CodingKeys: String, CodingKey {
+                case events
+                case lastAt = "last_at", lastEvent = "last_event", lastOutcome = "last_outcome"
+                case lastStoredAt = "last_stored_at", lastErrorAt = "last_error_at", lastError = "last_error"
+            }
+        }
         public let byVia: [String: Via]
         public let outcomes: [String: Int]
+        public var bySource: [String: Source]? = nil
 
-        enum CodingKeys: String, CodingKey { case state, outcomes, byVia = "by_via" }
+        enum CodingKeys: String, CodingKey { case state, outcomes, byVia = "by_via", bySource = "by_source" }
     }
     public struct Finding: Decodable, Equatable, Hashable, Sendable {
         public let level: String

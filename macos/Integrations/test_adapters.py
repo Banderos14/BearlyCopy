@@ -7,12 +7,48 @@ import subprocess
 import tempfile
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'plugin'))
-from prompt_relay import hook, config, history, api, export
+from prompt_relay import hook, config, history, api, export, integration
 from prompt_relay.store import Store
 from prompt_relay.gitinfo import GitInfo
 
 
 class AdaptersTests(unittest.TestCase):
+    def test_xcode_write_requires_successful_absolute_result(self):
+        self.send('UserPromptSubmit', prompt='task')
+        result = {'success': True, 'absolutePath': str(self.project/'REPORT.md')}
+        for i, response in enumerate([
+            {'structuredContent': result},
+            {'content': [{'type': 'text', 'text': json.dumps(result)}]},
+            {'success': False, 'absolutePath': str(self.project/'FAILED.md')},
+            {'success': True, 'filePath': 'Project/UNCONFIRMED.md'},
+            {'isError': True, 'structuredContent': result},
+        ]):
+            self.send('PostToolUse', tool_name='mcp__xcode_tools__XcodeWrite', tool_use_id=str(i),
+                      tool_input={'filePath': 'Project/UNCONFIRMED.md'}, tool_response=response)
+        self.send('Stop', last_assistant_message='REPORT.md')
+        session = history.load_all(Store(self.data))[0]
+        files = api.turn_object(session.turns[0], full=True)['observed_detail']['files_changed']
+        self.assertEqual([f['path'] for f in files], [str(self.project/'REPORT.md')])
+
+    def test_diagnostics_attribute_rejections_without_payload_text(self):
+        env = dict(self.env, PROMPT_RELAY_HOME=str(self.data))
+        raw = json.dumps(dict(hook_event_name='UserPromptSubmit', cwd='/not-enabled',
+                              prompt='PRIVATE PROMPT', session_id='PRIVATE ID', turn_id='1')).encode()
+        self.assertEqual(hook.main(io.BytesIO(raw), env), 0)
+        seen = integration.observed(self.data)['by_source']['codex:xcode']
+        self.assertEqual(seen['last_outcome'], 'project_not_enabled')
+        self.assertNotIn('last_stored_at', seen)
+        self.assertNotIn('PRIVATE', (self.data/'handler.log').read_text())
+        hook.main(io.BytesIO(b'invalid'), env)
+        self.assertEqual(integration.observed(self.data)['by_source']['codex:xcode']['last_error'], 'invalid_json')
+        env['PROMPT_RELAY_HOST'] = 'terminal'
+        hook.main(io.BytesIO(b'invalid'), env)
+        self.assertEqual(integration.observed(self.data)['by_source']['codex:xcode']['events'], 2)
+
+    def test_legacy_log_does_not_prove_codex_execution(self):
+        (self.data/'handler.log').write_text('2026-11-04T00:00:00Z Stop via=plugin stored\n')
+        self.assertEqual(integration.observed(self.data)['by_source'], {})
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

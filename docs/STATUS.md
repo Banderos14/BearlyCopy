@@ -1,5 +1,17 @@
 # Status
 
+## 2026-11-04 — Phase 9.2 delivery diagnosis
+
+Real Xcode UserPromptSubmit/PostToolUse now reach storage and Swift AppModel
+without changing hooks or trust. Two sessions show `Codex · Xcode · This Mac`;
+no completed Stop/answer is verified yet. A running installed pre-Codex build
+misclassified the same stored sessions; fresh Core recognizes them. Fixed stale
+integration status refresh, added source-specific metadata diagnostics and
+recognized successful Xcode write results with absolute paths. Python 3.14/3.9,
+Swift regressions and Xcode build passed. Full live acceptance remains pending
+one completed owner smoke, not another hook installation. See
+[Phase 9.2](../macos/PHASE9.2.md). Earlier checkpoint below is historical.
+
 ## 2026-11-04 — Phase 9.1 acceptance checkpoint
 
 Phase 9 implementation is committed through `1686384`. Phase 9.1 confirms the active Xcode CODEX_HOME, absent Relay hook configuration and zero recorded Codex sessions. Preview succeeded; owner consent to profile changes and real hook trust/session delivery remain pending. Real Xcode and CLI capture are **not verified**. Integration status UI now distinguishes installed adapter, hook definitions and recorded events. Relevant Swift tests, Python regressions and Debug/Release builds pass; interactive live acceptance remains open. See [Phase 9.1](../macos/PHASE9.1.md) and [Phase 9](../macos/PHASE9.md). No Phase 10 work.

@@ -1444,6 +1444,9 @@
             "by_via": {
               "type": "object"
             },
+            "by_source": {
+              "type": "object"
+            },
             "outcomes": {
               "type": "object"
             }

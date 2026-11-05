@@ -111,12 +111,14 @@ struct DetailsView: View {
             } else if facts.source == nil {
                 SessionHeader(model: model, facts: facts)
                 ClipboardNotice(model: model)
+                    .islandExtraHeight("clipboard.notice", spacing: layout.metrics.spacing)
                 emptyState
                 DetailsFooter(model: model, actions: actions, blocked: true, showsCopies: false)
                     .islandFrame("home.footer")
             } else {
                 SessionHeader(model: model, facts: facts).islandFrame("details.header")
                 ClipboardNotice(model: model)
+                    .islandExtraHeight("clipboard.notice", spacing: layout.metrics.spacing)
                 content(layout, facts: facts)
                 DetailsFooter(model: model, actions: actions, blocked: facts.blocker != nil)
                     .islandFrame("details.footer")
@@ -373,6 +375,7 @@ struct CopyFailureLine: View {
                 .font(.system(size: 11)).foregroundStyle(Island.error)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 .transition(.opacity)
+                .islandExtraHeight("copy.failure", spacing: Island.Space.s)
         }
     }
 }
@@ -801,6 +804,7 @@ struct LinkRow: View {
 struct HandoffFooter: View {
     let model: AppModel
     let step: AppModel.HandoffStep
+    @Environment(\.islandReduceMotion) private var reduceMotion
 
     var body: some View {
         // One row when it fits (it saves a line on short displays), else two.
@@ -822,8 +826,9 @@ struct HandoffFooter: View {
             }
         }
         .padding(.horizontal, Island.Space.l).padding(.vertical, Island.Space.m)
+        .islandExtraHeight("handoff", replacing: Island.controlHeight)
         .background(RoundedRectangle(cornerRadius: Island.cardRadius, style: .continuous).fill(Island.card))
-        .animation(.easeOut(duration: 0.15), value: model.copiedToken)
+        .animation(Island.geometry(reduceMotion: reduceMotion), value: model.copiedToken)
     }
 
     private func status(short: Bool) -> some View {
@@ -1329,4 +1334,3 @@ struct StateCard: View {
         }
     }
 }
-

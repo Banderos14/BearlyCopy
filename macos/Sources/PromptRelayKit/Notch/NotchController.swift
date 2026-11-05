@@ -28,12 +28,14 @@ public final class NotchPresentation {
     /// Height the expanded content needs (measured by the view); the island
     /// and its window follow it, so there is never empty space below.
     public internal(set) var contentHeight: CGFloat = NotchLayout.minContentHeight
-    /// Body and help are measured separately: changing tabs never inherits
-    /// a tooltip's pinned height. Help grows only the bottom of the panel.
+    /// The ordinary budget stays stable. Visible additions and tooltip help
+    /// are measured independently, so they never become a permanent height.
     var bodyContentHeight: CGFloat = NotchLayout.minContentHeight
     var maxVisibleContentHeight: CGFloat = 2_000
     var helpExtension: CGFloat { helpTextHeight > 0 ? helpTextHeight + 6 : 0 }
-    var bodyBudget: CGFloat { min(maxContentHeight, maxVisibleContentHeight - helpExtension) }
+    var temporaryContentHeight: CGFloat = 0
+    var panelExtension: CGFloat { temporaryContentHeight + helpExtension }
+    var bodyBudget: CGFloat { max(0, min(maxContentHeight + temporaryContentHeight, maxVisibleContentHeight - helpExtension)) }
     var helpTextHeight: CGFloat = 0 {
         didSet { reportContentHeight(bodyContentHeight + helpExtension) }
     }
@@ -94,8 +96,9 @@ public final class NotchPresentation {
 
     /// The island taking a new height while open (another answer, a card
     /// growing): 180 ms, no bounce; Reduce Motion applies it immediately.
+    static let resizeDuration: Double = 0.18
     var resizeAnimation: Animation? {
-        reduceMotion ? nil : .easeOut(duration: 0.18)
+        reduceMotion ? nil : .easeOut(duration: Self.resizeDuration)
     }
 }
 
@@ -409,7 +412,7 @@ public final class NotchController {
     }
 
     private func expandedFrame(_ layout: NotchLayout) -> CGRect {
-        layout.expandedFrame(contentHeight: presentation.contentHeight, peek: presentation.surface == .peek, helpHeight: presentation.helpExtension)
+        layout.expandedFrame(contentHeight: presentation.contentHeight, peek: presentation.surface == .peek, extraHeight: presentation.panelExtension)
     }
 
     /// The content changed height (another view, a list grew): the window
@@ -446,18 +449,24 @@ public final class NotchController {
             presentation.contentHeight = height
             return
         }
+        if presentation.reduceMotion {
+            presentation.contentHeight = height
+            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek,
+                                                extraHeight: presentation.panelExtension), display: true)
+            return
+        }
         if height >= presentation.contentHeight {
-            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek, helpHeight: presentation.helpExtension), display: true)
+            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek, extraHeight: presentation.panelExtension), display: true)
             withAnimation(presentation.resizeAnimation) { presentation.contentHeight = height }
         } else {
             withAnimation(presentation.resizeAnimation) { presentation.contentHeight = height }
             let work = DispatchWorkItem { [weak self] in
                 guard let self, self.interaction.phase.isExpanded, let layout = self.layout else { return }
                 self.panel?.setFrame(layout.expandedFrame(contentHeight: self.presentation.contentHeight,
-                                                          peek: self.presentation.surface == .peek, helpHeight: self.presentation.helpExtension), display: true)
+                                                          peek: self.presentation.surface == .peek, extraHeight: self.presentation.panelExtension), display: true)
             }
             resizeWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0.1 : Island.geometryDuration + 0.02), execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + NotchPresentation.resizeDuration + 0.02, execute: work)
         }
     }
 
