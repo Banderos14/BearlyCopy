@@ -53,6 +53,8 @@ case "$dest" in "$data_dir"*) die "refusing: destination inside the data dir" ;;
 case "$backups" in "$data_dir"|"$data_dir/"*) die "refusing: backups inside the data dir" ;; esac
 
 plist_get() { /usr/libexec/PlistBuddy -c "Print :$2" "$1/Contents/Info.plist" 2>/dev/null || echo "-"; }
+# For use in file names: only [A-Za-z0-9._-], at most 40 characters.
+safe() { printf '%s' "$1" | tr -cd 'A-Za-z0-9._-' | cut -c1-40; }
 
 describe() { # app path → one line
     if [ -d "$1" ]; then
@@ -145,7 +147,7 @@ swap_in() { # source app → installs at $dest, keeping the old one as a backup
     ditto "$src" "$tmp"
     codesign --verify --strict "$tmp" || { rm -rf "$tmp"; die "copied app does not verify; nothing replaced"; }
     if [ -d "$dest" ]; then
-        backup="$backups/Prompt Relay $(plist_get "$dest" CFBundleShortVersionString)-$(plist_get "$dest" PRGitCommit)-$stamp.app"
+        backup="$backups/Prompt Relay $(safe "$(plist_get "$dest" CFBundleShortVersionString)")-$(safe "$(plist_get "$dest" PRGitCommit)")-$stamp.app"
         mv "$dest" "$backup"
         say "== previous app kept: $backup"
     fi
@@ -190,7 +192,9 @@ list)
     ls -1d "$backups"/*.app 2>/dev/null || say "no backups in $backups"
     exit 0 ;;
 rollback)
-    latest=$(ls -1td "$backups"/*.app 2>/dev/null | head -1 || true)
+    # Newest by modification time, without parsing ls; only direct children.
+    latest=$(find "$backups" -maxdepth 1 -type d -name 'Prompt Relay *.app' -exec stat -f '%m %N' {} + 2>/dev/null \
+        | sort -rn | head -1 | cut -d' ' -f2- || true)
     [ -n "$latest" ] || die "no backup to roll back to in $backups"
     say "Installed now: $(describe "$dest")"
     say "Roll back to:  $(describe "$latest")"

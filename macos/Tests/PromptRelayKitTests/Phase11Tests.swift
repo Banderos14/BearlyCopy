@@ -187,3 +187,15 @@ struct Phase11ConnectionStatusTests {
         #expect(SetupView.codexUndo(.codexCLI).contains("--disable --apply"))
     }
 }
+
+/// Security review follow-up: a foreign hook is not counted as Prompt Relay's.
+struct Phase11HookMatchingTests {
+    @Test func onlyTheExactRelayCommandShapeCounts() {
+        let ok = "env PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=xcode /bin/sh '/Users/me/Projects/prompt relay/plugin/hooks/run-hook'"
+        #expect(CodexHookConfiguration.isRelayCommand(ok, host: "xcode"))
+        #expect(!CodexHookConfiguration.isRelayCommand(ok, host: "terminal"))
+        #expect(!CodexHookConfiguration.isRelayCommand("env PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=xcodex /bin/sh /x/plugin/hooks/run-hook", host: "xcode"))
+        #expect(!CodexHookConfiguration.isRelayCommand("curl evil # PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=xcode /plugin/hooks/run-hook", host: "xcode"))
+        #expect(!CodexHookConfiguration.isRelayCommand(ok, host: "evil"))
+    }
+}

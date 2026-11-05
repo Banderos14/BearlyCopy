@@ -25,10 +25,13 @@ hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mnt" "$dmg"
 trap 'hdiutil detach -quiet "$mnt" >/dev/null 2>&1 || true; rmdir "$mnt" 2>/dev/null || true' EXIT
 app="$mnt/Prompt Relay.app"
 codesign --verify --strict --deep "$app" || die "app signature does not verify"
+# Code requirement, not text matching: Apple-anchored Developer ID
+# Application leaf (OID 1.2.840.113635.100.6.1.13) and its intermediate.
+codesign --verify --strict -R='anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists' "$app" \
+    || die "app is not signed with a Developer ID Application certificate"
 sig=$(codesign -d --verbose=2 "$app" 2>&1)   # captured: grep -q + pipefail would misreport
-case "$sig" in *"Authority=Developer ID Application"*) ;; *) die "app is not signed with a Developer ID Application certificate" ;; esac
-case "$sig" in *"flags="*"runtime"*) ;; *) die "Hardened Runtime missing" ;; esac
-case "$sig" in *"Timestamp="*) ;; *) die "no secure timestamp" ;; esac
+printf '%s\n' "$sig" | grep -Eq '^CodeDirectory v=[0-9]+ .*flags=0x[0-9a-f]+\([^)]*runtime[^)]*\)' || die "Hardened Runtime missing"
+printf '%s\n' "$sig" | grep -Eq '^Timestamp=.+' || die "no secure timestamp"
 echo "== preflight OK: Developer ID, Hardened Runtime, timestamp"
 
 if [ "$submit" = 0 ]; then

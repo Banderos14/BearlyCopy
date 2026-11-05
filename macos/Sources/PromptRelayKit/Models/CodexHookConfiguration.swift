@@ -31,14 +31,23 @@ struct CodexHookConfiguration: Equatable {
                 return groups.contains { group in
                     (group["hooks"] as? [[String: Any]] ?? []).contains { hook in
                         guard hook["type"] as? String == "command", let command = hook["command"] as? String else { return false }
-                        return command.contains("PROMPT_RELAY_PROVIDER=codex")
-                            && command.contains("PROMPT_RELAY_HOST=\(host)")
-                            && command.contains("/plugin/hooks/run-hook")
+                        return Self.isRelayCommand(command, host: host)
                     }
                 }
             }.count
             return Self(state: count == 3 ? .defined : .partial(count))
         } catch { return Self(state: .unreadable) }
+    }
+
+    /// Token equality with the shape `configure-codex.py` writes:
+    /// `env PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=<host> /bin/sh <…/plugin/hooks/run-hook>`.
+    /// Only a known host label counts; substrings never do.
+    static func isRelayCommand(_ command: String, host: String) -> Bool {
+        guard AgentHost(rawValue: host) != nil else { return false }
+        let tokens = command.split(separator: " ").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "'\"")) }
+        guard tokens.count >= 5, tokens[0] == "env", tokens[1] == "PROMPT_RELAY_PROVIDER=codex",
+              tokens[2] == "PROMPT_RELAY_HOST=\(host)", tokens[3] == "/bin/sh" else { return false }
+        return tokens[4...].joined(separator: " ").hasSuffix("/plugin/hooks/run-hook")
     }
 
     var summary: String {

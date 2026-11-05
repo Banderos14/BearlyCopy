@@ -47,7 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          if git ls-files -z | grep -zvE '^(tests/|macos/Tests/|plugin/prompt_relay/sensitive.py|macos/Sources/PromptRelayKit/Services/SecretScanner.swift)' \
-             | xargs -0 grep -nE '(sk-ant-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'; then
-            echo "possible secret committed"; exit 1
-          fi
+          # The match output is the signal; grep's exit status is not
+          # (an unreadable file would otherwise hide a hit).
+          hits=$(git ls-files -z | grep -zvE '^(tests/|macos/Tests/|plugin/prompt_relay/sensitive.py|macos/Sources/PromptRelayKit/Services/SecretScanner.swift)' \
+             | xargs -0 -r grep -nE '(sk-ant-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)' || true)
+          if [ -n "$hits" ]; then printf '%s\n' "$hits"; echo "possible secret committed"; exit 1; fi
