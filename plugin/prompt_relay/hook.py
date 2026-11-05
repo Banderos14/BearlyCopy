@@ -24,7 +24,8 @@ from prompt_relay import profiles as _profiles
 from prompt_relay.events import KIND_BY_EVENT
 from prompt_relay.adapters import normalize, PROVIDERS, HOSTS
 from prompt_relay.paths import data_dir
-from prompt_relay.store import SCHEMA_VERSION, Store, StoreError, fingerprint
+from prompt_relay import signals as _signals
+from prompt_relay.store import SCHEMA_VERSION, Store, StoreError, fingerprint, session_key
 from prompt_relay.tools import TOOL_EVENTS, reduce as reduce_tool_event
 
 MAX_STDIN_BYTES = 64 * 1024 * 1024
@@ -111,12 +112,65 @@ def process(raw: bytes, env: Mapping[str, str], now: Optional[float] = None, roo
 
     payload = normalize(payload, env)
     if payload is None:
+        # Phase 12.1: a PreToolUse of another tool or a Notification type that
+        # is not a waiting signal is not stored and not an error.
+        if KIND_BY_EVENT.get(label) == "signal":
+            return label, "ignored_event"
         return label, "unsupported_source_event"
     record = build_record(payload, env, time.time() if now is None else now)
+    signal = payload.get("signal") if payload.get("reduced") == 1 else None
+    store = Store(root)
+    marker = _waiting_marker(root, record.get("session_id"))
+    if signal in (_signals.ACTIVITY, _signals.RESOLVED, _signals.SESSION_END):
+        # Phase 12.1: these only end a wait for the person. Without an open
+        # wait they are not stored (no extra records, no empty sessions).
+        if marker is None or not marker.exists() or not store.path_for(record.get("session_id")).exists():
+            _clear_marker(marker)
+            return label, "ignored_event"
     try:
-        return label, Store(root).append(record)
+        outcome = store.append(record)
     except StoreError as exc:
         return label, exc.code
+    if outcome == "stored":
+        if signal == _signals.NEEDS_INPUT:
+            _set_marker(marker)
+        else:
+            _clear_marker(marker)   # any confirmed activity ends a wait
+    return label, outcome
+
+
+def _waiting_marker(root: Path, session_id: Any) -> Optional[Path]:
+    """``<data>/waiting/<session key>``: an empty file while a wait is open.
+    Only gates ACTIVITY records; the event log stays the source of truth."""
+    if not isinstance(session_id, str) or not session_id:
+        return None
+    folder = root / "waiting"
+    if folder.is_symlink():
+        return None
+    return folder / session_key(session_id)
+
+
+def _set_marker(marker: Optional[Path]) -> None:
+    if marker is None:
+        return
+    try:
+        marker.parent.mkdir(mode=0o700, exist_ok=True)
+        if marker.parent.is_symlink():
+            return
+        fd = os.open(str(marker), os.O_WRONLY | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        os.close(fd)
+    except OSError:
+        pass
+
+
+def _clear_marker(marker: Optional[Path]) -> None:
+    if marker is None:
+        return
+    try:
+        if not marker.is_symlink():
+            marker.unlink()
+    except OSError:
+        pass
 
 
 def via_label(env: Mapping[str, str]) -> str:

@@ -199,11 +199,14 @@ public struct SessionSummary: Decodable, Equatable, Hashable, Identifiable, Send
     public var profile: AgentProfile? = nil
     /// Phase 12: the agent's own session id when the stored key was scoped.
     public var nativeSessionID: String? = nil
+    /// Phase 12.1: the agent waits for the person (question, plan approval,
+    /// permission). Absent when nothing is pending or the host sends no signal.
+    public var attention: AgentAttention? = nil
 
     public var id: String { sessionKey }
 
     enum CodingKeys: String, CodingKey {
-        case profile, nativeSessionID = "native_session_id"
+        case profile, nativeSessionID = "native_session_id", attention
         case sessionID = "session_id", sessionKey = "session_key", project, logicalProject = "logical_project"
         case firstEventAt = "first_event_at", lastEventAt = "last_event_at"
         case eventCount = "event_count", turnCount = "turn_count", cwds

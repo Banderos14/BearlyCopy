@@ -349,6 +349,8 @@ struct BandStatus: View {
             if model.projects.error != nil, model.projects.value == nil {
                 Circle().fill(Island.error).frame(width: 6, height: 6)
                 Text("Unavailable").foregroundStyle(Island.secondary)
+            } else if let line = model.needsInputBandLine(withKind: true) {
+                NeedsInputStatus(model: model, line: line)
             } else if model.hasUnseenAnswer {
                 Circle().fill(Island.accent).frame(width: 6, height: 6)
                 Text("New answer").foregroundStyle(Island.accent)
@@ -816,7 +818,11 @@ struct PeekContent: View {
                             .islandFrame("band.mascot")
                 }
             } trailing: {
-                if let at = facts.at { Text(Wording.relative(at)).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.tertiary) }
+                if let line = model.needsInputBandLine(withKind: false) {
+                    NeedsInputStatus(model: model, line: line).font(.system(size: 11.5, weight: .medium)).lineLimit(1)
+                } else if let at = facts.at {
+                    Text(Wording.relative(at)).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.tertiary)
+                }
             }
             VStack(alignment: .leading, spacing: Island.Space.m) {
                 if facts.source == nil {
@@ -1995,5 +2001,32 @@ struct ReaderBody: View {
             .scrollIndicators(.automatic)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+}
+
+/// Phase 12.1: "Claude Code · Needs input · Question" in the band of Quick
+/// Peek and Details. A click shows that conversation here; the answer itself
+/// is given in the agent's own app (Prompt Relay never answers).
+struct NeedsInputStatus: View {
+    let model: AppModel
+    let line: String
+
+    var body: some View {
+        let first = model.agentsNeedingInput.first
+        Button {
+            if let key = first?.sessionKey, let session = model.allSessions.first(where: { $0.sessionKey == key }) {
+                model.focusSession(session)
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Circle().fill(Island.warning).frame(width: 6, height: 6)
+                Text(line).foregroundStyle(Island.warning).lineLimit(1).truncationMode(.middle)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .islandFrame("band.needsInput")
+        .accessibilityLabel(first.map(model.needsInputDetail) ?? line)
+        .islandHelp(model.agentsNeedingInput.map(model.needsInputDetail).joined(separator: "\n"))
     }
 }

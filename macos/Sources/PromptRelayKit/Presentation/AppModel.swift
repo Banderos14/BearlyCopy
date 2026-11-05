@@ -145,6 +145,10 @@ public final class AppModel {
     static let selectionKey = "selection.pinned"
     /// Called once per newly arrived answer (for an optional notification).
     public var onNewAnswer: ((ReadyAnswer) -> Void)?
+    /// Phase 12.1: called once per new wait for the person (optional notification).
+    public var onNeedsInput: ((WaitingAgent) -> Void)?
+    @ObservationIgnored var announcedWaits: Set<String> = []
+    @ObservationIgnored var waitsBaselineTaken = false
 
     public static let pollSeconds = 30
     static let lastSeenKey = "answers.lastSeenAt"
@@ -609,6 +613,7 @@ public final class AppModel {
             (Wording.date($0.lastEventAt) ?? .distantPast) > (Wording.date($1.lastEventAt) ?? .distantPast)
         }
         finishedAnswers = await latestFinishedAnswers(in: allSessions)
+        announceNewWaits()
         guard let answer = finishedAnswers.first else {
             readyAnswer = nil
             return
@@ -739,6 +744,10 @@ public final class AppModel {
         /// Phase 9.3: capture cannot be read (the Core failed): a warning,
         /// never the green "answer available" dot.
         case attention
+        /// Phase 12.1: an agent waits for the person (question, plan,
+        /// permission) in this many sessions. A static amber dot; it never
+        /// means an answer is ready.
+        case needsInput(sessions: Int)
     }
 
     /// A waiting prompt older than this is not shown as work (an interrupted
@@ -747,6 +756,10 @@ public final class AppModel {
 
     public var readyIndicator: ReadyIndicator {
         if projects.error != nil, projects.value == nil { return .attention }
+        // Phase 12.1: an agent blocked on the person comes first; the other
+        // agents keep their states in Workspace, Inbox and History.
+        let waitingForPerson = allSessions.filter { $0.attention != nil }
+        if !waitingForPerson.isEmpty { return .needsInput(sessions: waitingForPerson.count) }
         // Phase 10: the notch asks for attention only for answers that
         // arrived after the island was last opened. Opening it is looking at
         // Latest; unread answers of other conversations stay marked in
@@ -766,7 +779,7 @@ public final class AppModel {
         }
         let now = Date()
         let working = allSessions.filter {
-            $0.lastTurn?.status == .awaitingResponse
+            $0.attention == nil && $0.lastTurn?.status == .awaitingResponse
                 && (Wording.date($0.lastEventAt).map { now.timeIntervalSince($0) < Self.workingWindow } ?? false)
         }
         if !working.isEmpty { return .working(sessions: working.count) }
@@ -1295,8 +1308,9 @@ public final class AppModel {
     /// Phase 9.3: what a session row says about its state. Stop means the
     /// agent stopped, not that the task succeeded; `0 answers` is never shown
     /// as finished.
-    public enum SessionState: Equatable, Sendable { case working, waitingBackground, answered, noAnswer, failed }
+    public enum SessionState: Equatable, Sendable { case working, waitingBackground, answered, noAnswer, failed, needsInput }
     public func sessionState(_ session: SessionSummary) -> SessionState {
+        if session.attention != nil { return .needsInput }   // Phase 12.1
         if session.running == true { return .working }
         // Phase 9.4: stopped while its own background work runs.
         if session.lastTurn?.completion == .waitingBackground,

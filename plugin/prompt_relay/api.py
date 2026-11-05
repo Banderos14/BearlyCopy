@@ -24,7 +24,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from prompt_relay import correlation as c
-from prompt_relay import export, origin, profiles, tools
+from prompt_relay import export, origin, profiles, signals, tools
 from prompt_relay.events import Event
 from prompt_relay.history import Session, display_title, session_title  # noqa: F401 (display_title re-exported)
 from prompt_relay.retention import ACTIVE_GRACE_S
@@ -137,6 +137,27 @@ def _identity(s: Session) -> Dict[str, Any]:
     return out
 
 
+def attention(s: Session) -> Optional[Dict[str, Any]]:
+    """Phase 12.1: the agent waits for the person, from this session's own
+    events in order. Set by a needs-input signal (question, plan approval,
+    permission, elicitation); ended by the next confirmed activity — a tool
+    result, a new prompt, Stop/StopFailure, an elicitation result, or the
+    end of the session. Never by a timer; never an answer (``completion`` is
+    untouched). None when nothing is pending."""
+    pending = None
+    for ev in s.events:
+        if ev.kind == "signal" and ev.signal == signals.NEEDS_INPUT:
+            if pending is None or pending.signal_kind != ev.signal_kind or ev.signal_kind != signals.PERMISSION:
+                pending = ev
+            # A permission_prompt Notification ~6 s after PermissionRequest is the same wait.
+        elif ev.kind in ("signal", "prompt", "stop", "stop_failure", "tool"):
+            pending = None
+    if pending is None:
+        return None
+    return {"state": "needs_input", "kind": pending.signal_kind or signals.INPUT, "since": pending.received_at or None,
+            "subagent": pending.agent_id is not None}
+
+
 def session_summary(s: Session, resolver: Optional[Any] = None) -> Dict[str, Any]:
     last = s.turns[-1] if s.turns else None
     logical = resolver.resolve(s.project_dir) if resolver is not None else None
@@ -149,6 +170,7 @@ def session_summary(s: Session, resolver: Optional[Any] = None) -> Dict[str, Any
                               and completion(t, s.turns)["completion"] in (COMPLETION_ANSWER, COMPLETION_ANSWER_BACKGROUND)),
         "running": session_running(s),
         **_identity(s),
+        **({"attention": waiting} if (waiting := attention(s)) else {}),
         "session_id": s.session_id,
         "session_key": s.key,
         "project": project_ref(s.project_dir),

@@ -328,6 +328,33 @@
         "native_session_id": {
           "type": "string",
           "description": "Phase 12: the agent's own session id when the stored key was scoped to a non-default profile."
+        },
+        "attention": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "kind",
+            "since",
+            "subagent"
+          ],
+          "description": "Phase 12.1: the agent waits for the person (needs-input signal not yet followed by activity). Absent otherwise. Never an answer.",
+          "properties": {
+            "state": {
+              "type": "string",
+              "description": "needs_input"
+            },
+            "kind": {
+              "type": "string",
+              "description": "question | plan_approval | permission | elicitation | input (readers accept unknown values)"
+            },
+            "since": {
+              "$ref": "#/$defs/timestamp_or_null"
+            },
+            "subagent": {
+              "type": "boolean"
+            }
+          }
         }
       }
     },

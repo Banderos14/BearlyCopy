@@ -240,12 +240,12 @@ class VersionTests(IsolatedTestCase):
         repo = Path(__file__).resolve().parent.parent
         plugin = json.loads((repo / "plugin" / ".claude-plugin" / "plugin.json").read_text())
         pbx = (repo / "macos" / "Xcode" / "PromptRelay.xcodeproj" / "project.pbxproj").read_text()
-        self.assertEqual(__version__, "0.4.0")
+        self.assertEqual(__version__, "0.4.1")   # 0.4.1: Phase 12.1 waiting hooks
         self.assertEqual(plugin["version"], __version__)
         self.assertEqual(set(re.findall(r"MARKETING_VERSION = ([0-9.]+);", pbx)), {__version__})
         self.assertEqual(set(re.findall(r"CURRENT_PROJECT_VERSION = ([0-9.]+);", pbx)), {__version__})
         self.assertEqual(api.API_VERSION, 1)
         out = self.cli("--version")
-        self.assertIn(b"prompt-relay 0.4.0", out.stdout + out.stderr)
+        self.assertIn(b"prompt-relay 0.4.1", out.stdout + out.stderr)
         doc = json.loads(self.cli("results", "--json").stdout)
         self.assertEqual(doc["api_version"], 1)

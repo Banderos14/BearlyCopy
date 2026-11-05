@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from prompt_relay import profiles as _profiles
+from prompt_relay import signals as _signals
 
 # Events the hook handler stores. Everything else is ignored, not persisted.
 KIND_BY_EVENT = {
@@ -20,6 +21,12 @@ KIND_BY_EVENT = {
     # Stored only in the reduced form of tools.reduce (ADR-013).
     "PostToolUse": "tool",
     "PostToolUseFailure": "tool",
+    # Phase 12.1: the agent waits for the person (signals.py). Stored only
+    # reduced (no question, plan or command text); never a turn or answer.
+    "PreToolUse": "signal",
+    "PermissionRequest": "signal",
+    "Notification": "signal",
+    "SessionEnd": "signal",
 }
 
 
@@ -65,6 +72,11 @@ class Event:
     profile: Optional[Dict[str, Any]] = None
     # Phase 12: the agent's own session id when the stored key was scoped.
     native_session_id: Optional[str] = None
+    # Phase 12.1, kind == "signal": needs_input | resolved | session_end,
+    # and for needs_input the kind of action (signals.KINDS).
+    signal: Optional[str] = None
+    signal_kind: Optional[str] = None
+    tool_use_id: Optional[str] = None
 
     @property
     def tool_name(self) -> Optional[str]:
@@ -100,11 +112,17 @@ def from_record(record: Dict[str, Any]) -> Optional[Event]:
     context = record.get("context") if isinstance(record.get("context"), dict) else {}
     cwd = _nonempty_str(payload.get("cwd"))
     project_dir = _nonempty_str(context.get("claude_project_dir")) or cwd
-    if kind == "tool" and payload.get("reduced") != 1:
-        return None  # a raw tool payload is never read, even if one was stored
+    if kind in ("tool", "signal") and payload.get("reduced") != 1:
+        return None  # a raw tool or signal payload is never read, even if one was stored
+    signal = payload.get("signal") if kind == "signal" else None
+    if kind == "tool" and payload.get("signal") == _signals.ACTIVITY:
+        kind = "signal"   # Phase 12.1: a non-evidence tool result after a wait
+        signal = _signals.ACTIVITY
+    if kind == "signal" and signal not in _signals.ALL_SIGNALS:
+        return None
     if kind == "prompt":
         text = _str(payload.get("prompt"))
-    elif kind == "tool":
+    elif kind in ("tool", "signal"):
         text = None
     else:
         text = _str(payload.get("last_assistant_message"))
@@ -133,6 +151,9 @@ def from_record(record: Dict[str, Any]) -> Optional[Event]:
         native_turn_id=_nonempty_str(payload.get("native_turn_id")),
         profile=_profiles.valid(record.get("agent_profile")),
         native_session_id=_nonempty_str(record.get("native_session_id")),
+        signal=signal,
+        signal_kind=payload.get("kind") if kind == "signal" and payload.get("kind") in _signals.KINDS else None,
+        tool_use_id=_nonempty_str(payload.get("tool_use_id")),
         tool=dict(payload) if kind == "tool" else None,
         session_title=_nonempty_str(payload.get("session_title")) if kind == "prompt" else None,
     )

@@ -46,6 +46,7 @@ public final class NotchSettings {
     enum Key {
         static let notchEnabled = "notch.enabled"
         static let notifyWhenReady = "notify.whenReady"
+        static let notifyNeedsInput = "notify.needsInput"
         static let animation = "notch.animation"
         static let display = "notch.displayID"
         static let yield = "notch.yieldToOtherNotchApps"
@@ -66,6 +67,8 @@ public final class NotchSettings {
     /// Phase 3D: the island is the app's interface.
     public var notchEnabled: Bool { didSet { defaults.set(notchEnabled, forKey: Key.notchEnabled) } }
     public var notifyWhenReady: Bool { didSet { defaults.set(notifyWhenReady, forKey: Key.notifyWhenReady) } }
+    /// Phase 12.1: "Claude Code needs your input" banner. Off by default.
+    public var notifyNeedsInput: Bool { didSet { defaults.set(notifyNeedsInput, forKey: Key.notifyNeedsInput) } }
     public var animation: Animation { didSet { defaults.set(animation.rawValue, forKey: Key.animation) } }
     /// When another notch app (Coucou) is running, do not compete for the
     /// notch: no hover target there; ⌃⌥⌘P and the menu-bar item still open it.
@@ -122,6 +125,7 @@ public final class NotchSettings {
         shortcutModifiers = defaults.string(forKey: Key.shortcutModifiers).flatMap(ShortcutModifiers.init(rawValue:)) ?? .controlOptionCommand
         notchEnabled = defaults.object(forKey: Key.notchEnabled) as? Bool ?? true   // default: on
         notifyWhenReady = defaults.bool(forKey: Key.notifyWhenReady)    // default: off
+        notifyNeedsInput = defaults.bool(forKey: Key.notifyNeedsInput)  // default: off
         animation = defaults.string(forKey: Key.animation).flatMap(Animation.init(rawValue:)) ?? .system
         yieldToOtherNotchApps = defaults.object(forKey: Key.yield) as? Bool ?? true   // default: yield
         mascotEnabled = defaults.object(forKey: Key.mascot) as? Bool ?? true

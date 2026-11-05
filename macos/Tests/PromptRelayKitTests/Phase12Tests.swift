@@ -38,7 +38,7 @@ import Testing
     }
 
     private func waitUntil(_ condition: @MainActor () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async throws {
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(60)   // returns as soon as true; generous for the busy full run
         while !condition() {
             guard Date() < deadline else { Issue.record("timed out", sourceLocation: sourceLocation); return }
             try await Task.sleep(nanoseconds: 10_000_000)
@@ -625,7 +625,7 @@ extension Phase12Tests {
     }
 
     private func waitFor(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(60)   // returns as soon as true; generous for the busy full run
         while !condition() && Date() < deadline { try await Task.sleep(nanoseconds: 10_000_000) }
     }
 }

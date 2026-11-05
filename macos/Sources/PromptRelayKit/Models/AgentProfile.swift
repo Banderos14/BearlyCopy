@@ -171,3 +171,53 @@ public struct ResultsData: Decodable, Equatable, Sendable {
     public let results: [ResultSummary]
     public init(total: Int, limit: Int, results: [ResultSummary]) { self.total = total; self.limit = limit; self.results = results }
 }
+
+/// Phase 12.1: the Core's `attention` — a waiting signal not yet followed by
+/// confirmed activity. Never an answer; never derived from a timer.
+public struct AgentAttention: Decodable, Equatable, Hashable, Sendable {
+    public let state: String
+    public let kind: ActionKind
+    public let since: String?
+    public let subagent: Bool
+
+    public init(kind: ActionKind, since: String?, subagent: Bool = false) {
+        state = "needs_input"; self.kind = kind; self.since = since; self.subagent = subagent
+    }
+}
+
+public enum ActionKind: Equatable, Hashable, Sendable, Decodable {
+    case question, planApproval, permission, elicitation, input
+    case other(String)
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        switch raw {
+        case "question": self = .question
+        case "plan_approval": self = .planApproval
+        case "permission": self = .permission
+        case "elicitation": self = .elicitation
+        case "input": self = .input
+        default: self = .other(raw)
+        }
+    }
+
+    /// One word for the narrow band beside the camera housing.
+    public var shortTitle: String {
+        switch self {
+        case .question: return "Question"
+        case .planApproval: return "Plan"
+        case .permission: return "Permission"
+        case .elicitation, .input, .other: return "Input"
+        }
+    }
+
+    /// Safe wording: the type of action only, never the question itself.
+    public var title: String {
+        switch self {
+        case .question: return "Question"
+        case .planApproval: return "Plan approval"
+        case .permission: return "Permission required"
+        case .elicitation, .input, .other: return "Input requested"
+        }
+    }
+}

@@ -33,10 +33,17 @@ MANIFEST = PLUGIN / ".claude-plugin" / "plugin.json"
 HOOKS = PLUGIN / "hooks" / "hooks.json"
 LAUNCHER_REL = Path("hooks") / "run-hook"
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
-EVENTS = {"UserPromptSubmit", "Stop", "StopFailure", "PostToolUse", "PostToolUseFailure"}
-# Tool events (ADR-013): async, limited by a matcher, never blocking Claude.
-TOOL_MATCHERS = {"PostToolUse": "Bash|Write|Edit|MultiEdit|NotebookEdit|SendUserFile|Artifact",
-                 "PostToolUseFailure": "Bash|Write|Edit|MultiEdit|NotebookEdit"}
+EVENTS = {"UserPromptSubmit", "Stop", "StopFailure", "PostToolUse", "PostToolUseFailure",
+          "PreToolUse", "PermissionRequest", "Notification", "SessionEnd"}
+# Tool results (ADR-013, Phase 12.1): async for every tool; evidence is still
+# only the 0.3.0 tool set (signals.EVIDENCE_TOOLS), other tools at most mark
+# "working again" after a wait. Waiting signals (Phase 12.1): synchronous so
+# they are stored before the dialog shows; they never return a decision.
+MATCHERS = {"PostToolUse": "*", "PostToolUseFailure": "*",
+            "PreToolUse": "AskUserQuestion|ExitPlanMode",
+            "Notification": "permission_prompt|elicitation_dialog|elicitation_url_dialog|agent_needs_input"
+                            "|elicitation_complete|elicitation_response"}
+ASYNC = {"PostToolUse", "PostToolUseFailure", "Notification", "SessionEnd"}
 CLAUDE = shutil.which("claude")
 
 
@@ -77,11 +84,12 @@ class PluginPackageTests(unittest.TestCase):
             self.assertEqual(len(groups), 1, event)
             expected = {"type": "command", "command": "/bin/sh",
                         "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run-hook"], "timeout": 10}
-            if event in TOOL_MATCHERS:
-                self.assertEqual(groups[0]["matcher"], TOOL_MATCHERS[event])
-                expected["async"] = True
+            if event in MATCHERS:
+                self.assertEqual(groups[0]["matcher"], MATCHERS[event])
             else:
                 self.assertNotIn("matcher", groups[0])
+            if event in ASYNC:
+                expected["async"] = True
             (handler,) = groups[0]["hooks"]
             self.assertEqual(handler, expected, "exec form: the plugin root is one argument, never shell-parsed")
         launcher = PLUGIN / LAUNCHER_REL
@@ -149,7 +157,9 @@ class ClaudeCliValidationTests(unittest.TestCase):
         self.assertEqual((entry["version"], entry["enabled"]), (__version__, True))
         self.assertNotIn("errors", entry)
         details = self.claude("--plugin-dir", str(PLUGIN), "plugin", "details", "prompt-relay").stdout.decode()
-        self.assertRegex(details, r"Hooks \(5\)")
+        self.assertRegex(details, r"Hooks \(9\)")   # Phase 12.1: + PreToolUse, PermissionRequest, Notification, SessionEnd
+        for event in sorted(EVENTS):
+            self.assertIn(event, details)
         self.assertRegex(details, r"Always-on:\s+~0 tok")
 
     def test_plugin_root_with_spaces_and_unicode_validates(self):

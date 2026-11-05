@@ -21,12 +21,16 @@ public final class NotchCoordinator {
             guard let self, self.settings.notifyWhenReady else { return }
             self.notifier.announce(answer)
         }
+        model.onNeedsInput = { [weak self] agent in
+            guard let self, self.settings.notifyNeedsInput else { return }
+            self.notifier.announceNeedsInput(agent)
+        }
         observe()
     }
 
     private func observe() {
         let snapshot = withObservationTracking {
-            (settings.notchEnabled, settings.notifyWhenReady, settings.display, settings.animation,
+            (settings.notchEnabled, settings.notifyWhenReady || settings.notifyNeedsInput, settings.display, settings.animation,
              settings.yieldToOtherNotchApps, settings.mascotEnabled, settings.relayMotion, settings.relayIdle,
              settings.relayFollowsPointer, settings.relayWithoutNotch)
         } onChange: { [weak self] in

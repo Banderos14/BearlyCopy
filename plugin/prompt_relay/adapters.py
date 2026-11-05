@@ -5,7 +5,7 @@ import json
 import os
 import re
 from typing import Any, Dict, Mapping, Optional
-from prompt_relay import tools
+from prompt_relay import signals, tools
 
 PROVIDERS = ('claude_code', 'codex')
 HOSTS = ('claude_desktop', 'xcode', 'terminal', 'vscode', 'other', 'unknown')
@@ -58,7 +58,15 @@ def claude_host(env: Mapping[str, str]) -> Optional[str]:
 
 
 def _claude(payload: Dict[str, Any], env: Mapping[str, str]) -> Optional[Dict[str, Any]]:
-    out = tools.reduce(payload) if payload.get('hook_event_name') in tools.TOOL_EVENTS else dict(payload)
+    event = payload.get('hook_event_name')
+    if event in signals.SIGNAL_EVENTS:
+        out = signals.reduce(payload)
+        if out is None:
+            return None
+    elif event in tools.TOOL_EVENTS and not signals.is_evidence(payload):
+        out = signals.activity(payload)   # hook.py stores it only while a wait is open
+    else:
+        out = tools.reduce(payload) if event in tools.TOOL_EVENTS else dict(payload)
     out.pop('source', None)
     # Existing Claude session keys remain stable across upgrades. Host is only
     # accepted from a configured launcher or Claude Code's own entrypoint, never guessed.
@@ -80,7 +88,7 @@ def _codex(payload: Dict[str, Any], env: Mapping[str, str]) -> Optional[Dict[str
     if payload.get('agent_id'):
         return None  # Codex subagents share parent session_id: never merge their answers.
     event = payload.get('hook_event_name')
-    if event not in ('UserPromptSubmit', 'Stop', 'PostToolUse'):
+    if event not in ('UserPromptSubmit', 'Stop', 'PostToolUse', 'PermissionRequest'):
         return None
     host = env.get('PROMPT_RELAY_HOST', 'unknown')
     if host not in HOSTS:
@@ -97,7 +105,14 @@ def _codex(payload: Dict[str, Any], env: Mapping[str, str]) -> Optional[Dict[str
                   capabilities=['prompt', 'final_response', 'tools', 'file_changes', 'workspace_metadata'],
                   capture='hooks')
     common = dict(hook_event_name=event, session_id=key, prompt_id=turn, cwd=cwd)
-    if event == 'UserPromptSubmit':
+    if event == 'PermissionRequest':
+        # Phase 12.1: Codex is about to ask for approval. Reduced like a
+        # Claude Code signal; Prompt Relay never answers it.
+        out = dict(common, reduced=1, signal=signals.NEEDS_INPUT, kind=signals.PERMISSION)
+        tool = payload.get('tool_name')
+        if isinstance(tool, str) and tool:
+            out['tool_name'] = tool[:120]
+    elif event == 'UserPromptSubmit':
         if not isinstance(payload.get('prompt'), str):
             return None
         out = dict(common, prompt=payload['prompt'])

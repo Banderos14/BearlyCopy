@@ -113,6 +113,8 @@ def build_turns(events: List[Event], link_events: bool = True,
         return turn
 
     for ev in events:
+        if ev.kind == "signal":
+            continue  # Phase 12.1: waiting signals are state, never part of a turn
         if ev.kind == "tool":
             owner = by_prompt_id.get(ev.prompt_id) if ev.prompt_id else None
             if owner is None and not ev.prompt_id:

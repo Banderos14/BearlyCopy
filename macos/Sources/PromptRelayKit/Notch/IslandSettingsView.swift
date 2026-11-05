@@ -164,6 +164,20 @@ struct IslandSettingsView: View {
             Hairline()
             shortcutsRow(settings)
             Hairline()
+            toggle("Notify when an agent needs input",
+                   detail: "Off by default. A question, plan or permission is waiting; the banner never shows its text.",
+                   isOn: $settings.notifyNeedsInput)
+                .disabled(!(notifier?.isAvailable ?? false))
+                .onChange(of: settings.notifyNeedsInput) { _, on in
+                    guard on, let notifier else { return }
+                    Task {
+                        if !(await notifier.requestAuthorization()) {
+                            settings.notifyNeedsInput = false
+                            note = "Notifications are off for Prompt Relay in System Settings → Notifications."
+                        }
+                    }
+                }
+            Hairline()
             toggle("Notify when an answer is ready", detail: "The banner names the project only, never the answer.",
                    isOn: $settings.notifyWhenReady)
                 .disabled(!(notifier?.isAvailable ?? false))
