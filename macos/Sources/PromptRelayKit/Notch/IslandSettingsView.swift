@@ -156,17 +156,17 @@ struct IslandSettingsView: View {
                    isOn: Binding(get: { model.autoSelectResultAttachments }, set: { model.autoSelectResultAttachments = $0 }))
             Hairline()
             toggle("Auto-capture final window",
-                   detail: "Off by default. On: after each new final answer of the chosen project, one still image of the window you pick is attached and selected. Nothing else is captured; the window is chosen again after a restart.",
+                   detail: "Off by default. On: choose the window of the open conversation's app (for example Xcode for Codex · Xcode). After each new final answer of that agent and app in this project, one still image of that window is attached and selected. Other agents' answers are never captured; choose again after a restart.",
                    isOn: Binding(get: { model.autoCaptureFinalWindow }, set: { model.autoCaptureFinalWindow = $0 }))
             if model.autoCaptureFinalWindow {
                 HStack(spacing: 8) {
-                    Text(model.autoCaptureSource.map { "Window chosen for \(($0.projectPath as NSString).lastPathComponent)" }
-                         ?? model.autoCaptureMessage ?? "No window chosen yet")
+                    Text(model.autoCaptureSource.map { "Window for \($0.provider.title) · \($0.host.title) in \(($0.projectPath as NSString).lastPathComponent)" }
+                         ?? model.autoCaptureMessage ?? model.autoCaptureBlocker ?? "Choose the window of the open conversation's app")
                         .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(2)
                     Spacer()
                     Button(model.autoCaptureSource == nil ? "Choose Window…" : "Change…") { model.chooseAutoCaptureWindow() }
                         .buttonStyle(IslandPillStyle(prominent: false))
-                        .disabled(model.selectedProjectPath == nil || model.isPresentingSystemDialog)
+                        .disabled(model.autoCaptureBlocker != nil || model.isPresentingSystemDialog)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 6)
             }

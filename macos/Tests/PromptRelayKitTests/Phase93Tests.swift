@@ -770,53 +770,77 @@ struct Phase94UITests {
         func forgetSource() { hasSource = false }
     }
 
-    @Test func autoCaptureIsOptInBoundToItsProjectAndNeverFallsBack() async throws {
+    @Test func autoCaptureIsOptInBoundToAgentHostAndProjectAndNeverFallsBack() async throws {
         let suite = "PromptRelay94cap.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr94a-" + UUID().uuidString)
         let b = board(); defer { b.releaseGlobally(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: root) }
-        let core = FakeCore(projects: [project("/a", sessions: 1, last: ago(300)), project("/b", sessions: 1, last: ago(400))])
-        core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: ago(300))]
-        core.sessionsByProject["/b"] = [sessionSummary("b", project: "/b", last: ago(400))]
-        core.turnsBySession["a"] = [turn(1, at: ago(300))]
-        core.turnsBySession["b"] = [turn(1, at: ago(400))]
+        func codex(_ turns: Int, _ at: String) -> SessionSummary {
+            Phase93Tests.session("codex", provider: "codex", host: "xcode", project: "/a", last: at, answeredAt: at, turns: turns)
+        }
+        func claude(_ turns: Int, _ at: String) -> SessionSummary {
+            Phase93Tests.session("claude", provider: "claude_code", host: "claude_desktop", project: "/a", last: at, answeredAt: at, turns: turns)
+        }
+        func legacy(_ turns: Int, _ at: String) -> SessionSummary {
+            Phase93Tests.session("legacy", project: "/a", last: at, answeredAt: at, turns: turns)
+        }
+        let core = FakeCore(projects: [project("/a", sessions: 3, last: ago(300)), project("/b", sessions: 1, last: ago(900))])
+        core.sessionsByProject["/a"] = [codex(1, ago(300)), claude(1, ago(310)), legacy(1, ago(320))]
+        core.sessionsByProject["/b"] = [Phase93Tests.session("other", provider: "codex", host: "xcode", project: "/b", last: ago(900))]
+        for k in ["codex", "claude", "legacy", "other"] { core.turnsBySession[k] = [turn(1, at: ago(300))] }
         let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: b), dataDirectory: nil, stateDefaults: defaults,
                          reportStore: ReportStore(root: root))
         let fake = FakeCapture()
         m.windowCapture = fake
         await m.refreshNow()
         #expect(!m.autoCaptureFinalWindow, "off by default")
-        // A new answer with the feature off: nothing captured.
-        core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: ago(200), lastTurn: 2)]
-        core.turnsBySession["a"] = [turn(1, at: ago(300)), turn(2, at: ago(200))]
-        await m.refreshNow()
-        #expect(fake.sourceCaptures == 0)
-
+        #expect(m.selectedSessionKey == "codex")
         m.autoCaptureFinalWindow = true
-        m.chooseAutoCaptureWindow()                           // bound to the selected project (/a)
-        #expect(m.autoCaptureSource?.projectPath == "/a")
-        // A new answer in another project: not captured.
-        core.sessionsByProject["/b"] = [sessionSummary("b", project: "/b", last: ago(150), lastTurn: 2)]
-        core.turnsBySession["b"] = [turn(1, at: ago(400)), turn(2, at: ago(150))]
+        m.chooseAutoCaptureWindow()                           // the open conversation: Codex · Xcode in /a
+        #expect(m.autoCaptureSource?.provider == .codex && m.autoCaptureSource?.host == .xcode)
+
+        // Claude Code finishes in the same project: its window is another app — no capture.
+        core.sessionsByProject["/a"] = [claude(2, ago(200)), codex(1, ago(300)), legacy(1, ago(320))]
+        core.turnsBySession["claude"] = [turn(1, at: ago(310)), turn(2, at: ago(200))]
         await m.refreshNow()
         #expect(fake.sourceCaptures == 0)
-        #expect(m.attachments(for: .local(sessionKey: "b", turn: 2)).isEmpty)
-        // A new answer in /a: one capture, attached to that answer and selected.
-        core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: ago(100), lastTurn: 3)]
-        core.turnsBySession["a"] = [turn(1, at: ago(300)), turn(2, at: ago(200)), turn(3, at: ago(100))]
+        #expect(m.attachments(for: .local(sessionKey: "claude", turn: 2)).isEmpty)
+        // A session without a recorded host: no capture either.
+        core.sessionsByProject["/a"] = [legacy(2, ago(150)), claude(2, ago(200)), codex(1, ago(300))]
+        core.turnsBySession["legacy"] = [turn(1, at: ago(320)), turn(2, at: ago(150))]
+        await m.refreshNow()
+        #expect(fake.sourceCaptures == 0)
+        // Codex · Xcode finishes: one capture, attached to that answer and selected.
+        core.sessionsByProject["/a"] = [codex(2, ago(100)), legacy(2, ago(150)), claude(2, ago(200))]
+        core.turnsBySession["codex"] = [turn(1, at: ago(300)), turn(2, at: ago(100))]
         await m.refreshNow()
         #expect(fake.sourceCaptures == 1)
-        let shot = m.attachments(for: .local(sessionKey: "a", turn: 3))
+        let shot = m.attachments(for: .local(sessionKey: "codex", turn: 2))
         #expect(shot.count == 1 && shot[0].isSelected && shot[0].effectiveSource == .windowCapture)
-        // The window disappears: nothing attached, the source is dropped.
+        // The window is gone: nothing attached, the choice is dropped.
         fake.sourceFails = true
-        core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: ago(50), lastTurn: 4)]
-        core.turnsBySession["a"] = [turn(1, at: ago(300)), turn(2, at: ago(200)), turn(3, at: ago(100)), turn(4, at: ago(50))]
+        core.sessionsByProject["/a"] = [codex(3, ago(50)), legacy(2, ago(150)), claude(2, ago(200))]
+        core.turnsBySession["codex"] = [turn(1, at: ago(300)), turn(2, at: ago(100)), turn(3, at: ago(50))]
         await m.refreshNow()
-        #expect(m.attachments(for: .local(sessionKey: "a", turn: 4)).isEmpty)
+        #expect(m.attachments(for: .local(sessionKey: "codex", turn: 3)).isEmpty)
         #expect(m.autoCaptureSource == nil)
         m.autoCaptureFinalWindow = false
         #expect(!fake.hasSource, "turning it off forgets the window")
+    }
+
+    @Test func noWindowCanBeChosenForAConversationWithoutAHost() async throws {
+        let b = board(); defer { b.releaseGlobally() }
+        let core = FakeCore(projects: [project("/a", sessions: 1, last: ago(60))])
+        core.sessionsByProject["/a"] = [Phase93Tests.session("legacy", project: "/a", last: ago(60))]
+        core.turnsBySession["legacy"] = [turn(1, at: ago(60))]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: b), dataDirectory: nil)
+        let fake = FakeCapture()
+        m.windowCapture = fake
+        await m.refreshNow()
+        m.autoCaptureFinalWindow = true
+        #expect(m.autoCaptureBlocker != nil)
+        m.chooseAutoCaptureWindow()
+        #expect(!fake.hasSource && m.autoCaptureSource == nil)
     }
 
     @Test func captureFinalWindowAddsOnlyWhatTheUserPicked() async throws {

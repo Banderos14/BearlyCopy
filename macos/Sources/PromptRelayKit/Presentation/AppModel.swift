@@ -76,6 +76,8 @@ public final class AppModel {
         /// Phase 9.4: `.waitingBackground` here means the wait expired with
         /// no continuation — shown, but never announced as ready.
         public var completion: Completion = .answer
+        /// Where the agent ran, only when the hook recorded it.
+        public var host: AgentHost = .unknown
     }
 
     public private(set) var readyAnswer: ReadyAnswer?
@@ -693,7 +695,7 @@ public final class AppModel {
             ?? session.logicalProject?.name ?? Wording.projectName(session.project)
         return ReadyAnswer(sessionKey: session.sessionKey, projectPath: path, projectName: name, turnIndex: turn,
                            status: status, at: at, provider: session.provider, sourceLabel: session.sourceLabel,
-                           completion: completion)
+                           completion: completion, host: session.source?.environment ?? .unknown)
     }
 
     static func isNewer(_ a: String, than b: String) -> Bool {
@@ -1033,19 +1035,34 @@ public final class AppModel {
     }
     /// The chosen window's project (memory only: after a restart the window
     /// is chosen again, because window identity does not survive it).
-    public private(set) var autoCaptureSource: (label: String, projectPath: String)?
+    /// Phase 9.4 fix: bound to the project AND the agent and host of the
+    /// conversation open when the window was chosen (e.g. Codex · Xcode), so a
+    /// Claude Code answer in the same project never captures Xcode's window.
+    public private(set) var autoCaptureSource: (label: String, projectPath: String, provider: AgentProvider, host: AgentHost)?
     public internal(set) var autoCaptureMessage: String?
 
-    /// Settings → Choose Window…: the system picker; bound to the project shown now.
+    /// The open conversation can be bound to a window: its host is recorded.
+    public var autoCaptureBlocker: String? {
+        guard selectedImportID == nil, let session = selectedSession else { return "Open a conversation first." }
+        guard (session.source?.environment ?? .unknown) != .unknown else {
+            return "Its app is not recorded for this conversation, so no window can be linked to its answers."
+        }
+        return nil
+    }
+
+    /// Settings → Choose Window…: the system picker; bound to the project and
+    /// the agent · host of the conversation open now.
     public func chooseAutoCaptureWindow() {
-        guard autoCaptureFinalWindow, let project = selectedProjectPath, !isPresentingSystemDialog else { return }
+        guard autoCaptureFinalWindow, autoCaptureBlocker == nil, let project = selectedProjectPath, let session = selectedSession,
+              let host = session.source?.environment, !isPresentingSystemDialog else { return }
+        let provider = session.provider
         isPresentingSystemDialog = true
         windowCapture.chooseSource { [weak self] result in
             guard let self else { return }
             self.isPresentingSystemDialog = false
             switch result {
             case .success(let label)?:
-                self.autoCaptureSource = (label, project)
+                self.autoCaptureSource = (label, project, provider, host)
                 self.autoCaptureMessage = nil
             case .failure?:
                 self.autoCaptureMessage = "The window could not be chosen (screen capture may be off for Prompt Relay)."
@@ -1059,7 +1076,8 @@ public final class AppModel {
     /// chosen for; never a fallback to another window.
     func autoCaptureIfEnabled(for answer: ReadyAnswer) {
         guard autoCaptureFinalWindow, answer.completion.isFinal, let source = autoCaptureSource,
-              answer.projectPath == source.projectPath, let store = reportStore else { return }
+              answer.projectPath == source.projectPath, answer.provider == source.provider,
+              answer.host == source.host, answer.host != .unknown, let store = reportStore else { return }
         let ref = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex)
         windowCapture.captureSource { [weak self] result in
             guard let self else { return }

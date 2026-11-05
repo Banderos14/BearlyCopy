@@ -170,3 +170,11 @@ projects are not captured; if the window is gone the capture fails, nothing
 is attached and the choice is dropped — never another window or the screen.
 Turning it off forgets the window. Agent-made screenshots continue to arrive
 through result attachments. Not tried live.
+
+Live-acceptance fix: binding only to the project let a Claude Code answer in
+the same project capture the Xcode window chosen for Codex. The window is now
+bound to the project **and** the agent · host of the conversation open when it
+was chosen (e.g. Codex · Xcode); answers of other agents or hosts, and
+conversations without a recorded host, are never captured, and Choose Window…
+is unavailable for them. Two windows of the same agent and app in one project
+cannot be told apart — the window you chose is used.
