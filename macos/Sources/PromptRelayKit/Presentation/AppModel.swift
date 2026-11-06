@@ -78,6 +78,8 @@ public final class AppModel {
         public var completion: Completion = .answer
         /// Where the agent ran, only when the hook recorded it.
         public var host: AgentHost = .unknown
+        /// Phase 14: the local profile (config folder), or `unassigned`.
+        public var profileID: String = ProfileKey.unassigned
     }
 
     public private(set) var readyAnswer: ReadyAnswer?
@@ -180,6 +182,7 @@ public final class AppModel {
         self.reportStore = reportStore
         autoSelectResultAttachments = stateDefaults?.object(forKey: "attachments.autoSelectResults") as? Bool ?? true
         autoCaptureFinalWindow = stateDefaults?.bool(forKey: Self.autoCaptureKey) ?? false
+        autoScreenshotsInHandoff = stateDefaults?.bool(forKey: Self.autoCaptureHandoffKey) ?? false
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
         seenAnswers = stateDefaults?.dictionary(forKey: Self.seenAnswersKey) as? [String: String] ?? [:]
         notchAcknowledgedAt = stateDefaults?.string(forKey: Self.notchAckKey)
@@ -616,6 +619,9 @@ public final class AppModel {
         }
         finishedAnswers = await latestFinishedAnswers(in: allSessions)
         announceNewWaits()
+        // Phase 14: every new final answer, of any agent, whether the island
+        // is open or not (before: only the newest unseen one).
+        autoCaptureNewFinals()
         guard let answer = finishedAnswers.first else {
             readyAnswer = nil
             return
@@ -653,7 +659,6 @@ public final class AppModel {
             if lastAnnouncedAt != at {
                 lastAnnouncedAt = at
                 onNewAnswer?(answer)
-                autoCaptureIfEnabled(for: answer)
             }
         }
     }
@@ -719,7 +724,8 @@ public final class AppModel {
             ?? session.logicalProject?.name ?? Wording.projectName(session.project)
         return ReadyAnswer(sessionKey: session.sessionKey, projectPath: path, projectName: name, turnIndex: turn,
                            status: status, at: at, provider: session.provider, sourceLabel: session.sourceLabel,
-                           completion: completion, host: session.source?.environment ?? .unknown)
+                           completion: completion, host: session.source?.environment ?? .unknown,
+                           profileID: session.profile?.id ?? ProfileKey.unassigned)
     }
 
     static func isNewer(_ a: String, than b: String) -> Bool {
@@ -1052,7 +1058,7 @@ public final class AppModel {
 
     /// A system dialog started from the island (a file or folder picker) is
     /// open. The island steps aside for it and keeps its state meanwhile.
-    public private(set) var isPresentingSystemDialog = false {
+    public internal(set) var isPresentingSystemDialog = false {
         didSet { if oldValue != isPresentingSystemDialog { onSystemDialog?(isPresentingSystemDialog) } }
     }
     /// Called synchronously when a dialog opens or closes, before it shows,
@@ -1100,90 +1106,40 @@ public final class AppModel {
         }
     }
 
-    // MARK: Auto-capture final window (opt-in, Phase 9.4)
+    // MARK: Auto-capture final window (opt-in, Phase 9.4; Phase 14 links)
 
     static let autoCaptureKey = "attachments.autoCaptureFinalWindow"
-    /// Off by default. When on and a source window is chosen, one still image
-    /// of that window is taken after each new final answer of its project.
+    static let autoCaptureHandoffKey = "attachments.autoScreenshotsInHandoff"
+    /// Off by default. When on, after each new final answer one still image
+    /// of the window linked to that agent is kept with the answer (memory
+    /// only). See `AppModel+AutoCapture.swift`.
     public var autoCaptureFinalWindow = false {
         didSet {
             stateDefaults?.set(autoCaptureFinalWindow, forKey: Self.autoCaptureKey)
-            if !autoCaptureFinalWindow { windowCapture.forgetSource(); autoCaptureSource = nil }
+            if !autoCaptureFinalWindow { unlinkAllAutoCaptureWindows() } else if !oldValue { autoCaptureArmedAt = captureNow() }
         }
     }
-    /// The chosen window's project (memory only: after a restart the window
-    /// is chosen again, because window identity does not survive it).
-    /// Phase 9.4 fix: bound to the project AND the agent and host of the
-    /// conversation open when the window was chosen (e.g. Codex · Xcode), so a
-    /// Claude Code answer in the same project never captures Xcode's window.
-    public private(set) var autoCaptureSource: (label: String, projectPath: String, provider: AgentProvider, host: AgentHost)?
+    /// Phase 14: auto screenshots start selected for Copy with Context,
+    /// Context Packs and Drag only when the user turns this on (off by default).
+    public var autoScreenshotsInHandoff = false {
+        didSet { stateDefaults?.set(autoScreenshotsInHandoff, forKey: Self.autoCaptureHandoffKey) }
+    }
+    /// Phase 14: windows linked to agents (memory only: window identity does
+    /// not survive a restart of Prompt Relay or of the agent's app).
+    public internal(set) var autoCaptureBindings: [WindowBinding] = []
+    /// What happened to each answer's auto screenshot (report key).
+    public internal(set) var autoCaptureStatuses: [String: AutoCaptureStatus] = [:]
     public internal(set) var autoCaptureMessage: String?
-    /// Reports already auto-captured in this run (never twice for one answer).
+    /// Reports already considered in this run (never twice for one answer).
     @ObservationIgnored var autoCapturedRefs: Set<String> = []
-
-    /// The open conversation can be bound to a window: its host is recorded.
-    public var autoCaptureBlocker: String? {
-        guard selectedImportID == nil, let session = selectedSession else { return "Open a conversation first." }
-        guard (session.source?.environment ?? .unknown) != .unknown else {
-            return "Its app is not recorded for this conversation, so no window can be linked to its answers."
-        }
-        return nil
-    }
-
-    /// Settings → Choose Window…: the system picker; bound to the project and
-    /// the agent · host of the conversation open now.
-    public func chooseAutoCaptureWindow() {
-        guard autoCaptureFinalWindow, autoCaptureBlocker == nil, let project = selectedProjectPath, let session = selectedSession,
-              let host = session.source?.environment, !isPresentingSystemDialog else { return }
-        let provider = session.provider
-        isPresentingSystemDialog = true
-        windowCapture.chooseSource { [weak self] result in
-            guard let self else { return }
-            self.isPresentingSystemDialog = false
-            switch result {
-            case .success(let label)?:
-                self.autoCaptureSource = (label, project, provider, host)
-                self.autoCaptureMessage = nil
-            case .failure?:
-                self.autoCaptureMessage = "The window could not be chosen (screen capture may be off for Prompt Relay)."
-            case nil: break
-            }
-        }
-    }
-
-    /// After a new final answer: one capture of the chosen window, attached
-    /// to that answer and selected — only for the project the window was
-    /// chosen for; never a fallback to another window.
-    func autoCaptureIfEnabled(for answer: ReadyAnswer) {
-        guard autoCaptureFinalWindow, answer.completion.isFinal, let source = autoCaptureSource,
-              answer.projectPath == source.projectPath, answer.provider == source.provider,
-              answer.host == source.host, answer.host != .unknown, let store = reportStore else { return }
-        let ref = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex)
-        // Phase 10: one snapshot per final answer per app run, however often
-        // the same answer is announced or refreshed (hook redelivery).
-        guard !autoCapturedRefs.contains(ref.key) else { return }
-        autoCapturedRefs.insert(ref.key)
-        windowCapture.captureSource { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let shot):
-                let f = DateFormatter()
-                f.dateFormat = "yyyy-MM-dd HH.mm.ss"
-                // Phase 10: memory only; listed and selected like any attachment.
-                do {
-                    _ = try store.addEphemeralImage(shot.png, name: "Final window \(f.string(from: Date())).png", to: ref,
-                                                    source: .windowCapture, sourceProvider: answer.provider)
-                    self.autoCaptureMessage = nil
-                } catch {
-                    self.autoCaptureMessage = "The window snapshot was too large to keep."
-                }
-                self.attachmentsVersion += 1
-            case .failure:
-                self.autoCaptureSource = nil
-                self.autoCaptureMessage = "The chosen window is no longer available. Choose it again in Settings."
-            }
-        }
-    }
+    /// One capture job per window at a time; a newer answer cancels it.
+    @ObservationIgnored var autoCaptureJobs: [String: (ref: String, task: Task<Void, Never>)] = [:]
+    /// How long the window may settle before and between stills (tests: immediate).
+    @ObservationIgnored public var captureSettle = CaptureSettle.standard
+    @ObservationIgnored var captureNow: () -> Date = Date.init
+    /// Answers that finished before this (app start or turning the feature
+    /// on) are never captured and get no status.
+    @ObservationIgnored var autoCaptureArmedAt = Date()
 
     /// Images for the report shown now. The report is remembered when the
     /// picker opens, so the images go to it even if the island changes

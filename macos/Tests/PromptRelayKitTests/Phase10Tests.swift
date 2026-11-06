@@ -100,13 +100,15 @@ struct Phase10SnapshotTests {
         var sourceCaptures = 0
         var color: NSColor = .blue
         func captureWindow(completion: @escaping @MainActor (Result<WindowCapture.Shot, Error>?) -> Void) { completion(result) }
-        func chooseSource(completion: @escaping @MainActor (Result<String, Error>?) -> Void) { hasSource = true; completion(.success("window")) }
-        func captureSource(completion: @escaping @MainActor (Result<WindowCapture.Shot, Error>) -> Void) {
-            sourceCaptures += 1
-            guard hasSource else { completion(.failure(WindowCaptureError.noSource)); return }
-            completion(.success(.init(png: TypedAttachmentTests.png(color), label: "Window")))
+        func pickWindow(completion: @escaping @MainActor (Result<PickedWindow, Error>?) -> Void) {
+            hasSource = true; completion(.success(PickedWindow(handle: "h1", label: "window")))
         }
-        func forgetSource() { hasSource = false }
+        func capture(_ window: PickedWindow) async throws -> WindowCapture.Shot {
+            sourceCaptures += 1
+            guard hasSource else { throw WindowCaptureError.noSource }
+            return .init(png: TypedAttachmentTests.png(color), label: "Window")
+        }
+        func forget(_ window: PickedWindow) { hasSource = false }
     }
 
     private func codex(_ turns: Int, _ at: String) -> SessionSummary {
@@ -130,16 +132,21 @@ struct Phase10SnapshotTests {
                          reportStore: ReportStore(root: root))
         let fake = FakeCapture()
         m.windowCapture = fake
+        m.captureSettle = .immediate
+        m.captureNow = { Date().addingTimeInterval(-60) }
+        m.autoScreenshotsInHandoff = true                     // Phase 14: selected only when the user says so
         await m.refreshNow()
         m.autoCaptureFinalWindow = true
         m.chooseAutoCaptureWindow()
         core.sessionsByProject["/a"] = [codex(2, ago(10))]
         core.turnsBySession["codex"] = [turn(1, at: ago(300)), turn(2, at: ago(10))]
         await m.refreshNow()
+        await m.waitForAutoCaptures()
         // The same answer refreshed again (redelivery, FSEvents) is not captured twice.
         fake.color = .green
         await m.refreshNow()
         await m.refreshNow()
+        await m.waitForAutoCaptures()
         let ref = ReportRef.local(sessionKey: "codex", turn: 2)
         let shots = m.attachments(for: ref)
         #expect(fake.sourceCaptures == 1 && shots.count == 1 && shots[0].isInMemory && shots[0].isSelected)

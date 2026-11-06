@@ -654,6 +654,7 @@ struct AttachmentsCard: View {
             BoundedScroll(minHeight: 34) {
                 VStack(alignment: .leading, spacing: 3) {
                     CompletenessLine(model: model).scrollRow("completeness")
+                    AutoCaptureStatusLine(model: model).scrollRow("autocapture")
                     if !suggestions.isEmpty {
                         HStack {
                             Text("From this turn").font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.tertiary)
@@ -682,6 +683,36 @@ struct AttachmentsCard: View {
             }
         }
         .islandCard()
+    }
+}
+
+/// Phase 14: why an answer has no auto screenshot, when the user can do
+/// something about it. Nothing when all is well (the image is listed).
+struct AutoCaptureStatusLine: View {
+    let model: AppModel
+
+    var body: some View {
+        if let status = model.autoCaptureStatus(for: model.currentRef), status != .captured, let message = status.message {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Image(systemName: status == .pending ? "camera.viewfinder" : "camera.metering.unknown")
+                        .font(.system(size: 10)).foregroundStyle(Island.tertiary)
+                    Text(message).font(.system(size: 11)).foregroundStyle(status == .pending ? Island.tertiary : Island.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if status.offersLink {
+                    HStack(spacing: 10) {
+                        Button("Link Window…") { model.linkAutoCaptureWindowToConversation() }
+                            .disabled(model.autoCaptureBlocker != nil || model.isPresentingSystemDialog)
+                        Button("Capture Now…") { model.captureFinalWindow() }
+                            .disabled(model.isPresentingSystemDialog)
+                    }
+                    .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
+                }
+            }
+            .padding(.vertical, 2)
+            .islandFrame("attachments.autocapture")
+        }
     }
 }
 
@@ -734,6 +765,8 @@ struct AttachmentRow: View {
                 if memory {
                     // Phase 10: a snapshot in memory has no file to open or show.
                     Button("Copy Image") { model.copyAttachment(attachment) }.disabled(!available)
+                    // Phase 14: recapture by hand (the macOS picker), added beside it.
+                    Button("Capture Window Again…") { model.captureFinalWindow() }.disabled(model.isPresentingSystemDialog)
                 } else {
                     Button("Open in Default App") { if let url { NSWorkspace.shared.open(url) } }.disabled(url == nil)
                     Button("Show in Finder") { model.revealAttachmentsForHandoff([attachment]) }.disabled(url == nil)
@@ -753,7 +786,9 @@ struct AttachmentRow: View {
         .padding(.horizontal, 3)
         .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(attachment.isSelected ? Island.selected : .clear))
         .onDrag { model.dragProvider(for: attachment) }
-        .islandHelp(memory ? "Window snapshot kept in memory only — not saved as a file" : "Preview this attachment")
+        .islandHelp(memory ? (attachment.effectiveSource == .windowCapture
+                              ? "Auto screenshot taken by Prompt Relay, kept in memory only — not a file the agent made"
+                              : "Window snapshot kept in memory only — not saved as a file") : "Preview this attachment")
     }
 }
 

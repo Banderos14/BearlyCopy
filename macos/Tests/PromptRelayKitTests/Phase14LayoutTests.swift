@@ -132,4 +132,54 @@ final class Phase14LayoutTests: XCTestCase {
             }
         }
     }
+
+    /// The auto-screenshot status line sits inside the Attachments card,
+    /// whole, with its two actions reachable.
+    func testAutoScreenshotStatusFitsTheAttachmentsCard() async throws {
+        let core = FakeCore(projects: [project("/a", sessions: 1, last: "2026-10-29T16:13:51.000000Z")])
+        core.sessionsByProject["/a"] = [Phase93Tests.session("s", provider: "claude_code", host: "claude_desktop", project: "/a",
+                                                             last: "2026-10-29T16:13:51.000000Z")]
+        core.turnsBySession["s"] = [turn(1, preview: "Ответ", chars: 5, request: "Задача")]
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults,
+                         reportStore: ReportStore(root: root))
+        await m.refreshNow()
+        m.autoCaptureFinalWindow = true
+        let ref = try XCTUnwrap(m.currentRef)
+        for status: AutoCaptureStatus in [.associationRequired, .pending] {
+            m.autoCaptureStatuses[ref.key] = status
+            for maxContent: CGFloat in [341, 448] {
+                let island = IslandHost(model: m, maxContentHeight: maxContent)
+                defer { island.close() }
+                let f = island.presentation.layoutFrames
+                let card = try XCTUnwrap(f["card.attachments"])
+                let line = try XCTUnwrap(f["attachments.autocapture"], "\(status) shown at \(maxContent)")
+                XCTAssertTrue(card.insetBy(dx: -0.5, dy: -0.5).contains(line) || line.minY >= card.maxY - Island.cardPadding.bottom,
+                              "\(status): inside the card or scrolled below it, never across its edge (\(line) in \(card))")
+                if let png = ProcessInfo.processInfo.environment["PR_P14_PNG"] {
+                    try island.png("\(png)/autocapture-\(status)-\(Int(maxContent)).png")
+                }
+            }
+        }
+        m.autoCaptureStatuses[ref.key] = .captured
+        let island = IslandHost(model: m, maxContentHeight: 448)
+        defer { island.close() }
+        XCTAssertNil(island.presentation.layoutFrames["attachments.autocapture"], "nothing to say when all is well")
+        // Settings → the linked windows: long names truncate, never overflow.
+        m.autoCaptureBindings = [
+            WindowBinding(key: CaptureSourceKey(provider: .claudeCode, profileID: "cc-work", host: .claudeDesktop,
+                                                projectPath: "/Users/x/Projects/a-very-long-project-name-that-keeps-going-and-going"),
+                          sessionKey: "s", window: PickedWindow(handle: "h1", label: "Claude window", windowID: 7), createdAt: Date()),
+            WindowBinding(key: CaptureSourceKey(provider: .codex, profileID: "unassigned", host: .xcode, projectPath: "/a"),
+                          sessionKey: nil, window: PickedWindow(handle: "h2", label: "the window you picked"), createdAt: Date()),
+        ]
+        let links = NSHostingView(rootView: AutoCaptureLinksView(model: m).frame(width: 540).padding(12).background(Island.card)
+            .environment(\.colorScheme, .dark))
+        links.frame = NSRect(origin: .zero, size: links.fittingSize)
+        XCTAssertLessThanOrEqual(links.fittingSize.width, 565, "no horizontal overflow")
+        if let png = ProcessInfo.processInfo.environment["PR_P14_PNG"],
+           let rep = links.bitmapImageRepForCachingDisplay(in: links.bounds) {
+            links.cacheDisplay(in: links.bounds, to: rep)
+            try rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(png)/settings-links.png"))
+        }
+    }
 }

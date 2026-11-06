@@ -759,15 +759,15 @@ struct Phase94UITests {
         func captureWindow(completion: @escaping @MainActor (Result<WindowCapture.Shot, Error>?) -> Void) {
             calls += 1; completion(result)
         }
-        func chooseSource(completion: @escaping @MainActor (Result<String, Error>?) -> Void) {
-            hasSource = true; completion(.success("window"))
+        func pickWindow(completion: @escaping @MainActor (Result<PickedWindow, Error>?) -> Void) {
+            hasSource = true; completion(.success(PickedWindow(handle: "h1", label: "window")))
         }
-        func captureSource(completion: @escaping @MainActor (Result<WindowCapture.Shot, Error>) -> Void) {
+        func capture(_ window: PickedWindow) async throws -> WindowCapture.Shot {
             sourceCaptures += 1
-            guard hasSource, !sourceFails else { completion(.failure(WindowCaptureError.noSource)); return }
-            completion(.success(.init(png: TypedAttachmentTests.png(.blue), label: "Window")))
+            guard hasSource, !sourceFails else { throw WindowCaptureError.noSource }
+            return .init(png: TypedAttachmentTests.png(.blue), label: "Window")
         }
-        func forgetSource() { hasSource = false }
+        func forget(_ window: PickedWindow) { hasSource = false }
     }
 
     @Test func autoCaptureIsOptInBoundToAgentHostAndProjectAndNeverFallsBack() async throws {
@@ -792,12 +792,15 @@ struct Phase94UITests {
                          reportStore: ReportStore(root: root))
         let fake = FakeCapture()
         m.windowCapture = fake
+        m.captureSettle = .immediate
+        m.captureNow = { Date().addingTimeInterval(-250) }
+        m.autoScreenshotsInHandoff = true
         await m.refreshNow()
         #expect(!m.autoCaptureFinalWindow, "off by default")
         #expect(m.selectedSessionKey == "codex")
         m.autoCaptureFinalWindow = true
         m.chooseAutoCaptureWindow()                           // the open conversation: Codex · Xcode in /a
-        #expect(m.autoCaptureSource?.provider == .codex && m.autoCaptureSource?.host == .xcode)
+        #expect(m.autoCaptureBindings.first?.key.provider == .codex && m.autoCaptureBindings.first?.key.host == .xcode)
 
         // Claude Code finishes in the same project: its window is another app — no capture.
         core.sessionsByProject["/a"] = [claude(2, ago(200)), codex(1, ago(300)), legacy(1, ago(320))]
@@ -814,6 +817,7 @@ struct Phase94UITests {
         core.sessionsByProject["/a"] = [codex(2, ago(100)), legacy(2, ago(150)), claude(2, ago(200))]
         core.turnsBySession["codex"] = [turn(1, at: ago(300)), turn(2, at: ago(100))]
         await m.refreshNow()
+        await m.waitForAutoCaptures()
         #expect(fake.sourceCaptures == 1)
         let shot = m.attachments(for: .local(sessionKey: "codex", turn: 2))
         #expect(shot.count == 1 && shot[0].isSelected && shot[0].effectiveSource == .windowCapture)
@@ -822,8 +826,10 @@ struct Phase94UITests {
         core.sessionsByProject["/a"] = [codex(3, ago(50)), legacy(2, ago(150)), claude(2, ago(200))]
         core.turnsBySession["codex"] = [turn(1, at: ago(300)), turn(2, at: ago(100)), turn(3, at: ago(50))]
         await m.refreshNow()
+        await m.waitForAutoCaptures()
         #expect(m.attachments(for: .local(sessionKey: "codex", turn: 3)).isEmpty)
-        #expect(m.autoCaptureSource == nil)
+        #expect(m.autoCaptureBindings.isEmpty)
+        #expect(m.autoCaptureStatus(for: .local(sessionKey: "codex", turn: 3)) == .windowUnavailable)
         m.autoCaptureFinalWindow = false
         #expect(!fake.hasSource, "turning it off forgets the window")
     }
@@ -840,7 +846,7 @@ struct Phase94UITests {
         m.autoCaptureFinalWindow = true
         #expect(m.autoCaptureBlocker != nil)
         m.chooseAutoCaptureWindow()
-        #expect(!fake.hasSource && m.autoCaptureSource == nil)
+        #expect(!fake.hasSource && m.autoCaptureBindings.isEmpty)
     }
 
     @Test func captureFinalWindowAddsOnlyWhatTheUserPicked() async throws {

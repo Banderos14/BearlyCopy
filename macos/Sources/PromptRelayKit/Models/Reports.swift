@@ -94,7 +94,8 @@ public enum AttachmentSource: String, Codable, Sendable {
     /// Phase 9.3: named in the answer, inside the project, and changed during
     /// this turn (local file time). Not proof the agent created it.
     case namedVerified
-    /// Phase 9.4: auto-captured from the window the user picked, after a final answer.
+    /// Phase 9.4: auto-captured from the window the user picked, after a
+    /// final answer (Phase 14: "Auto screenshot", the window linked to the agent).
     case windowCapture
     /// Phase 10: Capture Final Window (manual pick), kept in memory only.
     case windowSnapshot
@@ -107,7 +108,7 @@ public enum AttachmentSource: String, Codable, Sendable {
         case .agentResult: return "observed result"
         case .agentObserved: return "observed file"
         case .namedVerified: return "named · changed this turn"
-        case .windowCapture: return "window you picked"
+        case .windowCapture: return "auto screenshot"
         case .windowSnapshot: return "window snapshot"
         }
     }

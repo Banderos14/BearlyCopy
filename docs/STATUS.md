@@ -1,5 +1,23 @@
 # Status
 
+## 2026-11-06 — Phase 14: no clipped rows, island stays open on resize, auto screenshots (not installed)
+
+Fixed and covered by tests that failed before: Copy with Context rows and
+the Answer's last line are never half visible (scroll viewport ends on a
+row/line boundary, "+N more"); the island no longer closes when a view needs
+less height (the smaller window frame waits until the pointer is on the
+island; a real exit still closes it). Automatic final screenshots extend the
+Phase 9.4/10 pipeline: windows linked per agent · profile · host · project
+(or one conversation) in macOS's picker, captured once per new final answer
+after a short settle check, never when another active conversation could be
+in that window ("Window association required"); memory only, unchecked
+unless "Include auto screenshots in handoff" is on (ADR-028). Results:
+XCTest 302/0 (16 opt-in skips), Swift Testing 122/122, Python 249+15 ×2 (3.14, 3.9), Xcode Debug/Release BUILD SUCCEEDED, `git diff --check` clean. Live mouse, Claude Desktop timing, permissions and displays:
+owner ([ACCEPTANCE_PHASE14](../macos/ACCEPTANCE_PHASE14.md)). Proposal:
+0.6.0 for App, Core and plugin before the next install (not applied).
+[Phase 14](../macos/PHASE14.md). Next agreed stage: owner install (consent)
+and Phase 14 checks; MCP not started.
+
 ## 2026-11-06 — 0.5.0 ready to install (not installed)
 
 App, Core and plugin at 0.5.0 (`e245bfe`); JSON API v1 and Context Pack

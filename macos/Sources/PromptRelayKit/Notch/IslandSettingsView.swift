@@ -269,20 +269,16 @@ struct IslandSettingsView: View {
                    detail: "Files the agent verifiably wrote and named are prepared for Copy with Context. Uncheck any.",
                    isOn: Binding(get: { model.autoSelectResultAttachments }, set: { model.autoSelectResultAttachments = $0 }))
             Hairline()
-            toggle("Auto-capture final window",
-                   detail: "Off by default. One still image of the window you choose, after each final answer of that agent in that project. Kept in memory only.",
+            toggle("Automatic final screenshots",
+                   detail: "Off by default. After each final answer, one still image of the window you linked to that agent. Kept in memory only: never saved, never copied, never sent.",
                    isOn: Binding(get: { model.autoCaptureFinalWindow }, set: { model.autoCaptureFinalWindow = $0 }))
             if model.autoCaptureFinalWindow {
-                HStack(spacing: 8) {
-                    Text(model.autoCaptureSource.map { "Window for \($0.provider.title) · \($0.host.title) in \(($0.projectPath as NSString).lastPathComponent)" }
-                         ?? model.autoCaptureMessage ?? model.autoCaptureBlocker ?? "Choose the window of the open conversation's app")
-                        .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(2)
-                    Spacer()
-                    Button(model.autoCaptureSource == nil ? "Choose Window…" : "Change…") { model.chooseAutoCaptureWindow() }
-                        .buttonStyle(IslandPillStyle(prominent: false))
-                        .disabled(model.autoCaptureBlocker != nil || model.isPresentingSystemDialog)
-                }
-                .padding(.horizontal, 12).padding(.vertical, 6)
+                AutoCaptureLinksView(model: model)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                Hairline()
+                toggle("Include auto screenshots in handoff",
+                       detail: "Off: they wait unchecked under Attachments until you tick them. On: they start checked for Copy with Context, Context Packs and Drag.",
+                       isOn: Binding(get: { model.autoScreenshotsInHandoff }, set: { model.autoScreenshotsInHandoff = $0 }))
             }
             Hairline()
             toggle("Keep the last 5 copied images",
@@ -627,5 +623,52 @@ struct ProfileLabelRow: View {
         .onAppear { text = model.profileLabels[key.id] ?? "" }
         .onChange(of: text) { _, new in if new.isEmpty, model.profileLabels[key.id] != nil { model.setProfileLabel(key, nil) } }
         .onDisappear { if text != (model.profileLabels[key.id] ?? "") { model.setProfileLabel(key, text) } }
+    }
+}
+
+/// Phase 14: the windows linked for automatic screenshots, one row each,
+/// plus Link Window… and Clear Temporary Screenshots.
+struct AutoCaptureLinksView: View {
+    let model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if model.autoCaptureBindings.isEmpty {
+                Text("No window linked. Open a conversation, then link the window of its app. Links last until Prompt Relay quits.")
+                    .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(model.autoCaptureBindings) { binding in
+                HStack(spacing: 6) {
+                    Image(systemName: "macwindow").font(.system(size: 10.5)).foregroundStyle(Island.tertiary).frame(width: 14)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(model.describe(binding)).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
+                            .lineLimit(1).truncationMode(.middle)
+                        Text(binding.window.label).font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    Button("Remove") { model.removeAutoCaptureBinding(binding.id) }
+                        .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
+                        .accessibilityLabel("Remove link for \(model.describe(binding))")
+                }
+                .frame(minHeight: 28)
+            }
+            if let message = model.autoCaptureMessage ?? model.autoCaptureBlocker {
+                Text(message).font(.system(size: 11)).foregroundStyle(model.autoCaptureMessage != nil ? Island.warning : Island.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 8) {
+                Button("Link Window for Open Conversation…") { model.chooseAutoCaptureWindow() }
+                    .buttonStyle(IslandPillStyle(prominent: false))
+                    .disabled(model.autoCaptureBlocker != nil || model.isPresentingSystemDialog)
+                Spacer(minLength: 0)
+                let held = model.temporaryScreenshotSummary
+                Button("Clear Temporary Screenshots") { model.clearTemporaryScreenshots() }
+                    .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
+                    .disabled(held.count == 0)
+                    .islandHelp(held.count == 0 ? "No screenshots in memory"
+                                : "\(held.count) in memory · \(ReviewPack.size(held.bytes)); answers and links stay")
+            }
+        }
+        .id(model.attachmentsVersion)
     }
 }

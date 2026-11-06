@@ -97,6 +97,14 @@ observed counts, attachments {name, kind, bytes, availability `file` /
    `files/` (the only place a snapshot becomes a file). Refused with likely
    secrets.
 
+Phase 14: **auto screenshots** (ADR-028) are window snapshots like the
+others — image data in memory — but start unchecked unless the user turns
+on "Include auto screenshots in handoff"; an unchecked one is not in the
+text, the manifest, Copy Files, Drag or Export. Their origin line says
+"auto screenshot of the window the user linked to this agent, taken by
+Prompt Relay after the final answer; it may not show the answer's last
+lines". Format v1 is unchanged.
+
 A change to results, order, instructions, receiver, manifest option or
 chosen attachments marks the prepared pack stale; nothing stale is copied,
 dragged or exported.

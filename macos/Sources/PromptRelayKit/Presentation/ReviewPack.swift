@@ -133,7 +133,7 @@ public enum ReviewPack {
         case .agentObserved: return "observed file; added by you [\(confirmed)]"
         case .agentResult: return "observed result file, snapshotted locally [\(confirmed)]"
         case .namedVerified: return "named in the agent's answer; file changed during this turn (local time), snapshotted locally; who wrote it is not observed [\(reported)]"
-        case .windowCapture: return "screenshot of the window the user chose, taken by Prompt Relay after the final answer [\(userSupplied)]"
+        case .windowCapture: return "auto screenshot of the window the user linked to this agent, taken by Prompt Relay after the final answer; it may not show the answer's last lines [\(userSupplied)]"
         case .windowSnapshot: return "screenshot of a window the user picked [\(userSupplied)]"
         }
     }

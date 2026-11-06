@@ -64,7 +64,7 @@ public final class ReportStore {
     /// snapshots are dropped (never a persistent attachment).
     @discardableResult
     public func addEphemeralImage(_ data: Data, name: String, to ref: ReportRef, source: AttachmentSource,
-                                  sourceProvider: AgentProvider? = nil) throws -> ReportAttachment {
+                                  sourceProvider: AgentProvider? = nil, selected: Bool = true) throws -> ReportAttachment {
         guard !data.isEmpty else { throw ReportStoreError.empty }
         guard let type = Self.imageType(of: data) else { throw ReportStoreError.damagedImage(name) }
         guard data.count <= ephemeralLimits.maxTotalBytes, data.count <= Self.maxAttachmentBytes else { throw ReportStoreError.tooLarge(name) }
@@ -80,6 +80,7 @@ public final class ReportStore {
         attachment.source = source
         attachment.sourceProvider = sourceProvider
         attachment.inMemory = true
+        if !selected { attachment.selected = false }
         ephemeral.append(attachment)
         ephemeralData[id] = data
         ephemeralBorn[id] = clock()
@@ -353,7 +354,7 @@ public final class ReportStore {
         case .agentObserved: return "Observed in this turn; added by you"
         case .agentResult: return "Observed result file; automatically prepared from this turn"
         case .namedVerified: return "Named in the answer and changed during this turn (local file time); automatically prepared. Not proof the agent created it"
-        case .windowCapture: return "Still image of the window you chose for auto-capture, taken after this final answer arrived"
+        case .windowCapture: return "Auto screenshot: a still image of the window you linked to this agent, taken by Prompt Relay after this final answer arrived (it may not show the answer's last lines)"
         case .windowSnapshot: return "Still image of the window you picked in the macOS picker"
         }
     }

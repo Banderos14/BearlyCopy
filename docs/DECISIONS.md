@@ -866,3 +866,45 @@ Phase 14 starts with a live probe of which revision each client sends.
 
 **Consequences.** No new process or trust surface in 0.4.x/0.5.0. The design
 in `docs/MCP_EVALUATION.md` §"Phase 13 update" is the starting point.
+
+## ADR-028: Automatic final screenshots — linked windows, never guessed (extends Phase 9.4 / 10)
+
+**Context.** Phase 9.4 added an opt-in "Auto-capture final window" with one
+window, picked once, bound to project + agent + host and remembered for the
+app run; Phase 10 kept the snapshots in memory. In practice it rarely fired
+(only for the single newest *unseen* answer, so not with the island open or
+when two agents finished), and its binding could not tell two local profiles
+of one agent, or two conversations shown in the same app, apart.
+
+**Decision.**
+1. Same pipeline (ScreenCaptureKit single-window still, `SCContentSharingPicker`,
+   Phase 10 in-memory store and limits); no second capture system.
+2. A link is one window the user picked in macOS's picker, for one
+   agent · local profile · host · project, or for one conversation. Several
+   links can coexist. Links are memory only (window identity does not survive
+   a restart). Prompt Relay never enumerates windows (`SCShareableContent` is
+   not used) and excludes its own windows from the picker.
+3. Every new final answer (completion `answer` / `answer_background_running`,
+   no pending Needs Input) that finished after the feature was armed is
+   considered once. Intermediate Stops, background waits, API errors,
+   questions and plan approvals never trigger a capture.
+4. The capture happens only if exactly one link resolves for the answer and
+   no other conversation active in the last 30 minutes resolves to the same
+   window (by system window number when macOS gives it, else by link). Else:
+   no screenshot, status "Window association required". Bundle id, app name
+   or project name are never treated as proof of a conversation.
+5. Timing: wait 0.6 s after the app sees the answer, capture, wait 0.8 s,
+   capture again; two equal pictures (grayscale thumbnail, ≤ 0.4 % changed
+   pixels) end it, else at most a third still. A newer final answer for the
+   same window cancels the older capture ("superseded"). The screenshot is
+   not claimed to show the answer's last lines.
+6. Auto screenshots start **unchecked**; a separate setting ("Include auto
+   screenshots in handoff", off by default) starts them checked. They are
+   labelled "auto screenshot" (never an agent's file), never written to disk,
+   never put on the clipboard without an explicit copy.
+
+**Consequences.** No new permission beyond what the picker already asks; a
+refused or revoked permission shows "Permission required" and keeps the
+link; a closed window drops its link (never replaced by another window).
+Live behaviour in Claude Desktop (render timing, multi-display, minimized
+windows) still needs the owner's checks (`macos/ACCEPTANCE_PHASE14.md`).
