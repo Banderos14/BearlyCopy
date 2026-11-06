@@ -1,5 +1,15 @@
 # Status
 
+## 2026-11-06 — Phase 12.1 acceptance: 0.4.1 installed, live waits not yet observed
+
+Fixed: subagent `<agent-message>` reports are automated messages in Copy
+with Context; unconfirmable waits shown as "May need input" (never removed by
+time). App 0.4.1 `0dffa80` and plugin 0.4.1 installed with consent (backups
+kept). Isolated live probe confirmed the installed hook and real
+UserPromptSubmit/SessionEnd fields; the CLI login had expired, so question,
+plan and permission events are still documented-only. Two scroll tests need
+an unlocked screen. [Phase 12.1 §9](../macos/PHASE12.1.md).
+
 ## 2026-11-05 — Phase 12.1: Needs Input (0.4.1, not installed)
 
 Observer hooks for AskUserQuestion, ExitPlanMode, PermissionRequest,

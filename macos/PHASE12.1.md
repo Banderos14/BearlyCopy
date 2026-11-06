@@ -116,3 +116,77 @@ any plugin update (Phase 12 §18).
 6. Settings → notify on → one banner per wait, no question text.
 7. `bin/prompt-relay sessions --json` shows `attention`; record the real
    payload field names in `docs/HOOKS_RESEARCH.md`.
+
+
+## 9. Acceptance pass (2026-11-06)
+
+**Fixed**
+- **Copy with Context**: a subagent's `<agent-message from="…">` report
+  (observed: the whole prompt was that block) was classified as the user's
+  request. `agent-message` is now an automated block in the Core
+  (`origin.HARNESS_TAGS`) and in the app's display code. Copy with Context
+  shows the user's latest earlier request under *Original user request* and
+  the report verbatim under *Automated message that started this turn*;
+  the Inbox names the result by the user's request. Regression tests:
+  Python (classification, pasted stays the user's, mixed = source unknown,
+  context sections, results) and Swift (display).
+- **Needs Input lifecycle**: Esc, a killed window or a missing SessionEnd may
+  send no event. Such a wait is never removed by time, but it is no longer
+  claimed as certain once its newest signal is > 30 min old or the same agent
+  profile shows activity in a later conversation of the same project: amber
+  ring instead of dot, "May need input", chip "needs input?", no
+  notification. A repeated `permission_prompt` re-confirms it
+  (`attention.last_signal_at`). Answered/denied/cancelled-with-a-result
+  waits end as before.
+
+**Timeout check.** Strict timing test (opt-in, `PROMPT_RELAY_TIMING=1`):
+Inbox shown after 14.5 ms, a result opened after 15.1 ms, `loadInbox` 0.09 ms
+(alone); 15.1 / 15.1 / 0.12 ms inside the full suite run serially. In the
+parallel run the same open took 2.18 s and an untouched Phase 9.3 test with a
+2 s ceiling timed out — both pass serially with their original bounds: the
+delay is other suites blocking the main thread (synchronous
+`RunLoop.main.run` render loops), not the interface. The 60 s ceiling in
+Phase 12 tests absorbs only that.
+
+**Runs on `0dffa80`** (logs in `macos/acceptance/phase12.1/`)
+
+| Check | Result |
+|---|---|
+| Python 3.14.0 / 3.9.6 (`check.sh`) | 230 + 15 each, OK (1 skipped) |
+| `swift test` (parallel) | XCTest 271/0 failures; Swift Testing 100/102 — the timing test (since made opt-in) and Phase93 `followLatestHoldsOnlyWhileTheIslandIsOpen` timed out under contention |
+| `swift test --no-parallel`, timing on | Swift Testing **102/102**; XCTest 271 with **2 failures**: two scroll-wheel tests (`IslandLayoutTests` answer scroll, `NotchControllerTests` real-panel scroll). They fail identically on the unchanged `f8a7f9a` (temporary worktree) and passed in all earlier runs: **the screen was locked and the displays asleep** (`CGSessionCopyCurrentDictionary`), so synthetic scroll events reach no window. To re-run with the screen unlocked. |
+| Xcode Debug / Release | BUILD SUCCEEDED, 0.4.1 |
+| `git diff --check` | clean |
+
+**Installed with the owner's consent**
+- App: 0.4.0 `e75cdd5` backed up as
+  `PromptRelay-AppBackups/Prompt Relay 0.4.0-e75cdd5-20261106-071019.app`;
+  running `~/Applications/Prompt Relay.app` PID 62216, 0.4.1, `0dffa80`,
+  not dirty, Core 0.4.1, signature valid. Rollback: `install-local.sh
+  --rollback`. The Xcode Debug copy (PID 55979) was still running.
+- Plugin: `plugin/` cleaned of test-run `__pycache__` (28 committed files,
+  no symlinks, no secrets), then `claude plugin marketplace update` +
+  `claude plugin update` → record 0.4.1, cache byte-identical to
+  `HEAD:plugin`, `settings.json` hash unchanged; 0.2.0–0.4.0 caches kept.
+  Codex hooks, trust records, credentials untouched.
+
+**Live probe** (owner-approved, isolated; see HOOKS_RESEARCH "live probe"):
+the installed 0.4.1 launcher ran for real (`UserPromptSubmit` stored,
+`SessionEnd` ignored without a wait). The CLI's login had expired, so no
+model turn ran and **AskUserQuestion / ExitPlanMode / PermissionRequest were
+not observed live**; their fields stay documented-only.
+
+**Live checks still for the owner** (restart Claude Code / Desktop first;
+stop the Xcode Debug copy; unlock the screen):
+1. Ask Claude to use AskUserQuestion → amber dot, Details "Claude · Needs
+   input · Question" → answer → working dots → final answer → green dot.
+2. Plan mode → plan approval → "· Plan" → approve → Working → green.
+3. A Bash command needing permission → "· Permission" → Allow → Working;
+   repeat → Deny → Claude stops.
+4. Two agents: one asking, one working → amber dot; Project and Session
+   shows "needs input" and "working" side by side.
+5. Esc on a question → if no further event: after 30 min "May need input"
+   (ring), never gone by itself; a new prompt clears it.
+6. `bin/prompt-relay sessions --json` → `attention`; send the real field
+   names (or let the probe run after `claude` login) for HOOKS_RESEARCH.
+7. Re-run the two scroll tests with the screen unlocked.

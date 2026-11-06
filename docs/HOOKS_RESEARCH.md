@@ -252,3 +252,27 @@ registers all nine hooks of the 0.4.1 plugin from `--plugin-dir`, "no model
 context cost". **Not observed:** a live AskUserQuestion / ExitPlanMode /
 PermissionRequest payload through Prompt Relay (the active plugin is 0.4.0;
 record field names here after the owner's check).
+
+### Phase 12.1 live probe (2026-11-06) — what was actually observed
+Isolated run: empty temp folder, `claude -p … --setting-sources project
+--settings <temp> --no-session-persistence` (owner's settings, other hooks
+and plugins not loaded), Claude Code 2.1.268. A probe hook recorded only key
+names (+ `tool_name`, `notification_type`, `permission_mode`); the installed
+plugin 0.4.1 launcher wrote to a temp data dir.
+
+**Observed (real payload keys):**
+- `UserPromptSubmit`: `cwd, hook_event_name, permission_mode, prompt,
+  prompt_id, session_id, transcript_path` (`permission_mode` "default" /
+  "plan" as passed).
+- `SessionEnd`: `cwd, hook_event_name, prompt_id, reason, session_id,
+  transcript_path` — fires in `-p` mode even when authentication fails.
+- Plugin 0.4.1 launcher: `UserPromptSubmit stored`, `SessionEnd
+  ignored_event` (no open wait), as designed.
+
+**Not observed:** the CLI's OAuth session had expired ("Failed to
+authenticate"), so no model turn ran: `PreToolUse` (AskUserQuestion,
+ExitPlanMode), `PermissionRequest`, `Notification` and `PostToolUse` field
+names remain **documented only** (section above). Prompt Relay does not log
+in on the owner's behalf. Next: the owner's interactive check in Claude
+Desktop (plugin 0.4.1 active after restart), or `claude` re-login, then the
+same probe.
