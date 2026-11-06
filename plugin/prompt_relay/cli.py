@@ -373,9 +373,17 @@ def cmd_context(args: argparse.Namespace) -> int:
     return 0
 
 
+EXTERNAL_SLOT = "external"
+
+
 def _pack_refs(values: List[str]) -> List[tuple]:
     refs: List[tuple] = []
     for raw in values:
+        if raw == EXTERNAL_SLOT:
+            # A position the app fills itself (an imported report): it keeps
+            # the numbering of the Core's sections right. Nothing is read.
+            refs.append((EXTERNAL_SLOT, len(refs)))
+            continue
         key, sep, turn = raw.rpartition(":")
         if not sep or not key or not turn.isdigit() or int(turn) < 1:
             raise CommandError(EXIT_USAGE, api.USAGE_ERROR, f"--result must be SESSION_KEY:TURN, got {raw!r}")
@@ -383,7 +391,7 @@ def _pack_refs(values: List[str]) -> List[tuple]:
         if ref in refs:
             raise CommandError(EXIT_USAGE, api.USAGE_ERROR, f"result {raw} is listed twice; a pack holds each result once")
         refs.append(ref)
-    if not refs:
+    if not any(key != EXTERNAL_SLOT for key, _ in refs):
         raise CommandError(EXIT_USAGE, api.USAGE_ERROR, "name at least one --result")
     if len(refs) > context_pack.MAX_RESULTS:
         raise CommandError(EXIT_USAGE, api.USAGE_ERROR, f"a pack holds at most {context_pack.MAX_RESULTS} results")
@@ -412,6 +420,8 @@ def build_context_pack(refs: List[tuple], instructions: Optional[str]) -> Dict[s
     git_by_dir: Dict[Any, tuple] = {}
     sections, results, manifests, warnings = [], [], [], []
     for position, (key, index) in enumerate(refs, 1):
+        if key == EXTERNAL_SLOT:
+            continue
         sess = by_key.get(key)
         if sess is None:
             raise CommandError(EXIT_NOTHING, api.NOT_FOUND, f"no captured session with key {key!r}")
@@ -437,10 +447,16 @@ def build_context_pack(refs: List[tuple], instructions: Optional[str]) -> Dict[s
         m = context_pack.result_manifest(position, sess, turn, e, api.completion(turn, sess.turns), profile)
         sections.append((e, body))
         manifests.append(m)
-        results.append({"session_key": key, "turn": index, "result_id": m["result_id"], "entry": e, "section": body,
-                        "sensitive_findings": api.findings(findings), "warnings": item_warnings})
+        results.append({"session_key": key, "turn": index, "position": position, "result_id": m["result_id"], "entry": e,
+                        "section": body, "sensitive_findings": api.findings(findings), "warnings": item_warnings,
+                        "manifest": m})
         warnings += [f"Result {position}: {w}" for w in item_warnings]
-    text = context_pack.render_pack(sections, exported_at, instructions, warnings)
+    external = sum(1 for key, _ in refs if key == EXTERNAL_SLOT)
+    if external:
+        # Only the app can fill these slots; its document is the whole pack.
+        text = ""
+    else:
+        text = context_pack.render_pack(sections, exported_at, instructions, warnings)
     mixed = context_pack.mixed_project_warning([e["project"] for e, _ in sections])
     all_warnings = ([mixed] if mixed else []) + warnings
     return {"format": context_pack.FORMAT, "format_version": context_pack.FORMAT_VERSION, "exported_at": exported_at,
@@ -451,6 +467,8 @@ def build_context_pack(refs: List[tuple], instructions: Optional[str]) -> Dict[s
 
 def cmd_context_pack(args: argparse.Namespace) -> int:
     refs = _pack_refs(args.result or [])
+    if not _json(args) and any(key == EXTERNAL_SLOT for key, _ in refs):
+        raise CommandError(EXIT_USAGE, api.USAGE_ERROR, "external slots are filled by the app; use --json")
     data = build_context_pack(refs, _pack_instructions(args))
     if _json(args):
         found = sum(len(r["sensitive_findings"]) for r in data["results"])

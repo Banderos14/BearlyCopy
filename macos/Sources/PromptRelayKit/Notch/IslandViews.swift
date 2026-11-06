@@ -269,6 +269,9 @@ struct IslandContent: View {
                 case .switcher: QuickSwitcherView(model: model, presentation: presentation)
                 case .packagePreview: PackagePreviewView(model: model, presentation: presentation)
                 case .attachmentPreview: AttachmentPreviewView(model: model, presentation: presentation)
+                case .contextPack: ContextPackView(model: model, presentation: presentation)
+                case .contextPackPreview: ContextPackPreviewView(model: model, presentation: presentation)
+                case .handoffHistory: HandoffHistoryView(model: model, presentation: presentation)
                 }
             }
             .transition(.opacity)

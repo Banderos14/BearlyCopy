@@ -184,6 +184,8 @@ public final class AppModel {
         seenAnswers = stateDefaults?.dictionary(forKey: Self.seenAnswersKey) as? [String: String] ?? [:]
         notchAcknowledgedAt = stateDefaults?.string(forKey: Self.notchAckKey)
         handoffs = reportStore.map(Self.loadHandoffs) ?? [:]
+        loadPackDraft()
+        handoffHistory = reportStore.map(Self.loadHandoffHistory) ?? []
         imports = reportStore?.imports() ?? []
         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
         expandedConversations = Set(stateDefaults?.stringArray(forKey: Self.expandedConversationsKey) ?? [])
@@ -987,6 +989,12 @@ public final class AppModel {
         case inbox
         /// Phase 12: jump to an agent, profile, project, conversation or result.
         case switcher
+        /// Phase 13: several results prepared as one Context Pack.
+        case contextPack
+        /// Phase 13: the prepared pack's exact text, before copying.
+        case contextPackPreview
+        /// Phase 13: prepared packs and what was done with them.
+        case handoffHistory
         public var id: String { rawValue }
         public var title: String {
             switch self {
@@ -1008,6 +1016,9 @@ public final class AppModel {
             case .setup: return "Set Up"
             case .inbox: return "Results Inbox"
             case .switcher: return "Go To"
+            case .contextPack: return "Context Pack"
+            case .contextPackPreview: return "Pack Preview"
+            case .handoffHistory: return "Handoff History"
             }
         }
     }
@@ -1640,6 +1651,36 @@ public final class AppModel {
         get { currentRef.flatMap { handoffs[$0.key] } }
         set { if let key = currentRef?.key { handoffs[key] = newValue } }
     }
+    // MARK: Context Pack (Phase 13)
+
+    /// The results chosen for a Context Pack, in the user's order (references
+    /// only; saved next to the reports so a restart keeps the draft).
+    public internal(set) var packRefs: [ReportRef] = [] {
+        didSet { if packRefs != oldValue { savePackDraft() } }
+    }
+    /// The user's own words for the receiving AI (never generated).
+    public var packInstructions = "" {
+        didSet { if packInstructions != oldValue { savePackDraft() } }
+    }
+    public var packDestination: HandoffDestination = .generic {
+        didSet { if packDestination != oldValue { savePackDraft() } }
+    }
+    public internal(set) var contextPack: ContextPackState = .idle
+    /// What the user did with the prepared pack (never "delivered").
+    public internal(set) var packProgress = PackProgress()
+    /// The prepared pack holds likely secrets: the copy waits for a yes.
+    public internal(set) var packAwaitsSensitiveConfirmation = false
+    public internal(set) var packMessage: String?
+    /// Prepared packs and what the user did with them (no text, no images).
+    public internal(set) var handoffHistory: [HandoffRecord] = [] {
+        didSet { if handoffHistory != oldValue { saveHandoffHistory() } }
+    }
+    /// Include the machine-readable manifest at the end of the copied text.
+    public var packIncludesManifest = false {
+        didSet { if packIncludesManifest != oldValue { savePackDraft() } }
+    }
+    @ObservationIgnored var loadingPackDraft = false
+
     /// The Task card is expanded (Details); collapses for another answer.
     public var taskExpanded = false
     /// The attachment open in the attachment preview.

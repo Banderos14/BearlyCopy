@@ -2191,7 +2191,8 @@
           "$ref": "#/$defs/timestamp"
         },
         "text": {
-          "type": "string"
+          "type": "string",
+          "description": "The whole pack; empty when external slots are present (the app composes it)."
         },
         "warnings": {
           "type": "array",
@@ -2206,6 +2207,8 @@
             "additionalProperties": false,
             "required": [
               "entry",
+              "manifest",
+              "position",
               "result_id",
               "section",
               "sensitive_findings",
@@ -2296,6 +2299,14 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "position": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Place in the pack, counting external slots (imports the app fills)."
+              },
+              "manifest": {
+                "$ref": "#/$defs/context_pack_result_manifest"
               }
             }
           }
@@ -2340,88 +2351,7 @@
             "results": {
               "type": "array",
               "items": {
-                "type": "object",
-                "description": "Phase 13: facts about one result for the manifest: no paths, session ids or text.",
-                "required": [
-                  "position",
-                  "result_id",
-                  "kind",
-                  "provider",
-                  "profile",
-                  "host",
-                  "project",
-                  "turn",
-                  "status",
-                  "request",
-                  "response",
-                  "observed",
-                  "attachments"
-                ],
-                "properties": {
-                  "position": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "result_id": {
-                    "type": "string",
-                    "pattern": "^r-[0-9a-f]{16}$"
-                  },
-                  "kind": {
-                    "enum": [
-                      "local_capture",
-                      "user_import"
-                    ]
-                  },
-                  "provider": {
-                    "type": "string"
-                  },
-                  "profile": {
-                    "type": "string"
-                  },
-                  "profile_recorded": {
-                    "type": "boolean"
-                  },
-                  "host": {
-                    "type": "string"
-                  },
-                  "project": {
-                    "type": "string"
-                  },
-                  "turn": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "answered_at": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "status": {
-                    "type": "string"
-                  },
-                  "completion": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "link": {
-                    "type": "string"
-                  },
-                  "request": {
-                    "type": "object"
-                  },
-                  "response": {
-                    "type": "object"
-                  },
-                  "observed": {
-                    "type": "object"
-                  },
-                  "attachments": {
-                    "type": "array"
-                  }
-                }
+                "$ref": "#/$defs/context_pack_result_manifest"
               }
             },
             "review_instructions": {
@@ -2444,6 +2374,90 @@
               }
             }
           }
+        }
+      }
+    },
+    "context_pack_result_manifest": {
+      "type": "object",
+      "description": "Phase 13: facts about one result for the manifest: no paths, session ids or text.",
+      "required": [
+        "position",
+        "result_id",
+        "kind",
+        "provider",
+        "profile",
+        "host",
+        "project",
+        "turn",
+        "status",
+        "request",
+        "response",
+        "observed",
+        "attachments"
+      ],
+      "properties": {
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "result_id": {
+          "type": "string",
+          "pattern": "^r-[0-9a-f]{16}$"
+        },
+        "kind": {
+          "enum": [
+            "local_capture",
+            "user_import"
+          ]
+        },
+        "provider": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "string"
+        },
+        "profile_recorded": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "answered_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "completion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "link": {
+          "type": "string"
+        },
+        "request": {
+          "type": "object"
+        },
+        "response": {
+          "type": "object"
+        },
+        "observed": {
+          "type": "object"
+        },
+        "attachments": {
+          "type": "array"
         }
       }
     }

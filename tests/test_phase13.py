@@ -276,6 +276,19 @@ class ContextPackTests(IsolatedTestCase):
         self.assertGreater(len(data["text"]), 20 * 55000)
         self.assertLess(elapsed, 20, f"20 results took {elapsed:.1f} s")
 
+    def test_external_slots_keep_the_numbering(self) -> None:
+        self.claude("a1", "p1", "Task A", "Answer A")
+        self.claude("a1", "p2", "Task A2", "Answer A2")
+        data = self.ok("external", "a1:1", "external", "a1:2")
+        self.assertEqual([r["position"] for r in data["results"]], [2, 4])
+        self.assertEqual([r["manifest"]["position"] for r in data["results"]], [2, 4])
+        self.assertIn("same reading as Result 2", data["results"][1]["section"])
+        self.assertEqual(data["text"], "", "the app composes a pack with external slots")
+        proc, doc = self.pack("external")
+        self.assertEqual(doc["error"]["code"], "usage_error")
+        proc = self.cli("context-pack", "--result", "external", "--result", "a1:1")
+        self.assertEqual(proc.returncode, 2)
+
     def test_text_mode_prints_the_markdown(self) -> None:
         self.claude("s1", "p1", "Task", "Answer")
         proc = self.cli("context-pack", "--result", "s1:1")

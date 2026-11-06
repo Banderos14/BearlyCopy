@@ -492,7 +492,11 @@ public final class ReportStore {
     /// Copies of a report's images under their original names, for dragging,
     /// Copy File and Finder: an app receiving "3f2a….png" would show that name.
     /// Rebuilt on each call; only this folder is ever cleared.
-    public func handoffFiles(for attachments: [ReportAttachment], names: [String: String] = [:]) throws -> [URL] {
+    public func handoffFiles(for attachments: [ReportAttachment], names: [String: String] = [:],
+                             folder: String = "handoff") throws -> [URL] {
+        // Phase 13: a Context Pack uses its own folder, so preparing its files
+        // never removes the files a single-result hand-off put on the clipboard.
+        let handoffDir = folder == "handoff" ? self.handoffDir : root.appendingPathComponent(folder, isDirectory: true)
         try? fm.removeItem(at: handoffDir)
         try ensure(handoffDir)
         var used = Set<String>()

@@ -35,6 +35,7 @@ struct InboxView: View {
                 }
             }
             content(entries)
+            PackBar(model: model)
         }
         .islandPadding(presentation)
     }
@@ -64,7 +65,7 @@ struct InboxView: View {
                                 : "Final answers of Claude Code and Codex appear here as they finish, newest first.",
                             symbol: model.inboxFilter == .unread ? "checkmark.circle" : "tray", tint: Island.secondary, action: nil)
             } else {
-                BoundedScroll(maxHeight: presentation.listHeight(chrome: 76)) {
+                BoundedScroll(maxHeight: presentation.listHeight(chrome: model.packRefs.isEmpty ? 76 : 112)) {
                     LazyVStack(alignment: .leading, spacing: 1) {
                         if model.inboxFilter == .attention {
                             AttentionNote()
@@ -114,6 +115,7 @@ struct InboxRow: View {
         let attention = AppModel.inboxSection(result) == .needsAttention
         let current = model.currentRef == result.ref
         let files = model.attachments(for: result.ref).count + (result.observed?.filesChanged ?? 0)
+        HStack(alignment: .top, spacing: 2) {
         Button { model.openResult(result) } label: {
             HStack(alignment: .top, spacing: 7) {
                 if attention {
@@ -158,6 +160,9 @@ struct InboxRow: View {
         .contextMenu {
             Button("Open") { model.openResult(result) }
             Button(model.isPinned(result.ref) ? "Unpin" : "Pin") { model.togglePin(result.ref) }
+            Button(model.isInPack(result.ref) ? "Remove from Context Pack" : "Add to Context Pack") { model.togglePack(result.ref) }
+        }
+        PackToggle(model: model, ref: result.ref).padding(.top, 4)
         }
     }
 

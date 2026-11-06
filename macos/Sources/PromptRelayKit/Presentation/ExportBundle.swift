@@ -41,13 +41,14 @@ public enum ExportBundle {
     /// Writes the bundle into a new folder inside `parent`; returns it.
     /// Never overwrites: a taken name gets " 2", " 3"…
     public static func write(into parent: URL, name: String, package: String, files: [(attachment: ReportAttachment, url: URL?)],
-                             memory: [String: Data] = [:], manifest make: ([FileEntry]) -> Manifest) throws -> URL {
+                             memory: [String: Data] = [:], packageName: String = "context.md",
+                             manifest make: ([FileEntry]) -> Manifest?) throws -> URL {
         let fm = FileManager.default
         var folder = parent.appendingPathComponent(name, isDirectory: true)
         var n = 2
         while fm.fileExists(atPath: folder.path) { folder = parent.appendingPathComponent("\(name) \(n)", isDirectory: true); n += 1 }
         try fm.createDirectory(at: folder, withIntermediateDirectories: false)
-        try Data(package.utf8).write(to: folder.appendingPathComponent("context.md"))
+        try Data(package.utf8).write(to: folder.appendingPathComponent(packageName))
         var entries: [FileEntry] = []
         if !files.isEmpty {
             let dir = folder.appendingPathComponent("files", isDirectory: true)
@@ -70,10 +71,12 @@ public enum ExportBundle {
                 }
             }
         }
+        // Phase 13: a Context Pack writes its own manifest (PackManifest).
+        guard let manifest = make(entries) else { return folder }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        try encoder.encode(make(entries)).write(to: folder.appendingPathComponent("manifest.json"))
+        try encoder.encode(manifest).write(to: folder.appendingPathComponent("manifest.json"))
         return folder
     }
 }

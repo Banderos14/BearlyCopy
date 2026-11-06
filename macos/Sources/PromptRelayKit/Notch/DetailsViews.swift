@@ -333,6 +333,13 @@ struct NavigationIcons: View {
                 Button("Export Bundle…") { model.exportBundle() }
                     .disabled(model.currentRef == nil || model.reportStore == nil)
                 Divider()
+                if let ref = model.currentRef {
+                    Button(model.isInPack(ref) ? "Remove from Context Pack" : "Add to Context Pack") { model.togglePack(ref) }
+                }
+                Button("Context Pack (\(model.packRefs.count))…") { model.openContextPack() }
+                Button("Handoff History…") { model.navigate(to: .handoffHistory) }
+                    .disabled(model.handoffHistory.isEmpty)
+                Divider()
                 Button("Quit Prompt Relay") { actions.quit() }
             } label: {
                 Image(systemName: "ellipsis").font(.system(size: 12, weight: .semibold))

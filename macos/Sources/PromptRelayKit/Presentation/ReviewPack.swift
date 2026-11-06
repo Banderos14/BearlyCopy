@@ -42,6 +42,16 @@ public enum ReviewPack {
             + "[\(reported)] = the agent's own words, not checked; [\(notVerified)] = no independent source; "
             + "[\(unavailable)] = could not be determined.")
         add()
+        lines += importedSections(report)
+        appendTail(&lines, attachments: attachments, materials: materials, names: names)
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// The sections of an imported report from its source to its Git state
+    /// (Copy with Context and, one level deeper, a Context Pack).
+    static func importedSections(_ report: ImportedReport) -> [String] {
+        var lines: [String] = []
+        func add(_ s: String = "") { lines.append(s) }
         add("## Source, host and project")
         add("- Source: \(report.assistantTitle ?? "an AI assistant (not specified)"), imported manually (imported by you): the user pasted this report "
             + "into Prompt Relay. Prompt Relay did not observe the session; it was not captured automatically. [\(userSupplied)]")
@@ -74,8 +84,16 @@ public enum ReviewPack {
         add("## Git state")
         add("- [\(unavailable)] Not collected for this manual import.")
         add()
-        appendTail(&lines, attachments: attachments, materials: materials, names: names)
-        return lines.joined(separator: "\n") + "\n"
+        return lines
+    }
+
+    /// "Not checked" of an imported report.
+    static func importedNotChecked() -> [String] {
+        ["## Not checked (provenance and verification limits)",
+         "- The AI's claims of success, passing tests or completed work: [\(notVerified)]. "
+            + "Nothing about this session was observed by Prompt Relay; the text was imported by you.",
+         "- CI: no source is connected [\(unavailable)]",
+         "- Completion signal: none observed by Prompt Relay; the report was imported by the user [\(unavailable)]"]
     }
 
     /// The Core's pack for a local report, with the materials the user
@@ -203,11 +221,7 @@ public enum ReviewPack {
             lines.append(attachmentsSection(attachments, materials: materials, names: names))
             lines.append("")
         }
-        lines.append("## Not checked (provenance and verification limits)")
-        lines.append("- The AI's claims of success, passing tests or completed work: [\(notVerified)]. "
-                     + "Nothing about this session was observed by Prompt Relay; the text was imported by you.")
-        lines.append("- CI: no source is connected [\(unavailable)]")
-        lines.append("- Completion signal: none observed by Prompt Relay; the report was imported by the user [\(unavailable)]")
+        lines += importedNotChecked()
         lines.append("")
         lines.append("## Request for independent review")
         lines.append("Please review this result independently. Check whether the response actually fulfils the original "

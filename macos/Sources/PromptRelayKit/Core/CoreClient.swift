@@ -81,6 +81,8 @@ public protocol CoreProviding: Sendable {
     /// `prompt-relay enable|disable <dir>` (text commands): returns the Core's
     /// one-line confirmation. The folder's contents are never read.
     func setCapture(_ enabled: Bool, path: String) async throws -> String
+    /// Phase 13: the sections of several results, in this order (`context-pack`).
+    func contextPack(_ slots: [PackSlot]) async throws -> CoreResult<ContextPackData>
 }
 
 extension CoreProviding {
@@ -106,6 +108,41 @@ extension CoreProviding {
             return (a.sessionKey, a.turn) < (b.sessionKey, b.turn)
         }
         return CoreResult(data: ResultsData(total: rows.count, limit: limit, results: Array(rows.prefix(limit))), warnings: [])
+    }
+
+    /// Doubles without `context-pack`: each section from `context`, one
+    /// heading level deeper (outside fences), without its closing request.
+    public func contextPack(_ slots: [PackSlot]) async throws -> CoreResult<ContextPackData> {
+        var results: [ContextPackData.Result] = []
+        for (i, slot) in slots.enumerated() {
+            guard case .local(let key, let turn) = slot else { continue }
+            let data = try await context(sessionKey: key, turn: turn).data
+            var text = data.text
+            if let start = text.range(of: "## Source, host and project\n") { text = String(text[start.lowerBound...]) }
+            if let end = text.range(of: "\n## Request for independent review", options: .backwards) { text = String(text[..<end.lowerBound]) }
+            let section = ContextPackComposer.shiftOutsideFences(text) + "\n"
+            let provider = data.session.provider
+            let entry = ContextPackData.Entry(provider: provider == .codex ? "Codex" : "Claude Code", agent: provider == .codex ? "Codex" : "Claude",
+                                              profile: data.session.profile == nil ? "Unassigned" : "Default",
+                                              host: data.session.source?.environment.title ?? "Unknown",
+                                              project: Wording.projectName(data.session.project), title: data.session.title ?? "",
+                                              answeredAt: data.turn.finalResponse?.receivedAt ?? "")
+            let id = "r-" + String(ReportRef.local(sessionKey: key, turn: turn).key.utf8.map { String(format: "%02x", $0) }.joined().suffix(16))
+            let manifest = PackManifest.Result(position: i + 1, resultId: id, kind: "local_capture", provider: provider.rawValue,
+                                               profile: entry.profile, profileRecorded: data.session.profile != nil, host: "unknown",
+                                               project: entry.project, turn: turn, answeredAt: entry.answeredAt, status: nil,
+                                               completion: nil, link: nil,
+                                               request: .init(included: true, provenance: "confirmed_locally", origin: "user", characters: nil,
+                                                              earlierUserRequestTurn: nil),
+                                               response: .init(included: true, provenance: "reported_by_agent",
+                                                               characters: data.turn.finalResponse?.charCount ?? 0),
+                                               observed: nil, attachments: [])
+            results.append(.init(sessionKey: key, turn: turn, position: i + 1, resultID: id, entry: entry, section: section,
+                                 sensitiveFindings: data.sensitiveFindings, warnings: [], manifest: manifest))
+        }
+        return CoreResult(data: ContextPackData(format: ContextPackFormat.name, formatVersion: ContextPackFormat.version,
+                                                exportedAt: ISO8601DateFormatter().string(from: Date()), results: results, text: "",
+                                                warnings: []), warnings: [])
     }
 
     /// Doubles without detail levels build the Full package.
@@ -162,6 +199,10 @@ public struct CoreClient: CoreProviding {
 
     public func context(sessionKey: String, turn: Int) async throws -> CoreResult<ContextData> {
         try await call(["context", "--session", sessionKey, "--turn", String(turn)])
+    }
+
+    public func contextPack(_ slots: [PackSlot]) async throws -> CoreResult<ContextPackData> {
+        try await call(["context-pack"] + slots.flatMap { ["--result", $0.argument] })
     }
 
     public func context(sessionKey: String, turn: Int, detail: ContextDetail) async throws -> CoreResult<ContextData> {
