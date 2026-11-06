@@ -317,28 +317,19 @@ HOST_TITLES = {"claude_desktop": "Claude Desktop", "xcode": "Xcode", "terminal":
                "other": "Other", "unknown": "Unknown"}
 
 
-def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: str, detail: str = FULL,
-                   project_root: Optional[str] = None) -> str:
-    if detail not in DETAILS:
-        raise ValueError(f"unknown detail level {detail!r}")
-    final = turn.final_response
-    lines: List[str] = []
-    # Phase 9.3: the logical project (Git root, enabled project), when given.
-    project_name = os.path.basename(project_root.rstrip(os.sep)) if project_root else None
+def provider_names(session: Session):
+    """(source, provider, agent): "Codex"/"Codex" or "Claude Code"/"Claude"."""
     source = next((ev.source for ev in session.events if ev.source), None)
     provider = "Codex" if source and source.get("provider") == "codex" else "Claude Code"
     agent = "Codex" if provider == "Codex" else "Claude"
-    add = lines.append
-    add(f"# Copy with Context: {provider} result for an independent check")
-    add(f"Exported by Prompt Relay at {exported_at}. No AI service was used.")
-    if detail == STANDARD:
-        add("Detail: Standard. The request and the response are complete. Left out: command output, routine and "
-            "git commands (counted below) and the list of uncommitted files; Full Context has them.")
-    add("")
-    add("Provenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; "
-        f"[Reported by {agent}] = {agent}'s own words, not checked; "
-        "[Not verified] = no independent source; [Unavailable] = could not be determined.")
-    add("")
+    return source, provider, agent
+
+
+def _source_section(add, session: Session, turn: c.Turn, project_root: Optional[str]) -> None:
+    final = turn.final_response
+    source, provider, agent = provider_names(session)
+    # Phase 9.3: the logical project (Git root, enabled project), when given.
+    project_name = os.path.basename(project_root.rstrip(os.sep)) if project_root else None
     add("## Source, host and project")
     host = HOST_TITLES.get((source or {}).get("host", "unknown"), "Unknown")
     add(f"- Source: {provider} · {host} · This Mac, captured by the Prompt Relay hooks [{CONFIRMED}]")
@@ -377,8 +368,10 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
     add(f"- Request ↔ response link: {LINK_TEXT.get(turn.link, turn.link)}")
     add("")
 
-    _request_section(add, session, turn)
 
+def _response_section(add, session: Session, turn: c.Turn) -> None:
+    final = turn.final_response
+    _, _, agent = provider_names(session)
     add(f"## {agent} final response")
     if final is not None and final.text is not None:
         add(f"[Reported by {agent}] Verbatim text of {agent}'s last message for this turn.")
@@ -391,8 +384,9 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
             add(f"- API error type: {err.error or UNAVAILABLE} [{CONFIRMED}]")
     add("")
 
-    _observed_section(add, session, turn, detail)
 
+def _git_section(add, session: Session, git: GitInfo, exported_at: str, detail: str) -> None:
+    _, _, agent = provider_names(session)
     add(f"## Git state (read-only, collected at export time {exported_at})")
     if git.available:
         add(f"- Branch: {git.branch or UNAVAILABLE} [{CONFIRMED if git.branch else UNAVAILABLE}]")
@@ -410,11 +404,39 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
         add(f"- [{UNAVAILABLE}] {git.reason}")
     add("")
 
+
+def _not_checked_section(add, session: Session) -> None:
+    _, provider, agent = provider_names(session)
     add("## Not checked (provenance and verification limits)")
     add(f"- {agent}'s claims of success, passing tests or completed work: [{NOT_VERIFIED}]. Compare them with the "
         f"observed commands above; Prompt Relay does not interpret {agent}'s text.")
     add(f"- CI: no source is connected [{UNAVAILABLE}]")
     add(f"- Completion signal: {provider} Stop hook event, which only means {agent} stopped responding [{CONFIRMED}]")
+
+
+def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: str, detail: str = FULL,
+                   project_root: Optional[str] = None) -> str:
+    if detail not in DETAILS:
+        raise ValueError(f"unknown detail level {detail!r}")
+    lines: List[str] = []
+    _, provider, agent = provider_names(session)
+    add = lines.append
+    add(f"# Copy with Context: {provider} result for an independent check")
+    add(f"Exported by Prompt Relay at {exported_at}. No AI service was used.")
+    if detail == STANDARD:
+        add("Detail: Standard. The request and the response are complete. Left out: command output, routine and "
+            "git commands (counted below) and the list of uncommitted files; Full Context has them.")
+    add("")
+    add("Provenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; "
+        f"[Reported by {agent}] = {agent}'s own words, not checked; "
+        "[Not verified] = no independent source; [Unavailable] = could not be determined.")
+    add("")
+    _source_section(add, session, turn, project_root)
+    _request_section(add, session, turn)
+    _response_section(add, session, turn)
+    _observed_section(add, session, turn, detail)
+    _git_section(add, session, git, exported_at, detail)
+    _not_checked_section(add, session)
     add("")
     add("## Request for independent review")
     add("Please review this result independently. Check whether the response actually fulfils the original "

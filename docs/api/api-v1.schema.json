@@ -59,7 +59,8 @@
     "prune": "plan_data",
     "retention": "retention_data",
     "doctor": "doctor_data",
-    "results": "results_data"
+    "results": "results_data",
+    "context-pack": "context_pack_data"
   },
   "$defs": {
     "timestamp": {
@@ -2161,6 +2162,287 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/result_summary"
+          }
+        }
+      }
+    },
+    "context_pack_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Phase 13 (context-pack): several results in one hand-off. `results[].section` is one result's Markdown body (Copy with Context one heading level deeper); `text` is the whole pack (docs/CONTEXT_PACK.md). The format is versioned on its own (`format_version`).",
+      "required": [
+        "exported_at",
+        "format",
+        "format_version",
+        "manifest",
+        "results",
+        "text",
+        "warnings"
+      ],
+      "properties": {
+        "format": {
+          "const": "prompt-relay-context-pack"
+        },
+        "format_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "exported_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "text": {
+          "type": "string"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entry",
+              "result_id",
+              "section",
+              "sensitive_findings",
+              "session_key",
+              "turn",
+              "warnings"
+            ],
+            "properties": {
+              "session_key": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "result_id": {
+                "type": "string",
+                "pattern": "^r-[0-9a-f]{16}$"
+              },
+              "entry": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "agent",
+                  "answered_at",
+                  "host",
+                  "profile",
+                  "project",
+                  "provider",
+                  "title"
+                ],
+                "properties": {
+                  "agent": {
+                    "type": "string"
+                  },
+                  "answered_at": {
+                    "type": "string"
+                  },
+                  "host": {
+                    "type": "string"
+                  },
+                  "profile": {
+                    "type": "string"
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              },
+              "section": {
+                "type": "string"
+              },
+              "sensitive_findings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "line",
+                    "section"
+                  ],
+                  "properties": {
+                    "section": {
+                      "enum": [
+                        "request",
+                        "response"
+                      ]
+                    },
+                    "line": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "kind": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ai_service_used",
+            "format",
+            "format_version",
+            "limits",
+            "markdown_characters",
+            "prepared_at",
+            "prepared_by",
+            "result_count",
+            "results",
+            "review_instructions",
+            "warnings"
+          ],
+          "properties": {
+            "format": {
+              "const": "prompt-relay-context-pack"
+            },
+            "format_version": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "prepared_at": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "prepared_by": {
+              "type": "string"
+            },
+            "ai_service_used": {
+              "const": false
+            },
+            "result_count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "Phase 13: facts about one result for the manifest: no paths, session ids or text.",
+                "required": [
+                  "position",
+                  "result_id",
+                  "kind",
+                  "provider",
+                  "profile",
+                  "host",
+                  "project",
+                  "turn",
+                  "status",
+                  "request",
+                  "response",
+                  "observed",
+                  "attachments"
+                ],
+                "properties": {
+                  "position": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "result_id": {
+                    "type": "string",
+                    "pattern": "^r-[0-9a-f]{16}$"
+                  },
+                  "kind": {
+                    "enum": [
+                      "local_capture",
+                      "user_import"
+                    ]
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "profile": {
+                    "type": "string"
+                  },
+                  "profile_recorded": {
+                    "type": "boolean"
+                  },
+                  "host": {
+                    "type": "string"
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "turn": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "answered_at": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "completion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "link": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "type": "object"
+                  },
+                  "response": {
+                    "type": "object"
+                  },
+                  "observed": {
+                    "type": "object"
+                  },
+                  "attachments": {
+                    "type": "array"
+                  }
+                }
+              }
+            },
+            "review_instructions": {
+              "type": "object"
+            },
+            "markdown_characters": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "limits": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         }
       }

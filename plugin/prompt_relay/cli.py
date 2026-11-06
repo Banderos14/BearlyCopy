@@ -4,7 +4,7 @@ Exit codes: 0 ok · 1 error · 2 usage / confirmation required · 3 nothing
 found or nothing to export · 4 clipboard failure · 5 export blocked by the
 sensitive-content check · 6 kept by active-session protection.
 
-``--json`` (projects, sessions, turns, show, context, delete, prune,
+``--json`` (projects, sessions, turns, show, context, context-pack, delete, prune,
 retention) switches to the machine API in ``api.py``: exactly one JSON
 document on stdout, nothing on stderr, same exit codes.
 """
@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 from prompt_relay import __version__, api
 from prompt_relay import config as _config
 from prompt_relay import projects as _projects
-from prompt_relay import export, gitinfo, history, integration, retention, runtime
+from prompt_relay import context_pack, export, gitinfo, history, integration, retention, runtime
 from prompt_relay.clipboard import ClipboardError, get_backend
 from prompt_relay.paths import ENV_HOME, data_dir
 from prompt_relay.store import Store, StoreError
@@ -373,6 +373,96 @@ def cmd_context(args: argparse.Namespace) -> int:
     return 0
 
 
+def _pack_refs(values: List[str]) -> List[tuple]:
+    refs: List[tuple] = []
+    for raw in values:
+        key, sep, turn = raw.rpartition(":")
+        if not sep or not key or not turn.isdigit() or int(turn) < 1:
+            raise CommandError(EXIT_USAGE, api.USAGE_ERROR, f"--result must be SESSION_KEY:TURN, got {raw!r}")
+        ref = (key, int(turn))
+        if ref in refs:
+            raise CommandError(EXIT_USAGE, api.USAGE_ERROR, f"result {raw} is listed twice; a pack holds each result once")
+        refs.append(ref)
+    if not refs:
+        raise CommandError(EXIT_USAGE, api.USAGE_ERROR, "name at least one --result")
+    if len(refs) > context_pack.MAX_RESULTS:
+        raise CommandError(EXIT_USAGE, api.USAGE_ERROR, f"a pack holds at most {context_pack.MAX_RESULTS} results")
+    return refs
+
+
+def _pack_instructions(args: argparse.Namespace) -> Optional[str]:
+    if args.instructions is not None and args.instructions_file is not None:
+        raise CommandError(EXIT_USAGE, api.USAGE_ERROR, "use --instructions or --instructions-file, not both")
+    if args.instructions_file is None:
+        return args.instructions
+    try:
+        raw = sys.stdin.buffer.read() if args.instructions_file == "-" else Path(args.instructions_file).read_bytes()
+    except OSError as exc:
+        raise CommandError(EXIT_ERROR, api.USAGE_ERROR, f"instructions file could not be read: {exc.strerror}")
+    return raw.decode("utf-8", "surrogateescape")
+
+
+def build_context_pack(refs: List[tuple], instructions: Optional[str]) -> Dict[str, Any]:
+    """Phase 13: the sections of several results, in the order given, from
+    the same functions as Copy with Context; each result is read from its own
+    session only (invariant 3). Read-only."""
+    by_key = {s.key: s for s in history.load_all(_store())}
+    resolver = _resolver()
+    exported_at = _now()
+    git_by_dir: Dict[Any, tuple] = {}
+    sections, results, manifests, warnings = [], [], [], []
+    for position, (key, index) in enumerate(refs, 1):
+        sess = by_key.get(key)
+        if sess is None:
+            raise CommandError(EXIT_NOTHING, api.NOT_FOUND, f"no captured session with key {key!r}")
+        if not 1 <= index <= len(sess.turns):
+            raise CommandError(EXIT_NOTHING, api.NOT_FOUND, f"session {key} has {len(sess.turns)} turn(s); turn {index} is not one")
+        turn = sess.turns[index - 1]
+        logical = resolver.resolve(sess.project_dir)
+        root = logical["path"] if logical else None
+        same = git_by_dir.get(sess.project_dir)
+        if same is None:
+            git = gitinfo.collect(sess.project_dir)
+            git_by_dir[sess.project_dir] = (git, position)
+            same_as = None
+        else:
+            git, same_as = same
+        profile = api.session_profile(sess)
+        e = context_pack.entry(sess, turn, root, api._titles(sess)[0], profile)
+        body = context_pack.render_section(sess, turn, git, exported_at, project_root=root, git_same_as=same_as)
+        findings = export.sensitive_findings(turn, session=sess)
+        item_warnings = [w["message"] for w in api.turn_warnings(sess, turn, [])]
+        if turn.final_response is None or turn.final_response.text is None:
+            item_warnings.append("this result has no final response text")
+        m = context_pack.result_manifest(position, sess, turn, e, api.completion(turn, sess.turns), profile)
+        sections.append((e, body))
+        manifests.append(m)
+        results.append({"session_key": key, "turn": index, "result_id": m["result_id"], "entry": e, "section": body,
+                        "sensitive_findings": api.findings(findings), "warnings": item_warnings})
+        warnings += [f"Result {position}: {w}" for w in item_warnings]
+    text = context_pack.render_pack(sections, exported_at, instructions, warnings)
+    mixed = context_pack.mixed_project_warning([e["project"] for e, _ in sections])
+    all_warnings = ([mixed] if mixed else []) + warnings
+    return {"format": context_pack.FORMAT, "format_version": context_pack.FORMAT_VERSION, "exported_at": exported_at,
+            "results": results, "text": text,
+            "manifest": context_pack.manifest(manifests, exported_at, __version__, instructions, all_warnings, len(text)),
+            "warnings": all_warnings}
+
+
+def cmd_context_pack(args: argparse.Namespace) -> int:
+    refs = _pack_refs(args.result or [])
+    data = build_context_pack(refs, _pack_instructions(args))
+    if _json(args):
+        found = sum(len(r["sensitive_findings"]) for r in data["results"])
+        warnings = [api.warning("sensitive_content", f"{found} line(s) look like secrets or credentials")] if found else []
+        return _emit(args, data, warnings)
+    _write_stdout(data["text"])
+    for r in data["results"]:
+        for f in r["sensitive_findings"]:
+            _err(f"WARNING: result {r['session_key']}:{r['turn']} {f['section']} line {f['line']}: {f['kind']}")
+    return 0
+
+
 def _report_findings(findings) -> None:
     if not findings:
         return
@@ -703,6 +793,14 @@ def build_parser() -> argparse.ArgumentParser:
     _add_detail(p)
     _add_json(p)
     p.set_defaults(func=cmd_context)
+
+    p = sub.add_parser("context-pack", help="preview a Context Pack of several results (read-only, nothing copied)")
+    p.add_argument("--result", action="append", metavar="SESSION_KEY:TURN",
+                   help="a result to include, in order (repeat; at most %d)" % context_pack.MAX_RESULTS)
+    p.add_argument("--instructions", help="review instructions for the receiving AI (your own words)")
+    p.add_argument("--instructions-file", help="read the review instructions from a file, or - for stdin")
+    _add_json(p)
+    p.set_defaults(func=cmd_context_pack)
 
     p = sub.add_parser("delete", help="delete captured history (preview first; --yes to delete)")
     g = p.add_mutually_exclusive_group(required=True)
