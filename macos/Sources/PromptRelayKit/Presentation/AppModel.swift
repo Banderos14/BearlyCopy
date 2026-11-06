@@ -1670,6 +1670,9 @@ public final class AppModel {
     public internal(set) var packProgress = PackProgress()
     /// The prepared pack holds likely secrets: the copy waits for a yes.
     public internal(set) var packAwaitsSensitiveConfirmation = false
+    /// The user said "Copy Anyway" for the pack prepared now: its files and
+    /// drag follow without asking again (reset by every Prepare).
+    public internal(set) var packSensitiveConfirmed = false
     public internal(set) var packMessage: String?
     /// Prepared packs and what the user did with them (no text, no images).
     public internal(set) var handoffHistory: [HandoffRecord] = [] {

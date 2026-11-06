@@ -211,6 +211,7 @@ extension AppModel {
         guard !packRefs.isEmpty else { contextPack = .failed("Choose at least one result."); return }
         contextPack = .building
         packAwaitsSensitiveConfirmation = false
+        packSensitiveConfirmed = false
         switch await buildContextPack(packRefs, instructions: normalizedInstructions, destination: packDestination) {
         case .success(let pack):
             contextPack = .ready(pack)
@@ -259,6 +260,7 @@ extension AppModel {
                                                   origin: a.effectiveSource)
             }
             let selectedMaterials = materials(for: ref).filter(\.selected)
+            let attachmentFindings = attachmentSecretFindings(chosen.filter { !missing.contains($0.id) }, names: handoffNames(for: ref))
             switch ref {
             case .local(let key, let turn):
                 guard let result = core?.results.first(where: { $0.sessionKey == key && $0.turn == turn }) else {
@@ -275,7 +277,7 @@ extension AppModel {
                 m.attachments = statuses.map(\.manifest)
                 manifests.append(m)
                 items.append(.init(ref: ref, position: i + 1, entry: input.entry, isImport: false, attachments: statuses,
-                                   findings: result.sensitiveFindings, responseCharacters: m.response.characters,
+                                   findings: result.sensitiveFindings + attachmentFindings, responseCharacters: m.response.characters,
                                    requestOrigin: m.request.origin))
             case .imported(let id):
                 guard let report = imports.first(where: { $0.id == id }) else {
@@ -285,6 +287,7 @@ extension AppModel {
                                                       materials: selectedMaterials, names: handoffNames(for: ref), missing: missing)
                 inputs.append(input)
                 let findings = SecretScanner.scan(report.task ?? "", section: "request") + SecretScanner.scan(report.text, section: "response")
+                    + attachmentFindings
                 let e = input.entry
                 manifests.append(PackManifest.Result(
                     position: i + 1, resultId: Self.importResultID(id), kind: "user_import", provider: "imported",
@@ -321,6 +324,23 @@ extension AppModel {
                                          includesManifest: packIncludesManifest))
     }
 
+    /// The same secret check as Copy with Context, on the text documents
+    /// chosen for the pack (a file the user added is not checked anywhere
+    /// else). Images and PDFs are not read; documents over 1 MB are skipped.
+    func attachmentSecretFindings(_ chosen: [ReportAttachment], names: [String: String]) -> [SensitiveFinding] {
+        chosen.filter { $0.effectiveKind == .document && !$0.isInMemory && $0.byteCount <= 1024 * 1024 }.flatMap { a -> [SensitiveFinding] in
+            guard let data = attachmentData(a), let text = String(data: data, encoding: .utf8) else { return [] }
+            return SecretScanner.scan(text, section: "attachment \(names[a.id] ?? a.originalFilename)")
+        }
+    }
+
+    /// Files and drag of a pack with likely secrets wait for the same yes as its text.
+    private func packNeedsYes(_ pack: BuiltContextPack) -> Bool {
+        guard pack.findingCount > 0, !packSensitiveConfirmed else { return false }
+        packAwaitsSensitiveConfirmation = true
+        return true
+    }
+
     static func importResultID(_ id: String) -> String {
         "r-" + String(ReportStore.sha256(Data("import#\(id)".utf8)).replacingOccurrences(of: "sha256:", with: "").prefix(16))
     }
@@ -343,6 +363,7 @@ extension AppModel {
             return
         }
         packAwaitsSensitiveConfirmation = false
+        if confirmed { packSensitiveConfirmed = true }
         do {
             let count = try clipboard.copy(pack.text)
             packProgress.textCopiedAt = ReportStore.now()
@@ -402,6 +423,7 @@ extension AppModel {
             packMessage = "The choice changed after the pack was prepared. Prepare it again."
             return
         }
+        guard !packNeedsYes(pack) else { return }
         guard let images = packImages(pack) else {
             packMessage = "A window snapshot is no longer in memory. Prepare the pack again."
             return
@@ -422,7 +444,7 @@ extension AppModel {
     /// The pack's files and snapshots for one drag (snapshots as image data,
     /// no file). Called when the drag starts: that is what History records.
     public func contextPackDragPayloads() -> [DragPayload] {
-        guard let pack = contextPack.pack, !packIsStale, let images = packImages(pack) else { return [] }
+        guard let pack = contextPack.pack, !packIsStale, !packNeedsYes(pack), let images = packImages(pack) else { return [] }
         let payloads = packFiles(pack).map(DragPayload.file) + images.map(DragPayload.image)
         if !payloads.isEmpty {
             packProgress.dragStartedAt = ReportStore.now()

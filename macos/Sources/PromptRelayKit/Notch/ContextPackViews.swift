@@ -240,7 +240,8 @@ struct PackStepsView: View {
 
     private var sensitive: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Possible secrets in \(pack.findingCount) line(s):", systemImage: "exclamationmark.shield")
+            Label("Possible secrets in \(pack.findingCount) line(s). Text and files wait for your yes; Export stays off:",
+                  systemImage: "exclamationmark.shield")
                 .font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.warning)
             ForEach(pack.items.filter { !$0.findings.isEmpty }) { item in
                 Text("Result \(item.position): " + item.findings.prefix(4).map { "\($0.section) line \($0.line) (\($0.kind))" }.joined(separator: ", "))

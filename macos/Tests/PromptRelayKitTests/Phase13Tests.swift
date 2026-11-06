@@ -267,6 +267,43 @@ final class Phase13Tests: XCTestCase {
         XCTAssertNotNil(pasteboard.string(forType: .string))
     }
 
+    /// v0.5.0 item 7: an unchecked attachment never leaves; a document the
+    /// user added with a likely secret holds Copy Files, Drag and Export
+    /// until the same yes as the text; the answer stays verbatim.
+    func testUncheckedAndSecretAttachmentsAreNotHandedOverSilently() async throws {
+        let answer = "Done.\r\n```\nkeep  \n```\n"
+        try claude("s1", "p1", "Task", answer)
+        let model = await makeModel()
+        let ref = refs(model)[0]
+        model.addToPack(ref)
+        let hidden = tmp.appendingPathComponent("private-notes.md"); try Data("# hidden".utf8).write(to: hidden)
+        let leaky = tmp.appendingPathComponent("setup.md")
+        try Data("export API_KEY=sk-ant-api03-\(String(repeating: "x", count: 40))\n".utf8).write(to: leaky)
+        let off = try store.addFile(from: hidden, to: ref, source: .you, displayPath: "private-notes.md")
+        try store.setSelected(off.id, false)
+        try store.addFile(from: leaky, to: ref, source: .you, displayPath: "setup.md")
+        model.attachmentsVersion += 1
+        await model.prepareContextPack()
+        let pack = try XCTUnwrap(model.contextPack.pack)
+        XCTAssertNotNil(pack.text.range(of: answer), "the answer is verbatim")
+        XCTAssertFalse(pack.text.contains("private-notes"))
+        XCTAssertFalse(pack.manifest.json().contains("private-notes"))
+        XCTAssertEqual(pack.attachments.map(\.name), ["setup.md"])
+        XCTAssertTrue(pack.items[0].findings.contains { $0.section == "attachment setup.md" }, "\(pack.items[0].findings)")
+
+        model.copyContextPackFiles()
+        XCTAssertTrue(model.packAwaitsSensitiveConfirmation)
+        XCTAssertNil(pasteboard.pasteboardItems?.first, "no files before the yes")
+        XCTAssertTrue(model.contextPackDragPayloads().isEmpty, "no drag before the yes")
+        XCTAssertNil(model.writeContextPack(into: tmp), "never exported with likely secrets")
+
+        model.copyContextPackText(confirmed: true)
+        model.copyContextPackFiles()
+        let urls = (pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
+        XCTAssertEqual(urls.map(\.lastPathComponent), ["setup.md"])
+        XCTAssertEqual(model.contextPackDragPayloads().count, 1)
+    }
+
     /// An imported report fills its own slot; the Core numbers around it.
     func testImportedReportKeepsItsPlaceAndLabels() async throws {
         try claude("a1", "p1", "Task A", "Answer A")
