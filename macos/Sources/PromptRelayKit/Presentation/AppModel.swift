@@ -746,8 +746,10 @@ public final class AppModel {
         case attention
         /// Phase 12.1: an agent waits for the person (question, plan,
         /// permission) in this many sessions. A static amber dot; it never
-        /// means an answer is ready.
-        case needsInput(sessions: Int)
+        /// means an answer is ready. `confirmed` false: no wait can be
+        /// confirmed any more (old signal, or the agent moved on in another
+        /// session) — an amber ring, never removed by time.
+        case needsInput(sessions: Int, confirmed: Bool)
     }
 
     /// A waiting prompt older than this is not shown as work (an interrupted
@@ -758,8 +760,10 @@ public final class AppModel {
         if projects.error != nil, projects.value == nil { return .attention }
         // Phase 12.1: an agent blocked on the person comes first; the other
         // agents keep their states in Workspace, Inbox and History.
-        let waitingForPerson = allSessions.filter { $0.attention != nil }
-        if !waitingForPerson.isEmpty { return .needsInput(sessions: waitingForPerson.count) }
+        let waitingForPerson = agentsNeedingInput
+        if !waitingForPerson.isEmpty {
+            return .needsInput(sessions: waitingForPerson.count, confirmed: waitingForPerson.contains(where: \.confirmed))
+        }
         // Phase 10: the notch asks for attention only for answers that
         // arrived after the island was last opened. Opening it is looking at
         // Latest; unread answers of other conversations stay marked in
@@ -1308,9 +1312,9 @@ public final class AppModel {
     /// Phase 9.3: what a session row says about its state. Stop means the
     /// agent stopped, not that the task succeeded; `0 answers` is never shown
     /// as finished.
-    public enum SessionState: Equatable, Sendable { case working, waitingBackground, answered, noAnswer, failed, needsInput }
+    public enum SessionState: Equatable, Sendable { case working, waitingBackground, answered, noAnswer, failed, needsInput, mayNeedInput }
     public func sessionState(_ session: SessionSummary) -> SessionState {
-        if session.attention != nil { return .needsInput }   // Phase 12.1
+        if session.attention != nil { return isConfirmed(session) ? .needsInput : .mayNeedInput }   // Phase 12.1
         if session.running == true { return .working }
         // Phase 9.4: stopped while its own background work runs.
         if session.lastTurn?.completion == .waitingBackground,

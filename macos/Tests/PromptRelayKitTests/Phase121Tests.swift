@@ -10,7 +10,8 @@ import Testing
 @Suite(.serialized) struct Phase121Tests {
     static func session(_ key: String, provider: String = "claude_code", host: String = "claude_desktop", project: String = "/repo",
                         last: String, status: String = "awaiting_response", completion: String = "working",
-                        attention: String? = nil, since: String? = nil, running: Bool = true, turns: Int = 1) -> SessionSummary {
+                        attention: String? = nil, since: String? = nil, running: Bool = true, turns: Int = 1,
+                        lastSignal: String? = nil) -> SessionSummary {
         var json: [String: Any] = [
             "session_id": key, "session_key": key, "project": ["path": project, "name": (project as NSString).lastPathComponent],
             "first_event_at": last, "last_event_at": last, "event_count": 2, "turn_count": turns, "cwds": [project],
@@ -20,7 +21,9 @@ import Testing
             "source": ["provider": provider, "host": host, "native_session_id": key, "capture": "hooks", "capabilities": []],
         ]
         if let attention {
-            json["attention"] = ["state": "needs_input", "kind": attention, "since": since ?? last, "subagent": false]
+            var att: [String: Any] = ["state": "needs_input", "kind": attention, "since": since ?? last, "subagent": false]
+            if let lastSignal { att["last_signal_at"] = lastSignal }
+            json["attention"] = att
         }
         return try! JSONDecoder().decode(SessionSummary.self, from: JSONSerialization.data(withJSONObject: json))
     }
@@ -59,7 +62,7 @@ import Testing
         let (m, board) = model(core([waiting, working]))
         defer { board.releaseGlobally() }
         await m.refreshNow()
-        #expect(m.readyIndicator == .needsInput(sessions: 1), "the amber dot, not the working dots")
+        #expect(m.readyIndicator == .needsInput(sessions: 1, confirmed: true), "the amber dot, not the working dots")
         #expect(m.sessionState(m.allSessions.first { $0.sessionKey == "claude" }!) == .needsInput)
         #expect(m.sessionState(m.allSessions.first { $0.sessionKey == "codex" }!) == .working, "Codex still shows working")
         #expect(m.needsInputLine == "Claude Code · Needs input · Question")
@@ -69,7 +72,7 @@ import Testing
         #expect(!m.hasUnseenAnswer, "a question is never an answer")
         #expect(m.readyAnswer == nil)
         #expect(SessionSwitcherView.chip(.needsInput).0 == "needs input")
-        #expect(ReadyIndicatorView.label(.needsInput(sessions: 1)).contains("needs your input"))
+        #expect(ReadyIndicatorView.label(.needsInput(sessions: 1, confirmed: true)).contains("needs your input"))
     }
 
     @Test func answeredWaitReturnsToWorkingThenAnswer() async throws {
@@ -77,7 +80,7 @@ import Testing
         let (m, board) = model(c)
         defer { board.releaseGlobally() }
         await m.refreshNow()
-        #expect(m.readyIndicator == .needsInput(sessions: 1))
+        #expect(m.readyIndicator == .needsInput(sessions: 1, confirmed: true))
         c.sessionsByProject["/repo"] = [Self.session("claude", last: Self.now(minus: 5))]   // allowed: working again
         await m.refreshNow()
         #expect(m.readyIndicator == .working(sessions: 1))
@@ -92,7 +95,7 @@ import Testing
         ]))
         defer { board.releaseGlobally() }
         await m.refreshNow()
-        #expect(m.readyIndicator == .needsInput(sessions: 2))
+        #expect(m.readyIndicator == .needsInput(sessions: 2, confirmed: true))
         #expect(m.needsInputLine == "2 agents need input")
         #expect(m.agentsNeedingInput.map(\.sessionKey) == ["a", "b"], "longest waiting first")
         #expect(m.agentsNeedingInput.map(\.kind) == [.question, .permission])
@@ -133,6 +136,58 @@ import Testing
         await again.refreshNow()
         await again.refreshNow()
         #expect(repeated == 0)
+    }
+
+    /// Phase 12.1 fix: a subagent report is recognised as automated in the
+    /// app's display code too (the Core decides Copy with Context).
+    @Test func agentMessageIsAnAutomatedBlockInTheApp() {
+        let report = "<agent-message from=\"abc\">\nNo findings.\n</agent-message>"
+        #expect(FullTask.hasHarness(report))
+        #expect(Wording.requestForDisplay("Check this\n" + report).text == "Check this")
+        #expect(Wording.requestForDisplay(report).text == report, "nothing else to show: kept as is, never emptied")
+    }
+
+    /// Esc, a killed window or a missing SessionEnd send no event: such a
+    /// wait is never removed by time, but after 30 min without a new signal
+    /// (or once the same agent works on in a later conversation) it is no
+    /// longer claimed as certain.
+    @Test func anUnconfirmableWaitIsShownAsUncertainNotRemoved() async throws {
+        let old = Self.now(minus: 31 * 60)
+        let c = core([Self.session("claude", last: old, attention: "question", since: old)])
+        let (m, board) = model(c)
+        defer { board.releaseGlobally() }
+        var announced = 0
+        m.onNeedsInput = { _ in announced += 1 }
+        await m.refreshNow()
+        #expect(m.readyIndicator == .needsInput(sessions: 1, confirmed: false), "still shown: a ring, not removed")
+        #expect(m.sessionState(m.allSessions[0]) == .mayNeedInput)
+        #expect(SessionSwitcherView.chip(.mayNeedInput).0 == "needs input?")
+        #expect(m.needsInputBandLine(withKind: false) == "May need input")
+        #expect(m.needsInputLine?.contains("not confirmed") == true)
+        #expect(m.needsInputDetail(m.agentsNeedingInput[0]).contains("may have been answered or cancelled"))
+        #expect(ReadyIndicatorView.label(.needsInput(sessions: 1, confirmed: false)).contains("not confirmed"))
+        // A newer signal of the same wait (repeated permission_prompt) confirms it again.
+        c.sessionsByProject["/repo"] = [Self.session("claude", last: Self.now(minus: 5), attention: "question", since: old,
+                                                     lastSignal: Self.now(minus: 5))]
+        await m.refreshNow()
+        #expect(m.readyIndicator == .needsInput(sessions: 1, confirmed: true))
+        #expect(announced == 0, "a wait known at launch is not announced")
+    }
+
+    @Test func theSameAgentWorkingInALaterConversationMakesTheOldWaitUncertain() async throws {
+        let asked = Self.now(minus: 120)
+        let (m, board) = model(core([
+            Self.session("old", last: asked, attention: "permission", since: asked),
+            Self.session("new", last: Self.now(minus: 10)),                       // same Claude profile, same project
+            Self.session("codex", provider: "codex", host: "terminal", last: Self.now(minus: 5), attention: "permission",
+                         since: Self.now(minus: 5)),
+        ]))
+        defer { board.releaseGlobally() }
+        await m.refreshNow()
+        let byKey = Dictionary(uniqueKeysWithValues: m.agentsNeedingInput.map { ($0.sessionKey, $0.confirmed) })
+        #expect(byKey["old"] == false, "Claude moved on in a later conversation")
+        #expect(byKey["codex"] == true, "another agent's wait is not affected")
+        #expect(m.readyIndicator == .needsInput(sessions: 2, confirmed: true))
     }
 
     @Test func notifyNeedsInputIsOffByDefault() {

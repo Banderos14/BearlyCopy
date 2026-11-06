@@ -105,7 +105,7 @@ public struct FullTask: Equatable, Sendable {
     }
 
     static func hasHarness(_ text: String) -> Bool {
-        text.range(of: #"<(system-reminder|side-sessions-event|ci-monitor-event|task-notification)\b"#, options: .regularExpression) != nil
+        text.range(of: #"<(system-reminder|side-sessions-event|ci-monitor-event|task-notification|agent-message)\b"#, options: .regularExpression) != nil
     }
 }
 

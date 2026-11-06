@@ -1260,6 +1260,7 @@ struct SessionSwitcherView: View {
         switch state {
         case .working: return ("working", Island.warning)
         case .needsInput: return ("needs input", Island.warning)
+        case .mayNeedInput: return ("needs input?", Island.tertiary)
         case .waitingBackground: return ("waiting · background", Island.warning)
         case .answered: return ("answered", Island.secondary)
         case .noAnswer: return ("no answer", Island.tertiary)

@@ -16,7 +16,30 @@ extension AppModel {
         public let projectName: String
         public let kind: ActionKind
         public let since: String?
+        /// The wait is still supported by recent evidence (see `isConfirmed`).
+        public var confirmed: Bool = true
         public var id: String { sessionKey }
+    }
+
+    /// How long a wait counts as confirmed after its newest signal. After
+    /// that it is shown as "may need input" — never removed: a person can
+    /// take a long time to answer, and an abandoned dialog (Esc, killed
+    /// window, no SessionEnd) sends no event.
+    nonisolated static let waitConfirmationWindow: TimeInterval = 30 * 60
+
+    /// A wait is unconfirmed when its newest signal is older than the window,
+    /// or when a later conversation of the same agent profile in the same
+    /// project shows activity after it (the person most likely moved on).
+    func isConfirmed(_ session: SessionSummary, now: Date = Date()) -> Bool {
+        guard let attention = session.attention else { return false }
+        let latest = attention.lastSignalAt ?? attention.since
+        guard let at = Wording.date(latest), now.timeIntervalSince(at) < Self.waitConfirmationWindow else { return false }
+        let project = projectPath(for: session)
+        return !allSessions.contains { other in
+            other.sessionKey != session.sessionKey && other.profileKey == session.profileKey
+                && projectPath(for: other) == project
+                && (Wording.date(other.lastEventAt).map { $0 > at } ?? false)
+        }
     }
 
     /// Every conversation whose agent waits for the person, longest waiting
@@ -28,7 +51,8 @@ extension AppModel {
             let name = (projects.value ?? []).first { $0.path == path && path != nil }.map(Wording.projectName)
                 ?? s.logicalProject?.name ?? Wording.projectName(s.project)
             return WaitingAgent(sessionKey: s.sessionKey, provider: s.provider, profile: s.profileKey,
-                                host: s.source?.environment ?? .unknown, projectName: name, kind: attention.kind, since: attention.since)
+                                host: s.source?.environment ?? .unknown, projectName: name, kind: attention.kind, since: attention.since,
+                                confirmed: isConfirmed(s))
         }
         .sorted { ($0.since ?? "", $0.sessionKey) < ($1.since ?? "", $1.sessionKey) }
     }
@@ -38,6 +62,7 @@ extension AppModel {
         let waiting = agentsNeedingInput
         guard let first = waiting.first else { return nil }
         if waiting.count > 1 { return "\(waiting.count) agents need input" }
+        if !first.confirmed { return "\(first.provider.title) · May need input · \(first.kind.title) (not confirmed)" }
         return "\(first.provider.title) · Needs input · \(first.kind.title)"
     }
 
@@ -48,6 +73,7 @@ extension AppModel {
         let waiting = agentsNeedingInput
         guard let first = waiting.first else { return nil }
         if waiting.count > 1 { return "\(waiting.count) need input" }
+        if !waiting.contains(where: \.confirmed) { return withKind ? "\(first.provider.shortTitle) · May need input" : "May need input" }
         return withKind ? "\(first.provider.shortTitle) · Needs input · \(first.kind.shortTitle)" : "Needs input"
     }
 
@@ -55,6 +81,10 @@ extension AppModel {
     public func needsInputDetail(_ agent: WaitingAgent) -> String {
         var who = agentLine(provider: agent.provider, profile: agent.profile, host: agent.host)
         who += " in \(agent.projectName)"
+        if !agent.confirmed {
+            return "\(who) asked for input (\(agent.kind.title)) and nothing has happened since; it may have been answered "
+                + "or cancelled without a signal. Check the agent's app."
+        }
         return "\(who) waits for you: \(agent.kind.title). Answer it in the agent's app; Prompt Relay never answers for you."
     }
 
@@ -66,7 +96,7 @@ extension AppModel {
         let keys = Set(current.map { $0.sessionKey + "|" + ($0.since ?? "") })
         defer { announcedWaits = keys.union(announcedWaits.intersection(keys)) }
         guard waitsBaselineTaken else { waitsBaselineTaken = true; return }
-        for agent in current where !announcedWaits.contains(agent.sessionKey + "|" + (agent.since ?? "")) {
+        for agent in current where agent.confirmed && !announcedWaits.contains(agent.sessionKey + "|" + (agent.since ?? "")) {
             onNeedsInput?(agent)
         }
     }

@@ -29,7 +29,10 @@ AUTOMATED = "automated"
 UNKNOWN = "unknown"
 
 # Blocks Claude Code and the desktop app inject into turns they start.
-HARNESS_TAGS = ("system-reminder", "side-sessions-event", "ci-monitor-event", "task-notification")
+# Phase 12.1 fix: ``<agent-message from="...">`` — a subagent's or another
+# session's report delivered into the conversation (observed 2026-11-05 in
+# Claude Desktop's Code tab: the whole prompt was one such block).
+HARNESS_TAGS = ("system-reminder", "side-sessions-event", "ci-monitor-event", "task-notification", "agent-message")
 
 _PASTED = re.compile(r"<pasted_content\b([^>]*)>.*?</pasted_content\1>|<pasted_content\b[^>]*>.*?</pasted_content\b[^>]*>",
                      re.DOTALL)

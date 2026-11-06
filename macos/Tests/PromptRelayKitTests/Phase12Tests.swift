@@ -177,6 +177,34 @@ import Testing
         #expect(m.inboxEntries.count == 4, "no hidden filter from another screen")
     }
 
+    /// The 60 s ceiling in `waitUntil` only absorbs other suites holding the
+    /// main thread in the parallel full run. The model itself must be fast:
+    /// measured here with a strict bound. Wall-clock timing is meaningful only
+    /// when no other suite blocks the main thread, so it runs on request
+    /// (`PROMPT_RELAY_TIMING=1`, alone or with `--no-parallel`).
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["PROMPT_RELAY_TIMING"] == "1"))
+    func inboxAndOpeningAResultAreFast() async throws {
+        let (m, board) = model(fourAgents())
+        defer { board.releaseGlobally() }
+        await m.refreshNow()
+        m.surfaceAppeared()
+        let clock = ContinuousClock()
+        let start = clock.now
+        m.navigate(to: .inbox)
+        try await waitUntil { m.inbox.value != nil }
+        let inboxLoad = clock.now - start
+        let work = try #require(m.inboxEntries.first { $0.sessionKey == "work" })
+        let open = clock.now
+        m.openResult(work)
+        try await waitUntil { m.selectedResponseText == "work#1" }
+        let opened = clock.now - open
+        let direct = await clock.measure { await m.loadInbox() }
+        print("PHASE12-TIMING inbox=\(inboxLoad) open=\(opened) loadInbox=\(direct)")
+        #expect(inboxLoad < .seconds(1), "Inbox appeared after \(inboxLoad)")
+        #expect(opened < .seconds(1), "result opened after \(opened)")
+        #expect(direct < .seconds(1))
+    }
+
     @Test func completionUnknownIsSeparateFromFinishedResults() async throws {
         let defaults = MemorySettingsStore()
         defaults.set("2026-11-01T00:00:00Z", forKey: AppModel.lastSeenKey)

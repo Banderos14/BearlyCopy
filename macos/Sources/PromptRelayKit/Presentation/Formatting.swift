@@ -10,7 +10,7 @@ public enum Wording {
     public static func requestForDisplay(_ text: String) -> (text: String, pasted: Bool) {
         // Blocks Claude Code injects (origin.py HARNESS_TAGS) are not shown;
         // the stored text keeps them. Phase 5.11.
-        let harness = #"<(system-reminder|side-sessions-event|ci-monitor-event|task-notification)\b[^>]*>[\s\S]*?</\1>"#
+        let harness = #"<(system-reminder|side-sessions-event|ci-monitor-event|task-notification|agent-message)\b[^>]*>[\s\S]*?</\1>"#
         let stripped = text.replacingOccurrences(of: harness, with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let text = stripped.isEmpty ? text : stripped

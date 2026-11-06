@@ -98,8 +98,12 @@ class NeedsInputTests(IsolatedTestCase):
         self.prompt()
         self.permission("WebFetch")
         self.assertEqual(self.attention()["kind"], "permission")
+        first = self.attention()
         self.notify("permission_prompt")              # ~6 s later, still the same wait
-        self.assertEqual(self.attention()["kind"], "permission")
+        again = self.attention()
+        self.assertEqual(again["kind"], "permission")
+        self.assertEqual(again["since"], first["since"], "the same wait keeps its start")
+        self.assertGreater(again["last_signal_at"], first["last_signal_at"], "a repeat re-confirms it")
         self.post("WebFetch", tool_use_id="w1")        # not an evidence tool: an activity mark
         self.assertIsNone(self.attention(), "allowed: the tool ran")
         turn = json.loads(self.cli("turns", "--session", self.sid, "--json").stdout)["data"]["turns"][0]
@@ -234,3 +238,43 @@ class NeedsInputTests(IsolatedTestCase):
         rec["payload"]["reduced"] = 1
         rec["payload"]["signal"] = "approve_everything"
         self.assertIsNone(from_record(rec))
+
+
+AGENT_REPORT = ('<agent-message from="a8d63b1804be9f2a2">\n[Subagent hand-back] No findings with confidence >= 8.\n'
+                '- marker path is <root>/waiting/<key>\n</agent-message>')
+
+
+class AgentMessageTests(IsolatedTestCase):
+    """Phase 12.1 fix: a subagent's report (``<agent-message>``) is an
+    automated message, never the user's request in Copy with Context."""
+    sid = "s1"
+    send, prompt, stop = NeedsInputTests.send, NeedsInputTests.prompt, NeedsInputTests.stop
+
+    def test_classified_as_automated(self) -> None:
+        from prompt_relay import origin
+        self.assertEqual(origin.classify(AGENT_REPORT), origin.AUTOMATED)
+        self.assertIsNone(origin.display_preview(AGENT_REPORT, 200))
+        mixed = "Please look at this:\n" + AGENT_REPORT
+        self.assertEqual(origin.classify(mixed), origin.UNKNOWN, "mixed with other text: source not established")
+        pasted = "<pasted_content id=\"x\">" + AGENT_REPORT + "</pasted_content id=\"x\">"
+        self.assertEqual(origin.classify(pasted), origin.USER_PASTED, "pasted by the user stays the user's")
+
+    def test_copy_with_context_labels_it_and_keeps_it_verbatim(self) -> None:
+        self.prompt("p1", "Run a security review of the last commits")
+        self.stop("p1", "The review is running in a subagent.")
+        self.prompt("p2", AGENT_REPORT)
+        self.stop("p2", "No findings with confidence >= 8.")
+        turn = json.loads(self.cli("show", "--session", self.sid, "--turn", "2", "--json").stdout)["data"]["turn"]
+        self.assertEqual(turn["request_origin"], "automated")
+        self.assertEqual(turn["earlier_user_request"]["turn"], 1)
+        text = json.loads(self.cli("context", "--session", self.sid, "--turn", "2", "--json").stdout)["data"]["text"]
+        user, _, rest = text.partition("### Automated message that started this turn")
+        self.assertIn("## Original user request", user)
+        self.assertIn("Run a security review of the last commits", user, "the user's own request is shown as such")
+        self.assertNotIn("agent-message", user, "the agent report is never under the user's request")
+        self.assertIn(AGENT_REPORT, rest, "the automated message is kept verbatim")
+        self.assertIn("Not written by the user", rest)
+        results = json.loads(self.cli("results", "--json").stdout)["data"]["results"]
+        newest = results[0]
+        self.assertEqual(newest["request"]["own"], False)
+        self.assertEqual(newest["request"]["display_preview"], "Run a security review of the last commits")

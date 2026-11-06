@@ -290,13 +290,19 @@ struct ReadyIndicatorView: View {
                     // and Session (and spoken by the accessibility label).
                 }
                 .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
-            case .needsInput:
+            case .needsInput(_, let confirmed):
                 // Phase 12.1: an agent waits for you. A still amber dot —
-                // no working animation, not the green "answer" dot.
-                Circle().fill(Island.warning)
-                    .frame(width: 7, height: 7)
-                    .overlay(Circle().strokeBorder(Island.warning.opacity(0.45), lineWidth: 1).frame(width: 11, height: 11))
-                    .transition(.opacity)
+                // no working animation, not the green "answer" dot. A ring
+                // when no wait can be confirmed any more.
+                Group {
+                    if confirmed {
+                        Circle().fill(Island.warning).frame(width: 7, height: 7)
+                            .overlay(Circle().strokeBorder(Island.warning.opacity(0.45), lineWidth: 1).frame(width: 11, height: 11))
+                    } else {
+                        Circle().strokeBorder(Island.warning, lineWidth: 1.4).frame(width: 7, height: 7)
+                    }
+                }
+                .transition(.opacity)
             case .attention:
                 Image(systemName: "exclamationmark")
                     .font(.system(size: 8, weight: .heavy))
@@ -316,8 +322,9 @@ struct ReadyIndicatorView: View {
         case .waitingBackground(let n): return "Prompt Relay: waiting for background work"
             + (n > 1 ? " in \(n) sessions" : "") + ". The answer so far is intermediate."
         case .attention: return "Prompt Relay: capture needs attention. Open Settings → Advanced."
-        case .needsInput(let n): return "Prompt Relay: " + (n > 1 ? "\(n) agents need your input" : "an agent needs your input")
-            + ". Answer in the agent's app."
+        case .needsInput(let n, let confirmed):
+            if !confirmed { return "Prompt Relay: an agent asked for input earlier; it is not confirmed that it still waits." }
+            return "Prompt Relay: " + (n > 1 ? "\(n) agents need your input" : "an agent needs your input") + ". Answer in the agent's app."
         case .ready(let n, let automated, let background):
             return "Prompt Relay: " + (automated ? "an answer to a turn Claude Code started itself" : "a new answer")
                 + (background ? ", background work was still running" : "")

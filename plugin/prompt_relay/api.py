@@ -145,17 +145,19 @@ def attention(s: Session) -> Optional[Dict[str, Any]]:
     end of the session. Never by a timer; never an answer (``completion`` is
     untouched). None when nothing is pending."""
     pending = None
+    latest = None   # the newest signal of the same wait (a repeated permission_prompt re-confirms it)
     for ev in s.events:
         if ev.kind == "signal" and ev.signal == signals.NEEDS_INPUT:
             if pending is None or pending.signal_kind != ev.signal_kind or ev.signal_kind != signals.PERMISSION:
                 pending = ev
             # A permission_prompt Notification ~6 s after PermissionRequest is the same wait.
+            latest = ev
         elif ev.kind in ("signal", "prompt", "stop", "stop_failure", "tool"):
-            pending = None
+            pending = latest = None
     if pending is None:
         return None
     return {"state": "needs_input", "kind": pending.signal_kind or signals.INPUT, "since": pending.received_at or None,
-            "subagent": pending.agent_id is not None}
+            "last_signal_at": (latest or pending).received_at or None, "subagent": pending.agent_id is not None}
 
 
 def session_summary(s: Session, resolver: Optional[Any] = None) -> Dict[str, Any]:

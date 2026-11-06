@@ -179,10 +179,14 @@ public struct AgentAttention: Decodable, Equatable, Hashable, Sendable {
     public let kind: ActionKind
     public let since: String?
     public let subagent: Bool
+    /// Newest signal of this wait (Core 0.4.1+); `since` for older Cores.
+    public var lastSignalAt: String? = nil
 
-    public init(kind: ActionKind, since: String?, subagent: Bool = false) {
-        state = "needs_input"; self.kind = kind; self.since = since; self.subagent = subagent
+    public init(kind: ActionKind, since: String?, subagent: Bool = false, lastSignalAt: String? = nil) {
+        state = "needs_input"; self.kind = kind; self.since = since; self.subagent = subagent; self.lastSignalAt = lastSignalAt
     }
+
+    enum CodingKeys: String, CodingKey { case state, kind, since, subagent, lastSignalAt = "last_signal_at" }
 }
 
 public enum ActionKind: Equatable, Hashable, Sendable, Decodable {

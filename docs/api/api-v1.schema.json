@@ -353,6 +353,10 @@
             },
             "subagent": {
               "type": "boolean"
+            },
+            "last_signal_at": {
+              "$ref": "#/$defs/timestamp_or_null",
+              "description": "Phase 12.1: newest signal of this wait (repeats re-confirm it). Readers judge how certain a long wait still is; the Core never ends a wait by time."
             }
           }
         }
