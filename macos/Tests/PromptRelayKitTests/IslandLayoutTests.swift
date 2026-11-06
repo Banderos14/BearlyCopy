@@ -168,6 +168,7 @@ final class IslandLayoutTests: XCTestCase {
     // MARK: Response scrolling
 
     func testTheResponseScrollsInsideItsCardAndCopyAlwaysTakesTheWholeText() async throws {
+        try requireLiveScreen()   // synthetic scroll events reach no window while the screen is locked
         let long = ReportFixture.report(sections: 12)
         let other = "# Другой отчёт\n\n" + ReportFixture.section(99)
         let m = await model(reports: [other, long])

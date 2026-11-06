@@ -985,6 +985,8 @@ struct FileDragSource: NSViewRepresentable {
 
     final class DragView: NSView, NSDraggingSource {
         var payloads: @MainActor () -> [DragPayload]
+        /// Tests: records the session instead of starting a real one.
+        var beginSession: ((_ items: [NSDraggingItem], _ event: NSEvent) -> Void)?
         init(payloads: @escaping @MainActor () -> [DragPayload]) { self.payloads = payloads; super.init(frame: .zero) }
         required init?(coder: NSCoder) { nil }
 
@@ -992,9 +994,49 @@ struct FileDragSource: NSViewRepresentable {
             .copy
         }
 
+        // Phase 12.2: the island opens on hover without becoming key. AppKit
+        // used the first press on this view to make the panel key and did not
+        // deliver it (acceptsFirstMouse defaults to false), so the first drag
+        // never started and only a second attempt worked. Only this drag
+        // source opts in; buttons and menus keep their own handling.
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+        /// The press must not reorder or activate anything before the drag.
+        override func shouldDelayWindowOrdering(for event: NSEvent) -> Bool { true }
+
+        /// Movement (in points) before a press becomes a drag: a click is never a drag.
+        static let dragThreshold: CGFloat = 3
+        private var pressAt: NSPoint?
+        private var sessionStarted = false
+
+        override func mouseDown(with event: NSEvent) {
+            pressAt = event.locationInWindow
+            sessionStarted = false
+        }
+
+        override func mouseUp(with event: NSEvent) {
+            pressAt = nil
+            sessionStarted = false
+        }
+
+        func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+            sessionEnded()
+        }
+
+        /// Dropped, or cancelled with Esc (no operation): ready for the next drag.
+        func sessionEnded() {
+            pressAt = nil
+            sessionStarted = false
+        }
+
         override func mouseDragged(with event: NSEvent) {
+            guard !sessionStarted else { return }
+            if let start = pressAt {
+                let p = event.locationInWindow
+                guard hypot(p.x - start.x, p.y - start.y) >= Self.dragThreshold else { return }
+            }
             let all = MainActor.assumeIsolated { payloads() }
             guard !all.isEmpty else { return }
+            sessionStarted = true
             let items = all.enumerated().map { i, payload -> NSDraggingItem in
                 let item: NSDraggingItem
                 let icon: NSImage
@@ -1009,7 +1051,7 @@ struct FileDragSource: NSViewRepresentable {
                 item.setDraggingFrame(NSRect(x: CGFloat(i) * 4, y: 0, width: 32, height: 32), contents: icon)
                 return item
             }
-            beginDraggingSession(with: items, event: event, source: self)
+            if let beginSession { beginSession(items, event) } else { beginDraggingSession(with: items, event: event, source: self) }
         }
     }
 }

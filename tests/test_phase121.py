@@ -82,6 +82,26 @@ class NeedsInputTests(IsolatedTestCase):
         self.assertNotIn(SECRET_QUESTION, self.raw(), "question text is never stored")
         self.assertNotIn("hunter2", self.raw())
 
+    def test_observed_desktop_question_sequence_keeps_its_kind(self) -> None:
+        # The real order seen in Claude Desktop on 2026-11-06 (metadata only).
+        self.prompt()
+        self.pre("AskUserQuestion", tool_use_id="q1")
+        first = self.attention()
+        self.permission("AskUserQuestion")
+        self.notify("permission_prompt")
+        att = self.attention()
+        self.assertEqual(att["kind"], "question", "the permission dialog of a question is still a question")
+        self.assertEqual(att["since"], first["since"])
+        self.assertGreater(att["last_signal_at"], first["last_signal_at"])
+        self.post("AskUserQuestion", tool_use_id="q1")       # answered (observed after ~4 min)
+        self.assertIsNone(self.attention())
+
+    def test_plan_approval_keeps_its_kind_through_a_permission_dialog(self) -> None:
+        self.prompt()
+        self.pre("ExitPlanMode", tool_use_id="x1")
+        self.permission("ExitPlanMode")
+        self.assertEqual(self.attention()["kind"], "plan_approval")
+
     # 2. Working → ExitPlanMode → Needs Input → approved → Working
     def test_plan_approval(self) -> None:
         self.prompt()

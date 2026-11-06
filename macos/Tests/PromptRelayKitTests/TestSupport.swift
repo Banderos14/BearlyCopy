@@ -1,5 +1,6 @@
 import AppKit
 import QuartzCore
+import XCTest
 import Foundation
 @testable import PromptRelayKit
 
@@ -131,4 +132,18 @@ enum TestDefaults {
 /// Forgets a test's in-memory suite. Touches nothing on disk.
 func removeTestDefaults(_ suite: String) {
     TestDefaults.remove(suite)
+}
+
+/// Phase 12.2: tests that post real scroll-wheel events to on-screen windows
+/// need an unlocked session with awake displays. Measured 2026-11-06: with
+/// the screen locked both scroll tests failed (also on the previous commit);
+/// unlocked, both passed. Skipped, with this reason, instead of a false
+/// failure — category "environment blocked", never counted as passed.
+func requireLiveScreen() throws {
+    let session = CGSessionCopyCurrentDictionary() as? [String: Any] ?? [:]
+    let locked = (session["CGSSessionScreenIsLocked"] as? Bool) ?? ((session["CGSSessionScreenIsLocked"] as? Int) == 1)
+    let asleep = CGDisplayIsAsleep(CGMainDisplayID()) != 0
+    if locked || asleep {
+        throw XCTSkip("Environment blocked: the screen is \(locked ? "locked" : "asleep"); scroll events reach no window.")
+    }
 }

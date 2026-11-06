@@ -417,6 +417,7 @@ final class NotchControllerTests: XCTestCase {
     /// moves; the island keeps its frame and stays open; a copy keeps the
     /// position; another answer starts at its top.
     func testScrollWheelOverTheAnswerScrollsOnlyTheAnswerInTheRealPanel() async throws {
+        try requireLiveScreen()   // synthetic scroll events reach no window while the screen is locked
         let long = ReportFixture.report(sections: 10)
         core.showResult = { [core] key, i in
             .success(CoreResult(data: ShowData(session: try! core!.session(key), turn: turn(i, chars: long.unicodeScalars.count, text: long)),

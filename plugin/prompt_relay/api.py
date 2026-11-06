@@ -148,9 +148,13 @@ def attention(s: Session) -> Optional[Dict[str, Any]]:
     latest = None   # the newest signal of the same wait (a repeated permission_prompt re-confirms it)
     for ev in s.events:
         if ev.kind == "signal" and ev.signal == signals.NEEDS_INPUT:
-            if pending is None or pending.signal_kind != ev.signal_kind or ev.signal_kind != signals.PERMISSION:
+            # Observed 2026-11-06 in Claude Desktop: AskUserQuestion is followed
+            # by a PermissionRequest for that tool and, ~6 s later, a
+            # permission_prompt notification. Those belong to the open
+            # question/plan wait: they re-confirm it and never change its kind.
+            # A repeated permission signal also keeps its first time.
+            if pending is None or (ev.signal_kind != signals.PERMISSION and ev.signal_kind != pending.signal_kind):
                 pending = ev
-            # A permission_prompt Notification ~6 s after PermissionRequest is the same wait.
             latest = ev
         elif ev.kind in ("signal", "prompt", "stop", "stop_failure", "tool"):
             pending = latest = None
