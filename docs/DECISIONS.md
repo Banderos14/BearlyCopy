@@ -812,3 +812,57 @@ permission dialog appears. More hook processes run (async) per tool call;
 they store nothing unless a wait is open. Hosts without these events keep
 their last confirmed state. A wait abandoned without any further event stays
 shown until the session continues or ends.
+
+## ADR-026: Context Packs — one document, one section per result
+
+**Context.** Phase 13: the user hands the work of several agents (Claude
+designs, Codex implements, Claude reviews) to another AI at once. Copy with
+Context carries one result.
+
+**Decision.**
+1. A Context Pack is one Markdown document (`docs/CONTEXT_PACK.md`), format
+   `prompt-relay-context-pack` v1, versioned apart from the app, the Core and
+   JSON API v1. A manifest describes it without paths, session ids or text.
+2. Each result keeps its own section, built by the Copy with Context
+   functions one heading level deeper; nothing is merged, summarised or
+   rewritten; a result appears once (identity `session_key#turn`, which
+   already separates profiles, ADR-023). Results from different projects
+   are allowed and flagged.
+3. The Core renders local results (`context-pack`, read-only, ≤ 20,
+   `external` slots for imports); the app adds attachments, imports, profile
+   names and the user's instructions with the same frame. The user's
+   instructions are labelled as theirs; the default request as Prompt
+   Relay's.
+4. Hand-off stays two explicit steps (text, then files/images or Drag) plus
+   Export. Window snapshots stay in memory (ADR-018): image data only,
+   files only through Export. Missing attachments are listed, never offered.
+5. Receivers (ChatGPT, Claude, Gemini, Codex, any chat) change guidance only;
+   no capability beyond plain-text paste is claimed without a real check.
+6. A local Handoff History records what the user did (Prepared, Text copied,
+   Files copied, Drag started, Exported), never delivery, and stores no text.
+
+**Consequences.** New Core command and schema entry (`context_pack_data`)
+in API v1 (additive). Two composers of the frame (Python, Swift) are kept
+equal by a cross-test. A restart keeps the draft, not the prepared text.
+
+## ADR-027: MCP stays a design for Phase 14 (updates ADR-022)
+
+**Context.** Phase 13 asked whether a minimal read-only MCP server could ship
+now. The current specification (checked 2026-11-06) has a new revision,
+`2026-07-28` ("modern", no `initialize` handshake, version and capabilities
+in `_meta`), next to the legacy `2025-11-25` handshake; stdio servers must
+write only MCP messages to stdout, validate every input and check access on
+every call.
+
+**Decision.** No MCP server in Phase 13. The data side exists — `context-pack`
+is exactly what `get_context_pack` would return — but shipping a server now
+would mean (a) choosing between two handshakes without knowing which one the
+owner's Claude Code and Codex versions speak, and (b) testing it only against
+our own fakes, because connecting a real client means editing the user's
+Claude/Codex configuration, which needs their consent. ADR-022's rules stand
+(off by default, separate per-project allowlist, read-only, no file
+contents, audit line without payload, stdio only, no automatic install).
+Phase 14 starts with a live probe of which revision each client sends.
+
+**Consequences.** No new process or trust surface in 0.4.x/0.5.0. The design
+in `docs/MCP_EVALUATION.md` §"Phase 13 update" is the starting point.

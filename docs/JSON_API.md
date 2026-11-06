@@ -26,7 +26,7 @@ prompt-relay <command> [options] --json
 | usage errors | a bad option in `--json` mode yields a JSON `usage_error` document, exit 2 |
 | not covered | `--help` and `--version` print plain text |
 
-Commands with `--json`: `projects`, `sessions`, `turns`, `show`, `context`,
+Commands with `--json`: `projects`, `sessions`, `turns`, `show`, `context`, `context-pack`,
 `delete`, `prune`, `retention`, `doctor`. The other commands (`hook`,
 `enable`, `disable`, `copy`, `copy-context`, `hook-config`, `pin-python`)
 are text commands. The app writes the clipboard itself (NSPasteboard) using the
@@ -142,6 +142,20 @@ stable file key; pass it to `--session` to address any session),
 (Unicode code points, **not** Swift grapheme clusters), `utf8_bytes`,
 `prompt_id`, `received_at`. In `show` only: `text`, the complete verbatim
 text.
+
+### `context-pack` (Phase 13, additive)
+`prompt-relay context-pack --result SESSION_KEY:TURN [--result …] [--instructions
+TEXT | --instructions-file PATH|-] --json` — read-only. `data`
+(`context_pack_data`): `format` (`prompt-relay-context-pack`),
+`format_version` (1, versioned apart from the API), `exported_at`, `text`
+(the whole pack; empty when `--result external` slots are present, which the
+app fills), `warnings` (mixed projects, per-result), `results[]`
+{`session_key`, `turn`, `position`, `result_id`, `entry`{provider, agent,
+profile, host, project, title, answered_at}, `section` (one result's
+Markdown, verbatim), `sensitive_findings`, `warnings`, `manifest`} and
+`manifest` (no paths, session ids or text). Errors: duplicate result, more
+than 20, malformed `--result` → `usage_error` (exit 2); unknown session or
+turn → `not_found` (exit 3). Format: `docs/CONTEXT_PACK.md`.
 
 ### Plan (`delete`, `prune`)
 `operation`, `dry_run`, `criteria{older_than_days,session,all,force_active}`,

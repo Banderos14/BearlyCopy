@@ -1,5 +1,20 @@
 # Status
 
+## 2026-11-06 — Phase 13: multi-result Context Packs, Handoff History (not installed)
+
+Choose results in the Inbox (`+`), order them, add your own review
+instructions and a receiver, Prepare: one Markdown pack, one verbatim
+section per result (Core `context-pack`, Copy with Context sections one
+level deeper), attachments with availability, manifest without paths or ids
+(format v1, docs/CONTEXT_PACK.md, ADR-026). Copy Text → Copy Files / Drag →
+Export; snapshots stay image data; History records Prepared / Copied /
+Drag started / Exported, never delivery. MCP still a design (ADR-027).
+Python 249+15 ×2 (3.14, 3.9), XCTest 290/0 (16 opt-in skips), Swift Testing
+102/102, Xcode Debug/Release. Real pastes into AI apps and the Phase 12.2
+checks: owner. 0.5.0 proposed, not applied. [Phase 13](../macos/PHASE13.md).
+Next agreed stage: owner install (consent) and checks; Phase 14 only after
+approval.
+
 ## 2026-11-06 — Phase 12.2: first-interaction Drag, live Needs Input
 
 Drag from the hover-opened (non-key) island failed on the first press: the

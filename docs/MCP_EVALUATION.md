@@ -75,3 +75,43 @@ JSON-RPC over stdin/stdout) would map:
 Do not build it for the first beta: setup and release are the bottleneck,
 and MCP adds a new trust surface. Revisit after the beta if users ask for
 agent-to-agent pull; the design above needs no change to capture or storage.
+
+## Phase 13 update (2026-11-06) — still a design; ADR-027
+
+Checked against the official specification (modelcontextprotocol.io,
+"latest" = revision `2026-07-28`, previous `2025-11-25`):
+
+- **Two handshakes.** `2025-11-25` ("legacy"): `initialize` →
+  `protocolVersion` negotiation → `notifications/initialized`. `2026-07-28`
+  ("modern"): no `initialize`; each request carries version and capabilities
+  in `_meta`; unsupported version → error `-32022`. Which one Claude Code and
+  Codex send on this Mac is **not verified**.
+- **stdio.** The client launches the server; newline-delimited UTF-8
+  JSON-RPC; the server writes nothing but MCP messages to stdout, may log to
+  stderr, exits when stdin closes. This fits the Core's "one JSON document on
+  stdout" discipline.
+- **Tools.** `tools/list` (name, description, `inputSchema` object; no-arg
+  tools `{"type":"object","additionalProperties":false}`); `tools/call`
+  returns `content` (text) and optionally `structuredContent` matching
+  `outputSchema`; tool failures as `isError: true`, protocol failures as
+  JSON-RPC errors (`-32602`). Annotations are untrusted hints for clients.
+- **Security (spec).** Servers MUST validate inputs, enforce access control,
+  rate-limit and sanitize outputs; hosts must get user consent before
+  exposing data. Handles are names, not capabilities: check access on every
+  call.
+
+What Phase 13 added that MCP would reuse: `context-pack --json` (verbatim
+sections, manifest without paths or ids, ≤ 20 results, read-only) — the
+body of `get_context_pack`.
+
+Phase 14 plan (needs the owner's consent for the live step):
+1. `prompt-relay mcp` stdio server (stdlib), tools `list_projects`,
+   `list_conversations`, `get_latest_result`, `get_result`,
+   `get_context_pack`, `list_attachment_metadata`; no write tools.
+2. Allowlist `mcp.json` in the data dir, separate from capture, empty by
+   default; a project not on it is absent; access checked on every call.
+3. Audit line per call (tool, project hash, time, outcome), no text.
+4. Probe which revision the owner's Claude Code / Codex send, with a
+   throw-away config passed on the command line (no settings file edited).
+5. Connection instructions only (`claude mcp add …` run by the owner); the
+   app never writes another tool's configuration.
