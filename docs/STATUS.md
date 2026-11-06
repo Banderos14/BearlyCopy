@@ -1,5 +1,17 @@
 # Status
 
+## 2026-11-06 — 0.5.0 ready to install (not installed)
+
+App, Core and plugin at 0.5.0 (`e245bfe`); JSON API v1 and Context Pack
+format v1 pinned by the version test. Fixed: documents the user adds to a
+pack are secret-checked; Copy Files and Drag wait for the same yes as the
+text, Export stays refused. Python 249+15 ×2 (3.14, 3.9), XCTest 291/0 (16
+opt-in skips), Swift Testing 102/102, Xcode Debug/Release, `git diff
+--check` clean; `install-local.sh --dry-run` verified (0.5.0 = Core, digest,
+commit, no `.pyc` in the bundle). Installed app still 0.4.1; Xcode Debug
+copy still running. Install, plugin update and live checks:
+[ACCEPTANCE_0.5.0](../macos/ACCEPTANCE_0.5.0.md) — owner's go-ahead needed.
+
 ## 2026-11-06 — Phase 13: multi-result Context Packs, Handoff History (not installed)
 
 Choose results in the Inbox (`+`), order them, add your own review

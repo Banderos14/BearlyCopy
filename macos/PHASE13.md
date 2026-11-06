@@ -177,7 +177,8 @@ Proposal (not applied): **0.5.0** for app, Core and plugin together — Phase
 unchanged, but the Core ships inside the plugin and the release checks
 require Core = plugin = app version, so the plugin moves too (a plugin
 update without behaviour change for the hooks). API stays v1 (additive).
-Needs your go-ahead; nothing was bumped.
+Applied on 2026-11-06 at the owner's request: `e245bfe` (see
+`ACCEPTANCE_0.5.0.md` for install and live checks).
 
 ## 10. Until the GitHub beta
 
