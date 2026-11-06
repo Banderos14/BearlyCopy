@@ -1,5 +1,24 @@
 # Status
 
+## 2026-11-07 — 0.6.0 addendum: one-click Screen Recording permission recovery (not installed)
+
+"Auto screenshot needs permission" now offers Open Screen Recording Settings
+(the pane verified on this Mac, with fallbacks) and Check Again directly in
+Attachments — never reading Settings having opened, or the non-prompting
+system API alone, as "granted": Check Again also attempts one real, discarded
+capture of the linked window. A mismatch (API says granted, capture still
+denied) shows "Restart required" with a plain Quit action and no state loss;
+a closed window is never reported as a permission problem; Debug and Release
+builds have separate bundle ids and therefore separate, never-confused
+authorization records (verified via `codesign -dv` on both running copies).
+Still 0.6.0 (not installed, so no new version number). XCTest 319/0 (16
+opt-in skips, +15 new), Swift Testing 123/123, Python 249+15 ×2 (3.14, 3.9),
+Xcode Debug/Release, `git diff --check` clean, mutation check on the new
+logic. Which System Settings pane actually opens and the Debug-granted /
+Release-still-blocked scenario: owner
+([ACCEPTANCE_PHASE141_PERMISSION](../macos/ACCEPTANCE_PHASE141_PERMISSION.md)).
+[Phase 14 §7](../macos/PHASE14.md).
+
 ## 2026-11-07 — 0.6.0 (Phase 14.1): hover-resize without a click trap; ready to install (not installed)
 
 The island now shrinks its window at once; the strip it leaves is a short

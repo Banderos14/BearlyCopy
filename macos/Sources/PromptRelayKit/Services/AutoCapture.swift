@@ -63,6 +63,10 @@ public enum AutoCaptureStatus: Equatable, Sendable {
     case captured
     /// macOS refused the capture (Screen Recording / screen sharing consent).
     case permissionRequired
+    /// Phase 14.1: the system API now reports access, but a real capture of
+    /// the linked window still fails the same way — this process was already
+    /// running when access was granted and must restart to use it.
+    case restartRequired
     /// No window is linked to this agent, host and project.
     case windowNotBound
     /// The linked window is closed, hidden or no longer capturable.
@@ -73,23 +77,64 @@ public enum AutoCaptureStatus: Equatable, Sendable {
     /// A newer final answer of the same window arrived before this one settled.
     case superseded
 
-    public var message: String? {
+    /// Short status word, for a compact card (never a paragraph).
+    public var title: String? {
         switch self {
-        case .pending: return "Taking the auto screenshot…"
+        case .pending: return nil
         case .captured: return nil
-        case .permissionRequired: return "Auto screenshot needs permission: allow Prompt Relay in System Settings → Privacy & Security → Screen & System Audio Recording, then link the window again."
-        case .windowNotBound: return "No window is linked to this agent, so no auto screenshot was taken."
-        case .windowUnavailable: return "The linked window is closed or not available. Link it again to resume auto screenshots."
-        case .failed: return "The auto screenshot failed. The answer text is complete; you can capture the window yourself."
-        case .associationRequired: return "Window association required: another conversation may be showing in the linked window, so no screenshot was taken."
-        case .superseded: return "No auto screenshot: a newer answer arrived in the same window first."
+        case .permissionRequired: return "Permission required"
+        case .restartRequired: return "Restart required"
+        case .windowNotBound: return "Window not linked"
+        case .windowUnavailable: return "Window unavailable"
+        case .failed: return "Capture failed"
+        case .associationRequired: return "Window association required"
+        case .superseded: return "Superseded by a newer answer"
         }
     }
 
-    /// The user can do something about it here (link a window, capture).
+    /// One short sentence under the title; never the long how-to paragraph
+    /// this used to be — the recovery buttons say what to do.
+    public var detail: String? {
+        switch self {
+        case .pending: return "Taking the auto screenshot…"
+        case .captured: return nil
+        case .permissionRequired: return "Allow Prompt Relay to capture your linked window."
+        case .restartRequired: return "Permission was granted. Quit and reopen Prompt Relay to use it — your results and settings stay."
+        case .windowNotBound: return "No window is linked to this agent, so no auto screenshot was taken."
+        case .windowUnavailable: return "The linked window is closed or not available. Link it again to resume auto screenshots."
+        case .failed: return "The auto screenshot failed. The answer text is complete; you can capture the window yourself."
+        case .associationRequired: return "Another conversation may be showing in the linked window, so no screenshot was taken."
+        case .superseded: return "A newer answer arrived in the same window first."
+        }
+    }
+
+    /// `title` + `detail` as one line, for places that show only one string.
+    public var message: String? {
+        switch (title, detail) {
+        case let (t?, d?): return "\(t): \(d)"
+        case let (nil, d?): return d
+        case let (t?, nil): return t
+        case (nil, nil): return nil
+        }
+    }
+
+    /// The user can do something about it here: link a window, or capture now.
     public var offersLink: Bool {
         switch self {
-        case .windowNotBound, .associationRequired, .windowUnavailable, .permissionRequired: return true
+        case .windowNotBound, .associationRequired, .windowUnavailable: return true
+        default: return false
+        }
+    }
+
+    /// Phase 14.1: Open Screen Recording Settings + Check Again.
+    public var offersPermissionRecovery: Bool { self == .permissionRequired }
+    /// Phase 14.1: Quit Prompt Relay (to reopen it) + Check Again.
+    public var offersRestartRecovery: Bool { self == .restartRequired }
+    /// Check Again is useful whenever the status could have changed outside
+    /// Prompt Relay (a permission toggle, a relaunch, the window reopening).
+    public var offersRecheck: Bool {
+        switch self {
+        case .permissionRequired, .restartRequired, .windowUnavailable: return true
         default: return false
         }
     }

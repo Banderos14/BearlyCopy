@@ -1075,6 +1075,17 @@ public final class AppModel {
 
     /// Phase 9.4: the window capturer (the system picker); replaceable in tests.
     @ObservationIgnored public lazy var windowCapture: WindowCapturing = WindowCapture()
+    /// Phase 14.1: Screen Recording authorization, read-only; replaceable in tests.
+    @ObservationIgnored public lazy var screenRecordingPermission: ScreenRecordingPermissionChecking = LiveScreenRecordingPermission()
+    /// Phase 14.1: quits this process (Settings → About already has its own
+    /// quit action for other builds; this is "Quit Prompt Relay" after a
+    /// permission grant that needs a restart to take effect). Replaceable in
+    /// tests — never call `NSApp.terminate` from a test.
+    @ObservationIgnored public var quitApp: @MainActor () -> Void = { NSApp.terminate(nil) }
+    /// Set when the picker itself (Link Window…) reports macOS declined
+    /// screen capture; Settings offers "Open Screen Recording Settings" next
+    /// to the message while this is true.
+    public internal(set) var autoCapturePermissionBlocked = false
 
     /// Capture Final Window: the user picks one window in macOS's picker; its
     /// still image is kept locally with the report shown now, as an

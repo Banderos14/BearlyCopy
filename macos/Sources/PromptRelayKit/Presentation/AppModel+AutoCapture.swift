@@ -70,12 +70,74 @@ extension AppModel {
                 self.autoCaptureBindings.append(WindowBinding(key: key, sessionKey: sessionKey, window: window,
                                                               createdAt: self.captureNow()))
                 self.autoCaptureMessage = nil
+                self.autoCapturePermissionBlocked = false
             case .failure(let error)?:
-                self.autoCaptureMessage = (error as? WindowCaptureError) == .permissionDenied
+                let denied = (error as? WindowCaptureError) == .permissionDenied
+                self.autoCapturePermissionBlocked = denied
+                self.autoCaptureMessage = denied
                     ? AutoCaptureStatus.permissionRequired.message
                     : "The window could not be linked (screen capture may be off for Prompt Relay)."
             case nil: break
             }
+        }
+    }
+
+    // MARK: Phase 14.1 — permission recovery
+
+    /// Opens System Settings at the Screen Recording pane (with fallbacks
+    /// for older macOS); never changes any status by itself — only a real
+    /// capture, via `checkAutoCaptureAccess`, can clear `permissionRequired`.
+    @discardableResult
+    public func openScreenRecordingSettings() -> Bool { screenRecordingPermission.openSettings() }
+
+    /// The window linked to `ref`'s conversation, if exactly one resolves
+    /// (same rule `autoCaptureNewFinals` uses for a finished answer).
+    func autoCaptureBinding(for ref: ReportRef) -> WindowBinding? {
+        guard case .local(let sessionKey, _) = ref, let session = allSessions.first(where: { $0.sessionKey == sessionKey }),
+              let key = captureKey(for: session) else { return nil }
+        let (binding, ambiguous) = AutoCapturePlanner.binding(for: sessionKey, key: key, in: autoCaptureBindings)
+        return ambiguous ? nil : binding
+    }
+
+    /// "Check Again": never trusts that System Settings opened, or that the
+    /// system API alone proves it. It reads `CGPreflightScreenCaptureAccess`
+    /// first (no prompt, no window list) and, only if that says granted,
+    /// attempts one real capture of the linked window — the actual operation
+    /// auto-capture depends on. A mismatch (API says yes, capture still
+    /// fails the same way) means this already-running process needs a
+    /// restart before the grant takes effect.
+    @discardableResult
+    public func checkAutoCaptureAccess(for ref: ReportRef?) async -> AutoCaptureStatus? {
+        guard let ref else { return nil }
+        guard screenRecordingPermission.isGranted() else {
+            autoCaptureStatuses[ref.key] = .permissionRequired
+            return .permissionRequired
+        }
+        guard let binding = autoCaptureBinding(for: ref) else {
+            let status: AutoCaptureStatus = autoCaptureBindings.isEmpty ? .windowNotBound : .associationRequired
+            autoCaptureStatuses[ref.key] = status
+            return status
+        }
+        do {
+            _ = try await windowCapture.capture(binding.window)
+            // A real capture worked: nothing left to say about this answer.
+            autoCaptureStatuses[ref.key] = nil
+            autoCaptureMessage = nil
+            autoCapturePermissionBlocked = false
+            return nil
+        } catch {
+            let status: AutoCaptureStatus
+            switch WindowCapture.map(error) {
+            case .permissionDenied:
+                // The API already says granted; capture disagrees because
+                // this process started before the grant took effect.
+                status = .restartRequired
+            default:
+                status = .windowUnavailable
+                unlink(binding, forgetWindow: true)
+            }
+            autoCaptureStatuses[ref.key] = status
+            return status
         }
     }
 

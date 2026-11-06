@@ -914,3 +914,15 @@ when the island shrinks under the pointer, the window now shrinks at once and
 a bounded mouse monitor protects the vacated strip ("corridor"), instead of
 keeping a larger, partly transparent window (which could take clicks meant
 for the app below).
+
+**Update (0.6.0, Phase 14.1 addendum).** "Auto screenshot needs permission"
+now offers one-click recovery from the Attachments card: Open Screen
+Recording Settings (the verified current pane, with fallbacks) and Check
+Again, which never trusts that Settings opened or that the non-prompting
+`CGPreflightScreenCaptureAccess` API alone proves it — it also attempts one
+real, discarded capture of the linked window. A mismatch (API says granted,
+capture still denied) is reported as "Restart required" with a plain Quit
+action, never a self-relaunch. A closed window is never reported as a
+permission problem. Each running copy (Debug/Release) has its own bundle id
+and therefore its own macOS authorization record; the check is always
+process-local, so one copy's grant cannot be read as another's.

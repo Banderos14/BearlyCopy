@@ -1,7 +1,10 @@
 # 0.6.0 — live acceptance (owner, on this Mac)
 
 Nothing here has been run yet. Each row is filled in only from what you see.
-Full background: [ACCEPTANCE_PHASE14](ACCEPTANCE_PHASE14.md).
+Full background: [ACCEPTANCE_PHASE14](ACCEPTANCE_PHASE14.md). The Screen
+Recording "Permission required" recovery (Open Settings / Check Again /
+Restart required) has its own short checklist:
+[ACCEPTANCE_PHASE141_PERMISSION](ACCEPTANCE_PHASE141_PERMISSION.md).
 
 ## Before (needs your consent, separately)
 A. **Install the app.** `scripts/install-local.sh --dry-run`, then

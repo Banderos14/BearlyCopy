@@ -655,6 +655,13 @@ struct AutoCaptureLinksView: View {
             if let message = model.autoCaptureMessage ?? model.autoCaptureBlocker {
                 Text(message).font(.system(size: 11)).foregroundStyle(model.autoCaptureMessage != nil ? Island.warning : Island.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
+                // Phase 14.1: the picker itself reported denied access — the
+                // same one-click recovery as the Attachments card.
+                if model.autoCapturePermissionBlocked {
+                    Button("Open Screen Recording Settings") { model.openScreenRecordingSettings() }
+                        .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
+                        .islandFrame("settings.autocapture.openSettings")
+                }
             }
             HStack(spacing: 8) {
                 Button("Link Window for Open Conversation…") { model.chooseAutoCaptureWindow() }

@@ -688,30 +688,87 @@ struct AttachmentsCard: View {
 
 /// Phase 14: why an answer has no auto screenshot, when the user can do
 /// something about it. Nothing when all is well (the image is listed).
+/// Phase 14 / 14.1: why an answer has no auto screenshot, and the one-click
+/// recovery for the most common case (Screen Recording permission). A
+/// compact title + one short sentence, never a paragraph; the buttons say
+/// what to do, so the explanation does not have to.
 struct AutoCaptureStatusLine: View {
     let model: AppModel
+    /// Set while "Check Again" is awaiting a real capture (disables the
+    /// button; never shown as "granted" before that result is back).
+    @State private var checking = false
 
     var body: some View {
-        if let status = model.autoCaptureStatus(for: model.currentRef), status != .captured, let message = status.message {
+        if let status = model.autoCaptureStatus(for: model.currentRef), status != .captured {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Image(systemName: status == .pending ? "camera.viewfinder" : "camera.metering.unknown")
+                    Image(systemName: symbol(for: status))
                         .font(.system(size: 10)).foregroundStyle(Island.tertiary)
-                    Text(message).font(.system(size: 11)).foregroundStyle(status == .pending ? Island.tertiary : Island.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 1) {
+                        if let title = status.title {
+                            Text(title).font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.secondary)
+                        }
+                        if let detail = status.detail {
+                            Text(detail).font(.system(size: 11)).foregroundStyle(status == .pending ? Island.tertiary : Island.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        // Phase 14.1: a Debug and a Release copy show as two
+                        // separate apps in Screen Recording — name which one
+                        // this is, so the grant lands on the right copy.
+                        if (status.offersPermissionRecovery || status.offersRestartRecovery), AppBuild.isDebugBuild {
+                            Text("This is the Debug build — allow it, not any Release copy also listed.")
+                                .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
-                if status.offersLink {
+                if status.offersPermissionRecovery {
+                    HStack(spacing: 10) {
+                        Button("Open Screen Recording Settings") { model.openScreenRecordingSettings() }
+                        checkAgainButton
+                    }
+                    .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
+                    .islandFrame("autocapture.permission.actions")
+                } else if status.offersRestartRecovery {
+                    HStack(spacing: 10) {
+                        Button("Quit Prompt Relay") { model.quitApp() }
+                        checkAgainButton
+                    }
+                    .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
+                    .islandFrame("autocapture.restart.actions")
+                } else if status.offersLink {
                     HStack(spacing: 10) {
                         Button("Link Window…") { model.linkAutoCaptureWindowToConversation() }
                             .disabled(model.autoCaptureBlocker != nil || model.isPresentingSystemDialog)
                         Button("Capture Now…") { model.captureFinalWindow() }
                             .disabled(model.isPresentingSystemDialog)
+                        if status.offersRecheck { checkAgainButton }
                     }
                     .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
+                    .islandFrame("autocapture.link.actions")
                 }
             }
             .padding(.vertical, 2)
             .islandFrame("attachments.autocapture")
+        }
+    }
+
+    private var checkAgainButton: some View {
+        Button(checking ? "Checking…" : "Check Again") {
+            checking = true
+            Task {
+                _ = await model.checkAutoCaptureAccess(for: model.currentRef)
+                checking = false
+            }
+        }
+        .disabled(checking)
+        .accessibilityLabel(checking ? "Checking permission" : "Check permission again")
+    }
+
+    private func symbol(for status: AutoCaptureStatus) -> String {
+        switch status {
+        case .pending: return "camera.viewfinder"
+        case .permissionRequired, .restartRequired: return "lock.shield"
+        default: return "camera.metering.unknown"
         }
     }
 }

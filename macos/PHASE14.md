@@ -135,3 +135,46 @@ each get their own window's screenshot (21 scenarios in total).
 Pack format v1 unchanged (pinned by `tests/test_phase12.py`). Hooks are
 unchanged since 0.4.1, so the installed 0.4.1 plugin keeps capturing; the
 plugin update only aligns versions (owner's decision).
+
+## 7. Phase 14.1 addendum — permission recovery, in the card itself
+
+Still 0.6.0 (not released/installed, so no new version number was needed).
+
+"Auto screenshot needs permission" used to point the user at System Settings
+by name only, with no way back into Prompt Relay to confirm it worked. Now:
+
+- **Open Screen Recording Settings** opens the pane directly
+  (`com.apple.settings.PrivacySecurity.extension?Privacy_ScreenCapture`,
+  verified present on this Mac's System Settings; falls back to the
+  pre-Ventura System Preferences pane, then to System Settings itself).
+- Opening Settings is never read as granted. **Check Again** calls
+  `CGPreflightScreenCaptureAccess()` (non-prompting, no window list) and,
+  only if that says yes, attempts one real capture of the linked window —
+  the actual operation auto-capture depends on, discarded either way (never
+  attached to a report; this is a probe, not an answer's screenshot).
+- A mismatch (API says granted, the real capture still fails the same way)
+  is reported as **Restart required**: this process was already running
+  when access was granted. The card offers **Quit Prompt Relay** +
+  **Check Again**; quitting is the user's own action (`AppModel.quitApp`,
+  injectable), never a self-relaunch, and touches no stored state — history,
+  settings and links are on disk/in the running process independent of it.
+- A window that is simply gone is never reported as a permission problem
+  (`.windowUnavailable`, distinct from `.permissionRequired`/`.restartRequired`).
+- Two copies (Debug/Release) have separate bundle ids and therefore separate
+  macOS authorization records; `CGPreflightScreenCaptureAccess()` always
+  answers for the calling process only, so one copy's grant can never be read
+  as the other's. Verified: both copies are ad-hoc signed with distinct
+  bundle ids (`io.github.banderos14.PromptRelay[.debug]`), confirmed with
+  `codesign -dv` on both running copies. When Debug is the running build, the
+  card adds "This is the Debug build — allow it, not any Release copy also
+  listed."
+
+New: `ScreenRecordingPermission.swift` (protocol + live implementation,
+injectable), `AppModel.checkAutoCaptureAccess`, `openScreenRecordingSettings`,
+`quitApp`, `autoCapturePermissionBlocked` (drives the same recovery button in
+Settings → Automatic final screenshots). 15 new tests (`Phase141PermissionTests`,
+`LiveScreenRecordingPermissionTests`, `Phase141SettingsRecoveryTests`); a
+mutation check confirms they catch a failure mode masked as the wrong status.
+Not verified live: which System Settings pane actually opens, and the
+Debug-granted/Release-still-blocked scenario, both needing a person at the
+Mac and the real TCC database — [ACCEPTANCE_PHASE141_PERMISSION](ACCEPTANCE_PHASE141_PERMISSION.md).
