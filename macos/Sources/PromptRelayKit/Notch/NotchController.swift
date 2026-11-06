@@ -209,6 +209,8 @@ public final class NotchController {
     private var resizePending = false
     /// The view `present(_:)` asked for, applied when the island opens.
     private var pendingRoute: AppModel.IslandRoute?
+    /// The pointer in global coordinates (injectable for tests).
+    let mouseLocation: @MainActor () -> CGPoint
 
     public init(model: AppModel, settings: NotchSettings, actions: SurfaceActions, notifier: ReadyNotifier? = nil,
                 screens: ScreenProviding? = nil,
@@ -218,7 +220,9 @@ public final class NotchController {
                 makeHotKey: (@MainActor () -> HotKeyRegistration?)? = nil,
                 makeShortcut: (@MainActor (GlobalShortcut, ShortcutModifiers) -> HotKeyRegistration?)? = nil,
                 neighbors: NotchNeighbors? = nil,
-                pointerEvents: PointerEvents? = nil) {
+                pointerEvents: PointerEvents? = nil,
+                mouseLocation: (@MainActor () -> CGPoint)? = nil) {
+        self.mouseLocation = mouseLocation ?? { NSEvent.mouseLocation }
         self.model = model
         self.settings = settings
         self.actions = actions
@@ -380,20 +384,65 @@ public final class NotchController {
         let root = NotchRootView(model: model, presentation: presentation, interaction: interaction, actions: actions,
                                  settings: settings, notifier: notifier)
         panel.install(root: root)
-        panel.onPointer = { [weak self] inside in
-            guard let self else { return }
-            if inside { self.interaction.pointerEntered() } else {
-                if NSEvent.pressedMouseButtons != 0 {
-                    self.interaction.isDragging = true
-                    self.waitForMouseRelease()
-                }
-                self.interaction.pointerExited()
-            }
+        panel.onPointer = { [weak self] inside in self?.panelPointer(inside: inside) }
+        panel.onMove = { [weak self] local in
+            guard let self, let frame = self.panel?.frame else { return }
+            self.panelPointerMoved(global: CGPoint(x: frame.minX + local.x, y: frame.minY + local.y))
         }
         panel.onResignKey = { [weak self] in self?.interaction.focusLost() }
         panel.onCancel = { [weak self] in self?.cancel() }
         panel.onKey = { [weak self] key in self?.handleKey(key) ?? false }
         self.panel = panel
+    }
+
+    // MARK: Phase 14 — resizing under the pointer
+
+    /// The frame the open island's window will take once the pointer is on
+    /// the (smaller) island. Until then the window keeps its larger frame;
+    /// the island itself is already drawn at its new size inside it.
+    private(set) var waitingFrame: CGRect?
+
+    /// Every frame change of the open island goes through here. Before
+    /// Phase 14 a view needing less height shrank the window out from under
+    /// a pointer that had just clicked in its lower part: AppKit reported
+    /// "exited" and the 80 ms hover-close ran although the user never left.
+    /// Now a smaller frame that would leave the pointer outside waits: it
+    /// applies when the pointer reaches the new island, a real exit from the
+    /// old area closes the island as before, and any other frame (growing,
+    /// closing) replaces it. No timer, no polling: only the panel's own
+    /// tracking-area events.
+    private func setExpandedFrame(_ target: CGRect) {
+        guard let panel else { return }
+        let current = panel.frame
+        let pointer = mouseLocation()
+        if interaction.pointerInside, current.contains(pointer), !target.contains(pointer) {
+            waitingFrame = target
+            return
+        }
+        waitingFrame = nil
+        if current != target { panel.setFrame(target, display: true) }
+    }
+
+    private func dropWaitingFrame() { waitingFrame = nil }
+
+    /// The panel's tracking area: the pointer entered or left the window.
+    func panelPointer(inside: Bool) {
+        if !inside { dropWaitingFrame() }
+        if inside { interaction.pointerEntered() } else {
+            if NSEvent.pressedMouseButtons != 0 {
+                interaction.isDragging = true
+                waitForMouseRelease()
+            }
+            interaction.pointerExited()
+        }
+    }
+
+    /// The pointer moved inside the panel's window (global coordinates):
+    /// once it is on the smaller island, the window takes its frame.
+    func panelPointerMoved(global point: CGPoint) {
+        guard let target = waitingFrame, target.contains(point), interaction.phase.isExpanded else { return }
+        waitingFrame = nil
+        panel?.setFrame(target, display: true)
     }
 
     /// Poll only during a held mouse gesture: AppKit's drag loop can consume
@@ -418,10 +467,11 @@ public final class NotchController {
         case .hidden:
             panel.orderOut(nil)
         case .compact:
+            dropWaitingFrame()
             if let frame = compactFrame() { panel.setFrame(frame, display: true) }
             if hasRestingTarget { panel.orderFrontRegardless() } else { panel.orderOut(nil) }
         case .expanded:
-            panel.setFrame(expandedFrame(layout), display: true)
+            setExpandedFrame(expandedFrame(layout))
             panel.orderFrontRegardless()
         }
     }
@@ -467,7 +517,7 @@ public final class NotchController {
     private var heldShrink: DispatchWorkItem?
 
     private func applyResize(to height: CGFloat) {
-        guard interaction.phase.isExpanded, let panel, let layout else {
+        guard interaction.phase.isExpanded, panel != nil, let layout else {
             presentation.contentHeight = height
             return
         }
@@ -483,19 +533,19 @@ public final class NotchController {
         }
         if presentation.reduceMotion {
             presentation.contentHeight = height
-            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek,
-                                                extraHeight: presentation.panelExtension), display: true)
+            setExpandedFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek,
+                                                  extraHeight: presentation.panelExtension))
             return
         }
         if height >= presentation.contentHeight {
-            panel.setFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek, extraHeight: presentation.panelExtension), display: true)
+            setExpandedFrame(layout.expandedFrame(contentHeight: height, peek: presentation.surface == .peek, extraHeight: presentation.panelExtension))
             withAnimation(presentation.resizeAnimation) { presentation.contentHeight = height }
         } else {
             withAnimation(presentation.resizeAnimation) { presentation.contentHeight = height }
             let work = DispatchWorkItem { [weak self] in
                 guard let self, self.interaction.phase.isExpanded, let layout = self.layout else { return }
-                self.panel?.setFrame(layout.expandedFrame(contentHeight: self.presentation.contentHeight,
-                                                          peek: self.presentation.surface == .peek, extraHeight: self.presentation.panelExtension), display: true)
+                self.setExpandedFrame(layout.expandedFrame(contentHeight: self.presentation.contentHeight,
+                                                           peek: self.presentation.surface == .peek, extraHeight: self.presentation.panelExtension))
             }
             resizeWork = work
             DispatchQueue.main.asyncAfter(deadline: .now() + NotchPresentation.resizeDuration + 0.02, execute: work)
@@ -509,6 +559,7 @@ public final class NotchController {
         collapseWork?.cancel()
         switch phase {
         case .hidden:
+            dropWaitingFrame()
             presentation.isExpanded = false
             presentation.isFocused = false
             if old.isExpanded { model.surfaceDisappeared(); model.suspendHandoffs() }
