@@ -684,8 +684,9 @@ struct ResponseCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 let display = self.display
-                BoundedScroll(minHeight: 32, resetID: display.ref) {
-                    MarkdownBlocksView(blocks: Markdown.blocks(display.text), codeLineLimit: nil, fontSize: 13)
+                BoundedScroll(minHeight: 32, resetID: display.ref, frameID: "response.viewport") {
+                    MarkdownBlocksView(blocks: Markdown.blocks(display.text), codeLineLimit: nil, fontSize: 13,
+                                       frameIDPrefix: "response.block")
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.trailing, 6)   // room for the scroller
                         .textSelection(.enabled)
@@ -1194,13 +1195,24 @@ struct IslandSwitchStyle: ToggleStyle {
 /// inside it. When `resetID` changes (another answer) it returns to the top
 /// and takes the new height smoothly; the scroll view itself is kept, so
 /// its height never drops to nothing between two answers.
+///
+/// Phase 14: when the content does not fit, the viewport ends on a boundary
+/// its rows and text lines report (`scrollSegment`), never through one: the
+/// owner saw "Commands" and the Answer's last line half visible. The few
+/// points left over stay empty inside the card.
 struct BoundedScroll<Content: View>: View {
     var maxHeight: CGFloat = .infinity
     /// Never squeezed below this (or below the content, if shorter).
     var minHeight: CGFloat = 0
     var resetID: AnyHashable? = nil
+    /// The height actually shown (after snapping), for "N more" hints.
+    var onVisibleHeight: ((CGFloat) -> Void)? = nil
+    /// Debug layout tests: the visible scroll area's frame.
+    var frameID: String? = nil
     @ViewBuilder let content: Content
     @State private var height: CGFloat?
+    @State private var segments: [AnyHashable: ScrollSegment] = [:]
+    @State private var space = "bounded-scroll-\(UUID().uuidString)"
     @Environment(\.islandReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -1211,27 +1223,164 @@ struct BoundedScroll<Content: View>: View {
         // "too tall" narrowed the content, which changed its height again.
         // No fade mask: it darkened the last lines (Phase 6).
         let natural = min(height ?? 0, maxHeight)
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(spacing: 0) {
-                    Color.clear.frame(height: 0).id(Self.top)
-                    content
-                }
-                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { new in
-                    guard abs(new - (height ?? -1)) >= 0.5 else { return }
-                    if height == nil { height = new } else {
-                        withAnimation(Island.geometry(reduceMotion: reduceMotion)) { height = new }
+        let sink = ScrollSegmentSink(space: space) { id, segment in
+            if segments[id] != segment { segments[id] = segment }
+        }
+        SnappedHeight(natural: natural, segments: Array(segments.values)) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        Color.clear.frame(height: 0).id(Self.top)
+                        content
+                    }
+                    .coordinateSpace(.named(space))
+                    .environment(\.scrollSegmentSink, sink)
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { new in
+                        guard abs(new - (height ?? -1)) >= 0.5 else { return }
+                        if height == nil { height = new } else {
+                            withAnimation(Island.geometry(reduceMotion: reduceMotion)) { height = new }
+                        }
                     }
                 }
+                .scrollIndicators(.automatic)
+                .scrollBounceBehavior(.basedOnSize)
+                .onChange(of: resetID) {
+                    segments = [:]
+                    proxy.scrollTo(Self.top, anchor: .top)
+                }
             }
-            .scrollIndicators(.automatic)
-            .scrollBounceBehavior(.basedOnSize)
-            .onChange(of: resetID) { proxy.scrollTo(Self.top, anchor: .top) }
+            .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { onVisibleHeight?($0) }
+            .islandFrame(frameID ?? "")
         }
+        // The parent sees the same flexible height as before (the island's
+        // height does not change); the scroll area inside ends on a boundary.
         .frame(minHeight: max(1, min(minHeight, natural)), idealHeight: max(1, natural), maxHeight: max(1, natural))
     }
 
     private static var top: String { "bounded-scroll-top" }
+}
+
+/// One row or text block inside a `BoundedScroll`, in its content's
+/// coordinates. Text blocks also give their line geometry, so the viewport
+/// may end between two of their lines.
+struct ScrollSegment: Equatable {
+    var minY: CGFloat
+    var maxY: CGFloat
+    /// Text: estimated line height and spacing; nil for an atomic row.
+    var lineHeight: CGFloat?
+    var lineSpacing: CGFloat = 0
+    /// Padding above the first and below the last line (code blocks).
+    var topInset: CGFloat = 0
+    var bottomInset: CGFloat = 0
+
+    /// Where the viewport may end inside this segment (excluding its edges).
+    var innerBreaks: [CGFloat] {
+        guard let lineHeight, lineHeight > 0 else { return [] }
+        let body = maxY - minY - topInset - bottomInset
+        guard body > lineHeight * 1.5 else { return [] }
+        let n = max(1, ((body + lineSpacing) / (lineHeight + lineSpacing)).rounded())
+        let pitch = (body + lineSpacing) / n
+        guard n > 1 else { return [] }
+        // After line k (1…n-1): its bottom plus half the spacing below it.
+        return (1..<Int(n)).map { minY + topInset + CGFloat($0) * pitch - lineSpacing / 2 }
+    }
+
+    /// The viewport ending at `y` cuts this segment in an unreadable place.
+    func isCut(at y: CGFloat) -> Bool {
+        guard y > minY + 0.5, y < maxY - 0.5 else { return false }
+        return !innerBreaks.contains { abs($0 - y) < 0.75 }
+    }
+}
+
+enum ScrollBreaks {
+    /// The tallest viewport height ≤ `limit` that cuts no segment, or
+    /// `limit` itself when no segment is near it (or none would do).
+    static func snap(_ limit: CGFloat, segments: [ScrollSegment]) -> CGFloat {
+        guard !segments.isEmpty, segments.contains(where: { $0.isCut(at: limit) }) else { return limit }
+        var candidates: [CGFloat] = []
+        for s in segments {
+            candidates.append(s.minY)
+            candidates.append(s.maxY)
+            candidates += s.innerBreaks
+        }
+        let best = candidates.filter { $0 >= 1 && $0 <= limit + 0.5 }
+            .sorted(by: >)
+            .first { c in !segments.contains { $0.isCut(at: c) } }
+        guard let best else { return limit }
+        // A long code block straddling the edge with no line breaks known:
+        // better a cut line than most of the card left empty.
+        return limit - best > max(44, limit * 0.4) ? limit : min(limit, best)
+    }
+}
+
+/// Takes the height its parent gives (so the card and the island keep
+/// theirs), and places the scroll view at the largest height at or below
+/// it that ends on a segment boundary; the rest stays empty.
+struct SnappedHeight: Layout {
+    var natural: CGFloat
+    var segments: [ScrollSegment]
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let width = child.sizeThatFits(ProposedViewSize(width: proposal.width, height: proposal.height ?? natural)).width
+        return CGSize(width: proposal.width ?? width, height: proposal.height ?? natural)
+    }
+
+    static func shown(_ height: CGFloat, natural: CGFloat, segments: [ScrollSegment]) -> CGFloat {
+        height < natural - 0.5 ? ScrollBreaks.snap(height, segments: segments) : height
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, anchor: .topLeading,
+                              proposal: ProposedViewSize(width: bounds.width,
+                                                         height: Self.shown(bounds.height, natural: natural, segments: segments)))
+    }
+}
+
+struct ScrollSegmentSink {
+    let space: String
+    let report: @MainActor (AnyHashable, ScrollSegment) -> Void
+}
+
+struct ScrollSegmentSinkKey: EnvironmentKey { static let defaultValue: ScrollSegmentSink? = nil }
+
+extension EnvironmentValues {
+    var scrollSegmentSink: ScrollSegmentSink? {
+        get { self[ScrollSegmentSinkKey.self] }
+        set { self[ScrollSegmentSinkKey.self] = newValue }
+    }
+}
+
+struct ScrollSegmentModifier: ViewModifier {
+    let id: AnyHashable
+    var lineHeight: CGFloat?
+    var lineSpacing: CGFloat = 0
+    var topInset: CGFloat = 0
+    var bottomInset: CGFloat = 0
+    @Environment(\.scrollSegmentSink) private var sink
+
+    func body(content: Content) -> some View {
+        if let sink {
+            content.onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(sink.space)) }) { frame in
+                sink.report(id, ScrollSegment(minY: frame.minY, maxY: frame.maxY, lineHeight: lineHeight, lineSpacing: lineSpacing,
+                                              topInset: topInset, bottomInset: bottomInset))
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// An atomic row of a `BoundedScroll`: shown whole or not at all.
+    func scrollRow(_ id: AnyHashable) -> some View { modifier(ScrollSegmentModifier(id: id)) }
+
+    /// A block of wrapped text: the viewport may end between its lines.
+    func scrollText(_ id: AnyHashable, fontSize: CGFloat, lineSpacing: CGFloat, topInset: CGFloat = 0,
+                    bottomInset: CGFloat = 0) -> some View {
+        modifier(ScrollSegmentModifier(id: id, lineHeight: (fontSize * 1.2).rounded(.up), lineSpacing: lineSpacing,
+                                       topInset: topInset, bottomInset: bottomInset))
+    }
 }
 
 /// A grouped list card: rows separated by hairlines, like a macOS form.

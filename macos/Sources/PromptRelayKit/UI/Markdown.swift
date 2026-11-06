@@ -130,12 +130,36 @@ struct MarkdownBlocksView: View {
     var fontSize: CGFloat = 13
     /// Each block carries its index as its id, for `ScrollViewReader` jumps.
     var anchored = false
+    /// Debug layout tests: each block's frame is recorded as `<prefix>.<index>`.
+    var frameIDPrefix: String? = nil
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 8) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { i, block in
-                if anchored { view(block).id(i) } else { view(block) }
+                Group {
+                    if anchored { view(block).id(i) } else { view(block) }
+                }
+                .modifier(segment(block, index: i))
+                .islandFrame(frameIDPrefix.map { "\($0).\(i)" } ?? "")
             }
+        }
+    }
+
+    /// Phase 14: line geometry for a `BoundedScroll`, so its viewport ends
+    /// between two lines, never through one (no effect elsewhere).
+    private func segment(_ block: Markdown.Block, index: Int) -> ScrollSegmentModifier {
+        let id = AnyHashable("md.\(index)")
+        func text(_ size: CGFloat, _ spacing: CGFloat, top: CGFloat = 0, bottom: CGFloat = 0) -> ScrollSegmentModifier {
+            ScrollSegmentModifier(id: id, lineHeight: (size * 1.2).rounded(.up), lineSpacing: spacing, topInset: top, bottomInset: bottom)
+        }
+        switch block {
+        case .paragraph: return text(fontSize, 2.5)
+        case .listItem: return text(fontSize, 2)
+        case .quote: return text(fontSize, 0)
+        case .code(let language, _):
+            return text(fontSize - 1.5, 0, top: 10 + (language.isEmpty ? 0 : 18), bottom: 10)
+        case .table: return text(fontSize - 1.5, 0, top: 10, bottom: 10)
+        case .heading, .rule: return ScrollSegmentModifier(id: id)
         }
     }
 

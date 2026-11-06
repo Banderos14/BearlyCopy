@@ -404,6 +404,8 @@ struct HandoffContentsCard: View {
     let model: AppModel
     /// The one part whose explanation is open (one at a time).
     @State private var explained: String?
+    /// Phase 14: the rows' viewport, to say how many rows are below it.
+    @State private var visibleHeight: CGFloat?
     @Environment(\.islandReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -418,6 +420,14 @@ struct HandoffContentsCard: View {
                     .layoutPriority(2)
                     .islandFrame("handoff.title")
                 Spacer(minLength: 4)
+                let hidden = Self.hiddenRows(count: Self.rows(model: model).count, visibleHeight: visibleHeight, explained: explained != nil)
+                if hidden > 0 {
+                    // Rows below the card's edge are never drawn half; this
+                    // says they are there (scroll or Preview shows them).
+                    Text("+\(hidden) more").font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1).fixedSize()
+                        .accessibilityLabel("\(hidden) more parts below; scroll to see them")
+                        .islandFrame("handoff.more")
+                }
                 ViewThatFits(in: .horizontal) {
                     previewButton(label: true)
                     previewButton(label: false)
@@ -427,8 +437,8 @@ struct HandoffContentsCard: View {
             }
             .islandFrame("handoff.header")
             let rows = Self.rows(model: model)
-            BoundedScroll(minHeight: 34) {
-            VStack(alignment: .leading, spacing: 5) {
+            BoundedScroll(minHeight: Self.rowHeight, onVisibleHeight: { visibleHeight = $0 }, frameID: "handoff.viewport") {
+            VStack(alignment: .leading, spacing: Self.rowSpacing) {
             ForEach(rows, id: \.title) { row in
                 HStack(spacing: 4) {
                     if row.opensActivity {
@@ -448,6 +458,8 @@ struct HandoffContentsCard: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(explained == row.title ? "Hide explanation" : "Explain \(row.title)")
                 }
+                .scrollRow(row.title)
+                .islandFrame("handoff.row.\(row.title)")
             }
             if let open = rows.first(where: { $0.title == explained }) {
                 BoundedScroll(maxHeight: 96) {
@@ -463,14 +475,26 @@ struct HandoffContentsCard: View {
                 .padding(7)
                 .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(Island.cardRaised))
                 .transition(.opacity)
+                .scrollRow("explanation")
                 .islandFrame("handoff.explanation")
             }
             }
             .padding(.trailing, 2)
             }
+            .islandFrame("handoff.rows")
         }
         .islandCard()
         .onChange(of: model.currentRef) { explained = nil }
+    }
+
+    static let rowHeight: CGFloat = 22
+    static let rowSpacing: CGFloat = 5
+
+    /// Rows that do not fit the viewport (whole rows only are shown).
+    static func hiddenRows(count: Int, visibleHeight: CGFloat?, explained: Bool) -> Int {
+        guard let h = visibleHeight, !explained else { return 0 }
+        let fit = Int(((h + rowSpacing + 0.5) / (rowHeight + rowSpacing)).rounded(.down))
+        return max(0, count - fit)
     }
 
     private func previewButton(label: Bool) -> some View {
@@ -629,7 +653,7 @@ struct AttachmentsCard: View {
             }
             BoundedScroll(minHeight: 34) {
                 VStack(alignment: .leading, spacing: 3) {
-                    CompletenessLine(model: model)
+                    CompletenessLine(model: model).scrollRow("completeness")
                     if !suggestions.isEmpty {
                         HStack {
                             Text("From this turn").font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.tertiary)
@@ -639,11 +663,12 @@ struct AttachmentsCard: View {
                                     .font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
                             }
                         }
-                        ForEach(suggestions) { SuggestionRow(model: model, suggestion: $0) }
+                        .scrollRow("suggestions.header")
+                        ForEach(suggestions) { SuggestionRow(model: model, suggestion: $0).scrollRow("s.\($0.id)") }
                     }
-                    ForEach(materials.filter { $0.kind == .mockup }) { MockupRow(model: model, material: $0) }
-                    ForEach(files) { AttachmentRow(model: model, attachment: $0) }
-                    ForEach(materials.filter { $0.kind == .link }) { LinkRow(model: model, material: $0) }
+                    ForEach(materials.filter { $0.kind == .mockup }) { MockupRow(model: model, material: $0).scrollRow("m.\($0.id)") }
+                    ForEach(files) { AttachmentRow(model: model, attachment: $0).scrollRow("a.\($0.id)").islandFrame("attachment.row.\($0.id)") }
+                    ForEach(materials.filter { $0.kind == .link }) { LinkRow(model: model, material: $0).scrollRow("l.\($0.id)") }
                     if suggestions.isEmpty && files.isEmpty && materials.isEmpty {
                         Text("Nothing attached. Documents, images and mockups the agent prepares appear here.")
                             .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)

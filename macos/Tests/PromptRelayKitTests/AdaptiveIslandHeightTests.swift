@@ -148,7 +148,7 @@ struct AdaptiveIslandHeightTests {
                 island.presentation.reduceMotion = reduced
                 island.settle()
                 let baseline = island.height
-                #expect(baseline == height + 32, "Ordinary Details keeps the established height")
+                #expect(baseline == height + 32, "Ordinary Details keeps the established height \(height) \(reduced) \(baseline)")
                 let baselineAnswer = island.presentation.layoutFrames["card.response"]
                 let responder = island.window.firstResponder
                 #expect(island.presentation.temporaryContentHeight == 0)
