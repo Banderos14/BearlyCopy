@@ -111,3 +111,42 @@ public final class PointerFollower {
         onMove?(point)
     }
 }
+
+/// Phase 14.1: pointer moves and presses while the island waits for the
+/// pointer after shrinking under it. Started only for that wait and stopped
+/// as soon as it ends; mouse events need no permission, keys are never seen.
+@MainActor
+public protocol CorridorEvents: AnyObject {
+    func start(move: @escaping @MainActor (CGPoint) -> Void, press: @escaping @MainActor (CGPoint) -> Void)
+    func stop()
+    var isRunning: Bool { get }
+}
+
+@MainActor
+public final class LiveCorridorEvents: CorridorEvents {
+    private var monitors: [Any] = []
+    public var isRunning: Bool { !monitors.isEmpty }
+    public init() {}
+
+    public func start(move: @escaping @MainActor (CGPoint) -> Void, press: @escaping @MainActor (CGPoint) -> Void) {
+        stop()
+        let moves: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged, .rightMouseDragged]
+        let presses: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        if let m = NSEvent.addGlobalMonitorForEvents(matching: moves, handler: { _ in
+            MainActor.assumeIsolated { move(NSEvent.mouseLocation) }
+        }) { monitors.append(m) }
+        if let m = NSEvent.addGlobalMonitorForEvents(matching: presses, handler: { _ in
+            MainActor.assumeIsolated { press(NSEvent.mouseLocation) }
+        }) { monitors.append(m) }
+        // Moves over Prompt Relay's own windows (global monitors skip them).
+        if let m = NSEvent.addLocalMonitorForEvents(matching: moves, handler: { event in
+            MainActor.assumeIsolated { move(NSEvent.mouseLocation) }
+            return event
+        }) { monitors.append(m) }
+    }
+
+    public func stop() {
+        monitors.forEach(NSEvent.removeMonitor)
+        monitors.removeAll()
+    }
+}

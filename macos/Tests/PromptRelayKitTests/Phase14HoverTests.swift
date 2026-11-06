@@ -6,18 +6,37 @@ import XCTest
 /// Phase 14, P0: the island closed by itself when a view inside it needed
 /// less height. The window shrank under a pointer that had just clicked in
 /// its lower part; the tracking area reported "exited" and the 80 ms
-/// hover-close ran, although the user never left. These tests drive the real
-/// controller and NSPanel with a manual clock and an injected pointer, and
-/// stand in for AppKit's tracking area (`syncTracking`): it reports an exit
-/// when the window no longer contains the pointer, an entry when it does.
+/// hover-close ran, although the user never left.
+///
+/// Phase 14.1: the first fix kept the larger window until the pointer moved
+/// onto the island; its transparent part could take clicks meant for the app
+/// below. Now the window shrinks at once and the vacated strip is a
+/// "corridor": resting or moving there keeps the island open, reaching it
+/// ends the corridor, leaving it or clicking in it closes the island.
+///
+/// The real controller and NSPanel with a manual clock, an injected pointer
+/// and corridor monitor; `syncTracking` stands in for AppKit's tracking area
+/// (exit when the window no longer contains the pointer, entry when it does).
 @MainActor
 final class Phase14HoverTests: XCTestCase {
+    final class FakeCorridor: CorridorEvents {
+        var move: ((CGPoint) -> Void)?
+        var press: ((CGPoint) -> Void)?
+        var starts = 0
+        var isRunning: Bool { move != nil }
+        func start(move: @escaping @MainActor (CGPoint) -> Void, press: @escaping @MainActor (CGPoint) -> Void) {
+            starts += 1; self.move = move; self.press = press
+        }
+        func stop() { move = nil; press = nil }
+    }
+
     var suite: String!
     var defaults: MemorySettingsStore!
     var settings: NotchSettings!
     var clock: ManualScheduler!
     var pasteboard: NSPasteboard!
     var model: AppModel!
+    var corridor = FakeCorridor()
     var mouse = CGPoint(x: -1000, y: -1000)
     var inside = false
 
@@ -45,7 +64,8 @@ final class Phase14HoverTests: XCTestCase {
         return NotchController(model: model, settings: settings, actions: SurfaceActions(openWindow: {}, openStatus: {}, quit: {}),
                                screens: FakeScreens([builtInScreen()]), scheduler: clock, center: NotificationCenter(),
                                workspaceCenter: NotificationCenter(), makeHotKey: { nil }, neighbors: FakeNeighbors(),
-                               pointerEvents: FakePointerEvents(), mouseLocation: { [unowned self] in self.mouse })
+                               pointerEvents: FakePointerEvents(), mouseLocation: { [unowned self] in self.mouse },
+                               corridorEvents: corridor, pressedMouseButtons: { 0 })
     }
 
     func settle(_ seconds: Double = 0.05) async { try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
@@ -58,9 +78,12 @@ final class Phase14HoverTests: XCTestCase {
         c.panelPointer(inside: now)
     }
 
+    /// The pointer moves: the panel sees it when inside, the corridor
+    /// monitor (if running) sees it anywhere, then the tracking area updates.
     func move(_ c: NotchController, to point: CGPoint) {
         mouse = point
         if c.panelFrame?.contains(point) == true { c.panelPointerMoved(global: point) }
+        corridor.move?(point)
         syncTracking(c)
     }
 
@@ -85,21 +108,43 @@ final class Phase14HoverTests: XCTestCase {
         let tall = try await openTall(c)
         c.presentation.reportContentHeight(160)             // the new view is shorter
         await settle()
-        syncTracking(c)
+        syncTracking(c)                                      // AppKit: "exited" (our own edge moved)
         clock.advance(1.0)
         XCTAssertTrue(c.interaction.phase.isExpanded, "the island stays open: the user did not leave")
-        XCTAssertEqual(c.presentation.contentHeight, 160, accuracy: 1, "the island itself takes its new height")
-        XCTAssertTrue(try XCTUnwrap(c.panelFrame).contains(mouse), "the window keeps the pointer until it reaches the island")
-        XCTAssertEqual(try XCTUnwrap(c.panelFrame).height, tall.height, accuracy: 1)
-        // Moving up into the smaller island: the window takes its frame.
-        let target = CGPoint(x: tall.midX, y: tall.maxY - 60)
-        move(c, to: target)
-        XCTAssertLessThan(try XCTUnwrap(c.panelFrame).height, tall.height - 100, "the window follows once the pointer is on the island")
+        XCTAssertLessThan(try XCTUnwrap(c.panelFrame).height, tall.height - 100, "the window shrinks at once: nothing transparent left")
+        XCTAssertFalse(try XCTUnwrap(c.panelFrame).contains(mouse))
+        XCTAssertNotNil(c.corridor)
+        XCTAssertTrue(corridor.isRunning, "the monitor runs only during the corridor")
+        // Still in the strip, moving a little: still open.
+        move(c, to: CGPoint(x: tall.midX + 20, y: tall.minY + 40))
+        clock.advance(1.0)
+        XCTAssertTrue(c.interaction.phase.isExpanded)
+        // Up onto the smaller island: the corridor ends, normal tracking again.
+        move(c, to: CGPoint(x: tall.midX, y: tall.maxY - 60))
+        XCTAssertNil(c.corridor)
+        XCTAssertFalse(corridor.isRunning)
         XCTAssertTrue(c.interaction.phase.isExpanded)
         // Leaving for real still closes it.
         move(c, to: CGPoint(x: tall.midX, y: tall.minY - 300))
         clock.advance(0.2)
         XCTAssertEqual(c.interaction.phase, .compact, "a real exit closes the island")
+        c.stop()
+    }
+
+    func testAClickInTheVacatedStripGoesToTheAppBelowAndCloses() async throws {
+        let c = makeController()
+        let tall = try await openTall(c)
+        c.presentation.reportContentHeight(160)
+        await settle()
+        syncTracking(c)
+        let click = CGPoint(x: tall.midX, y: tall.minY + 30)
+        XCTAssertFalse(try XCTUnwrap(c.panelFrame).contains(click), "the panel does not cover the click: it reaches the app below")
+        XCTAssertFalse(NSApp.windows.contains { $0 is NotchPanel && $0.isVisible && $0.frame.contains(click) },
+                       "no Prompt Relay window under the pointer")
+        corridor.press?(click)
+        clock.advance(0.2)
+        XCTAssertEqual(c.interaction.phase, .compact, "working in the app below is a departure")
+        XCTAssertFalse(corridor.isRunning)
         c.stop()
     }
 
@@ -111,10 +156,11 @@ final class Phase14HoverTests: XCTestCase {
         syncTracking(c)
         clock.advance(1.0)
         XCTAssertTrue(c.interaction.phase.isExpanded)
+        XCTAssertFalse(try XCTUnwrap(c.panelFrame).contains(mouse))
         c.stop()
     }
 
-    func testLeavingTheOldAreaWhileWaitingClosesTheIsland() async throws {
+    func testLeavingTheOldAreaClosesTheIsland() async throws {
         let c = makeController()
         let tall = try await openTall(c)
         c.presentation.reportContentHeight(160)
@@ -123,13 +169,12 @@ final class Phase14HoverTests: XCTestCase {
         move(c, to: CGPoint(x: tall.maxX + 200, y: tall.minY + 30))   // sideways out of the old area
         clock.advance(0.2)
         XCTAssertEqual(c.interaction.phase, .compact)
-        await settle(0.3)
-        let compact = try XCTUnwrap(c.panelFrame)
-        XCTAssertLessThan(compact.height, 80, "closing drops the waiting frame: no tall window is left behind")
+        XCTAssertNil(c.corridor)
+        XCTAssertFalse(corridor.isRunning)
         c.stop()
     }
 
-    func testGrowingAgainWhileWaitingTakesTheNewFrame() async throws {
+    func testGrowingAgainEndsTheCorridor() async throws {
         let c = makeController()
         let tall = try await openTall(c)
         c.presentation.reportContentHeight(160)
@@ -137,9 +182,8 @@ final class Phase14HoverTests: XCTestCase {
         c.presentation.reportContentHeight(420)              // back to the taller view
         await settle()
         XCTAssertEqual(try XCTUnwrap(c.panelFrame).height, tall.height, accuracy: 1)
-        XCTAssertNil(c.waitingFrame)
-        move(c, to: CGPoint(x: tall.midX, y: tall.maxY - 60))
-        XCTAssertEqual(try XCTUnwrap(c.panelFrame).height, tall.height, accuracy: 1, "no stale smaller frame applied later")
+        XCTAssertNil(c.corridor, "the pointer is on the island again")
+        XCTAssertFalse(corridor.isRunning)
         XCTAssertTrue(c.interaction.phase.isExpanded)
         c.stop()
     }
@@ -156,10 +200,11 @@ final class Phase14HoverTests: XCTestCase {
         await settle()
         XCTAssertLessThan(try XCTUnwrap(c.panelFrame).height, tall.height - 100)
         XCTAssertTrue(c.interaction.phase.isExpanded)
+        XCTAssertEqual(corridor.starts, 0, "no monitor without a pointer on the island")
         c.stop()
     }
 
-    func testRapidSwitchingNeverClosesOrLeavesTimers() async throws {
+    func testRapidSwitchingNeverClosesOrLeavesTimersOrMonitors() async throws {
         let c = makeController()
         let tall = try await openTall(c)
         for h: CGFloat in [160, 380, 120, 300, 140, 420, 150] {
@@ -173,6 +218,20 @@ final class Phase14HoverTests: XCTestCase {
         XCTAssertEqual(c.interaction.pendingTimerCount, 0)
         move(c, to: CGPoint(x: tall.midX, y: tall.maxY - 50))
         XCTAssertTrue(c.interaction.phase.isExpanded)
+        XCTAssertFalse(corridor.isRunning)
         c.stop()
+    }
+
+    func testClosingOrStoppingStopsTheMonitor() async throws {
+        let c = makeController()
+        _ = try await openTall(c)
+        c.presentation.reportContentHeight(160)
+        await settle()
+        XCTAssertTrue(corridor.isRunning)
+        c.interaction.close()                                 // Esc / a copy that dismisses
+        await settle()
+        XCTAssertFalse(corridor.isRunning)
+        c.stop()
+        XCTAssertFalse(corridor.isRunning)
     }
 }

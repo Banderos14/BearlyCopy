@@ -212,7 +212,8 @@ import Testing
     @Test func oneFinalAnswerGetsOneScreenshotInMemoryUnchecked() async throws {
         let s = Self.session("s", last: Self.ago(400))
         let w = await world([s]); defer { cleanup(w) }
-        let clipboardBefore = NSPasteboard.general.changeCount
+        // The model writes only to its injected pasteboard; the system one is
+        // not checked (a person copying during the run would change it).
         let boardBefore = w.board.changeCount
         w.model.chooseAutoCaptureWindow()
         #expect(w.model.autoCaptureBindings.count == 1)
@@ -228,7 +229,7 @@ import Testing
         await w.model.refreshNow(); await w.model.refreshNow(); await w.model.waitForAutoCaptures()
         #expect(w.capture.total == 1 && w.model.attachments(for: ref).count == 1)
         #expect(files(under: w.root).filter { $0.hasSuffix(".png") }.isEmpty, "no PNG written")
-        #expect(NSPasteboard.general.changeCount == clipboardBefore && w.board.changeCount == boardBefore, "no clipboard write")
+        #expect(w.board.changeCount == boardBefore, "no clipboard write")
         // The user ticks it: now it goes with Copy with Context and Context Packs.
         w.model.setSelected(shots[0], true)
         #expect(w.model.handoffAttachments(for: ref).map(\.id) == [shots[0].id])
@@ -435,5 +436,26 @@ import Testing
                                           bindings: b, others: others, now: now)
         }
         #expect(Date().timeIntervalSince(start) / 10 < 0.05, "one decision over 3,000 conversations stays under 50 ms")
+    }
+
+    @Test func twoFinalsInOneRefreshEachGetTheirOwnScreenshot() async throws {
+        let claude = Self.session("claude", last: Self.ago(400))
+        let codex = Self.session("codex", provider: "codex", host: "xcode", last: Self.ago(410))
+        let w = await world([claude, codex]); defer { cleanup(w) }
+        w.capture.color = ["h1": .systemOrange, "h2": .systemGreen]
+        w.model.selectSession("claude"); w.model.chooseAutoCaptureWindow()
+        w.model.selectSession("codex"); w.model.chooseAutoCaptureWindow()
+        // Both stop between two refreshes (one FSEvents batch).
+        w.core.sessionsByProject["/a"] = [Self.session("claude", last: Self.ago(6), turns: 2),
+                                          Self.session("codex", provider: "codex", host: "xcode", last: Self.ago(7), turns: 2)]
+        w.core.turnsBySession["claude"] = [turn(1, at: Self.ago(400)), turn(2, at: Self.ago(6))]
+        w.core.turnsBySession["codex"] = [turn(1, at: Self.ago(410)), turn(2, at: Self.ago(7))]
+        await w.model.refreshNow()
+        await w.model.waitForAutoCaptures()
+        #expect(w.capture.captures == ["h1": 1, "h2": 1])
+        let a = try #require(w.model.attachments(for: .local(sessionKey: "claude", turn: 2)).first)
+        let b = try #require(w.model.attachments(for: .local(sessionKey: "codex", turn: 2)).first)
+        #expect(w.model.attachmentData(a) == Self.png(.systemOrange) && w.model.attachmentData(b) == Self.png(.systemGreen))
+        #expect(files(under: w.root).filter { $0.hasSuffix(".png") }.isEmpty)
     }
 }

@@ -211,6 +211,11 @@ public final class NotchController {
     private var pendingRoute: AppModel.IslandRoute?
     /// The pointer in global coordinates (injectable for tests).
     let mouseLocation: @MainActor () -> CGPoint
+    /// The mouse buttons held now (injectable: tests must not depend on the
+    /// real mouse of a person using the Mac during the run).
+    let pressedMouseButtons: @MainActor () -> Int
+    /// Mouse monitor for the resize corridor (injectable for tests).
+    let corridorEvents: CorridorEvents
 
     public init(model: AppModel, settings: NotchSettings, actions: SurfaceActions, notifier: ReadyNotifier? = nil,
                 screens: ScreenProviding? = nil,
@@ -221,8 +226,12 @@ public final class NotchController {
                 makeShortcut: (@MainActor (GlobalShortcut, ShortcutModifiers) -> HotKeyRegistration?)? = nil,
                 neighbors: NotchNeighbors? = nil,
                 pointerEvents: PointerEvents? = nil,
-                mouseLocation: (@MainActor () -> CGPoint)? = nil) {
+                mouseLocation: (@MainActor () -> CGPoint)? = nil,
+                corridorEvents: CorridorEvents? = nil,
+                pressedMouseButtons: (@MainActor () -> Int)? = nil) {
         self.mouseLocation = mouseLocation ?? { NSEvent.mouseLocation }
+        self.pressedMouseButtons = pressedMouseButtons ?? { NSEvent.pressedMouseButtons }
+        self.corridorEvents = corridorEvents ?? LiveCorridorEvents()
         self.model = model
         self.settings = settings
         self.actions = actions
@@ -309,6 +318,7 @@ public final class NotchController {
         settings.onShortcutsChanged = nil
         collapseWork?.cancel()
         resizeWork?.cancel()
+        closeCorridor()
         menuTracking = false
         dialogOpen = false
         model.onSystemDialog = nil
@@ -397,52 +407,91 @@ public final class NotchController {
 
     // MARK: Phase 14 — resizing under the pointer
 
-    /// The frame the open island's window will take once the pointer is on
-    /// the (smaller) island. Until then the window keeps its larger frame;
-    /// the island itself is already drawn at its new size inside it.
-    private(set) var waitingFrame: CGRect?
+    /// The strip the island just gave up (its old window frame) while the
+    /// pointer is still in it. The window itself already has its new, smaller
+    /// frame — nothing transparent is left on screen to take clicks.
+    private(set) var corridor: CGRect?
 
     /// Every frame change of the open island goes through here. Before
     /// Phase 14 a view needing less height shrank the window out from under
     /// a pointer that had just clicked in its lower part: AppKit reported
     /// "exited" and the 80 ms hover-close ran although the user never left.
-    /// Now a smaller frame that would leave the pointer outside waits: it
-    /// applies when the pointer reaches the new island, a real exit from the
-    /// old area closes the island as before, and any other frame (growing,
-    /// closing) replaces it. No timer, no polling: only the panel's own
-    /// tracking-area events.
+    ///
+    /// Phase 14.1: the window takes the new frame at once (the first fix
+    /// kept the larger window, whose transparent part could take clicks meant
+    /// for the app below). When that leaves the pointer outside, the old frame
+    /// becomes a corridor: the exit it causes is not a departure. The island
+    /// stays open while the pointer rests or moves in the corridor; reaching
+    /// the island ends it; leaving the corridor, or clicking in it (the click
+    /// goes to the app below), is a real departure and closes as usual. A
+    /// mouse monitor runs only during the corridor (event-driven, no timer).
     private func setExpandedFrame(_ target: CGRect) {
         guard let panel else { return }
         let current = panel.frame
         let pointer = mouseLocation()
-        if interaction.pointerInside, current.contains(pointer), !target.contains(pointer) {
-            waitingFrame = target
-            return
+        let enclosing = corridor.map { $0.union(current) } ?? current
+        if interaction.pointerInside, enclosing.contains(pointer), !target.contains(pointer) {
+            openCorridor(enclosing)
+        } else if target.contains(pointer) {
+            closeCorridor()
         }
-        waitingFrame = nil
         if current != target { panel.setFrame(target, display: true) }
     }
 
-    private func dropWaitingFrame() { waitingFrame = nil }
+    private func openCorridor(_ rect: CGRect) {
+        corridor = rect
+        corridorEvents.start(move: { [weak self] point in self?.corridorMoved(to: point) },
+                             press: { [weak self] point in self?.corridorPressed(at: point) })
+    }
 
-    /// The panel's tracking area: the pointer entered or left the window.
-    func panelPointer(inside: Bool) {
-        if !inside { dropWaitingFrame() }
-        if inside { interaction.pointerEntered() } else {
-            if NSEvent.pressedMouseButtons != 0 {
-                interaction.isDragging = true
-                waitForMouseRelease()
-            }
+    private func closeCorridor() {
+        guard corridor != nil else { return }
+        corridor = nil
+        corridorEvents.stop()
+    }
+
+    private func dropWaitingFrame() { closeCorridor() }
+
+    /// Pointer moves (anywhere) while a corridor is open.
+    func corridorMoved(to point: CGPoint) {
+        guard let corridor else { return }
+        if panel?.frame.contains(point) == true {
+            closeCorridor()                                   // on the island: normal tracking again
+            interaction.pointerEntered()
+        } else if !corridor.contains(point) {
+            closeCorridor()                                   // left the old area: a real departure
             interaction.pointerExited()
         }
     }
 
-    /// The pointer moved inside the panel's window (global coordinates):
-    /// once it is on the smaller island, the window takes its frame.
+    /// A click outside the island while in the corridor: the user is working
+    /// in the app below — a departure. The click itself reaches that app.
+    func corridorPressed(at point: CGPoint) {
+        guard corridor != nil, panel?.frame.contains(point) != true else { return }
+        closeCorridor()
+        interaction.pointerExited()
+    }
+
+    /// The panel's tracking area: the pointer entered or left the window.
+    func panelPointer(inside: Bool) {
+        if inside {
+            closeCorridor()
+            interaction.pointerEntered()
+            return
+        }
+        // Our own shrink moved the edge past a still pointer: not a departure.
+        if let corridor, corridor.contains(mouseLocation()) { return }
+        closeCorridor()
+        if pressedMouseButtons() != 0 {
+            interaction.isDragging = true
+            waitForMouseRelease()
+        }
+        interaction.pointerExited()
+    }
+
+    /// The pointer moved inside the panel's window (global coordinates).
     func panelPointerMoved(global point: CGPoint) {
-        guard let target = waitingFrame, target.contains(point), interaction.phase.isExpanded else { return }
-        waitingFrame = nil
-        panel?.setFrame(target, display: true)
+        if corridor != nil { corridorMoved(to: point) }
     }
 
     /// Poll only during a held mouse gesture: AppKit's drag loop can consume
@@ -450,7 +499,7 @@ public final class NotchController {
     private func waitForMouseRelease() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
             guard let self, self.isRunning, self.interaction.isDragging else { return }
-            if NSEvent.pressedMouseButtons == 0 { self.interaction.isDragging = false }
+            if self.pressedMouseButtons() == 0 { self.interaction.isDragging = false }
             else { self.waitForMouseRelease() }
         }
     }

@@ -103,12 +103,35 @@ specific tab inside one window.
   the conversation shown in a linked Claude Desktop window, the screenshot
   shows what is on screen. Only *other active conversations resolving to the
   same window* are detected.
-- While the island waits for the pointer after shrinking, the transparent
-  part of its old window (below the island) still takes clicks until the
-  pointer moves onto the island or away.
+- ~~While the island waits for the pointer after shrinking, the transparent
+  part of its old window still takes clicks~~ — fixed in 14.1 (below). This
+  limit was inferred from the code, never observed live.
 - 0.6 + 0.8 s settle values come from the hook → Core → FSEvents path, not
   from a measurement inside Claude Desktop; the owner's live check decides
   whether they suffice.
 
 ## 5. Results
 Final tree: XCTest 302/0 (16 opt-in skips), Swift Testing 122/122, Python 249+15 ×2 (3.14, 3.9), Xcode Debug/Release BUILD SUCCEEDED, `git diff --check` clean. Hook latency median 40.0 ms (plugin launcher 57.8 ms). Planner over 3,000 conversations < 50 ms per decision (test). Capture, PNG encoding and thumbnail run off the main thread. Not measured live: idle CPU, open/transition times and Stop → screenshot latency in the real app (requires an installed build). Version: proposal 0.6.0 for App, Core and plugin (new settings and changed default for auto screenshots); not applied.
+
+## 6. Phase 14.1 (0.6.0)
+
+**Hover-resize without a transparent click trap.** The first fix kept the
+larger window until the pointer reached the island; its transparent part
+could take clicks meant for the app below. Now the window takes its smaller
+frame at once and the vacated strip becomes a *corridor*: the exit our own
+edge causes is ignored while the pointer is in the strip; moving onto the
+island ends the corridor; leaving the strip, or clicking in it (the click
+reaches the app below, no Prompt Relay window covers it), closes the island
+with the usual delay. A global + local mouse monitor (moves and presses, no
+keys, no permission) runs only during a corridor and stops on enter, exit,
+close, growth or app stop. `Phase14HoverTests` (8 tests) replace the first
+fix's tests; the new click test cannot pass on the first fix by
+construction (its panel still covered the click point).
+
+**Auto screenshot.** One more scenario: two agents finishing in one refresh
+each get their own window's screenshot (21 scenarios in total).
+
+**Version 0.6.0** for App (Xcode), Core and plugin; JSON API v1 and Context
+Pack format v1 unchanged (pinned by `tests/test_phase12.py`). Hooks are
+unchanged since 0.4.1, so the installed 0.4.1 plugin keeps capturing; the
+plugin update only aligns versions (owner's decision).

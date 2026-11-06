@@ -908,3 +908,9 @@ refused or revoked permission shows "Permission required" and keeps the
 link; a closed window drops its link (never replaced by another window).
 Live behaviour in Claude Desktop (render timing, multi-display, minimized
 windows) still needs the owner's checks (`macos/ACCEPTANCE_PHASE14.md`).
+
+**Update (0.6.0, Phase 14.1).** Not part of capture but of the same phase:
+when the island shrinks under the pointer, the window now shrinks at once and
+a bounded mouse monitor protects the vacated strip ("corridor"), instead of
+keeping a larger, partly transparent window (which could take clicks meant
+for the app below).
