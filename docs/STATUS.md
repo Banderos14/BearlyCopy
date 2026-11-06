@@ -1,5 +1,19 @@
 # Status
 
+## 2026-11-07 — 0.6.0 (Phase 14.1): hover-resize without a click trap; ready to install (not installed)
+
+The island now shrinks its window at once; the strip it leaves is a short
+"corridor" (bounded mouse monitor) where resting or moving keeps it open,
+and a click there reaches the app below and closes it. Auto screenshot: one
+more scenario (two finals in one refresh). App, Core and plugin at 0.6.0;
+JSON API v1 and Context Pack v1 unchanged; hooks unchanged since 0.4.1.
+XCTest 304/0 (16 opt-in skips), Swift Testing 123/123, Python 249+15 ×2
+(3.14, 3.9), Xcode Debug/Release, `git diff --check` clean. Two tests that
+read the real mouse button / system clipboard failed once in a full run
+while the Mac was in use; they now use injected state. Installed app still
+0.4.1, plugin 0.4.1, Xcode Debug copy running. Install and plugin update:
+owner's consent ([ACCEPTANCE_0.6.0](../macos/ACCEPTANCE_0.6.0.md)).
+
 ## 2026-11-06 — Phase 14: no clipped rows, island stays open on resize, auto screenshots (not installed)
 
 Fixed and covered by tests that failed before: Copy with Context rows and
