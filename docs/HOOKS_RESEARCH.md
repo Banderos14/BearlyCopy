@@ -276,3 +276,22 @@ names remain **documented only** (section above). Prompt Relay does not log
 in on the owner's behalf. Next: the owner's interactive check in Claude
 Desktop (plugin 0.4.1 active after restart), or `claude` re-login, then the
 same probe.
+
+### Phase 12.2 (2026-11-06): waiting events observed live in Claude Desktop
+Claude Desktop's Code tab, plugin 0.4.1, this repository's own session
+(capture enabled); read from Prompt Relay's reduced records (field presence
+only, no text):
+- **AskUserQuestion**: `PreToolUse` (with `tool_use_id`) → `PermissionRequest`
+  for tool `AskUserQuestion` (no `tool_use_id`) within ~0.2 s →
+  `Notification` `permission_prompt` ~6 s later → after the answer,
+  `PostToolUse` for `AskUserQuestion` (with `tool_use_id`).
+- **ExitPlanMode**: the same shape: `PreToolUse` → `PermissionRequest`
+  (ExitPlanMode) → `permission_prompt` (~6 s) → `PostToolUse` ExitPlanMode
+  after approval.
+- **Bash permission, allowed**: `PermissionRequest` (Bash) → `PostToolUse`
+  Bash when the command finished.
+- Consequence: a `PermissionRequest` is also the dialog of a question or a
+  plan; Prompt Relay keeps the more specific kind (api.attention).
+- `PostToolUse` fires for AskUserQuestion and ExitPlanMode (not stated in
+  the docs).
+- Not observed yet: a denied permission, a cancelled question, elicitation.

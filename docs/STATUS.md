@@ -1,5 +1,18 @@
 # Status
 
+## 2026-11-06 — Phase 12.2: first-interaction Drag, live Needs Input
+
+Drag from the hover-opened (non-key) island failed on the first press: the
+AppKit drag source kept `acceptsFirstMouse == false`, so the press only made
+the panel key. Fixed locally on the drag source (first mouse, delayed window
+ordering, 3 pt threshold), reproduced and verified on the real panel event
+path. AskUserQuestion, ExitPlanMode and an allowed permission confirmed with
+real events in Claude Desktop; a question's own PermissionRequest no longer
+changes its kind. Scroll tests: locked screen confirmed as the cause; now
+skipped as "environment blocked". XCTest 278/0, Swift Testing 102/102,
+Python 232+15 ×2, Xcode Debug/Release. Not installed (consent pending).
+[Phase 12.2](../macos/PHASE12.2.md).
+
 ## 2026-11-06 — Phase 12.1 acceptance: 0.4.1 installed, live waits not yet observed
 
 Fixed: subagent `<agent-message>` reports are automated messages in Copy
