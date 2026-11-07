@@ -1,5 +1,34 @@
 # Status
 
+## 2026-11-07 — Phase 15: Git recovery, independent audit, MVP readiness (branch `phase/15-mvp-readiness`, not installed)
+
+Git: the latest work (`17844fe`) existed only on this Mac — GitHub had the
+Phase 4-era `f72a8ce`. Private verified bundle of all 27 refs plus the
+owner's staged/untracked acceptance files in
+`~/Backups/PromptRelay/2026-11-07-phase15/`; new `develop` = `17844fe`
+pushed; Phase 15 work on `phase/15-mvp-readiness` in the worktree
+`~/Projects/prompt-relay-phase15`; `main` and the legacy branch untouched;
+the main checkout's staged/untracked files left exactly as found
+([Git recovery](PHASE15_GIT_RECOVERY.md)). Audit of Phases 14–14.2: every
+reported count reproduced (XCTest 339/0/16, Swift Testing 123/123, Python
+249+15 ×2). Fixed: **D1 (P1)** review marks were pruned in hash order, so
+past 200 marked answers a fresh tick could vanish — now kept by recency;
+**D2 (P1)** `swift build 2>&1 | grep …` on a clean build read "1 build
+failed" — now "1 build unclear", grep/diff non-matches "1 likely not an
+error", quotes and `2>&1` no longer split a line; **D3** SECURITY.md wrongly
+said no Screen Recording is used; **D4** two compiler warnings. Four weak
+Phase 14.2 tests strengthened (one asserted nothing). After: Python 249+15
+×2, XCTest 349/0 (16 opt-in skips, +10), Swift Testing 123/123, Xcode
+Debug/Release 0 warnings, `git diff --check` clean, two mutation checks.
+Nothing installed; installed app/plugin still 0.4.1. Live GUI, permissions
+and ChatGPT paste: owner ([MVP acceptance](PHASE15_MVP_ACCEPTANCE.md)).
+[Audit](PHASE15_AUDIT.md) · [tests](PHASE15_TEST_RESULTS.md) ·
+[handoff](PHASE15_HANDOFF.md) · [next chat](PHASE15_NEXT_CHAT_PROMPT.md).
+Next agreed stage: owner reviews Phase 15, merges it into `develop`,
+decides on installing 0.6.0 + Phase 15 (consent) and runs the MVP
+acceptance; deleting `claude/loving-mccarthy-ossw3q` only on the owner's
+yes; Phase 16 only after approval.
+
 ## 2026-11-07 — 0.6.0 addendum: accurate verification, failure classification, compact Copy with Context (not installed)
 
 Three real bugs from using Prompt Relay on itself. (1) The Answer chip's
@@ -964,6 +993,11 @@ Formatted + Markdown Source, structured ⓘ explanations, product analysis in
 `refs/backup/phase8-start`.
 
 ## Next agreed stage
+
+**After Phase 15 (2026-11-07):** see the top entry — owner review and merge
+of `phase/15-mvp-readiness` into `develop`, install decision (consent), MVP
+acceptance (`docs/PHASE15_MVP_ACCEPTANCE.md`), then a Phase 16 the owner
+approves. The notes below are older plans, kept for history.
 
 **After Phase 11 (2026-11-05):** owner live acceptance (macos/PHASE11.md
 §4 and §13), the license decision, and a Developer ID certificate before any
