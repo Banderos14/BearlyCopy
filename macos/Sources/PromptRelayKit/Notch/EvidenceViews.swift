@@ -294,7 +294,6 @@ struct TrustCard: View {
         .islandCard()
     }
 
-    @ViewBuilder
     private func line(_ row: TrustSummary.Row) -> some View {
         let state = row.checklistID.map(model.reviewCheckState) ?? .pending
         return HStack(alignment: .top, spacing: 6) {

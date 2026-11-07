@@ -2072,7 +2072,6 @@ struct TaskReaderView: View {
     @State private var source = false
 
     var body: some View {
-        let facts = ReportFacts(model: model)
         let task = model.fullTask
         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
             HStack(spacing: 8) {
