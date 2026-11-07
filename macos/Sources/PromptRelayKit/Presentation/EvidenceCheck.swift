@@ -37,16 +37,23 @@ public struct EvidenceCheck: Equatable, Sendable {
     }
 
     public let items: [Item]
+    /// Phase 14.2: failures classified by kind (command / test / build),
+    /// from the same stored commands as the items above — never a second
+    /// source of truth, never "N failed" collapsing a diagnostic shell call
+    /// and a failed test suite into one indistinguishable number.
+    public let failureBreakdown: FailureBreakdown
 
     public func items(_ kind: Kind) -> [Item] { items.filter { $0.kind == kind } }
 
-    /// "12 observed · 1 failed · 3 not verified" for the compact chip.
+    /// "12 observed · 1 test failed" for the compact chip. What still needs
+    /// the user's own check (`ReviewChecklist`) is a separate count, shown
+    /// next to this one in the chip, never merged into it; the claims this
+    /// struct could not verify stay listed, with their own count, in
+    /// Evidence & Review (`items(.notVerified)`).
     public var summary: String {
         let main = items(.observed).count
-        let failed = items.filter { $0.kind == .observed && $0.alert }.count
-        let open = items(.notVerified).count
-        return [main > 0 ? "\(main) observed" : nil, failed > 0 ? "\(failed) failed" : nil,
-                open > 0 ? "\(open) not verified" : nil].compactMap { $0 }.joined(separator: " · ")
+        return [main > 0 ? "\(main) observed" : nil, failureBreakdown.isEmpty ? nil : failureBreakdown.summary]
+            .compactMap { $0 }.joined(separator: " · ")
     }
 
     public static func make(_ input: Input) -> EvidenceCheck {
@@ -60,6 +67,14 @@ public struct EvidenceCheck: Equatable, Sendable {
             items.append(Item(kind: .unavailable, text: "Commands not recorded for this answer (needs the plugin's tool hooks, 0.3.0 or later)"))
         }
         let commands = (input.detail?.commands ?? []).filter { $0.agentType == nil }
+        let failureBreakdown: FailureBreakdown
+        if input.detail != nil {
+            failureBreakdown = .make(commands)
+        } else if let observed = input.observed, max(observed.commandsNonzero ?? 0, observed.runsNonzero) > 0 {
+            failureBreakdown = .fromAggregate(max(observed.commandsNonzero ?? 0, observed.runsNonzero))
+        } else {
+            failureBreakdown = FailureBreakdown()
+        }
         var testsOK = 0, buildsOK = 0
         if let observed = input.observed {
             let count = input.detail.map { _ in commands.count } ?? observed.toolEvents
@@ -106,9 +121,15 @@ public struct EvidenceCheck: Equatable, Sendable {
         if claims.visual {
             items.append(Item(kind: .notVerified, text: "Visual review required: the answer is about the interface"))
         }
+        // Phase 14.2: the answer says the task is done, but neither a
+        // passing test nor a successful build was observed to back it up —
+        // named explicitly so it is never read as a confirmed success.
+        if claims.done, !claims.tests, !claims.build, testsOK == 0, buildsOK == 0 {
+            items.append(Item(kind: .notVerified, text: "Task outcome unknown: the answer says it is done, but no test or build command confirms it"))
+        }
         items.append(Item(kind: .unavailable, text: "CI not connected"))
         items.append(Item(kind: .notVerified, text: "Stop means Claude stopped answering, not that the task succeeded"))
-        return EvidenceCheck(items: items)
+        return EvidenceCheck(items: items, failureBreakdown: failureBreakdown)
     }
 
     /// Phrases in the answer, matched literally (English and Russian). Only
@@ -215,6 +236,11 @@ public struct ReviewChecklist: Equatable, Sendable {
         public let id: String
         public let text: String
         public let reason: String
+        /// Phase 14.2: only the CI item — Prompt Relay has no CI integration
+        /// to actually run, so ticking it should never be the only way to
+        /// say "checked"; "Not applicable" says plainly that there is
+        /// nothing here to check, without counting as a verified CI pass.
+        public var allowsNotApplicable = false
     }
 
     public static let limit = 6
@@ -245,7 +271,9 @@ public struct ReviewChecklist: Equatable, Sendable {
                               reason: failed ? "A command failed during the turn" : "Success is claimed but not independently verified"))
         }
         if claims.tests || claims.build || evidence.items.contains(where: { $0.text.contains("test command") || $0.text.contains("build command") }) {
-            items.append(Item(id: "ci", text: "Check CI, if the project has it", reason: "CI is not connected to Prompt Relay"))
+            items.append(Item(id: "ci", text: "Check CI, if the project has it",
+                              reason: "Prompt Relay is not connected to any CI; it cannot see CI results. If this project has no CI, mark Not applicable.",
+                              allowsNotApplicable: true))
         }
         if handoffFiles > 0 {
             items.append(Item(id: "paste", text: "Check that the files arrive in the receiving assistant",
@@ -327,6 +355,40 @@ extension AppModel {
         var all = reviewChecks
         all[key] = set.isEmpty ? nil : set
         reviewChecks = all
+        // Mutually exclusive with Not applicable (only meaningful on the CI item).
+        if checked, isReviewNotApplicable(item) { setReviewNotApplicable(item, false) }
+    }
+
+    // MARK: Phase 14.2 — Not applicable (the CI item only)
+
+    static let reviewNotApplicableKey = "reviewChecks.notApplicable.v1"
+
+    /// Marked "Not applicable" for the answer shown — a third state, never
+    /// read as a passed CI check: `isReviewChecked` stays false for it.
+    public func isReviewNotApplicable(_ item: String) -> Bool {
+        guard let key = currentRef?.key else { return false }
+        return reviewNotApplicable[key]?.contains(item) ?? false
+    }
+
+    public func setReviewNotApplicable(_ item: String, _ value: Bool) {
+        guard let key = currentRef?.key else { return }
+        var set = reviewNotApplicable[key] ?? []
+        if value { set.insert(item) } else { set.remove(item) }
+        var all = reviewNotApplicable
+        all[key] = set.isEmpty ? nil : set
+        reviewNotApplicable = all
+        if value, isReviewChecked(item) { setReviewChecked(item, false) }
+    }
+
+    /// Pending / Checked by you / Not applicable, for one checklist item of
+    /// the answer shown — the vocabulary of the user's own progress, kept
+    /// apart from what Evidence Check could or could not confirm.
+    public enum ReviewCheckState: Equatable, Sendable { case pending, checked, notApplicable }
+
+    public func reviewCheckState(_ item: String) -> ReviewCheckState {
+        if isReviewNotApplicable(item) { return .notApplicable }
+        if isReviewChecked(item) { return .checked }
+        return .pending
     }
 
     var reviewChecks: [String: Set<String>] {
@@ -340,6 +402,45 @@ extension AppModel {
                                forKey: Self.reviewChecksKey)
             reviewChecksVersion += 1
         }
+    }
+
+    var reviewNotApplicable: [String: Set<String>] {
+        get {
+            _ = reviewChecksVersion
+            return (stateDefaults?.dictionary(forKey: Self.reviewNotApplicableKey) as? [String: [String]])?.mapValues(Set.init) ?? [:]
+        }
+        set {
+            stateDefaults?.set(newValue.prefix(200).reduce(into: [String: [String]]()) { $0[$1.key] = $1.value.sorted() },
+                               forKey: Self.reviewNotApplicableKey)
+            reviewChecksVersion += 1
+        }
+    }
+
+    /// Phase 14.2: the user's own progress on the checklist of the answer
+    /// shown — separate from Evidence Check's unverified-claim count, and
+    /// updated the instant a box is ticked (no reopen, no restart needed).
+    public var reviewProgress: ReviewProgress? {
+        guard let checklist = reviewChecklist, !checklist.items.isEmpty else { return nil }
+        let resolved = checklist.items.filter { reviewCheckState($0.id) != .pending }.count
+        return ReviewProgress(total: checklist.items.count, resolvedCount: resolved)
+    }
+}
+
+/// Phase 14.2: "2 of 4 checks remaining" for the answer shown — the user's
+/// own progress on `ReviewChecklist`, never the count of claims Evidence
+/// Check could not independently verify (`EvidenceCheck.items(.notVerified)`,
+/// a different, unrelated number that stays in Evidence & Review).
+public struct ReviewProgress: Equatable, Sendable {
+    public let total: Int
+    /// Checked by you, or marked Not applicable — either way, not pending.
+    public let resolvedCount: Int
+    public var remaining: Int { max(0, total - resolvedCount) }
+    public var isComplete: Bool { total > 0 && remaining == 0 }
+
+    /// "" when there is nothing to check; else "N checks left" / "All checks completed".
+    public var summary: String {
+        guard total > 0 else { return "" }
+        return isComplete ? "All checks completed" : "\(remaining) check\(remaining == 1 ? "" : "s") left"
     }
 }
 
@@ -372,6 +473,8 @@ public struct TrustSummary: Equatable, Sendable {
         public var alert = false
         /// A Review Checklist item the user can tick.
         public var checklistID: String? = nil
+        /// Phase 14.2: only the CI item offers Not applicable as well.
+        public var allowsNotApplicable = false
         public var id: String { group.rawValue + "|" + (checklistID ?? text) }
     }
 
@@ -398,7 +501,8 @@ public struct TrustSummary: Equatable, Sendable {
             }
         }
         for item in checklist?.items ?? [] {
-            rows.append(Row(group: .needsVerification, text: item.text, detail: item.reason, checklistID: item.id))
+            rows.append(Row(group: .needsVerification, text: item.text, detail: item.reason, checklistID: item.id,
+                            allowsNotApplicable: item.allowsNotApplicable))
         }
         return TrustSummary(rows: rows)
     }

@@ -5,15 +5,28 @@ import SwiftUI
 struct EvidenceChip: View {
     let model: AppModel
 
+    /// Phase 14.2: "6 observed · 1 test failed · 2 checks left" — Evidence
+    /// Check's own facts, then the user's own checklist progress, kept
+    /// visually together but never merged into one number: tapping the chip
+    /// still opens the claims Evidence Check could not verify on their own,
+    /// plus every checklist item, each with its own state.
+    static func combinedSummary(_ model: AppModel) -> String? {
+        guard let evidence = model.evidence else { return nil }
+        let progress = model.reviewProgress?.summary
+        return [evidence.summary.isEmpty ? nil : evidence.summary, progress?.isEmpty == false ? progress : nil]
+            .compactMap { $0 }.joined(separator: " · ")
+    }
+
     var body: some View {
         if let evidence = model.evidence {
             let failed = evidence.items.contains { $0.kind == .observed && $0.alert }
+            let text = Self.combinedSummary(model) ?? ""
             Button { model.navigate(to: .evidence) } label: {
                 HStack(spacing: 4) {
                     Image(systemName: failed ? "exclamationmark.triangle.fill" : "checklist")
                         .font(.system(size: 9.5, weight: .semibold))
                         .foregroundStyle(failed ? Island.warning : Island.secondary)
-                    Text(evidence.summary.isEmpty ? "Evidence" : evidence.summary)
+                    Text(text.isEmpty ? "Evidence" : text)
                         .font(.system(size: 11, weight: .medium)).lineLimit(1)
                 }
                 .foregroundStyle(Island.secondary)
@@ -22,8 +35,8 @@ struct EvidenceChip: View {
                 .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Evidence Check: \(evidence.summary)")
-            .islandHelp("Compare observed work with the answer")
+            .accessibilityLabel("Evidence Check: \(text)")
+            .islandHelp("Compare observed work with the answer, and your own checklist")
             .islandFrame("response.evidence")
         }
     }
@@ -100,7 +113,14 @@ struct EvidenceView: View {
                             let items = evidence.items(kind)
                             if !items.isEmpty {
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Caption(kind.title, role: tint(kind))
+                                    HStack(spacing: 5) {
+                                        Caption(kind.title, role: tint(kind))
+                                        // Phase 14.2: its own count, kept apart from the
+                                        // checklist's "N checks left" above.
+                                        if kind == .notVerified {
+                                            Text("\(items.count)").font(.system(size: 11, weight: .medium)).foregroundStyle(Island.tertiary)
+                                        }
+                                    }
                                     ForEach(items) { item in
                                         Label {
                                             Text(item.text).font(.system(size: 11.5)).foregroundStyle(Island.primary)
@@ -138,32 +158,27 @@ struct EvidenceView: View {
                         }
                     }
                     if let checklist = model.reviewChecklist {
-                        section("Review Checklist", note: "For you to check yourself. Prompt Relay has not done these checks; a tick is your own.") {
+                        section("Review Checklist", note: "For you to check yourself. Prompt Relay has not done these checks; a tick is your own.",
+                               badge: model.reviewProgress?.summary) {
                             if checklist.items.isEmpty {
                                 Text("Nothing specific to check from what was recorded.").font(.system(size: 11.5)).foregroundStyle(Island.tertiary)
                             }
                             ForEach(checklist.items) { item in
-                                let done = model.isReviewChecked(item.id)
-                                HStack(alignment: .top, spacing: 7) {
-                                    SelectBox(selected: done) { model.setReviewChecked(item.id, !done) }
-                                        .accessibilityLabel(done ? "Checked by you: \(item.text)" : "Not checked: \(item.text)")
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(item.text).font(.system(size: 11.5, weight: .medium))
-                                            .foregroundStyle(done ? Island.secondary : Island.primary)
-                                            .strikethrough(done, color: Island.tertiary)
-                                        Text(done ? "Checked by you · \(item.reason)" : item.reason).font(.system(size: 11))
-                                            .foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
-                                    }
-                                }
-                                .islandFrame("checklist.\(item.id)")
+                                ChecklistRow(model: model, item: item)
+                                    .islandFrame("checklist.\(item.id)")
                             }
                         }
                     }
     }
 
-    private func section<C: View>(_ title: String, note: String, @ViewBuilder content: () -> C) -> some View {
+    private func section<C: View>(_ title: String, note: String, badge: String? = nil, @ViewBuilder content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Caption(title, role: Island.accent)
+            HStack(spacing: 6) {
+                Caption(title, role: Island.accent)
+                if let badge, !badge.isEmpty {
+                    Text(badge).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.tertiary)
+                }
+            }
             Text(note).font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             content()
         }
@@ -193,6 +208,65 @@ struct EvidenceView: View {
 
 /// Phase 12: "What can be trusted?" — confirmed facts, the agent's claims and
 /// what still needs a person, in that order. Ticks are the user's own.
+/// Phase 14.2: one Review Checklist item — Pending / Checked by you / Not
+/// applicable (the CI item only) — in Evidence & Review's own detail list.
+struct ChecklistRow: View {
+    let model: AppModel
+    let item: ReviewChecklist.Item
+
+    var body: some View {
+        let state = model.reviewCheckState(item.id)
+        HStack(alignment: .top, spacing: 7) {
+            if item.allowsNotApplicable {
+                Menu {
+                    Button("Pending") { model.setReviewChecked(item.id, false); model.setReviewNotApplicable(item.id, false) }
+                    Button("Checked by you") { model.setReviewChecked(item.id, true) }
+                    Button("Not applicable") { model.setReviewNotApplicable(item.id, true) }
+                } label: {
+                    Image(systemName: symbol(state)).font(.system(size: 12)).foregroundStyle(tint(state))
+                        .frame(width: 16, height: 16).contentShape(Rectangle())
+                }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .accessibilityLabel("\(label(state)): \(item.text)")
+            } else {
+                SelectBox(selected: state == .checked) { model.setReviewChecked(item.id, state != .checked) }
+                    .accessibilityLabel("\(label(state)): \(item.text)")
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.text).font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(state == .pending ? Island.primary : Island.secondary)
+                    .strikethrough(state != .pending, color: Island.tertiary)
+                Text(state == .pending ? item.reason : "\(label(state)) · \(item.reason)").font(.system(size: 11))
+                    .foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func label(_ s: AppModel.ReviewCheckState) -> String {
+        switch s {
+        case .pending: return "Pending"
+        case .checked: return "Checked by you"
+        case .notApplicable: return "Not applicable"
+        }
+    }
+
+    private func symbol(_ s: AppModel.ReviewCheckState) -> String {
+        switch s {
+        case .pending: return "square"
+        case .checked: return "checkmark.square.fill"
+        case .notApplicable: return "minus.square"
+        }
+    }
+
+    private func tint(_ s: AppModel.ReviewCheckState) -> Color {
+        switch s {
+        case .pending: return Island.tertiary
+        case .checked: return Island.accent
+        case .notApplicable: return Island.tertiary
+        }
+    }
+}
+
 struct TrustCard: View {
     let model: AppModel
     let summary: TrustSummary
@@ -222,27 +296,64 @@ struct TrustCard: View {
 
     @ViewBuilder
     private func line(_ row: TrustSummary.Row) -> some View {
-        HStack(alignment: .top, spacing: 6) {
+        let state = row.checklistID.map(model.reviewCheckState) ?? .pending
+        return HStack(alignment: .top, spacing: 6) {
             if let id = row.checklistID {
-                let done = model.isReviewChecked(id)
-                SelectBox(selected: done) { model.setReviewChecked(id, !done) }
-                    .accessibilityLabel(done ? "Checked by you: \(row.text)" : "Not checked: \(row.text)")
+                if row.allowsNotApplicable {
+                    Menu {
+                        Button("Pending") { model.setReviewChecked(id, false); model.setReviewNotApplicable(id, false) }
+                        Button("Checked by you") { model.setReviewChecked(id, true) }
+                        Button("Not applicable") { model.setReviewNotApplicable(id, true) }
+                    } label: {
+                        Image(systemName: checklistSymbol(state)).font(.system(size: 12)).foregroundStyle(checklistTint(state))
+                            .frame(width: 16, height: 16).contentShape(Rectangle())
+                    }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .accessibilityLabel("\(checklistLabel(state)): \(row.text)")
+                } else {
+                    SelectBox(selected: state == .checked) { model.setReviewChecked(id, state != .checked) }
+                        .accessibilityLabel("\(checklistLabel(state)): \(row.text)")
+                }
             } else {
                 Image(systemName: row.alert ? "xmark.octagon" : "circle.fill")
                     .font(.system(size: row.alert ? 10 : 4)).foregroundStyle(row.alert ? Island.error : Island.tertiary)
                     .frame(width: 10, height: 14)
             }
             VStack(alignment: .leading, spacing: 1) {
-                let done = row.checklistID.map(model.isReviewChecked) ?? false
-                Text(row.text).font(.system(size: 11.5)).foregroundStyle(done ? Island.secondary : Island.primary)
-                    .strikethrough(done, color: Island.tertiary).fixedSize(horizontal: false, vertical: true)
+                let resolved = row.checklistID != nil && state != .pending
+                Text(row.text).font(.system(size: 11.5)).foregroundStyle(resolved ? Island.secondary : Island.primary)
+                    .strikethrough(resolved, color: Island.tertiary).fixedSize(horizontal: false, vertical: true)
                 if let detail = row.detail {
-                    Text(done ? "Checked by you · \(detail)" : detail).font(.system(size: 11)).foregroundStyle(Island.tertiary)
+                    Text(resolved ? "\(checklistLabel(state)) · \(detail)" : detail).font(.system(size: 11)).foregroundStyle(Island.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
         .padding(.leading, 4)
+    }
+
+    private func checklistLabel(_ s: AppModel.ReviewCheckState) -> String {
+        switch s {
+        case .pending: return "Pending"
+        case .checked: return "Checked by you"
+        case .notApplicable: return "Not applicable"
+        }
+    }
+
+    private func checklistSymbol(_ s: AppModel.ReviewCheckState) -> String {
+        switch s {
+        case .pending: return "square"
+        case .checked: return "checkmark.square.fill"
+        case .notApplicable: return "minus.square"
+        }
+    }
+
+    private func checklistTint(_ s: AppModel.ReviewCheckState) -> Color {
+        switch s {
+        case .pending: return Island.tertiary
+        case .checked: return Island.accent
+        case .notApplicable: return Island.tertiary
+        }
     }
 
     private func tint(_ g: TrustSummary.Group) -> Color {

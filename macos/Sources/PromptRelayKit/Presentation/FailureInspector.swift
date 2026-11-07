@@ -145,6 +145,55 @@ public struct FailureInspector: Equatable, Sendable {
     }
 }
 
+/// Phase 14.2: "1 failed" told the user a diagnostic `grep`/`plutil` call
+/// and a failed test suite apart only by reading the small print. These four
+/// outcomes are not interchangeable, and the UI never collapses them into
+/// one: a command failing is not a test failing, which is not a build
+/// failing, which is not knowing whether the task succeeded.
+public struct FailureBreakdown: Equatable, Sendable {
+    /// Failed commands whose `kind` is neither "test" nor "build" (a
+    /// diagnostic shell command, a lint, "other", or no kind recorded).
+    public var commandsFailed = 0
+    public var testsFailed = 0
+    public var buildsFailed = 0
+    /// Of the above, how many look like a normal non-match/condition-false
+    /// exit (`FailureInspector.likelyNotAnError`), not a real error.
+    public var likelyNotAnError = 0
+
+    public var total: Int { commandsFailed + testsFailed + buildsFailed }
+    public var isEmpty: Bool { total == 0 }
+
+    /// When only the aggregate counts are known (no per-command detail
+    /// loaded yet), the failures cannot be classified by kind — they are
+    /// counted as generic commands, never guessed to be tests or builds.
+    public static func fromAggregate(_ nonzero: Int) -> FailureBreakdown {
+        var b = FailureBreakdown(); b.commandsFailed = nonzero; return b
+    }
+
+    public static func make(_ commands: [ObservedCommand]) -> FailureBreakdown {
+        var b = FailureBreakdown()
+        for c in commands where FailureInspector.isFailure(c) {
+            switch c.kind {
+            case "test": b.testsFailed += 1
+            case "build": b.buildsFailed += 1
+            default: b.commandsFailed += 1
+            }
+            if FailureInspector.likelyNotAnError(c) { b.likelyNotAnError += 1 }
+        }
+        return b
+    }
+
+    /// "1 test failed", "2 commands failed · 1 build failed" — each kind
+    /// named on its own, in this fixed order; never a single "N failed".
+    public var summary: String {
+        var parts: [String] = []
+        if buildsFailed > 0 { parts.append("\(buildsFailed) build\(buildsFailed == 1 ? "" : "s") failed") }
+        if testsFailed > 0 { parts.append("\(testsFailed) test\(testsFailed == 1 ? "" : "s") failed") }
+        if commandsFailed > 0 { parts.append("\(commandsFailed) command\(commandsFailed == 1 ? "" : "s") failed") }
+        return parts.joined(separator: " · ")
+    }
+}
+
 extension Wording {
     /// The Core's reason for withholding text, in words.
     static func withheld(_ reason: String?) -> String {

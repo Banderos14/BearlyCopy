@@ -37,6 +37,17 @@ struct PairedRows: Layout {
     var columnSpacing: CGFloat
     var rowSpacing: CGFloat
     var minBottom: CGFloat = 140
+    /// Phase 14.2: the top row's cap (below) used to be only Task's own
+    /// natural height or 32 % of the budget — at common compact heights
+    /// that gave Copy with Context one row and "+N more" with the rest of
+    /// its own card empty, even though the budget had slack (the Answer's
+    /// `minBottom` floor was not actually binding). These three describe
+    /// the right card's own row geometry, so the top row is also floored at
+    /// enough height for `rightMinRows` of them — never more than the right
+    /// card would ever need, and never at the Answer's `minBottom` expense.
+    var rightMinRows: Int = 0
+    var rightRowHeight: CGFloat = 0
+    var rightRowSpacing: CGFloat = 0
 
     struct Rows { let left: CGFloat; let top: CGFloat; let bottom: CGFloat }
 
@@ -49,14 +60,25 @@ struct PairedRows: Layout {
         let topNatural = max(natural(0, left), natural(1, rightWidth))
         let bottomNatural = max(natural(2, left), natural(3, rightWidth))
         let budget = proposal.height ?? .infinity
-        // The Answer matters most: when space is short the top row is only
-        // as tall as Task needs (or 32 % of the space); the context rows
-        // then scroll inside their card.
-        let topCap = max(natural(0, left), budget * 0.32)
         // Never below what the two top cards need at their smallest (their
         // fixed rows and padding): a smaller slot let a card draw past it.
         func smallest(_ i: Int, _ w: CGFloat) -> CGFloat {
             i < subviews.count ? subviews[i].sizeThatFits(ProposedViewSize(width: w, height: 0)).height : 0
+        }
+        // The Answer matters most: when space is short the top row is only
+        // as tall as Task needs (or 32 % of the space); the context rows
+        // then scroll inside their card. Phase 14.2: also at least enough
+        // for `rightMinRows` rows of the right card, derived from its own
+        // measurements (its smallest size is one row plus its chrome), so
+        // this never assumes a fixed header height that could drift from
+        // the real view.
+        var topCap = max(natural(0, left), budget * 0.32)
+        if rightMinRows > 1, rightRowHeight > 0 {
+            let chrome = max(0, smallest(1, rightWidth) - rightRowHeight)
+            let floorForRows = chrome + CGFloat(rightMinRows) * rightRowHeight + CGFloat(rightMinRows - 1) * rightRowSpacing
+            // Never ask for more than the right card would ever use (its own
+            // full natural height, e.g. fewer rows exist than rightMinRows).
+            topCap = max(topCap, min(floorForRows, natural(1, rightWidth)))
         }
         let topMin = max(smallest(0, left), smallest(1, rightWidth))
         // The bottom cards' fixed rows (the Answer's header, its smallest
@@ -149,7 +171,8 @@ struct DetailsView: View {
     @ViewBuilder
     private func content(_ layout: DetailsLayout, facts: ReportFacts) -> some View {
         if layout.twoColumns {
-            PairedRows(rightWidth: layout.rightColumn, columnSpacing: Island.Space.l, rowSpacing: layout.metrics.spacing) {
+            PairedRows(rightWidth: layout.rightColumn, columnSpacing: Island.Space.l, rowSpacing: layout.metrics.spacing,
+                      rightMinRows: 2, rightRowHeight: HandoffContentsCard.rowHeight, rightRowSpacing: HandoffContentsCard.rowSpacing) {
                 TaskCard(facts: facts, expanded: Binding(get: { model.taskExpanded }, set: { model.taskExpanded = $0 }), lines: layout.metrics.compact ? 1 : 2,
                          viewFull: { model.navigate(to: .taskReader) }).islandFrame("card.task")
                 HandoffContentsCard(model: model).islandFrame("card.handoff")
@@ -561,8 +584,9 @@ struct HandoffContentsCard: View {
                 unknown: "Which commands ran, and with what result.")))
         } else if let turn = model.selectedTurn {
             let captureOn = model.selectedProject?.captureEnabled ?? true
+            let observedDetail = model.selectedObservedDetail ?? turn.observedDetail
             let failed = turn.observed.map { max($0.commandsNonzero ?? 0, $0.runsNonzero) } ?? 0
-            rows.append(Row(symbol: "terminal", title: "Commands", detail: commands(turn.observed, captureOn: captureOn),
+            rows.append(Row(symbol: "terminal", title: "Commands", detail: commands(turn.observed, captureOn: captureOn, detail: observedDetail),
                             alert: failed > 0, opensActivity: true, explanation: turn.observed == nil
                                 ? Explanation(what: "Commands observed during this answer.",
                                               source: captureOn ? "None recorded (plugin before 0.3.0, or captured before tool events)." : "None: capture is off for this project.",
@@ -597,12 +621,20 @@ struct HandoffContentsCard: View {
     }
 
     /// One fact, failures first. Distinguishes nothing recorded (older
-    /// plugin, capture off) from no tools used.
-    static func commands(_ o: ObservedCounts?, captureOn: Bool) -> String {
+    /// plugin, capture off) from no tools used. Phase 14.2: with the per-
+    /// command detail loaded, failures are named by kind — "1 test failed"
+    /// is never conflated with "1 command failed" (a diagnostic grep,
+    /// plutil, or similar shell call that is not a test or a build).
+    static func commands(_ o: ObservedCounts?, captureOn: Bool, detail: ObservedDetail? = nil) -> String {
         guard let o else { return captureOn ? "not recorded" : "capture off" }
         if o.toolEvents == 0 { return "none run" }
-        let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
-        if failed > 0 { return "\(failed) failed" }
+        if let detail {
+            let breakdown = FailureBreakdown.make(detail.commands.filter { $0.agentType == nil })
+            if !breakdown.isEmpty { return breakdown.summary }
+        } else {
+            let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
+            if failed > 0 { return "\(failed) command\(failed == 1 ? "" : "s") failed" }
+        }
         if o.runsExitZero > 0 { return "\(o.runsExitZero) completed" }
         return o.toolEvents == 1 ? "1 event" : "\(o.toolEvents) events"
     }

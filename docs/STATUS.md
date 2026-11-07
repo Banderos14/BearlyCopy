@@ -1,5 +1,31 @@
 # Status
 
+## 2026-11-07 — 0.6.0 addendum: accurate verification, failure classification, compact Copy with Context (not installed)
+
+Three real bugs from using Prompt Relay on itself. (1) The Answer chip's
+"not verified" count was `EvidenceCheck`'s own fixed claim list, never
+affected by the four Review Checklist ticks — a new `reviewProgress` ("N
+checks left" / "All checks completed") tracks the user's own progress
+separately and updates immediately; checklist rows now say Pending /
+Checked by you / Not applicable (CI only) explicitly, and a tick is never
+promoted to "Confirmed locally". (2) "1 failed" conflated a diagnostic
+shell command with a test or build failure — confirmed from this session's
+own captured turn 4 (a `plutil`/`grep` exit 1, `kind: "other"`, amid
+passing builds and tests); a new `FailureBreakdown` names commands, tests
+and builds separately everywhere a failure count is shown. (3) Copy with
+Context showed one row and "+4 more" at common compact heights with slack
+left in its own row's budget (`PairedRows`' cap used only Task's height,
+never informed by how little the Answer actually needed); it now floors at
+two rows of the right card when the existing budget allows it, without
+growing the island — measured with real `IslandHost` layout at 268–568 pt,
+not arithmetic. XCTest 339/0 (16 opt-in skips, +20 new), Swift Testing
+123/123, Python 249+15 ×2 (3.14, 3.9), Xcode Debug/Release, `git diff
+--check` clean, two mutation checks confirm the new logic is exercised.
+Fixed a doc error: window links (Auto Final Screenshot) do not survive a
+restart, contrary to a line in `ACCEPTANCE_PHASE141_PERMISSION.md`. Version
+stays 0.6.0 (not installed/published). [Phase 14.2](../macos/PHASE14.2.md),
+[ACCEPTANCE_PHASE14.2](../macos/ACCEPTANCE_PHASE14.2.md).
+
 ## 2026-11-07 — 0.6.0 addendum: one-click Screen Recording permission recovery (not installed)
 
 "Auto screenshot needs permission" now offers Open Screen Recording Settings

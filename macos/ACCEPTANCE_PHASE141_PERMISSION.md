@@ -30,9 +30,13 @@ is to see them tracked separately.
    **Quit Prompt Relay** + **Check Again** — report which, since this is the
    one macOS version detail that couldn't be verified without your hands.
 7. If "Restart required" appeared: quit the Debug build from Xcode (Stop),
-   relaunch it, open the same conversation. **Expect:** your history,
-   settings and the window link are still there; Attachments allows a normal
-   automatic screenshot now.
+   relaunch it, open the same conversation. **Expect:** your history and
+   settings are still there (they live in the Core's data on disk, not in
+   the app's memory) — but the **window link itself is not**: links are
+   memory only and never survive a restart of Prompt Relay (ADR-028), so
+   Automatic final screenshots shows "Window not linked" until you use
+   *Link Window for Open Conversation…* again. Confirm that re-linking and
+   then getting a real final answer takes a normal automatic screenshot.
 8. In the **Release** app (still never granted), repeat step 2 (link a
    window, get a final answer). **Expect:** still "Permission required" —
    granting Debug must never be read as granting Release.
