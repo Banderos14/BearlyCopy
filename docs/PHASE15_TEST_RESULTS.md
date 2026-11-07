@@ -46,9 +46,10 @@ Change in counts: XCTest +10 (new `Phase15Tests`); none removed or renamed;
 [PHASE15_AUDIT §3](PHASE15_AUDIT.md)). The 16 skips are the existing opt-in
 render/scroll tests (environment-gated), unchanged.
 
-The full XCTest/Swift Testing run above was repeated after the two
-warning-only edits (`EvidenceViews.swift`, `IslandViews.swift`); see the
-STATUS entry for that run's result.
+The full run was repeated on the final committed sources (after the two
+warning-only edits in `EvidenceViews.swift` and `IslandViews.swift`):
+XCTest 349 run, 333 passed, 16 skipped, 0 failed; Swift Testing 123/123;
+exit 0.
 
 ## Mutation checks (temporary edits, reverted)
 | Mutation | Result |
