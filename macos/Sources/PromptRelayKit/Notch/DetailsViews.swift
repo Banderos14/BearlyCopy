@@ -639,8 +639,16 @@ struct HandoffContentsCard: View {
         guard let o else { return captureOn ? "not recorded" : "capture off" }
         if o.toolEvents == 0 { return "none run" }
         if let detail {
-            let breakdown = FailureBreakdown.make(detail.commands.filter { $0.agentType == nil })
+            let main = detail.commands.filter { $0.agentType == nil }
+            let breakdown = FailureBreakdown.make(main)
             if !breakdown.isEmpty { return breakdown.summary }
+            // Phase 15.1: an exit 0 counts as completed only when it is the
+            // test's/build's own; `swift test | tee log` is "unclear".
+            let passed = main.filter { FailureBreakdown.stageResult($0) == .passed }.count
+            let unclear = main.filter { FailureBreakdown.stageResult($0) == .unclear }.count
+            if passed + unclear > 0 {
+                return [passed > 0 ? "\(passed) completed" : nil, unclear > 0 ? "\(unclear) unclear" : nil].compactMap { $0 }.joined(separator: " · ")
+            }
         } else {
             let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
             if failed > 0 { return "\(failed) command\(failed == 1 ? "" : "s") failed" }

@@ -926,7 +926,8 @@ struct PeekContent: View {
     @ViewBuilder
     private var factsLine: some View {
         let facts = Self.facts(observed: model.selectedImport == nil ? model.selectedTurn?.observed : nil,
-                               summary: model.materialSummary(for: model.currentRef))
+                               summary: model.materialSummary(for: model.currentRef),
+                               detail: model.selectedImport == nil ? (model.selectedObservedDetail ?? model.selectedTurn?.observedDetail) : nil)
         if !facts.isEmpty {
             HStack(spacing: 5) {
                 ForEach(facts, id: \.text) { fact in
@@ -950,9 +951,23 @@ struct PeekContent: View {
 
     /// "1 failed command · 3 commands completed · 2 files changed · 1 document · 2 images".
     /// "Completed" means exit 0 of a test or build command, never "tests passed".
-    static func facts(observed: ObservedCounts?, summary: AppModel.MaterialSummary) -> [Fact] {
+    static func facts(observed: ObservedCounts?, summary: AppModel.MaterialSummary, detail: ObservedDetail? = nil) -> [Fact] {
         var out: [Fact] = []
-        if let o = observed {
+        if let o = observed, let detail {
+            // Phase 15.1: with the per-command detail, the same rule as
+            // Evidence Check and Failure Inspector: definite failures in red,
+            // unclear test/build results and likely non-errors named apart.
+            let main = detail.commands.filter { $0.agentType == nil }
+            let b = FailureBreakdown.make(main)
+            let failed = b.commandsFailed + b.testsFailed + b.buildsFailed
+            let passed = main.filter { FailureBreakdown.stageResult($0) == .passed }.count
+            let unclear = b.testsUnclear + b.buildsUnclear + main.filter { $0.exitCode == 0 && FailureBreakdown.stageResult($0) == .unclear }.count
+            if failed > 0 { out.append(Fact(text: Labels.failedCommands(failed), tint: Island.error)) }
+            if unclear > 0 { out.append(Fact(text: "\(unclear) result\(unclear == 1 ? "" : "s") unclear", tint: Island.warning)) }
+            if b.likelyNotAnError > 0 { out.append(Fact(text: "\(b.likelyNotAnError) likely not an error", tint: Island.tertiary)) }
+            if passed > 0 { out.append(Fact(text: Labels.completedCommands(passed), tint: Island.success)) }
+            if o.filesChanged > 0 { out.append(Fact(text: Labels.filesChanged(o.filesChanged), tint: Island.secondary)) }
+        } else if let o = observed {
             let failed = max(o.commandsNonzero ?? 0, o.runsNonzero)
             if failed > 0 { out.append(Fact(text: Labels.failedCommands(failed), tint: Island.error)) }
             if o.runsExitZero > 0 { out.append(Fact(text: Labels.completedCommands(o.runsExitZero), tint: Island.success)) }

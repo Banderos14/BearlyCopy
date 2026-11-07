@@ -75,25 +75,59 @@ public struct EvidenceCheck: Equatable, Sendable {
         } else {
             failureBreakdown = FailureBreakdown()
         }
-        var testsOK = 0, buildsOK = 0
+        var testsOK = 0, buildsOK = 0, testsUnclearPass = 0, buildsUnclearPass = 0
         if let observed = input.observed {
             let count = input.detail.map { _ in commands.count } ?? observed.toolEvents
             items.append(Item(kind: .observed, text: input.detail == nil ? "\(count) tool events observed" : "\(count) command\(count == 1 ? "" : "s") observed"))
             let failed = commands.filter { $0.outcome == "failed" || ($0.exitCode ?? 0) != 0 }
             if input.detail != nil {
-                for code in Dictionary(grouping: failed, by: { $0.exitCode }).sorted(by: { ($0.key ?? -1) < ($1.key ?? -1) }) {
+                // Phase 15.1: every exit code stays listed, but a diagnostic
+                // non-match (grep without a match, diff, `test` false) of a
+                // non-test/build command is not an alarm and does not ask
+                // for a rebuild; real failures and unclear test/build lines are.
+                func quiet(_ c: ObservedCommand) -> Bool {
+                    !["test", "build"].contains(c.kind ?? "") && FailureInspector.likelyNotAnError(c)
+                }
+                func unclear(_ c: ObservedCommand) -> Bool { FailureBreakdown.stageResult(c) == .unclear }
+                for code in Dictionary(grouping: failed.filter { !quiet($0) && !unclear($0) }, by: { $0.exitCode }).sorted(by: { ($0.key ?? -1) < ($1.key ?? -1) }) {
                     let n = code.value.count
                     items.append(Item(kind: .observed, text: "\(n) command\(n == 1 ? "" : "s") returned \(code.key.map { "exit \($0)" } ?? "an error")",
                                       alert: true))
+                }
+                let unclearOnes = failed.filter(unclear)
+                if !unclearOnes.isEmpty {
+                    let n = unclearOnes.count
+                    let codes = Set(unclearOnes.map { $0.exitCode.map { "exit \($0)" } ?? "no exit code" }).sorted().joined(separator: ", ")
+                    items.append(Item(kind: .observed, text: "\(n) test or build line\(n == 1 ? "" : "s") returned \(codes), but the exit code may be another step's (pipe, `;` or `&&`): the result is unknown"))
+                }
+                let quietOnes = failed.filter(quiet)
+                if !quietOnes.isEmpty {
+                    let n = quietOnes.count
+                    items.append(Item(kind: .observed, text: "\(n) command\(n == 1 ? "" : "s") returned exit 1, likely a normal no-match or false condition (grep, diff, test), not an error"))
                 }
             } else if max(observed.commandsNonzero ?? 0, observed.runsNonzero) > 0 {
                 let n = max(observed.commandsNonzero ?? 0, observed.runsNonzero)
                 items.append(Item(kind: .observed, text: "\(n) command\(n == 1 ? "" : "s") returned a non-zero exit code", alert: true))
             }
-            testsOK = commands.filter { $0.kind == "test" && $0.exitCode == 0 }.count
-            buildsOK = commands.filter { $0.kind == "build" && $0.exitCode == 0 }.count
+            // Phase 15.1: a pass counts only when the exit 0 is the test's or
+            // build's own (`swift test | tee log` exits 0 whatever the tests did).
+            func stageCount(_ kind: String, _ result: FailureBreakdown.StageResult) -> Int {
+                commands.filter { $0.kind == kind && FailureBreakdown.stageResult($0) == result }.count
+            }
+            testsOK = stageCount("test", .passed)
+            buildsOK = stageCount("build", .passed)
+            let testsUnclearOK = commands.filter { $0.kind == "test" && $0.exitCode == 0 && FailureBreakdown.stageResult($0) == .unclear }.count
+            let buildsUnclearOK = commands.filter { $0.kind == "build" && $0.exitCode == 0 && FailureBreakdown.stageResult($0) == .unclear }.count
             if testsOK > 0 { items.append(Item(kind: .observed, text: "\(testsOK) test command\(testsOK == 1 ? "" : "s") exited 0")) }
             if buildsOK > 0 { items.append(Item(kind: .observed, text: "\(buildsOK) build command\(buildsOK == 1 ? "" : "s") exited 0")) }
+            if testsUnclearOK > 0 {
+                items.append(Item(kind: .observed, text: "\(testsUnclearOK) test command\(testsUnclearOK == 1 ? "" : "s") exited 0 through a pipe or `;`: the exit code may be another step's, so the test result is unknown"))
+            }
+            if buildsUnclearOK > 0 {
+                items.append(Item(kind: .observed, text: "\(buildsUnclearOK) build command\(buildsUnclearOK == 1 ? "" : "s") exited 0 through a pipe or `;`: the exit code may be another step's, so the build result is unknown"))
+            }
+            testsUnclearPass = testsUnclearOK
+            buildsUnclearPass = buildsUnclearOK
             if observed.filesChanged > 0 {
                 items.append(Item(kind: .observed, text: "\(observed.filesChanged) file\(observed.filesChanged == 1 ? "" : "s") changed with Edit/Write"))
             }
@@ -109,12 +143,14 @@ public struct EvidenceCheck: Equatable, Sendable {
             items.append(Item(kind: .reported, text: "The answer says tests pass"))
             items.append(Item(kind: .notVerified, text: testsOK > 0
                 ? "Claimed test success: a test command exited 0, which does not show every test or the whole task"
+                : testsUnclearPass > 0 ? "Claimed test success: test commands ran, but their exit code may be another step's, so no pass was observed"
                 : "Claimed test success: no passing test command was observed"))
         }
         if claims.build {
             items.append(Item(kind: .reported, text: "The answer says the build succeeds"))
             items.append(Item(kind: .notVerified, text: buildsOK > 0
                 ? "Claimed build success: a build command exited 0 (one run, one configuration)"
+                : buildsUnclearPass > 0 ? "Claimed build success: build commands ran, but their exit code may be another step's, so no success was observed"
                 : "Claimed build success: no successful build command was observed"))
         }
         if claims.done { items.append(Item(kind: .reported, text: "The answer says the work is done or working")) }
@@ -265,10 +301,16 @@ public struct ReviewChecklist: Equatable, Sendable {
             items.append(Item(id: "missing", text: "Review the missing materials (\(completeness.missingCount))",
                               reason: "Some states or pages are known by name only or could not be opened"))
         }
+        // Phase 15.1: only real failures and unclear test/build results ask
+        // for a rerun; a grep without a match is listed, not an alarm.
         let failed = evidence.items.contains { $0.kind == .observed && $0.alert }
-        if failed || claims.build || claims.tests {
+        let unclear = evidence.failureBreakdown.testsUnclear + evidence.failureBreakdown.buildsUnclear > 0
+            || evidence.items.contains { $0.kind == .observed && $0.text.contains("result is unknown") }
+        if failed || unclear || claims.build || claims.tests {
             items.append(Item(id: "build", text: "Run the build and tests yourself",
-                              reason: failed ? "A command failed during the turn" : "Success is claimed but not independently verified"))
+                              reason: failed ? "A command failed during the turn"
+                                : unclear ? "A test or build result could not be established from its exit code"
+                                : "Success is claimed but not independently verified"))
         }
         if claims.tests || claims.build || evidence.items.contains(where: { $0.text.contains("test command") || $0.text.contains("build command") }) {
             items.append(Item(id: "ci", text: "Check CI, if the project has it",

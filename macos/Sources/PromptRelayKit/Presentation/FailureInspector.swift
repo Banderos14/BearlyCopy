@@ -70,6 +70,44 @@ public struct FailureInspector: Equatable, Sendable {
             .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 
+    /// Phase 15.1: a line's stages and the operators between them, with
+    /// setup stages (`cd`, `set`, `export`, bare assignments) left out and
+    /// `set -o pipefail` noted. Same quoting/redirection rules as `segments`.
+    struct ParsedLine: Equatable { var stages: [String]; var operators: [String]; var pipefail: Bool }
+
+    static func parse(_ command: String) -> ParsedLine {
+        var line = command.replacingOccurrences(of: #""(?:[^"\\]|\\.)*"|'[^']*'"#, with: "Q", options: .regularExpression)
+        line = line.replacingOccurrences(of: #"\|&"#, with: "|", options: .regularExpression)
+        line = line.replacingOccurrences(of: #"[0-9]*>&[0-9-]+|&>>?|>&"#, with: " ", options: .regularExpression)
+        let pipefail = line.range(of: #"(^|[;&|]\s*)set\s+[^;&|]*pipefail"#, options: .regularExpression) != nil
+        var parts: [(text: String, op: String?)] = []
+        var rest = Substring(line)
+        let opRegex = try! NSRegularExpression(pattern: #"\|\||&&|\||;|&"#)
+        while true {
+            let ns = String(rest)
+            guard let m = opRegex.firstMatch(in: ns, range: NSRange(ns.startIndex..., in: ns)),
+                  let r = Range(m.range, in: ns) else { parts.append((ns, nil)); break }
+            parts.append((String(ns[..<r.lowerBound]), String(ns[r])))
+            rest = Substring(ns[r.upperBound...])
+        }
+        func isSetup(_ t: String) -> Bool {
+            let words = t.split(separator: " ").map(String.init)
+            guard let first = words.first else { return true }
+            if ["cd", "set", "export", "pushd", "popd", "source", "."].contains(first) { return true }
+            return words.allSatisfy { $0.contains("=") }
+        }
+        var stages: [String] = [], operators: [String] = []
+        for (i, part) in parts.enumerated() {
+            let text = part.text.trimmingCharacters(in: .whitespaces)
+            guard !text.isEmpty, !isSetup(text) else { continue }
+            if !stages.isEmpty, let op = parts[i - 1].op { operators.append(op) }
+            stages.append(text)
+        }
+        // A trailing `&` (background) is an operator too.
+        if let last = parts.last(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }), last.op == "&" { operators.append("&") }
+        return ParsedLine(stages: stages, operators: operators, pipefail: pipefail)
+    }
+
     static func likelyNotAnError(_ c: ObservedCommand) -> Bool {
         guard c.exitCode == 1, let command = c.command, let program = program(command) else { return false }
         return ["grep", "egrep", "fgrep", "rg", "ag", "diff", "cmp", "test", "[", "pgrep", "which"].contains(program)
@@ -78,6 +116,16 @@ public struct FailureInspector: Equatable, Sendable {
     static func meaning(_ c: ObservedCommand) -> String {
         if c.outcome == "interrupted" { return "Interrupted before it finished; there is no exit code." }
         guard let code = c.exitCode else { return "Reported as failed, but the hook did not include an exit code." }
+        // Phase 15.1: never call a test/build failed when the exit code
+        // cannot be attributed to it (same rule as FailureBreakdown).
+        if FailureBreakdown.stageResult(c) == .unclear, let kind = c.kind {
+            let noun = kind == "test" ? "the tests themselves passed" : "the build itself succeeded"
+            guard let command = c.command else {
+                return "The line exited \(code). Its text is withheld and it contains a pipe, `;` or `&`, so whether \(noun) is not known."
+            }
+            let last = program(command).map { " (`\($0)`)" } ?? ""
+            return "The line exited \(code), but that exit code may belong to another step\(last). Whether \(noun) is not known."
+        }
         if likelyNotAnError(c), let program = c.command.flatMap(program) {
             switch program {
             case "grep", "egrep", "fgrep", "rg", "ag", "pgrep": return "\(program) exits 1 when nothing matched. That is usually an answer, not an error."
@@ -193,11 +241,11 @@ public struct FailureBreakdown: Equatable, Sendable {
     public static func make(_ commands: [ObservedCommand]) -> FailureBreakdown {
         var b = FailureBreakdown()
         for c in commands where FailureInspector.isFailure(c) {
-            switch c.kind {
-            case "test" where !exitBelongsToKind(c): b.testsUnclear += 1
-            case "build" where !exitBelongsToKind(c): b.buildsUnclear += 1
-            case "test": b.testsFailed += 1
-            case "build": b.buildsFailed += 1
+            switch (c.kind, stageResult(c)) {
+            case ("test", .failed?): b.testsFailed += 1
+            case ("test", _): b.testsUnclear += 1
+            case ("build", .failed?): b.buildsFailed += 1
+            case ("build", _): b.buildsUnclear += 1
             default:
                 if FailureInspector.likelyNotAnError(c) { b.likelyNotAnError += 1 } else { b.commandsFailed += 1 }
             }
@@ -221,18 +269,47 @@ public struct FailureBreakdown: Equatable, Sendable {
         return parts.joined(separator: " · ")
     }
 
-    /// Phase 15: whether a test/build command's exit code is the test's or
-    /// build's own. The Core classifies a line by its *first* test/build
-    /// part (`tools.command_kind`), but the shell reports the exit code of
-    /// the *last* part of a pipe or chain. When that last part is not itself
-    /// a command of the same kind (a `grep`, `tail`, `tee`, or a build
-    /// followed by a test), the result of the test or build is unknown.
-    /// Unknown command text (withheld) keeps the recorded kind.
-    static func exitBelongsToKind(_ c: ObservedCommand) -> Bool {
-        guard let command = c.command, let kind = c.kind else { return true }
-        let parts = FailureInspector.segments(command).filter { !$0.hasPrefix("cd ") && $0 != "cd" }
-        guard parts.count > 1, let last = parts.last else { return true }
-        return commandKind(last) == kind
+    /// Phase 15.1: what one recorded test or build line says about the test
+    /// or build itself — the one rule every view uses (Failure Inspector,
+    /// Evidence Check, the Answer chip, Quick Peek, Copy with Context's
+    /// Commands row). `nil` for other kinds, background starts and lines
+    /// without an exit code.
+    public enum StageResult: Equatable, Sendable { case passed, failed, unclear }
+
+    /// The Core labels a line by its *first* test/build part
+    /// (`tools.command_kind`); the shell reports one exit code for the whole
+    /// line. Conservative by design — not a shell parser:
+    /// - one stage (after `cd`/`set`/`export` setup): its own exit code;
+    /// - every stage the same kind (`swift test --filter A && swift test …`):
+    ///   the exit code is one of them, so it is theirs;
+    /// - an `&&` chain that exited 0: every step ran and exited 0 → passed;
+    ///   non-zero: which step failed is not recorded → unclear;
+    /// - a pipe under `set -o pipefail` that exited 0: every stage exited 0
+    ///   → passed; non-zero: which stage failed is not recorded → unclear;
+    /// - otherwise (`|` without pipefail, `;`): the exit code is the last
+    ///   stage's — the test's/build's only when that stage is one;
+    /// - `||`, `&`, mixed operators: unclear;
+    /// - withheld command text: the recorded `compound` flag decides — a
+    ///   compound line is unclear, a simple one keeps its exit code.
+    public static func stageResult(_ c: ObservedCommand) -> StageResult? {
+        guard ["test", "build"].contains(c.kind ?? ""), !c.background else { return nil }
+        let code: Int
+        if let exit = c.exitCode { code = exit } else if c.outcome == "interrupted" || c.outcome == "failed" { return .unclear } else { return nil }
+        let verdict: StageResult = code == 0 ? .passed : .failed
+        guard let kind = c.kind else { return nil }
+        guard let command = c.command else { return c.compound ? .unclear : verdict }
+        let line = FailureInspector.parse(command)
+        let stages = line.stages
+        if line.operators.contains("&") || line.operators.contains("||") { return .unclear }
+        if stages.count <= 1 { return verdict }
+        if stages.allSatisfy({ commandKind($0) == kind }) { return verdict }
+        let ops = Set(line.operators)
+        if ops == ["&&"] { return code == 0 ? .passed : .unclear }
+        if ops == ["|"], line.pipefail { return code == 0 ? .passed : .unclear }
+        if ops.isSubset(of: ["|", ";"]), let last = stages.last, commandKind(last) == kind {
+            return line.pipefail && ops.contains("|") ? (code == 0 ? .passed : .unclear) : verdict
+        }
+        return .unclear
     }
 
     /// The Core's prefix table (`plugin/prompt_relay/tools.py`,

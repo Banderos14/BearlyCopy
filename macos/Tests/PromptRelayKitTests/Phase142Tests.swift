@@ -67,11 +67,11 @@ final class Phase142Tests: XCTestCase {
         // Before the fix this was still "6 observed · 1 failed · 3 not
         // verified" after two ticks — unaffected by the ticks at all.
         let before = EvidenceChip.combinedSummary(m)
-        XCTAssertEqual(before, "5 observed · 1 build failed · 1 likely not an error · 3 checks left")
+        XCTAssertEqual(before, "6 observed · 1 build failed · 1 likely not an error · 3 checks left")
         m.setReviewChecked(checklist.items[0].id, true)
         m.setReviewChecked(checklist.items[1].id, true)
         let after = EvidenceChip.combinedSummary(m)
-        XCTAssertEqual(after, "5 observed · 1 build failed · 1 likely not an error · 1 check left",
+        XCTAssertEqual(after, "6 observed · 1 build failed · 1 likely not an error · 1 check left",
                       "ticking checklist items changes the checks-left count, never the observed/failed facts")
         XCTAssertNotEqual(before, after)
     }
