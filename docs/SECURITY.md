@@ -55,10 +55,19 @@
   in history until deleted.
 
 ## 4. Permissions
-- No macOS privacy permissions (Accessibility, Screen Recording, Full Disk
-  Access) are needed. `pbcopy` needs none.
-- The future app should need none either. A sandboxed App Store build would
-  need a reachable data directory, which is a decision for Phase 3.
+- The Core, the hooks and `pbcopy` need no macOS privacy permission.
+- The app needs **Screen Recording** only for window snapshots: Capture Final
+  Window (Phase 9.4/10) and Auto Final Screenshot (Phase 14, ADR-028). Both are
+  off until the user picks a window in macOS's own window picker; without the
+  permission everything else works. The app never changes the permission: it
+  can open System Settings → Privacy & Security → Screen Recording and re-check
+  (Phase 14.1). Snapshots stay in memory, are never uploaded, and reach the
+  clipboard, a drag or an export only when the user acts. Debug and Release
+  builds have different bundle ids, so macOS keeps a separate grant for each.
+- No Accessibility or Full Disk Access is used.
+- (Corrected in Phase 15: this section said no permission was needed at all,
+  which stopped being true in Phase 9.4.) A sandboxed App Store build would
+  need a reachable data directory, which is still undecided.
 
 ## 5. Hook installation safety
 

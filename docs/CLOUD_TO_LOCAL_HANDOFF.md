@@ -1,5 +1,10 @@
 # Cloud → Local handoff
 
+> **Historical (Phase 0–1, 2026-10-29).** The current handoff is
+> [PHASE15_HANDOFF.md](PHASE15_HANDOFF.md); branches and SHAs are in
+> [PHASE15_GIT_RECOVERY.md](PHASE15_GIT_RECOVERY.md). The branch and commits
+> named below are long superseded.
+
 A new Claude Code session on the Mac does **not** inherit the cloud
 conversation. This file and the other docs are the full context.
 

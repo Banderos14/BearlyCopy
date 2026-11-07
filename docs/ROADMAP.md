@@ -139,4 +139,7 @@ dependencies, a privacy policy text, and a crash-free beta period.
 
 ## Not in the current version
 Automatic hook installation; ChatGPT integration of any kind; clipboard
-monitoring or import; cloud-session capture; screenshots; release or deploy.
+monitoring of text; cloud-session capture; release or deploy. (Window
+snapshots *are* in the product since Phase 9.4/10/14, opt-in and in memory
+only; this line said otherwise until Phase 15.) Phases 5–15 are recorded in
+`docs/STATUS.md` and `docs/PHASE15_HANDOFF.md`.
