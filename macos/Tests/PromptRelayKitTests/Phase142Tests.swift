@@ -67,11 +67,11 @@ final class Phase142Tests: XCTestCase {
         // Before the fix this was still "6 observed · 1 failed · 3 not
         // verified" after two ticks — unaffected by the ticks at all.
         let before = EvidenceChip.combinedSummary(m)
-        XCTAssertEqual(before, "5 observed · 1 build failed · 1 command failed · 3 checks left")
+        XCTAssertEqual(before, "5 observed · 1 build failed · 1 likely not an error · 3 checks left")
         m.setReviewChecked(checklist.items[0].id, true)
         m.setReviewChecked(checklist.items[1].id, true)
         let after = EvidenceChip.combinedSummary(m)
-        XCTAssertEqual(after, "5 observed · 1 build failed · 1 command failed · 1 check left",
+        XCTAssertEqual(after, "5 observed · 1 build failed · 1 likely not an error · 1 check left",
                       "ticking checklist items changes the checks-left count, never the observed/failed facts")
         XCTAssertNotEqual(before, after)
     }
@@ -194,6 +194,18 @@ final class Phase142Tests: XCTestCase {
         let m2 = await Phase8Fixture.model(defaults: defaults, board: board, root: root)
         XCTAssertEqual(m2.currentRef, ref)
         XCTAssertEqual(m2.reviewCheckState(item.id), .checked, "the tick survives a restart")
+        XCTAssertEqual(m2.reviewProgress?.remaining, (m2.reviewChecklist?.items.count ?? 0) - 1)
+        // Phase 15: Not applicable must survive a restart too (the test only
+        // covered the tick), and still never read as a passed CI check.
+        if let ci = m2.reviewChecklist?.items.first(where: \.allowsNotApplicable) {
+            m2.setReviewNotApplicable(ci.id, true)
+            let m3 = await Phase8Fixture.model(defaults: defaults, board: board, root: root)
+            XCTAssertEqual(m3.reviewCheckState(ci.id), .notApplicable)
+            XCTAssertFalse(m3.isReviewChecked(ci.id))
+            XCTAssertEqual(m3.reviewCheckState(item.id), .checked)
+        } else {
+            XCTFail("the fixture has a CI item")
+        }
     }
 
     // MARK: - Part II: command vs. test vs. build vs. unknown
@@ -207,12 +219,13 @@ final class Phase142Tests: XCTestCase {
     func testADiagnosticCommandFailureIsNeverReportedAsATestOrBuildFailure() async throws {
         let m = await Phase8Fixture.model(defaults: defaults, board: board, root: root)
         let breakdown = try XCTUnwrap(m.evidence).failureBreakdown
-        XCTAssertEqual(breakdown.commandsFailed, 1, "the grep, kind \"other\"")
+        // Phase 15: the grep (kind "other", exit 1 = no match) is its own
+        // outcome, "likely not an error" — no longer "1 command failed".
+        XCTAssertEqual(breakdown.commandsFailed, 0, "the grep is not counted as a failed command")
+        XCTAssertEqual(breakdown.likelyNotAnError, 1, "grep exit 1 (no match) is usually an answer, not an error")
         XCTAssertEqual(breakdown.buildsFailed, 1, "the real swift build failure")
         XCTAssertEqual(breakdown.testsFailed, 0, "no test command failed")
-        XCTAssertEqual(breakdown.likelyNotAnError, 1, "grep exit 1 (no match) is usually an answer, not an error")
-        XCTAssertTrue(breakdown.summary.contains("1 build failed"))
-        XCTAssertTrue(breakdown.summary.contains("1 command failed"))
+        XCTAssertEqual(breakdown.summary, "1 build failed · 1 likely not an error")
         XCTAssertFalse(breakdown.summary.contains("test failed"), "never invented")
         let row = HandoffContentsCard.commands(m.selectedTurn?.observed, captureOn: true, detail: m.selectedObservedDetail)
         XCTAssertEqual(row, breakdown.summary)
@@ -242,12 +255,20 @@ final class Phase142Tests: XCTestCase {
         let failing = cmd(kind: "test", exit: 1, command: "swift test", at: "2026-10-31T10:00:00.000000Z")
         let passing = cmd(kind: "test", exit: 0, command: "swift test", at: "2026-10-31T10:05:00.000000Z")
         let inspector = FailureInspector(commands: [failing, passing])
+        XCTAssertEqual(inspector.entries.count, 1, "the earlier failure stays listed after a later pass")
         let entry = try! XCTUnwrap(inspector.entries.first)
+        XCTAssertEqual(entry.command.at, failing.at, "the entry is the earlier, failing run")
         let later = try! XCTUnwrap(entry.later)
         XCTAssertTrue(later.passed)
         XCTAssertEqual(later.match, .sameCommand)
-        // FailureCard's own wording for a passed later run never says "fixed"
-        // or "recovered" — only that an exit 0 was observed.
+        // Phase 15: read the real sentence FailureCard shows (it used to be
+        // only a comment here): an exit 0 was observed, never "fixed".
+        let text = FailureCard.laterText(later)
+        XCTAssertTrue(text.contains("exited 0"), text)
+        XCTAssertTrue(text.contains("not proof that the cause is fixed"), text)
+        for word in ["was fixed", "is fixed now", "recovered", "resolved"] { XCTAssertFalse(text.lowercased().contains(word), text) }
+        // The earlier failure is still counted: a later pass never erases it.
+        XCTAssertEqual(FailureBreakdown.make([failing, passing]).testsFailed, 1)
     }
 
     func testAConfirmedBuildErrorIsReportedAsABuildFailure() {
@@ -317,11 +338,13 @@ final class Phase142Tests: XCTestCase {
         let rows = HandoffContentsCard.rows(model: m)
         XCTAssertEqual(rows.map(\.title), ["Request & answer", "Commands", "Files changed", "Git status", "Attachments"])
         var sawOneRowOnly = false
+        var checked: [CGFloat] = []
         for h: CGFloat in [268, 300, 330, 341, 360, 388, 410, 448, 500, 568] {
             let island = IslandHost(model: m, maxContentHeight: h)
             defer { island.close() }
             let f = island.presentation.layoutFrames
             guard let viewport = f["handoff.viewport"], let card = f["card.handoff"] else { continue }   // single column (< 330 pt)
+            checked.append(h)
             let visible = rows.filter { row in
                 guard let r = f["handoff.row.\(row.title)"] else { return false }
                 return r.maxY <= viewport.maxY + 0.5
@@ -346,16 +369,41 @@ final class Phase142Tests: XCTestCase {
             XCTAssertLessThanOrEqual(card.height, h, "the card never exceeds the whole budget")
         }
         XCTAssertFalse(sawOneRowOnly, "every two-column height now shows at least two rows")
+        // Phase 15: the `guard … else { continue }` above could skip every
+        // height and pass vacuously. Every height from 330 pt up must
+        // actually have been measured.
+        XCTAssertEqual(checked, [330, 341, 360, 388, 410, 448, 500, 568], "heights actually measured")
     }
 
+    /// Phase 15: this test used to construct a `PairedRows` and assert
+    /// nothing (`XCTAssertNoThrow` on a struct literal). It now checks the
+    /// real height arithmetic: chrome 40 pt + rows of 22 pt, spacing 5.
     func testSingleRowFallbackWhenGenuinelyNothingElseFits() {
-        // Direct check of the floor math itself: with a very short right
-        // card (one row's worth of content) the floor never demands more
-        // than the card would ever use.
-        let rows = PairedRows(rightWidth: 200, columnSpacing: 10, rowSpacing: 5, rightMinRows: 2, rightRowHeight: 22, rightRowSpacing: 5)
-        // sizeThatFits with an unrealistically small proposal: the result
-        // must still respect topMin (never negative, never NaN).
-        XCTAssertNoThrow(_ = rows)
+        let rows = PairedRows(rightWidth: 200, columnSpacing: 10, rowSpacing: 5, minBottom: 140,
+                              rightMinRows: 2, rightRowHeight: 22, rightRowSpacing: 5)
+        let oneRow: CGFloat = 40 + 22, twoRows: CGFloat = 40 + 22 + 5 + 22
+        func split(_ budget: CGFloat, rightNatural: CGFloat = 40 + 5 * 22 + 4 * 5) -> (top: CGFloat, bottom: CGFloat) {
+            rows.split(budget: budget, leftNatural: 30, rightNatural: rightNatural, rightSmallest: oneRow, topMin: oneRow,
+                       topNatural: rightNatural, bottomMin: 120, bottomNatural: 600)
+        }
+        // Room for two rows and the Answer's 140 pt: exactly two rows.
+        XCTAssertEqual(split(240).top, twoRows, accuracy: 0.01)
+        XCTAssertGreaterThanOrEqual(split(240).bottom, 140)
+        // Too little for two rows without starving the Answer: the slot is
+        // at least one full row and less than two — the card's own bounded
+        // scroll then shows one whole row + “+N more” (asserted on real
+        // layout in the test above), never two half rows.
+        let tight = split(215)
+        XCTAssertGreaterThanOrEqual(tight.top, oneRow)
+        XCTAssertLessThan(tight.top, twoRows, "two rows would starve the Answer here")
+        XCTAssertGreaterThanOrEqual(tight.bottom, 140, "the Answer keeps its minimum")
+        // A card with a single row never gets padded up to two.
+        XCTAssertEqual(split(400, rightNatural: oneRow).top, oneRow, accuracy: 0.01)
+        // Nothing is ever negative, whatever the budget.
+        for budget: CGFloat in [0, 10, 100] {
+            let r = split(budget)
+            XCTAssertGreaterThanOrEqual(r.top, oneRow); XCTAssertGreaterThanOrEqual(r.bottom, 0)
+        }
     }
 
     func testAnswerTaskAttachmentsAndContextPackSizesAreUnaffected() async throws {

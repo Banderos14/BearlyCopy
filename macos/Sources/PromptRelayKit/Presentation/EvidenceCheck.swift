@@ -350,6 +350,7 @@ extension AppModel {
 
     public func setReviewChecked(_ item: String, _ checked: Bool) {
         guard let key = currentRef?.key else { return }
+        noteReviewMarked(key)
         var set = reviewChecks[key] ?? []
         if checked { set.insert(item) } else { set.remove(item) }
         var all = reviewChecks
@@ -372,6 +373,7 @@ extension AppModel {
 
     public func setReviewNotApplicable(_ item: String, _ value: Bool) {
         guard let key = currentRef?.key else { return }
+        noteReviewMarked(key)
         var set = reviewNotApplicable[key] ?? []
         if value { set.insert(item) } else { set.remove(item) }
         var all = reviewNotApplicable
@@ -397,9 +399,8 @@ extension AppModel {
             return (stateDefaults?.dictionary(forKey: Self.reviewChecksKey) as? [String: [String]])?.mapValues(Set.init) ?? [:]
         }
         set {
-            // Only the 200 most recent answers keep their marks.
-            stateDefaults?.set(newValue.prefix(200).reduce(into: [String: [String]]()) { $0[$1.key] = $1.value.sorted() },
-                               forKey: Self.reviewChecksKey)
+            // Only the most recently marked answers keep their marks.
+            stateDefaults?.set(Self.storable(Self.keepingMostRecent(newValue, order: reviewRecentKeys)), forKey: Self.reviewChecksKey)
             reviewChecksVersion += 1
         }
     }
@@ -410,10 +411,47 @@ extension AppModel {
             return (stateDefaults?.dictionary(forKey: Self.reviewNotApplicableKey) as? [String: [String]])?.mapValues(Set.init) ?? [:]
         }
         set {
-            stateDefaults?.set(newValue.prefix(200).reduce(into: [String: [String]]()) { $0[$1.key] = $1.value.sorted() },
-                               forKey: Self.reviewNotApplicableKey)
+            stateDefaults?.set(Self.storable(Self.keepingMostRecent(newValue, order: reviewRecentKeys)), forKey: Self.reviewNotApplicableKey)
             reviewChecksVersion += 1
         }
+    }
+
+    // MARK: Phase 15 — which answers were marked most recently
+
+    /// Phase 15: the old pruning, `newValue.prefix(200)` on a `Dictionary`,
+    /// kept an arbitrary 200 (Swift's per-process hash order), not the 200
+    /// most recent — past 200 marked answers a tick could vanish the moment
+    /// it was made. This list records the order answers were last marked
+    /// in (oldest first), so pruning keeps the newest ones.
+    static let reviewRecentKey = "reviewChecks.recent.v1"
+    nonisolated static let reviewChecksLimit = 200
+
+    var reviewRecentKeys: [String] { stateDefaults?.stringArray(forKey: Self.reviewRecentKey) ?? [] }
+
+    /// Moves `key` to the newest end. Called before either dictionary is written.
+    func noteReviewMarked(_ key: String) {
+        var order = reviewRecentKeys.filter { $0 != key }
+        order.append(key)
+        // Both dictionaries share this order, so it may name up to twice the limit.
+        if order.count > Self.reviewChecksLimit * 2 { order.removeFirst(order.count - Self.reviewChecksLimit * 2) }
+        stateDefaults?.set(order, forKey: Self.reviewRecentKey)
+    }
+
+    /// The `limit` entries marked most recently according to `order`
+    /// (oldest first). Entries `order` does not name (stored before Phase
+    /// 15) count as older than every named one; among themselves they are
+    /// ranked by key, so the result never depends on hash order.
+    nonisolated static func keepingMostRecent(_ all: [String: Set<String>], order: [String],
+                                              limit: Int = reviewChecksLimit) -> [String: Set<String>] {
+        guard all.count > limit else { return all }
+        var rank: [String: Int] = [:]
+        for (i, key) in order.enumerated() { rank[key] = i }
+        let kept = Set(all.keys.sorted { (rank[$0] ?? -1, $0) > (rank[$1] ?? -1, $1) }.prefix(limit))
+        return all.filter { kept.contains($0.key) }
+    }
+
+    nonisolated static func storable(_ all: [String: Set<String>]) -> [String: [String]] {
+        all.mapValues { $0.sorted() }
     }
 
     /// Phase 14.2: the user's own progress on the checklist of the answer

@@ -72,22 +72,32 @@ struct PairedRows: Layout {
         // measurements (its smallest size is one row plus its chrome), so
         // this never assumes a fixed header height that could drift from
         // the real view.
-        var topCap = max(natural(0, left), budget * 0.32)
-        if rightMinRows > 1, rightRowHeight > 0 {
-            let chrome = max(0, smallest(1, rightWidth) - rightRowHeight)
-            let floorForRows = chrome + CGFloat(rightMinRows) * rightRowHeight + CGFloat(rightMinRows - 1) * rightRowSpacing
-            // Never ask for more than the right card would ever use (its own
-            // full natural height, e.g. fewer rows exist than rightMinRows).
-            topCap = max(topCap, min(floorForRows, natural(1, rightWidth)))
-        }
         let topMin = max(smallest(0, left), smallest(1, rightWidth))
         // The bottom cards' fixed rows (the Answer's header, its smallest
         // scroll and the Full Report row) never get less than they need:
         // a smaller slot let the card draw onto the footer (Phase 8).
         let bottomMin = max(smallest(2, left), smallest(3, rightWidth))
+        let heights = split(budget: budget, leftNatural: natural(0, left), rightNatural: natural(1, rightWidth),
+                            rightSmallest: smallest(1, rightWidth), topMin: topMin, topNatural: topNatural,
+                            bottomMin: bottomMin, bottomNatural: bottomNatural)
+        return Rows(left: left, top: heights.top, bottom: heights.bottom)
+    }
+
+    /// The pure height arithmetic of `rows` (Phase 15: separated so tests
+    /// check the real numbers, including the one-row fallback).
+    func split(budget: CGFloat, leftNatural: CGFloat, rightNatural: CGFloat, rightSmallest: CGFloat, topMin: CGFloat,
+               topNatural: CGFloat, bottomMin: CGFloat, bottomNatural: CGFloat) -> (top: CGFloat, bottom: CGFloat) {
+        var topCap = max(leftNatural, budget * 0.32)
+        if rightMinRows > 1, rightRowHeight > 0 {
+            let chrome = max(0, rightSmallest - rightRowHeight)
+            let floorForRows = chrome + CGFloat(rightMinRows) * rightRowHeight + CGFloat(rightMinRows - 1) * rightRowSpacing
+            // Never ask for more than the right card would ever use (its own
+            // full natural height, e.g. fewer rows exist than rightMinRows).
+            topCap = max(topCap, min(floorForRows, rightNatural))
+        }
         let top = max(topMin, min(topNatural, topCap, max(0, budget - rowSpacing - max(bottomMin, min(bottomNatural, minBottom)))))
         let bottom = max(min(bottomNatural, bottomMin), min(bottomNatural, max(0, budget - rowSpacing - top)))
-        return Rows(left: left, top: top, bottom: bottom)
+        return (top, bottom)
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {

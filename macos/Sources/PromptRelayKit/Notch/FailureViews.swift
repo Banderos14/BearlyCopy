@@ -76,17 +76,24 @@ struct FailureCard: View {
 
     /// A later run, as observed: its exit code, never "fixed".
     private func laterLine(_ later: FailureInspector.Later) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Image(systemName: "arrow.clockwise").font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(later.passed ? Island.success : Island.warning)
+            Text(Self.laterText(later))
+                .font(.system(size: 11)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .islandFrame("failure.later")
+    }
+
+    /// The sentence shown for a later run (Phase 15: a function, so tests
+    /// read the real wording instead of trusting a comment).
+    static func laterText(_ later: FailureInspector.Later) -> String {
         let c = later.command
         let result = c.exitCode.map { "exited \($0)" } ?? "ended without an exit code"
         let what = later.match == .sameCommand ? "The same command ran again" : "The same tool ran again"
         let caveat = c.compound ? " (with a pipe or `;`: the exit code is the last process's)" : ""
         let tail = later.passed ? ". An exit 0 is what was observed, not proof that the cause is fixed." : "."
-        return HStack(alignment: .firstTextBaseline, spacing: 5) {
-            Image(systemName: "arrow.clockwise").font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(later.passed ? Island.success : Island.warning)
-            Text("\(what) at \(Wording.clock(c.at))" + (later.match == .sameTool ? ": `\(CommandDiagnostics.safeText(c) ?? "withheld")`" : "") + " and \(result)\(caveat)\(tail)")
-                .font(.system(size: 11)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
-        }
-        .islandFrame("failure.later")
+        return "\(what) at \(Wording.clock(c.at))" + (later.match == .sameTool ? ": `\(CommandDiagnostics.safeText(c) ?? "withheld")`" : "")
+            + " and \(result)\(caveat)\(tail)"
     }
 }

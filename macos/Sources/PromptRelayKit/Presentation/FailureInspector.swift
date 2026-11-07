@@ -51,13 +51,23 @@ public struct FailureInspector: Equatable, Sendable {
     /// The program that decides the exit code: the last part of a pipe or
     /// chain, without `cd …`, env assignments and `sudo`/`time`/`env`.
     static func program(_ command: String) -> String? {
-        let parts = command.components(separatedBy: CharacterSet(charactersIn: "|;&"))
-            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let parts = segments(command)
         guard var words = parts.last?.split(separator: " ").map(String.init) else { return nil }
         while let first = words.first, first.contains("=") || ["sudo", "time", "env", "command", "exec"].contains(first) {
             words.removeFirst()
         }
         return words.first.map { ($0 as NSString).lastPathComponent }
+    }
+
+    /// Phase 15: the parts of a line split at `|`, `;` and `&`, without
+    /// cutting quoted text (`grep -E "a|b"`) or redirections (`2>&1`, `&>`)
+    /// into fake parts — before, `swift build 2>&1` ended in a part "1" and
+    /// `grep -E "error|warning" f` in a part `warning" f`.
+    static func segments(_ command: String) -> [String] {
+        var line = command.replacingOccurrences(of: #""(?:[^"\\]|\\.)*"|'[^']*'"#, with: "Q", options: .regularExpression)
+        line = line.replacingOccurrences(of: #"[0-9]*>&[0-9-]+|&>>?|>&"#, with: " ", options: .regularExpression)
+        return line.components(separatedBy: CharacterSet(charactersIn: "|;&"))
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 
     static func likelyNotAnError(_ c: ObservedCommand) -> Bool {
@@ -156,11 +166,21 @@ public struct FailureBreakdown: Equatable, Sendable {
     public var commandsFailed = 0
     public var testsFailed = 0
     public var buildsFailed = 0
-    /// Of the above, how many look like a normal non-match/condition-false
-    /// exit (`FailureInspector.likelyNotAnError`), not a real error.
+    /// Phase 15: non-zero exits that look like a normal non-match or a false
+    /// condition (`FailureInspector.likelyNotAnError`: grep without a match,
+    /// diff with differences, `test` false) of a command that is neither a
+    /// test nor a build. Counted here *instead of* `commandsFailed`, and
+    /// still named in the summary — never hidden, never called a failure.
     public var likelyNotAnError = 0
+    /// Phase 15: a test or build line whose exit code belongs to a later
+    /// program in the same line (`swift build 2>&1 | grep error`, `swift
+    /// build && grep -c x f`): the test's or build's own result was not
+    /// recorded, so it is neither a failure nor a success.
+    public var testsUnclear = 0
+    public var buildsUnclear = 0
 
-    public var total: Int { commandsFailed + testsFailed + buildsFailed }
+    /// Every non-zero exit, of any kind (what was observed, unchanged).
+    public var total: Int { commandsFailed + testsFailed + buildsFailed + likelyNotAnError + testsUnclear + buildsUnclear }
     public var isEmpty: Bool { total == 0 }
 
     /// When only the aggregate counts are known (no per-command detail
@@ -174,23 +194,66 @@ public struct FailureBreakdown: Equatable, Sendable {
         var b = FailureBreakdown()
         for c in commands where FailureInspector.isFailure(c) {
             switch c.kind {
+            case "test" where !exitBelongsToKind(c): b.testsUnclear += 1
+            case "build" where !exitBelongsToKind(c): b.buildsUnclear += 1
             case "test": b.testsFailed += 1
             case "build": b.buildsFailed += 1
-            default: b.commandsFailed += 1
+            default:
+                if FailureInspector.likelyNotAnError(c) { b.likelyNotAnError += 1 } else { b.commandsFailed += 1 }
             }
-            if FailureInspector.likelyNotAnError(c) { b.likelyNotAnError += 1 }
         }
         return b
     }
 
-    /// "1 test failed", "2 commands failed · 1 build failed" — each kind
+    /// "1 test failed", "1 build failed · 1 command failed" — each kind
     /// named on its own, in this fixed order; never a single "N failed".
+    /// Definite failures first, then what is unclear, then exits that are
+    /// likely not errors.
     public var summary: String {
+        func n(_ count: Int, _ noun: String) -> String { "\(count) \(noun)\(count == 1 ? "" : "s")" }
         var parts: [String] = []
-        if buildsFailed > 0 { parts.append("\(buildsFailed) build\(buildsFailed == 1 ? "" : "s") failed") }
-        if testsFailed > 0 { parts.append("\(testsFailed) test\(testsFailed == 1 ? "" : "s") failed") }
-        if commandsFailed > 0 { parts.append("\(commandsFailed) command\(commandsFailed == 1 ? "" : "s") failed") }
+        if buildsFailed > 0 { parts.append(n(buildsFailed, "build") + " failed") }
+        if testsFailed > 0 { parts.append(n(testsFailed, "test") + " failed") }
+        if commandsFailed > 0 { parts.append(n(commandsFailed, "command") + " failed") }
+        if buildsUnclear > 0 { parts.append(n(buildsUnclear, "build") + " unclear") }
+        if testsUnclear > 0 { parts.append(n(testsUnclear, "test") + " unclear") }
+        if likelyNotAnError > 0 { parts.append("\(likelyNotAnError) likely not an error") }
         return parts.joined(separator: " · ")
+    }
+
+    /// Phase 15: whether a test/build command's exit code is the test's or
+    /// build's own. The Core classifies a line by its *first* test/build
+    /// part (`tools.command_kind`), but the shell reports the exit code of
+    /// the *last* part of a pipe or chain. When that last part is not itself
+    /// a command of the same kind (a `grep`, `tail`, `tee`, or a build
+    /// followed by a test), the result of the test or build is unknown.
+    /// Unknown command text (withheld) keeps the recorded kind.
+    static func exitBelongsToKind(_ c: ObservedCommand) -> Bool {
+        guard let command = c.command, let kind = c.kind else { return true }
+        let parts = FailureInspector.segments(command).filter { !$0.hasPrefix("cd ") && $0 != "cd" }
+        guard parts.count > 1, let last = parts.last else { return true }
+        return commandKind(last) == kind
+    }
+
+    /// The Core's prefix table (`plugin/prompt_relay/tools.py`,
+    /// `KIND_PREFIXES`), applied to one part of a line. Keep the two in step.
+    static let kindPrefixes: [(kind: String, prefixes: [String])] = [
+        ("test", ["pytest", "python -m pytest", "python3 -m pytest", "python -m unittest", "python3 -m unittest",
+                  "swift test", "xcodebuild test", "npm test", "npm run test", "pnpm test", "pnpm run test",
+                  "yarn test", "go test", "cargo test", "scripts/check.sh", "./scripts/check.sh", "make test"]),
+        ("build", ["swift build", "xcodebuild", "npm run build", "pnpm build", "pnpm run build", "yarn build",
+                   "cargo build", "go build", "make", "scripts/build", "./scripts/build"]),
+        ("git", ["git"]),
+    ]
+
+    static func commandKind(_ part: String) -> String {
+        var words = part.split(separator: " ").map(String.init)
+        while let first = words.first, first.contains("="), first.first != "=" { words.removeFirst() }
+        let stripped = words.joined(separator: " ")
+        for (kind, prefixes) in kindPrefixes {
+            for prefix in prefixes where stripped == prefix || stripped.hasPrefix(prefix + " ") { return kind }
+        }
+        return "other"
     }
 }
 
