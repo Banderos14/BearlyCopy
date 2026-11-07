@@ -94,15 +94,31 @@ git fetch origin && git switch develop && git merge --ff-only origin/phase/15-mv
 Or open a PR `phase/15-mvp-readiness → develop` on GitHub. `main` stays as is
 until a release decision.
 
-## 6. Branch heads after Phase 15.1 (verified with `git ls-remote origin`)
-See the final section of this file (filled in after the last push) and the
-Phase 15.1 STATUS entry. `main` = `775c5c9` and `develop` = `17844fe` on
-GitHub, unchanged.
+## 6. Branch heads after Phase 15.1 (verified with `git ls-remote origin`, 2026-11-08)
+| Ref on GitHub | SHA |
+|---|---|
+| `main` (and `HEAD`) | `775c5c9e065051337db35885ad73906770bcfb8f` — unchanged |
+| `develop` | `17844feb4a5b76a2a9d0257f6c2bc32564481639` — unchanged, Phase 15 not merged |
+| `phase/15-mvp-readiness` | `3aff08ac872a3b32cdc56154a58d988044826ca6` at bundle time; this record is one commit later (see `git log`) |
+| `claude/loving-mccarthy-ossw3q` | `f72a8ce087c5d4a722929566dc0a50a63979971f` — unchanged (local copy `17844fe`) |
 
 ## 7. Second backup: after Phase 15.1
 Directory: `/Users/admin/Backups/PromptRelay/2026-11-08-phase15.1/` (mode
-700). The first backup (`2026-11-07-phase15/`) is kept unchanged. Contents
-and SHA-256 are recorded below after creation; the bundle covers every local
+700, files 600), created 2026-11-08 00:54 CET. The first backup
+(`2026-11-07-phase15/`) is kept unchanged and still passes
+`shasum -a 256 -c SHA256SUMS` (6/6 OK).
+
+| File | SHA-256 |
+|---|---|
+| `prompt-relay-all-refs.bundle` (32 refs) | `8ad5abb913d3f96a6697ec4642c3b7c2d5f9344d7b3c38a4c17d39e2c6f2ad94` |
+| `refs.txt` | `a798daab9e4c884d9e450ab56468a151dd730f160472052fd503c147488c3658` |
+
+Verification: `git bundle verify` → complete history; `git clone --mirror`
+→ `phase/15-mvp-readiness` = `3aff08a`, 108 commits, `git fsck` clean.
+The commit that records this table is newer than the bundle; it is on
+GitHub. Restore exactly as in §2 (use this bundle instead of the first);
+the owner's staged/untracked files come from the first backup's patch and
+tarball. The bundle covers every local
 ref (all branches including `phase/15-mvp-readiness`, `develop`, `main`, the
 legacy branch, remote-tracking refs and the 21 `refs/backup/*`). Owner files
 in `~/Projects/prompt-relay` (staged REPORT.md, untracked acceptance
