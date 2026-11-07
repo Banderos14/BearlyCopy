@@ -51,6 +51,27 @@ warning-only edits in `EvidenceViews.swift` and `IslandViews.swift`):
 XCTest 349 run, 333 passed, 16 skipped, 0 failed; Swift Testing 123/123;
 exit 0.
 
+## After Phase 15.1 (2026-11-08)
+| Check | Exit | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| Python 3.14.0 unit / integrations | 0 | 248 / 15 | 0 | 1 / 0 |
+| Python 3.9.6 unit / integrations | 0 | 248 / 15 | 0 | 1 / 0 |
+| Hook latency | — | median 37.9 ms, p95 38.9 ms (launcher 54.3 / 58.1 ms) | | |
+| Focused `Phase151Tests` | 0 | 9 | 0 | 0 |
+| XCTest, full | 0 | 342 | 0 | 16 (358 run) |
+| Swift Testing, full | 0 | 123 | 0 | 0 |
+| Xcode Debug / Release | 0 / 0 | BUILD SUCCEEDED, 0 Swift warnings | | |
+| `git diff --check` | 0 | clean | | |
+
+Change in counts: XCTest +9 (`Phase151Tests`); none removed. One existing
+expectation changed on purpose: `Phase142Tests` chip "5 observed …" →
+"6 observed …" (the fixture's grep no-match is now its own non-alarm fact
+instead of being grouped with the real build failure's exit 1).
+
+Phase 15.1 mutations (each reverted): M1 old pass counting → 4 failures;
+M2 trust withheld compound text → 5; M3 grep alarms again → 3; M4 old
+`meaning()` → 3; M5 old `&&` rule → 8 (all in `Phase151Tests`).
+
 ## Mutation checks (temporary edits, reverted)
 | Mutation | Result |
 |---|---|

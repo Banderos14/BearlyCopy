@@ -60,7 +60,7 @@ Check: `shasum -a 256 -c SHA256SUMS` inside the backup folder.
 | Branch | Points to | Where |
 |---|---|---|
 | `develop` | `17844fe` (Phase 14.2, unchanged) | local + **pushed** to `origin/develop` (verified equal) |
-| `phase/15-mvp-readiness` | `develop` + Phase 15 commits | worktree `~/Projects/prompt-relay-phase15`; pushed only if the owner asks (see §5) |
+| `phase/15-mvp-readiness` | `develop` + Phase 15 / 15.1 commits | worktree `~/Projects/prompt-relay-phase15`; **pushed to `origin/phase/15-mvp-readiness`** (2026-11-07, again after Phase 15.1); not merged into `develop` |
 | `main` | `775c5c9` | **untouched** |
 | `claude/loving-mccarthy-ossw3q` | `17844fe` locally, `f72a8ce` on GitHub | untouched; still checked out in `~/Projects/prompt-relay` with the owner's staged file and untracked acceptance material exactly as found |
 
@@ -86,10 +86,25 @@ untracked owner files: switch it with `git switch develop` (same commit, keeps
 them) rather than any reset.
 
 ## 5. Integrating Phase 15 into `develop` (owner)
+The branch is already on GitHub. Fast-forward `develop` when you approve:
 ```bash
 cd ~/Projects/prompt-relay-phase15
-git push -u origin phase/15-mvp-readiness       # if not pushed yet
-git switch develop && git merge --ff-only phase/15-mvp-readiness && git push origin develop
+git fetch origin && git switch develop && git merge --ff-only origin/phase/15-mvp-readiness && git push origin develop
 ```
 Or open a PR `phase/15-mvp-readiness → develop` on GitHub. `main` stays as is
 until a release decision.
+
+## 6. Branch heads after Phase 15.1 (verified with `git ls-remote origin`)
+See the final section of this file (filled in after the last push) and the
+Phase 15.1 STATUS entry. `main` = `775c5c9` and `develop` = `17844fe` on
+GitHub, unchanged.
+
+## 7. Second backup: after Phase 15.1
+Directory: `/Users/admin/Backups/PromptRelay/2026-11-08-phase15.1/` (mode
+700). The first backup (`2026-11-07-phase15/`) is kept unchanged. Contents
+and SHA-256 are recorded below after creation; the bundle covers every local
+ref (all branches including `phase/15-mvp-readiness`, `develop`, `main`, the
+legacy branch, remote-tracking refs and the 21 `refs/backup/*`). Owner files
+in `~/Projects/prompt-relay` (staged REPORT.md, untracked acceptance
+material) did not change since the first backup and are covered there.
+Private app history was not copied.

@@ -50,7 +50,7 @@ Status values: Pass / Fail / Blocked / Not tested.
 | 23 | Manual review progress | answer with a checklist | tick two items, untick one | "N checks left" updates at once; Evidence's own "not verified" count does not change | Not tested | |
 | 24 | Review persistence | as 23 | close island, switch project, quit/reopen | ticks and Not applicable still there for that answer only | Not tested | |
 | 25 | CI Not applicable | CI item visible | ⋯ → Not applicable | counted as resolved; never shown as "CI passed" | Not tested | |
-| 26 | Command / test / build distinctions | answers containing: a failed grep, a failed build, `swift build 2>&1 \| grep error` on a clean build | read the chip and the Commands row | "1 likely not an error", "1 build failed", "1 build unclear" respectively — **Phase 15 wording** | Not tested | |
+| 26 | Command / test / build distinctions | answers containing: a failed grep, a real failed build, `swift build 2>&1 \| grep error` on a clean build, `swift build && swift test` failing in the test step | read the chip, the Commands row, Quick Peek and Failure Inspector | "1 likely not an error" (no red alarm, no "run the build" checklist item), "1 build failed", "1 build unclear", "1 build unclear" — and Failure Inspector never says "the build did not succeed" for the unclear ones (**Phase 15/15.1 wording**) | Not tested | |
 | 27 | Failure Inspector | an answer with a failure and a later passing rerun | open Failure Inspector | the failure stays listed; the rerun line says exit 0 is "not proof that the cause is fixed" | Not tested | |
 | 28 | Unknown / unverified claims | an answer saying "all done" with no tests/builds | Evidence & Review | "Task outcome unknown…" listed under Not verified | Not tested | |
 | 29 | Manual paste into ChatGPT | ChatGPT (web or app) open | paste Copy Response, then Copy with Context | text arrives complete; Prompt Relay never says it was delivered | Not tested | |
@@ -58,6 +58,7 @@ Status values: Pass / Fail / Blocked / Not tested.
 | 31 | History after restart | some answers | quit, reopen | all answers, imports, attachments (not auto screenshots — memory only) still there | Not tested | |
 | 32 | Plugin or Core unavailable | temporarily disable the plugin in Claude Code, or rename the app's Python | open the app; run a Claude task | app says it cannot read history / capture inactive; Claude Code itself unaffected | Not tested | |
 | 33 | File picker selection | an answer open | 📎 / Files…; note any highlighted file; press Cancel; reopen and Add a different file | a highlighted file is macOS remembering your last choice; Cancel attaches nothing; Add attaches only what you chose, to the answer that was open; checked box = "send" | Not tested | |
+| 34 | Piped test that "passes" | ask Claude to run `swift test 2>&1 \| tee test.log` (or `pytest \| tail -20`) | read Evidence & Review, Quick Peek and the Commands row | no "test command exited 0" fact; "…exited 0 through a pipe…: the test result is unknown"; "1 unclear" / "1 result unclear"; with `set -o pipefail;` in front, an exit 0 is counted as passed (Phase 15.1) | Not tested | |
 
 ## Record
 Date, build (commit from About), Mac model/display, and per failing row: what

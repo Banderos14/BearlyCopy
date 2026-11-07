@@ -1,5 +1,24 @@
 # Status
 
+## 2026-11-08 — Phase 15.1: evidence classification corrections (branch `phase/15-mvp-readiness`, not installed)
+
+Four review findings, each confirmed in the code first: (1, P1) a piped or
+`;`-chained test/build (`swift test | tee log`, `pytest | tail -20`,
+`swift build; echo done`) counted as passing on exit 0 — now "result
+unknown"; (2) Failure Inspector still said "the build did not succeed" for
+`swift build && swift test` where the failing step is unknown; (3) a grep
+exit 1 raised an alarm and a "run the build" checklist item; (4) withheld
+compound lines were trusted. One shared rule (`FailureBreakdown.stageResult`:
+passed / failed / unclear, with `&&`, `set -o pipefail`, `;`, `|`, setup
+stages) now feeds Failure Inspector, Evidence Check, the chip, Quick Peek
+and the Commands row; Core, Copy with Context text and JSON API v1
+unchanged. Python 249+15 ×2, XCTest 358/0 (16 opt-in skips, +9), Swift
+Testing 123/123, Xcode Debug/Release 0 warnings, `git diff --check` clean,
+five mutation checks. Second backup in
+`~/Backups/PromptRelay/2026-11-08-phase15.1/`. Nothing installed or merged.
+[Audit §7](PHASE15_AUDIT.md) · [tests](PHASE15_TEST_RESULTS.md) ·
+[Git](PHASE15_GIT_RECOVERY.md). Next agreed stage: unchanged (see below).
+
 ## 2026-11-07 — Phase 15: Git recovery, independent audit, MVP readiness (branch `phase/15-mvp-readiness`, not installed)
 
 Git: the latest work (`17844fe`) existed only on this Mac — GitHub had the

@@ -74,6 +74,7 @@ no Claude settings writes, Python stdlib only.
 | 14 / 14.1 | 11-06/07 | no half-visible rows, island stays open on resize, automatic final screenshots (ADR-028), hover corridor, Screen Recording recovery; 0.6.0 (not installed) | `80e1a0b`, `f721385`, `e6aea5d`, `e3bc4d2` |
 | 14.2 | 11-07 | reviewProgress vs Evidence, FailureBreakdown, two-row Copy with Context (implemented with Sonnet 5) | `17844fe` |
 | 15 | 11-07 | Git recovery + backup, `develop`, independent audit, D1–D4 fixes, stronger tests, this handoff | branch `phase/15-mvp-readiness` |
+| 15.1 | 11-08 | one shared exit-code attribution rule (no false passes through pipes/`;`, `&&` failures unclear, pipefail, withheld compound lines unclear), diagnostics no longer alarm, second backup | same branch; [audit §7](PHASE15_AUDIT.md) |
 
 Per-phase reports: `docs/PHASE6.md`…`PHASE8.md`, `macos/PHASE9.md`…`PHASE14.2.md`,
 `docs/STATUS.md` (newest first). Decisions: `docs/DECISIONS.md` (ADR-001…028).
@@ -121,7 +122,7 @@ cloud backend, telemetry, clipboard monitoring of text, global hook install.
 | R6 | P2 | No Developer ID: only ad-hoc local builds | owner decision before any beta |
 | R7 | P3 | `claude/loving-mccarthy-ossw3q` still exists locally and on GitHub | delete after owner approval (§4 of Git recovery) |
 | R8 | P3 | History is unencrypted at rest (FileVault/account only) | future |
-Fixed in Phase 15: D1–D4 in [PHASE15_AUDIT.md](PHASE15_AUDIT.md).
+Fixed in Phase 15: D1–D4; Phase 15.1: findings 1–4 — both in [PHASE15_AUDIT.md](PHASE15_AUDIT.md).
 
 ## F/G. Next-session prompts
 [PHASE15_NEXT_CHAT_PROMPT.md](PHASE15_NEXT_CHAT_PROMPT.md) — one prompt for

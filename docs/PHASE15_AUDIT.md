@@ -138,7 +138,39 @@ folder and label the box "Send". Owner check: MVP acceptance item 33.
 | R3 | P2 | Phase 12.1 question/plan/permission waits were documented, partly observed live (12.2); not every host/version observed. | Acceptance 8 |
 | R4 | P3 | Swift copy of the Core's command-kind table (now guarded by a test). | — |
 
-## 7. Not done in Phase 15 (out of scope or needs consent)
+## 7. Phase 15.1 — evidence classification corrections (2026-11-08)
+
+An independent review raised four more points. Each was checked against
+the code before anything changed; all four were **confirmed**.
+
+| # | Sev. | Finding | Confirmed by | Fix |
+|---|---|---|---|---|
+| 1 | P1 | False success: `testsOK`/`buildsOK` in `EvidenceCheck.make` counted every test/build line with exit 0, so `swift test \| tee test.log`, `pytest \| tail -20`, `swift build; echo done` counted as passing whatever the tests did | code read; new test failed on the old counting (mutation M1: 4 failures) | pass counts only when `FailureBreakdown.stageResult` is `.passed`; an unattributable exit 0 is listed as "…exited 0 through a pipe or `;`: … result is unknown"; the claim line says no pass was observed; "Task outcome unknown" is no longer suppressed by it |
+| 2 | P2 | Inconsistent semantics: Phase 15's `exitBelongsToKind` only looked at the last part, so `swift build && swift test` (kind build, exit 1) was "build unclear" in the chip but Failure Inspector's `meaning()` still said "the build did not succeed" | code read (meaning had no attribution) | one shared rule `FailureBreakdown.stageResult` (passed / failed / unclear) used by `FailureBreakdown`, `meaning()`, `EvidenceCheck`, the Commands row and Quick Peek facts. `&&` chain: exit 0 → passed, non-zero → unclear; `set -o pipefail` pipe: exit 0 → passed, non-zero → unclear; `\|`/`;`: last stage decides; `\|\|`, `&`, mixed → unclear; same-kind stages keep their verdict; `cd`/`set`/`export` are setup, not stages |
+| 3 | P2 | Diagnostics alarmed: a grep exit 1 produced an alert item ("N commands returned exit 1", red), which made `ReviewChecklist` add "Run the build and tests yourself — A command failed"; Quick Peek said "1 failed command" | code read | a non-test/build likely-non-error is listed as an observed, non-alert fact ("…returned exit 1, likely a normal no-match or false condition…"); unclear test/build non-zero exits are listed, not alerts, and the checklist asks to rerun with the reason "A test or build result could not be established"; real failures unchanged (alert, "A command failed during the turn"); Quick Peek with per-command detail uses the same counts |
+| 4 | P2 | Withheld text: `exitBelongsToKind` returned "attributable" when the command text was withheld, even for a compound line | code read | withheld + `compound` → unclear (success and failure); withheld simple line keeps its exit code (documented limitation: the Core's `compound` flag does not include `&&`) |
+
+Not changed: the Core and the Copy with Context **text** (it lists each
+command with its exact exit code and a ¹ pipe caveat and never says
+"passed" or "failed" for a line) and JSON API v1 (`runs_exit_zero` keeps its
+documented meaning; the app only stops reading it as "passed" when the
+per-command detail is loaded — without detail, Quick Peek still says
+"N commands completed", which means exit 0, as before).
+
+Visible wording changes: Phase 8 fixture chip "6 observed · 1 build failed ·
+1 likely not an error · N checks left" (the grep is its own fact now);
+Commands row / Quick Peek may say "N unclear" / "N result(s) unclear";
+Failure Inspector says "…may belong to another step (`grep`). Whether the
+build itself succeeded is not known."
+
+Regression: `Phase151Tests` (9 tests). Mutations M1–M5 (old pass counting,
+trusting withheld text, alarming greps, old `meaning`, old `&&` rule):
+4, 5, 3, 3 and 8 failures. Limitation: the parser is conservative, not a
+shell; anything it cannot place (subshells, `if`, functions) falls back to
+"unclear" only when it sees an operator — a line it cannot see into keeps
+its exit code.
+
+## 8. Not done in Phase 15 (out of scope or needs consent)
 Installing 0.6.0 (app or plugin), merging to `main`, deleting
 `claude/loving-mccarthy-ossw3q`, any release/tag, any live GUI/mouse/permission
 check, any ChatGPT paste.
