@@ -63,6 +63,12 @@ import Testing
             return .init(png: Phase14CaptureTests.png(c), label: "Window")
         }
         func forget(_ window: PickedWindow) { forgotten.append(window.handle) }
+        /// Phase 15.2: windows macOS no longer lists; offscreen ones exist but are hidden.
+        var gone: Set<String> = []
+        var offscreen: Set<String> = []
+        func presence(of window: PickedWindow) -> WindowPresence {
+            gone.contains(window.handle) ? .gone : .present(onScreen: !offscreen.contains(window.handle))
+        }
     }
 
     static func png(_ color: NSColor, caret: Bool = false, lines: Int = 0) -> Data {
@@ -331,6 +337,7 @@ import Testing
         w.model.selectSession("claude"); w.model.chooseAutoCaptureWindow()
         w.model.selectSession("codex"); w.model.chooseAutoCaptureWindow()
         w.capture.failing["h1"] = .failed                                       // Claude's window was closed
+        w.capture.gone.insert("h1")
         await finish(w, claude, at: Self.ago(5), turns: 2)
         #expect(w.model.autoCaptureStatus(for: .local(sessionKey: "claude", turn: 2)) == .windowUnavailable)
         #expect(w.model.attachments(for: .local(sessionKey: "claude", turn: 2)).isEmpty)

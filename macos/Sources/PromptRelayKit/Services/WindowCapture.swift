@@ -21,6 +21,24 @@ public protocol WindowCapturing: AnyObject {
     @MainActor func capture(_ window: PickedWindow) async throws -> WindowCapture.Shot
     /// Drops what Prompt Relay holds for a picked window.
     @MainActor func forget(_ window: PickedWindow)
+    /// Phase 15.2: whether macOS still has the picked window — metadata only
+    /// (no image, no title), so a failed capture of a minimized window or one
+    /// on another Space is not mistaken for a closed window.
+    @MainActor func presence(of window: PickedWindow) -> WindowPresence
+}
+
+/// Phase 15.2: what macOS says about a linked window's existence.
+public enum WindowPresence: Equatable, Sendable {
+    /// The window exists; `onScreen` is false when minimized, hidden or on another Space.
+    case present(onScreen: Bool)
+    /// macOS no longer lists the window: it was closed or its app quit.
+    case gone
+    /// Not known (no window number on older macOS): never treated as gone.
+    case unknown
+}
+
+public extension WindowCapturing {
+    @MainActor func presence(of window: PickedWindow) -> WindowPresence { .unknown }
 }
 
 public enum WindowCaptureError: Error, Equatable {
@@ -61,11 +79,26 @@ public final class WindowCapture: NSObject, WindowCapturing, SCContentSharingPic
         do {
             return try await Self.shot(filter)
         } catch {
-            let mapped = Self.map(error)
-            // The window is gone: never fall back to anything else.
-            if mapped != .permissionDenied { filters[window.handle] = nil }
-            throw mapped
+            // Never falls back to another window or the screen. Phase 15.2:
+            // the filter is kept — whether the window is really gone is
+            // decided with `presence(of:)`, not from one failed capture.
+            throw Self.map(error)
         }
+    }
+
+    public func presence(of window: PickedWindow) -> WindowPresence {
+        guard let id = window.windowID else { return .unknown }
+        return Self.presence(windowInfo: CGWindowListCopyWindowInfo([.optionIncludingWindow], CGWindowID(id)) as? [[String: Any]],
+                             windowID: id)
+    }
+
+    /// `CGWindowListCopyWindowInfo` with `.optionIncludingWindow` lists the
+    /// one window while it exists (on or off screen); an empty list means it
+    /// is gone. Reads no pixels and no title.
+    nonisolated static func presence(windowInfo: [[String: Any]]?, windowID: UInt32) -> WindowPresence {
+        guard let info = windowInfo else { return .unknown }
+        guard let entry = info.first(where: { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value == windowID }) else { return .gone }
+        return .present(onScreen: (entry[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue ?? false)
     }
 
     /// ScreenCaptureKit's errors in Prompt Relay's words.

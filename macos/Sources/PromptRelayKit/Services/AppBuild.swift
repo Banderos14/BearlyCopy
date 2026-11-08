@@ -94,6 +94,32 @@ public enum AppBuild {
     /// (`scripts/build-macos-app.sh` writes `PRGitCommit`); Xcode builds say so.
     public static var gitCommit: String? { Bundle.main.object(forInfoDictionaryKey: "PRGitCommit") as? String }
 
+    /// Phase 15.2: what a plugin version next to this app's version means,
+    /// in words (About showed "Plugin 0.4.1" beside "0.6.0" unexplained).
+    /// Hook events have not changed since plugin 0.4.1 (STATUS, 0.6.0), so
+    /// an older-but-0.4.1 plugin captures everything this app shows.
+    public static let minimumFullPluginVersion = "0.4.1"
+
+    public static func pluginNote(plugin: String?, app: String?) -> String? {
+        guard let plugin, let app, let p = numeric(plugin), let a = numeric(app) else { return nil }
+        if p == a { return nil }
+        if p.lexicographicallyPrecedes(a) {
+            if let floor = numeric(minimumFullPluginVersion), p.lexicographicallyPrecedes(floor) {
+                return "Older than this app and missing newer signals (Needs input, agent profiles). Update it: claude plugin update prompt-relay@prompt-relay"
+            }
+            return "Older than this app (\(app)) but compatible: capture works. Update it when convenient: claude plugin update prompt-relay@prompt-relay"
+        }
+        return "Newer than this app (\(app)). Update the app to match."
+    }
+
+    static func numeric(_ version: String) -> [Int]? {
+        let parts = version.split(separator: ".").map { Int($0.prefix { $0.isNumber }) }
+        guard !parts.isEmpty, parts.allSatisfy({ $0 != nil }) else { return nil }
+        var v = parts.compactMap { $0 }
+        while v.count < 3 { v.append(0) }
+        return v
+    }
+
     public static func name(of bundleID: String) -> String {
         bundleID == debugBundleID ? "Prompt Relay (Debug)" : "Prompt Relay"
     }

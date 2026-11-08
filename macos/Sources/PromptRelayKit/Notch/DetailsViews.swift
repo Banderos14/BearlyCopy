@@ -253,7 +253,7 @@ struct SessionHeader: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Project \(projectTitle), session \(sessionTitle ?? "none"). Choose project and session")
-            .islandHelp("Choose a project and an agent session")
+            .islandHelp("Switch project or conversation")
             Spacer(minLength: 6)
             if let other = model.newAnswerElsewhere {
                 NewElsewhereChip(model: model, answer: other)
@@ -766,7 +766,7 @@ struct AutoCaptureStatusLine: View {
                         // separate apps in Screen Recording — name which one
                         // this is, so the grant lands on the right copy.
                         if (status.offersPermissionRecovery || status.offersRestartRecovery), AppBuild.isDebugBuild {
-                            Text("This is the Debug build — allow it, not any Release copy also listed.")
+                            Text(AutoCaptureStatus.debugBuildPermissionHint)
                                 .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -789,12 +789,22 @@ struct AutoCaptureStatusLine: View {
                     HStack(spacing: 10) {
                         Button("Link Window…") { model.linkAutoCaptureWindowToConversation() }
                             .disabled(model.autoCaptureBlocker != nil || model.isPresentingSystemDialog)
+                            .islandHelp("Pick the window that shows this conversation; its next final answers are captured automatically")
                         Button("Capture Now…") { model.captureFinalWindow() }
                             .disabled(model.isPresentingSystemDialog)
+                            .islandHelp("Take one picture of a window now, without linking it")
                         if status.offersRecheck { checkAgainButton }
                     }
                     .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
                     .islandFrame("autocapture.link.actions")
+                }
+                // Phase 15.2: always reachable, even when the problem looks
+                // like a missing link (the owner could not find it there).
+                if status.offersSettingsShortcut && !status.offersPermissionRecovery {
+                    Button("Open Screen Recording Settings") { model.openScreenRecordingSettings() }
+                        .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
+                        .islandHelp("System Settings → Privacy & Security → Screen & System Audio Recording")
+                        .islandFrame("autocapture.settings.shortcut")
                 }
             }
             .padding(.vertical, 2)

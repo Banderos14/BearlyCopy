@@ -132,9 +132,8 @@ extension AppModel {
                 // The API already says granted; capture disagrees because
                 // this process started before the grant took effect.
                 status = .restartRequired
-            default:
-                status = .windowUnavailable
-                unlink(binding, forgetWindow: true)
+            case let other:
+                status = afterCaptureFailure(other, binding: binding)
             }
             autoCaptureStatuses[ref.key] = status
             return status
@@ -292,13 +291,26 @@ extension AppModel {
             attachmentsVersion += 1
         case .failure(.permissionDenied):
             autoCaptureStatuses[ref.key] = .permissionRequired
-        case .failure:
-            // The window is gone (closed, its app quit): the link is dropped,
-            // never replaced by another window.
-            autoCaptureStatuses[ref.key] = .windowUnavailable
-            unlink(binding, forgetWindow: true)
-            autoCaptureMessage = "A linked window is no longer available. Link it again to resume auto screenshots."
+        case .failure(let error):
+            autoCaptureStatuses[ref.key] = afterCaptureFailure(error, binding: binding)
         }
+    }
+
+    /// Phase 15.2 (risk R1): one failed capture used to drop the link for
+    /// any reason except permission — a minimized window, one on another
+    /// Space, or a transient ScreenCaptureKit error lost its link. The link
+    /// is now dropped only when its invalidity is established: macOS no
+    /// longer lists the window, or Prompt Relay no longer holds its source.
+    /// Never replaced by another window.
+    func afterCaptureFailure(_ error: WindowCaptureError, binding: WindowBinding) -> AutoCaptureStatus {
+        let gone = error == .noSource || windowCapture.presence(of: binding.window) == .gone
+        if gone {
+            unlink(binding, forgetWindow: true)
+            autoCaptureMessage = "A linked window was closed, so its link was removed. Link it again to resume auto screenshots."
+            return .windowUnavailable
+        }
+        if case .present(onScreen: true) = windowCapture.presence(of: binding.window) { return .failed }
+        return .windowNotCapturable
     }
 
     /// Tests: waits until every capture started so far has finished.

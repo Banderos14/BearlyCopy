@@ -69,8 +69,11 @@ public enum AutoCaptureStatus: Equatable, Sendable {
     case restartRequired
     /// No window is linked to this agent, host and project.
     case windowNotBound
-    /// The linked window is closed, hidden or no longer capturable.
+    /// The linked window is closed (macOS no longer lists it): the link is dropped.
     case windowUnavailable
+    /// Phase 15.2: the linked window still exists but could not be captured
+    /// now (minimized, on another Space, hidden): the link is kept.
+    case windowNotCapturable
     case failed
     /// Two active conversations could be in the linked window: nothing taken.
     case associationRequired
@@ -85,7 +88,8 @@ public enum AutoCaptureStatus: Equatable, Sendable {
         case .permissionRequired: return "Permission required"
         case .restartRequired: return "Restart required"
         case .windowNotBound: return "Window not linked"
-        case .windowUnavailable: return "Window unavailable"
+        case .windowUnavailable: return "Window closed"
+        case .windowNotCapturable: return "Window not available right now"
         case .failed: return "Capture failed"
         case .associationRequired: return "Window association required"
         case .superseded: return "Superseded by a newer answer"
@@ -100,8 +104,9 @@ public enum AutoCaptureStatus: Equatable, Sendable {
         case .captured: return nil
         case .permissionRequired: return "Allow Prompt Relay to capture your linked window."
         case .restartRequired: return "Permission was granted. Quit and reopen Prompt Relay to use it — your results and settings stay."
-        case .windowNotBound: return "No window is linked to this agent, so no auto screenshot was taken."
-        case .windowUnavailable: return "The linked window is closed or not available. Link it again to resume auto screenshots."
+        case .windowNotBound: return "Link the window showing this conversation. Links end when Prompt Relay quits; Capture Now takes one picture without linking."
+        case .windowUnavailable: return "The linked window was closed, so its link was removed. Link the window again to resume auto screenshots."
+        case .windowNotCapturable: return "The linked window exists but could not be captured (minimized, on another Space or hidden). The link is kept; the next answer tries again."
         case .failed: return "The auto screenshot failed. The answer text is complete; you can capture the window yourself."
         case .associationRequired: return "Another conversation may be showing in the linked window, so no screenshot was taken."
         case .superseded: return "A newer answer arrived in the same window first."
@@ -121,8 +126,25 @@ public enum AutoCaptureStatus: Equatable, Sendable {
     /// The user can do something about it here: link a window, or capture now.
     public var offersLink: Bool {
         switch self {
-        case .windowNotBound, .associationRequired, .windowUnavailable: return true
+        case .windowNotBound, .associationRequired, .windowUnavailable, .windowNotCapturable, .failed: return true
         default: return false
+        }
+    }
+
+    /// Phase 15.2: Debug builds are signed ad hoc, so macOS may treat every
+    /// rebuild as a new app: an entry already switched on can belong to an
+    /// earlier build. Shown only in a Debug build.
+    public static let debugBuildPermissionHint =
+        "This is the Debug build: allow “Prompt Relay Dev”, not “Prompt Relay”. After a rebuild, if it already shows as on, turn it off and on again."
+
+    /// Phase 15.2: Open Screen Recording Settings stays reachable from every
+    /// state where a screenshot was not taken, not only "Permission
+    /// required" — a missing link and a missing permission look alike to
+    /// the user, and the button never changes any status by itself.
+    public var offersSettingsShortcut: Bool {
+        switch self {
+        case .pending, .captured, .superseded: return false
+        default: return true
         }
     }
 
@@ -134,7 +156,7 @@ public enum AutoCaptureStatus: Equatable, Sendable {
     /// Prompt Relay (a permission toggle, a relaunch, the window reopening).
     public var offersRecheck: Bool {
         switch self {
-        case .permissionRequired, .restartRequired, .windowUnavailable: return true
+        case .permissionRequired, .restartRequired, .windowUnavailable, .windowNotCapturable, .failed: return true
         default: return false
         }
     }

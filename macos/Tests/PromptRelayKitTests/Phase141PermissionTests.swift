@@ -70,6 +70,9 @@ final class Phase141PermissionTests: XCTestCase {
         func pickWindow(completion: @escaping @MainActor (Result<PickedWindow, Error>?) -> Void) { completion(pickResult) }
         func capture(_ window: PickedWindow) async throws -> WindowCapture.Shot { captures += 1; return try captureResult.get() }
         func forget(_ window: PickedWindow) { forgotten.append(window.handle) }
+        /// Phase 15.2: what macOS says about the window (unknown keeps the link).
+        var windowPresence: WindowPresence = .unknown
+        func presence(of window: PickedWindow) -> WindowPresence { windowPresence }
     }
 
     static let iso: ISO8601DateFormatter = {
@@ -164,6 +167,7 @@ final class Phase141PermissionTests: XCTestCase {
         m.chooseAutoCaptureWindow()
         permission.granted = true
         capture.captureResult = .failure(WindowCaptureError.failed)   // the window was closed, not a permission issue
+        capture.windowPresence = .gone                                  // Phase 15.2: macOS no longer lists it
         let result = await m.checkAutoCaptureAccess(for: ref)
         XCTAssertEqual(result, .windowUnavailable)
         XCTAssertEqual(m.autoCaptureStatus(for: ref), .windowUnavailable)

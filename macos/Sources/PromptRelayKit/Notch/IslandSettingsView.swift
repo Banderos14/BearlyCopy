@@ -409,8 +409,9 @@ struct IslandSettingsView: View {
                 if let built = stamp.builtAt { aboutLine("Built", built) }
                 aboutLine("Location", (Bundle.main.bundleURL.path as NSString).abbreviatingWithTildeInPath)
                 aboutLine("Core", coreLine(stamp))
-                aboutLine("Plugin", model.doctor.value?.configuration.plugin.records.first { $0.id.hasPrefix("prompt-relay@") }?.version
-                          ?? (model.doctor.value == nil ? "checking…" : "not detected"))
+                let pluginVersion = model.doctor.value?.configuration.plugin.records.first { $0.id.hasPrefix("prompt-relay@") }?.version
+                aboutLine("Plugin", (pluginVersion ?? (model.doctor.value == nil ? "checking…" : "not detected"))
+                          + (AppBuild.pluginNote(plugin: pluginVersion, app: stamp.version).map { " — \($0)" } ?? ""))
                 aboutLine("Running", AppBuild.describeRunning().joined(separator: "\n"))
             }
             .padding(.horizontal, 12).padding(.vertical, 6)
