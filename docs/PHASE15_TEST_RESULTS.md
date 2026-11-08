@@ -72,6 +72,27 @@ Phase 15.1 mutations (each reverted): M1 old pass counting → 4 failures;
 M2 trust withheld compound text → 5; M3 grep alarms again → 3; M4 old
 `meaning()` → 3; M5 old `&&` rule → 8 (all in `Phase151Tests`).
 
+## After Phase 15.2 (2026-11-08)
+| Check | Exit | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| Python 3.14.0 unit / integrations | 0 | 248 / 15 | 0 | 1 / 0 |
+| Python 3.9.6 unit / integrations | 0 | 248 / 15 | 0 | 1 / 0 |
+| Hook latency | — | median 39.8 ms, p95 40.8 ms (launcher 57.0 / 58.7 ms) | | |
+| XCTest, full | 0 | 342 | 0 | 16 (358 run) |
+| Swift Testing, full | 0 | 132 | 0 | 0 (+9 `Phase152Tests`) |
+| `Phase152Tests` rerun after the Debug-name text fix | 0 | 9 | 0 | 0 |
+| Xcode Debug / Release | 0 / 0 | BUILD SUCCEEDED, 0 Swift warnings | | |
+| `scripts/run-latest-debug.sh` (dry run, `--build`) | 0 / 0 | lists both running copies; builds in 29 s, stamped commit; nothing quit or started | | |
+| `git diff --check` | 0 | clean | | |
+
+Changed existing tests: three "window was closed" tests (Phase 14.1,
+Phase 14, the Phase 9.3 fake already threw `noSource`) now also say the
+window is gone, which is what they model; under the new R1 rule a bare
+failed capture of a window macOS still lists keeps its link. Mutation:
+`afterCaptureFailure` always unlinking → `Phase152Tests` 8 issues.
+
+`--switch` was **not** run (it quits the running Debug copy: owner's call).
+
 ## Mutation checks (temporary edits, reverted)
 | Mutation | Result |
 |---|---|

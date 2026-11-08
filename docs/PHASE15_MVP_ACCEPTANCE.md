@@ -40,7 +40,7 @@ Status values: Pass / Fail / Blocked / Not tested.
 | 13 | Copy Response | — | Copy Response; paste in TextEdit | identical text (Cyrillic, emoji, code fences intact); no claim it was delivered anywhere | Not tested | |
 | 14 | Copy with Context | answer with commands | Copy with Context; paste in TextEdit | request, full answer, observed commands with exit codes; pipe caveat where relevant; a secret warning appears first if a secret-like string is present | Not tested | |
 | 15 | Manual image attachments | — | 📎 → choose an image → Add | appears in Attachments, checked = will be sent; Copy with Images works | Not tested | |
-| 16 | Automatic final screenshots | Settings → Automatic final screenshots on; window linked | finish an answer; also try with the window **minimized** and on another Space | one screenshot per final answer; record whether a minimized window keeps its link (risk R1 in the audit) | Not tested | |
+| 16 | Automatic final screenshots | Settings → Automatic final screenshots on; window linked | finish an answer; also try with the window **minimized** and on another Space | one screenshot per final answer; a minimized/other-Space window keeps its link ("Window not available right now", Phase 15.2) | Not tested | |
 | 17 | Screen Recording denied | permission off for this build | link a window, finish an answer | "Auto screenshot needs permission" with Open Settings / Check Again; no repeated system prompts | Not tested | |
 | 18 | Correct privacy pane | as 17 | Open Screen Recording Settings | System Settings opens at Privacy & Security → Screen (& System Audio) Recording | Not tested | |
 | 19 | Check Again | as 17 | toggle on, Check Again | clears, or says Restart required — never "granted" while capture still fails | Not tested | |
@@ -59,6 +59,11 @@ Status values: Pass / Fail / Blocked / Not tested.
 | 32 | Plugin or Core unavailable | temporarily disable the plugin in Claude Code, or rename the app's Python | open the app; run a Claude task | app says it cannot read history / capture inactive; Claude Code itself unaffected | Not tested | |
 | 33 | File picker selection | an answer open | 📎 / Files…; note any highlighted file; press Cancel; reopen and Add a different file | a highlighted file is macOS remembering your last choice; Cancel attaches nothing; Add attaches only what you chose, to the answer that was open; checked box = "send" | Not tested | |
 | 34 | Piped test that "passes" | ask Claude to run `swift test 2>&1 \| tee test.log` (or `pytest \| tail -20`) | read Evidence & Review, Quick Peek and the Commands row | no "test command exited 0" fact; "…exited 0 through a pipe…: the test result is unknown"; "1 unclear" / "1 result unclear"; with `set -o pipefail;` in front, an exit 0 is counted as passed (Phase 15.1) | Not tested | |
+| 35 | Switch to the latest Debug build | old Debug and Release running | follow `docs/PHASE15_2_OWNER_GUIDE.md` §A (`run-latest-debug.sh`, then `--switch`) | one Debug copy, About shows the printed commit; Release untouched; history intact | Not tested | |
+| 36 | Window not linked → help | auto screenshots on, no link in this copy | open an answer's Attachments | explains links end at quit; Link Window…, Capture Now…, **Open Screen Recording Settings** all visible; the last opens "Screen & System Audio Recording" | Not tested | |
+| 37 | Minimized linked window (R1) | a window linked | minimize it (or move it to another Space), finish an answer; restore it, finish another | first: "Window not available right now", link kept; second: screenshot taken | Not tested | |
+| 38 | Debug rebuild and permission | "Prompt Relay Dev" already on in Screen Recording | after `--switch`, finish an answer with a linked window | if Permission required appears, switching "Prompt Relay Dev" off/on + Check Again fixes it; record what happened | Not tested | |
+| 39 | Plugin version note | plugin 0.4.1, app 0.6.0 | Settings → About → Plugin | "Older than this app (0.6.0) but compatible… claude plugin update…" | Not tested | |
 
 ## Record
 Date, build (commit from About), Mac model/display, and per failing row: what

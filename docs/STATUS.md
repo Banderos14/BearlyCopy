@@ -1,5 +1,24 @@
 # Status
 
+## 2026-11-08 — Phase 15.2: product audit as a new user, screenshot reliability, safe Debug switch (not installed)
+
+Observed snapshot: an old Xcode Debug copy (`17844fe`, bundle id `.debug`,
+display name "Prompt Relay Dev") and installed Release 0.4.1 both running,
+both **ad-hoc signed**; plugin 0.4.1. Fixed: **R1 (P1)** — any non-permission
+capture error removed the window link, so a minimized/other-Space window lost
+it; now dropped only when macOS no longer lists the window ("Window closed"),
+else kept ("Window not available right now" / "Capture failed"); **Open
+Screen Recording Settings** in every no-screenshot state (pane verified:
+`Privacy_ScreenCapture` = record your screen, never audio-only); "Window not
+linked" explains links end at quit and Link vs Capture Now; Debug hint names
+"Prompt Relay Dev" and the ad-hoc rebuild pitfall; About explains plugin vs
+app versions; new `scripts/run-latest-debug.sh` (dry run default, `--build`,
+`--switch` with normal Quit only). XCTest 358/0 (16 skips), Swift Testing
+132/132 (+9), Python 249+15 ×2, Xcode Debug/Release 0 warnings. Nothing
+installed, quit or switched. [15.2 audit](PHASE15_2_PRODUCT_AUDIT.md) ·
+[owner guide](PHASE15_2_OWNER_GUIDE.md). Next agreed stage: owner runs the
+switch (guide §A) and acceptance rows 1–39; then merge into `develop`.
+
 ## 2026-11-08 — Phase 15.1: evidence classification corrections (branch `phase/15-mvp-readiness`, not installed)
 
 Four review findings, each confirmed in the code first: (1, P1) a piped or

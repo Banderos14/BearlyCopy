@@ -14,7 +14,8 @@ Code and ChatGPT (Python Core + Claude Code plugin + native Swift notch app).
    (branch phase/15-mvp-readiness). Work in a worktree or on a branch from
    develop; never commit to main; never force-push.
 2. Read, in order: CLAUDE.md, docs/PHASE15_HANDOFF.md, docs/STATUS.md (top
-   entry), docs/PHASE15_AUDIT.md, docs/PHASE15_GIT_RECOVERY.md,
+   entry), docs/PHASE15_AUDIT.md, docs/PHASE15_2_PRODUCT_AUDIT.md,
+   docs/PHASE15_2_OWNER_GUIDE.md, docs/PHASE15_GIT_RECOVERY.md,
    docs/PHASE15_MVP_ACCEPTANCE.md.
 3. Verify: `git -C ~/Projects/prompt-relay-phase15 log --oneline -5`,
    `git branch -a -vv`, `git ls-remote origin`; confirm develop and whether
@@ -63,7 +64,14 @@ command/test/build failure breakdown (0.6.0, not installed). **Phase 15**
 `17844fe` pushed), independent audit; fixed review marks vanishing past 200
 answers, `swift build | grep` shown as "build failed" (now "build unclear";
 grep no-match now "likely not an error"), a wrong security doc, two
-warnings; strengthened four weak tests. Branch `phase/15-mvp-readiness`.
+warnings; strengthened four weak tests. **15.1**: one exit-code rule — no
+false passes through `| tee`/`;`, `&&` failures "unclear", pipefail
+understood, withheld compound lines unclear, greps not alarms. **15.2**:
+product audit as a new user; screenshot links survive minimized/other-Space
+windows; "Open Screen Recording Settings" always reachable; plugin-version
+note; `scripts/run-latest-debug.sh` to switch builds safely. Branch
+`phase/15-mvp-readiness`. Installing is still developer-only (no signed
+download, plugin via `claude plugin` commands).
 
 Testing: Python 249+15 on 3.9 and 3.14, XCTest and Swift Testing suites,
 Xcode Debug/Release builds — all automated on the owner's Mac (exact counts

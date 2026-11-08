@@ -74,6 +74,7 @@ no Claude settings writes, Python stdlib only.
 | 14 / 14.1 | 11-06/07 | no half-visible rows, island stays open on resize, automatic final screenshots (ADR-028), hover corridor, Screen Recording recovery; 0.6.0 (not installed) | `80e1a0b`, `f721385`, `e6aea5d`, `e3bc4d2` |
 | 14.2 | 11-07 | reviewProgress vs Evidence, FailureBreakdown, two-row Copy with Context (implemented with Sonnet 5) | `17844fe` |
 | 15 | 11-07 | Git recovery + backup, `develop`, independent audit, D1–D4 fixes, stronger tests, this handoff | branch `phase/15-mvp-readiness` |
+| 15.2 | 11-08 | product audit as a new user; R1 fixed (links survive minimized/other-Space windows), Open Screen Recording Settings always reachable, plugin-version note, `scripts/run-latest-debug.sh`, owner guide | same branch; [15.2 audit](PHASE15_2_PRODUCT_AUDIT.md), [owner guide](PHASE15_2_OWNER_GUIDE.md) |
 | 15.1 | 11-08 | one shared exit-code attribution rule (no false passes through pipes/`;`, `&&` failures unclear, pipefail, withheld compound lines unclear), diagnostics no longer alarm, second backup | same branch; [audit §7](PHASE15_AUDIT.md) |
 
 Per-phase reports: `docs/PHASE6.md`…`PHASE8.md`, `macos/PHASE9.md`…`PHASE14.2.md`,
@@ -115,10 +116,12 @@ cloud backend, telemetry, clipboard monitoring of text, global hook install.
 ## E. Known issues and risks
 | ID | Sev. | Issue | Next action |
 |---|---|---|---|
-| R1 | P2 | A non-permission capture error unlinks the window (possibly minimized/other-Space windows) | acceptance #16; fix only if reproduced |
+| R1 | — | Fixed in 15.2: a link is dropped only when macOS no longer lists the window | acceptance #16, #37 |
 | R2 | P2 | Claims detection misses unusual phrasing (never upgrades, only misses a warning) | collect real examples |
 | R3 | P2 | Needs Input not observed live for every host/version | acceptance #8 |
-| R5 | P2 | Installed app/plugin are 0.4.1 while source is 0.6.0 + Phase 15; two copies run at once (installed + Xcode Debug) | owner decides install (consent) |
+| R5 | P2 | Installed app/plugin are 0.4.1 while source is 0.6.0 + Phase 15; two copies ran at once (installed + old Xcode Debug `17844fe`) | `scripts/run-latest-debug.sh --switch` (owner), install decision (consent) |
+| R9 | P2 | Ad-hoc signing: a rebuilt Debug may need its Screen Recording switch toggled | owner guide §B; Developer ID later |
+| R10 | P3 | Two copies may race on attachment-index writes (atomic, last writer wins) | run one copy |
 | R6 | P2 | No Developer ID: only ad-hoc local builds | owner decision before any beta |
 | R7 | P3 | `claude/loving-mccarthy-ossw3q` still exists locally and on GitHub | delete after owner approval (§4 of Git recovery) |
 | R8 | P3 | History is unencrypted at rest (FileVault/account only) | future |
