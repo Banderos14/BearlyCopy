@@ -50,6 +50,7 @@ lipo -info "$bin_dir/PromptRelayApp"
 
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/core/bin" "$app/Contents/Resources/core/plugin/prompt_relay"
 cp "$bin_dir/PromptRelayApp" "$app/Contents/MacOS/PromptRelay"
+cp macos/Resources/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"   # Phase 16: the Relay bear icon
 cp bin/prompt-relay "$app/Contents/Resources/core/bin/prompt-relay"
 cp plugin/prompt_relay/*.py "$app/Contents/Resources/core/plugin/prompt_relay/"
 chmod 755 "$app/Contents/Resources/core/bin/prompt-relay"
@@ -65,6 +66,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>Prompt Relay</string>
   <key>CFBundleIdentifier</key><string>io.github.banderos14.PromptRelay</string>
   <key>CFBundleExecutable</key><string>PromptRelay</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${version}</string>
   <key>CFBundleVersion</key><string>${version}</string>

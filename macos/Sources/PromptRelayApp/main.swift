@@ -46,6 +46,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated { AppServices.shared.startNotch() }
     }
+
+    /// Phase 16: opening Prompt Relay again while it runs (double-click in
+    /// Applications, Spotlight, Launchpad) opens the island, so the app you
+    /// just opened is visibly there — it has no Dock icon or windows.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        MainActor.assumeIsolated { AppServices.shared.present(.home) }
+        return false
+    }
 }
 
 struct PromptRelayApp: App {
@@ -68,9 +76,13 @@ struct PromptRelayApp: App {
             Button("Quit Prompt Relay") { NSApp.terminate(nil) }
                 .keyboardShortcut("q")
         } label: {
-            // A Debug build has its own icon, so two running builds are told apart.
-            Image(systemName: AppBuild.isDebugBuild ? "hammer.circle" : "doc.on.clipboard")
-                .accessibilityLabel(AppBuild.isDebugBuild ? "Prompt Relay (Debug)" : "Prompt Relay")
+            // A Debug build has its own icon, so two running builds are told
+            // apart; the installed app shows Relay's silhouette (Phase 16).
+            if AppBuild.isDebugBuild {
+                Image(systemName: "hammer.circle").accessibilityLabel("Prompt Relay (Debug)")
+            } else {
+                Image(nsImage: AppIcon.menuBarImage()).accessibilityLabel("Prompt Relay")
+            }
         }
         .menuBarExtraStyle(.menu)
     }

@@ -13,6 +13,8 @@ let package = Package(
     products: [
         .library(name: "PromptRelayKit", targets: ["PromptRelayKit"]),
         .executable(name: "PromptRelayApp", targets: ["PromptRelayApp"]),
+        // Phase 16: renders the app icon from Relay's drawing (scripts/make-app-icon.sh).
+        .executable(name: "PromptRelayIcon", targets: ["PromptRelayIcon"]),
     ],
     targets: [
         .target(name: "PromptRelayKit", path: "Sources/PromptRelayKit"),
@@ -20,6 +22,11 @@ let package = Package(
             name: "PromptRelayApp",
             dependencies: ["PromptRelayKit"],
             path: "Sources/PromptRelayApp"
+        ),
+        .executableTarget(
+            name: "PromptRelayIcon",
+            dependencies: ["PromptRelayKit"],
+            path: "Sources/PromptRelayIcon"
         ),
         .testTarget(
             name: "PromptRelayKitTests",

@@ -16,7 +16,14 @@
 # plugin/prompt_relay) under Contents/Resources/core, in the repository's own
 # layout, so the app does not depend on where the checkout lives. History is
 # never in the bundle: it stays in ~/Library/Application Support/PromptRelay.
-# The app is ad-hoc signed for local use only (no notarization, no release).
+# The app is ad-hoc signed for local use only (no notarization, no release);
+# PROMPT_RELAY_SIGN_IDENTITY="Apple Development" signs it with your own
+# development certificate instead, so macOS keeps its Screen Recording
+# permission across rebuilds (an ad-hoc signature changes with every build).
+#
+# Phase 16: the application icon is macos/Resources/AppIcon.icns, rendered
+# from Relay's vector drawing by scripts/make-app-icon.sh — the same file the
+# Xcode target bundles.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -36,13 +43,15 @@ app="macos/build/Prompt Relay.app"
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/core/bin" "$app/Contents/Resources/core/plugin/prompt_relay"
 cp "$bin_dir/PromptRelayApp" "$app/Contents/MacOS/PromptRelay"
+[ -s macos/Resources/AppIcon.icns ] || { echo "missing macos/Resources/AppIcon.icns (scripts/make-app-icon.sh)" >&2; exit 1; }
+cp macos/Resources/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 cp bin/prompt-relay "$app/Contents/Resources/core/bin/prompt-relay"
 cp plugin/prompt_relay/*.py "$app/Contents/Resources/core/plugin/prompt_relay/"
 chmod 755 "$app/Contents/Resources/core/bin/prompt-relay"
 
 commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
 dirty=no
-if [ -n "$(git status --porcelain --untracked-files=no -- macos/Sources bin plugin 2>/dev/null)" ]; then dirty=yes; fi
+if [ -n "$(git status --porcelain --untracked-files=no -- macos/Sources macos/Resources bin plugin 2>/dev/null)" ]; then dirty=yes; fi
 built=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 digest=$(scripts/core-digest.sh "$app/Contents/Resources/core")
 cat > "$app/Contents/Info.plist" <<PLIST
@@ -58,6 +67,10 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <key>PRBuildDate</key><string>${built}</string>
   <key>PRCoreDigest</key><string>${digest}</string>
   <key>CFBundleExecutable</key><string>PromptRelay</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>NSHumanReadableCopyright</key><string>Prompt Relay contributors</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${version}</string>
   <key>CFBundleVersion</key><string>${version}</string>
@@ -70,9 +83,13 @@ cat > "$app/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-codesign --force --sign - --timestamp=none "$app/Contents/Resources/core/bin/prompt-relay" >/dev/null 2>&1 || true
-codesign --force --deep --sign - --timestamp=none "$app"
+identity="${PROMPT_RELAY_SIGN_IDENTITY:-}"
+[ -n "$identity" ] || identity="-"
+# The only Mach-O is the main executable; the Core and the icon are
+# resources sealed by the bundle signature.
+codesign --force --sign "$identity" --timestamp=none "$app"
 codesign --verify --strict "$app"
-echo "== built $app (version $version, ad-hoc signed)"
+if [ "$identity" = "-" ]; then how="ad-hoc signed"; else how="signed with $(codesign -dv --verbose=2 "$app" 2>&1 | sed -n 's/^Authority=//p' | head -1)"; fi
+echo "== built $app (version $version, commit $commit, $how)"
 
 echo "== install with: scripts/install-local.sh (or --dry-run first)"
