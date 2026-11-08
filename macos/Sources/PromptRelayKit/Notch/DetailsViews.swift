@@ -703,14 +703,25 @@ struct AttachmentsCard: View {
             }
             BoundedScroll(minHeight: 34) {
                 VStack(alignment: .leading, spacing: 3) {
+                    // Phase 16: the outcome of the last Add first, where it is seen
+                    // without scrolling (it was the last row and often out of view).
+                    if let message = model.attachmentMessage {
+                        Label(message, systemImage: "exclamationmark.triangle").font(.system(size: 11)).foregroundStyle(Island.warning)
+                            .fixedSize(horizontal: false, vertical: true).scrollRow("attachments.problem")
+                            .accessibilityLabel(message)
+                    } else if let notice = model.attachmentNotice, model.attachmentNoticeKey == ref?.key {
+                        Label(notice, systemImage: "checkmark.circle").font(.system(size: 11)).foregroundStyle(Island.secondary)
+                            .fixedSize(horizontal: false, vertical: true).scrollRow("attachments.notice")
+                            .accessibilityLabel(notice)
+                    }
                     CompletenessLine(model: model).scrollRow("completeness")
                     AutoCaptureStatusLine(model: model).scrollRow("autocapture")
                     if !suggestions.isEmpty {
                         HStack {
                             Text("From this turn").font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.tertiary)
                             Spacer()
-                            if suggestions.count > 1 {
-                                Button("Add all") { model.acceptAll(suggestions) }.buttonStyle(.plain)
+                            if suggestions.filter(\.attachable).count > 1 {
+                                Button("Add all") { model.acceptAll(suggestions.filter(\.attachable)) }.buttonStyle(.plain)
                                     .font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
                             }
                         }
@@ -723,10 +734,6 @@ struct AttachmentsCard: View {
                     if suggestions.isEmpty && files.isEmpty && materials.isEmpty {
                         Text("Nothing attached. Documents, images and mockups the agent prepares appear here.")
                             .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let message = model.attachmentMessage {
-                        Text(message).font(.system(size: 11)).foregroundStyle(Island.warning)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(.trailing, 4)
@@ -944,16 +951,17 @@ struct SuggestionRow: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(suggestion.title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
                     .lineLimit(1).truncationMode(.middle)
-                Text(suggestion.exists || suggestion.kind == .mockup ? suggestion.reason : "File no longer exists")
-                    .font(.system(size: 11)).foregroundStyle(suggestion.exists || suggestion.kind == .mockup ? Island.tertiary : Island.warning)
+                Text(suggestion.notAttachableReason ?? suggestion.reason + " · not attached yet")
+                    .font(.system(size: 11)).foregroundStyle(suggestion.attachable ? Island.tertiary : Island.warning)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
             Button("Add") { model.accept(suggestion) }
                 .buttonStyle(.plain).font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.accent)
-                .disabled(!(suggestion.exists || suggestion.kind == .mockup))
+                .disabled(!suggestion.attachable)
                 .islandHelp(suggestion.kind == .mockup ? "Add this mockup"
-                      : "Attach a copy of this file")
+                      : "Attach a copy of this file to this answer (selected for Copy with Context and drag)")
+                .accessibilityLabel("Attach \(suggestion.title)")
         }
         .frame(height: 30)
     }

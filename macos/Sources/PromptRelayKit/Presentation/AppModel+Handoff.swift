@@ -130,6 +130,9 @@ extension AppModel {
                 }
             }
             self.attachmentMessage = problems.isEmpty ? nil : problems.joined(separator: "; ")
+            let added = urls.count - problems.count
+            self.attachmentNotice = problems.isEmpty && added > 0
+                ? "Attached \(added) file\(added == 1 ? "" : "s") — selected for Copy with Context and drag." : nil
             self.attachmentsVersion += 1
         }
     }
@@ -170,6 +173,15 @@ extension AppModel {
         public let path: String?
         public let exists: Bool
         public let artifact: ObservedArtifact?
+
+        /// Phase 16: Add can work — the file is there and of a kind Prompt
+        /// Relay keeps (text document, PDF or image); mockups always.
+        public var attachable: Bool { kind == .mockup || (exists && ReportStore.canKeep(name: title)) }
+        /// Why Add is not offered, in words; nil when it is.
+        public var notAttachableReason: String? {
+            if attachable { return nil }
+            return exists ? "Not attachable — Prompt Relay keeps text, PDF and images" : "File no longer exists — cannot be attached"
+        }
     }
 
     /// Only what Claude showed explicitly (SendUserFile, Artifact) or wrote
@@ -177,19 +189,64 @@ extension AppModel {
     public var suggestions: [Suggestion] {
         guard selectedImport == nil, let ref = currentRef, let show = detail.value,
               show.turn.index == selectedTurnIndex, let observed = show.turn.observedDetail else { return [] }
-        let root = projectPath(containing: show.session.project.path) ?? show.session.project.path
-        return Self.suggestions(observed: observed, answer: show.turn.finalResponse?.text ?? "", root: root,
-                                addedPaths: Set(attachments(for: ref).compactMap(\.originalPath)),
-                                addedURLs: Set(materials(for: ref).compactMap(\.url)),
-                                exists: { FileManager.default.fileExists(atPath: $0) })
+        let roots = attachmentRoots(for: show)
+        let added = Set(attachments(for: ref).compactMap(\.originalPath))
+        let urls = Set(materials(for: ref).compactMap(\.url))
+        // Phase 16: "already attached" is judged by the same display path the
+        // attachment was stored under (auto-prepared results use the folder
+        // the agent ran in, or the logical project containing it). Before, a
+        // separate Git worktree's files were compared in another form, so an
+        // attached file stayed listed and Add silently did nothing.
+        let isAdded: (String) -> Bool = { path in
+            added.contains(Self.displayPath(path, root: roots.display)) || added.contains(Self.displayPath(path, root: roots.legacy))
+        }
+        let exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
+        guard let cwd = roots.cwd else {
+            return Self.suggestions(observed: observed, answer: show.turn.finalResponse?.text ?? "", root: roots.legacy,
+                                    addedPaths: added, addedURLs: urls, exists: exists, isAdded: isAdded)
+        }
+        // Names in the answer resolve in the agent's own folder first (its
+        // worktree), then in the project — never to another checkout's copy.
+        var out = Self.suggestions(observed: observed, answer: show.turn.finalResponse?.text ?? "", root: cwd,
+                                   addedPaths: added, addedURLs: urls, exists: exists, isAdded: isAdded)
+        if let display = roots.display, display != cwd {
+            let known = Set(out.map(\.id).map { $0.split(separator: ":", maxSplits: 1).last.map(String.init) ?? $0 })
+            out += Self.suggestions(observed: observed, answer: show.turn.finalResponse?.text ?? "", root: display,
+                                    addedPaths: added, addedURLs: urls, exists: exists, isAdded: isAdded)
+                .filter { !known.contains($0.path ?? "") && !known.contains($0.artifact?.url ?? "\u{0}") }
+        }
+        return out
+    }
+
+    /// Phase 16: the folders a turn's files are judged against. `cwd`: where
+    /// the agent ran. `display`: the root attachment paths are shown and
+    /// stored relative to — the logical project when the agent's folder is
+    /// inside it, else the agent's folder (as `ReportStore.prepareResults`).
+    /// `legacy`: the root used before Phase 16 (records stored then still
+    /// count as added).
+    struct AttachmentRoots { let cwd: String?; let display: String?; let legacy: String? }
+
+    func attachmentRoots(for show: ShowData) -> AttachmentRoots {
+        let cwd = show.session.project.path
+        let legacy = projectPath(containing: cwd) ?? cwd
+        return AttachmentRoots(cwd: cwd, display: Self.displayRoot(cwd: cwd, logical: show.session.logicalProject?.path ?? legacy),
+                               legacy: legacy)
+    }
+
+    /// The logical project when `cwd` is inside it, else `cwd`.
+    static func displayRoot(cwd: String?, logical: String?) -> String? {
+        guard let cwd else { return logical }
+        return logical.flatMap { path(cwd, isInside: $0) ? $0 : nil } ?? cwd
     }
 
     static func suggestions(observed: ObservedDetail, answer: String, root: String?, addedPaths: Set<String>,
-                            addedURLs: Set<String>, exists: (String) -> Bool) -> [Suggestion] {
+                            addedURLs: Set<String>, exists: (String) -> Bool,
+                            isAdded: ((String) -> Bool)? = nil) -> [Suggestion] {
         var out: [Suggestion] = []
         var seen = Set<String>()
         func display(_ path: String) -> String { displayPath(path, root: root) }
-        for path in observed.shownFiles where !seen.contains(path) && !addedPaths.contains(display(path)) {
+        let added: (String) -> Bool = isAdded ?? { addedPaths.contains(display($0)) }
+        for path in observed.shownFiles where !seen.contains(path) && !added(path) {
             seen.insert(path)
             out.append(Suggestion(id: "shown:" + path, kind: .file, title: (path as NSString).lastPathComponent,
                                   reason: "The agent showed it to you", path: path, exists: exists(path), artifact: nil))
@@ -203,7 +260,7 @@ extension AppModel {
                                   reason: "Claude published it as an artifact", path: source,
                                   exists: source.map(exists) ?? false, artifact: artifact))
         }
-        for file in observed.filesChanged where !seen.contains(file.path) && !addedPaths.contains(display(file.path)) {
+        for file in observed.filesChanged where !seen.contains(file.path) && !added(file.path) {
             let relative = display(file.path)
             let name = (file.path as NSString).lastPathComponent
             // Named in the answer: the relative path, or the file name as a whole word.
@@ -227,7 +284,7 @@ extension AppModel {
             let token = ns.substring(with: match.range(at: 1))
             let path = token.hasPrefix("/") ? token : base + (token.hasPrefix("./") ? String(token.dropFirst(2)) : token)
             let standard = (path as NSString).standardizingPath
-            guard standard.hasPrefix(base), !seen.contains(standard), !addedPaths.contains(display(standard)),
+            guard standard.hasPrefix(base), !seen.contains(standard), !added(standard),
                   exists(standard) else { continue }
             seen.insert(standard)
             out.append(Suggestion(id: "found:" + standard, kind: .file, title: (standard as NSString).lastPathComponent,
@@ -248,21 +305,45 @@ extension AppModel {
 
     /// The user's click on a suggestion: a snapshot of the file, or a mockup
     /// record (its declared state names are read from the source, never run).
-    public func accept(_ suggestion: Suggestion) {
-        guard let ref = currentRef, let store = reportStore else { return }
-        let root = detail.value.flatMap { projectPath(containing: $0.session.project.path) ?? $0.session.project.path }
+    ///
+    /// Phase 16: never silent. Every outcome is said in `attachmentNotice`
+    /// (added and selected for hand-off; already attached; why it failed),
+    /// and only a record actually written to Prompt Relay's store counts as
+    /// "attached". Returns that outcome.
+    @discardableResult
+    public func accept(_ suggestion: Suggestion) -> AttachOutcome {
+        guard let ref = currentRef else { return report(.failed(suggestion.title, "no answer is selected")) }
+        guard let store = reportStore else { return report(.failed(suggestion.title, "Prompt Relay's attachment folder is not available")) }
+        let roots = detail.value.map(attachmentRoots(for:))
+        let root = roots?.display
+        let outcome: AttachOutcome
         switch suggestion.kind {
         case .file:
-            guard let path = suggestion.path else { return }
+            guard let path = suggestion.path else { return report(.failed(suggestion.title, "its location is not known")) }
+            guard FileManager.default.fileExists(atPath: path) else {
+                return report(.failed(suggestion.title, "the file no longer exists at \(Self.displayPath(path, root: root))"))
+            }
+            let before = Set(store.attachments(for: ref).map(\.id))
             do {
-                try store.addFile(from: URL(fileURLWithPath: path), to: ref,
-                                  source: suggestion.id.hasPrefix("found:") ? .named : .agentObserved,
-                                  displayPath: Self.displayPath(path, root: root))
-                attachmentMessage = nil
+                let stored = try store.addFile(from: URL(fileURLWithPath: path), to: ref,
+                                               source: suggestion.id.hasPrefix("found:") ? .named : .agentObserved,
+                                               displayPath: Self.displayPath(path, root: root))
+                // Confirm it is in the store now, not just returned.
+                guard store.attachments(for: ref).contains(where: { $0.id == stored.id }) else {
+                    outcome = .failed(suggestion.title, "it could not be saved in Prompt Relay's folder"); break
+                }
+                if before.contains(stored.id) {
+                    // The same bytes were attached already (perhaps under another name):
+                    // make sure it goes with the hand-off, which is what Add asks for.
+                    if !stored.isSelected { try? store.setSelected(stored.id, true) }
+                    outcome = .alreadyAttached(stored.originalFilename)
+                } else {
+                    outcome = .added(stored.originalFilename)
+                }
             } catch let error as ReportStoreError {
-                attachmentMessage = Self.message(for: error, file: suggestion.title)
+                outcome = .failed(suggestion.title, Self.reason(for: error))
             } catch {
-                attachmentMessage = "\(suggestion.title) could not be read"
+                outcome = .failed(suggestion.title, "it could not be read")
             }
         case .mockup:
             let artifact = suggestion.artifact
@@ -278,15 +359,75 @@ extension AppModel {
                                           version: nil, addedAt: ReportStore.now(),
                                           provenance: "Published by Claude in this turn (Artifact tool) [Confirmed locally]",
                                           selected: true, states: states)
-            do { try store.addMaterial(material); attachmentMessage = nil } catch {
-                attachmentMessage = "The mockup could not be saved."
+            do {
+                let saved = try store.addMaterial(material)
+                outcome = saved.id == material.id ? .added(saved.title) : .alreadyAttached(saved.title)
+            } catch {
+                outcome = .failed(suggestion.title, "the mockup could not be saved")
             }
         }
-        attachmentsVersion += 1
+        return report(outcome)
     }
 
-    public func acceptAll(_ suggestions: [Suggestion]) {
-        for s in suggestions where s.exists || s.kind == .mockup { accept(s) }
+    /// What happened to one Add (Phase 16).
+    public enum AttachOutcome: Equatable, Sendable {
+        case added(String)
+        case alreadyAttached(String)
+        case failed(String, String)
+
+        public var isFailure: Bool { if case .failed = self { return true } else { return false } }
+
+        var sentence: String {
+            switch self {
+            case .added(let name): return "Attached \(name) — selected for Copy with Context and drag."
+            case .alreadyAttached(let name): return "\(name) is already attached to this answer (selected)."
+            case .failed(let name, let why): return "\(name) was not attached: \(why)."
+            }
+        }
+    }
+
+    @discardableResult
+    private func report(_ outcome: AttachOutcome) -> AttachOutcome {
+        attachmentMessage = outcome.isFailure ? outcome.sentence : nil
+        attachmentNotice = outcome.isFailure ? nil : outcome.sentence
+        attachmentsVersion += 1
+        return outcome
+    }
+
+    /// Add all: every suggestion, then one honest summary — how many were
+    /// attached, and each one that was not, with its reason.
+    @discardableResult
+    public func acceptAll(_ suggestions: [Suggestion]) -> [AttachOutcome] {
+        // Files that cannot be attached are listed as such, not tried.
+        let outcomes = suggestions.map { s -> AttachOutcome in
+            if let why = s.notAttachableReason { return .failed(s.title, why.lowercased().replacingOccurrences(of: " — ", with: ": ")) }
+            return accept(s)
+        }
+        let failures = outcomes.filter(\.isFailure)
+        let attached = outcomes.count - failures.count
+        let head = attached == outcomes.count
+            ? "Attached \(attached) file\(attached == 1 ? "" : "s") — selected for Copy with Context and drag."
+            : "Attached \(attached) of \(outcomes.count)."
+        attachmentNotice = failures.isEmpty ? head : nil
+        attachmentMessage = failures.isEmpty ? nil : ([head] + failures.map(\.sentence)).joined(separator: " ")
+        attachmentsVersion += 1
+        return outcomes
+    }
+
+    /// The reason part of `message(for:file:)`, for "X was not attached: …".
+    static func reason(for error: ReportStoreError) -> String {
+        switch error {
+        case .notAnImage: return "it is not an image"
+        case .tooLarge: return "it is larger than 50 MB"
+        case .documentTooLarge: return "text documents can be at most 1 MB"
+        case .noPermission: return "macOS does not allow Prompt Relay to read it"
+        case .damagedImage: return "it is damaged or not a readable image"
+        case .unreadable: return "it could not be read (moved, deleted or a folder?)"
+        case .writeFailed: return "it could not be saved in Prompt Relay's folder"
+        case .removeFailed: return "it could not be saved"
+        case .empty: return "it is empty"
+        case .unsupported: return "Prompt Relay keeps text documents, PDFs and images, not this kind of file"
+        }
     }
 
     // MARK: Adding files

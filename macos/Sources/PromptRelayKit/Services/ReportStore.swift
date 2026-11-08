@@ -1,3 +1,4 @@
+import Darwin
 import CoreGraphics
 import CryptoKit
 import Foundation
@@ -17,6 +18,8 @@ public enum ReportStoreError: Error, Equatable, Sendable {
     case removeFailed
     /// Not an image, a PDF or a UTF-8 text document Prompt Relay keeps.
     case unsupported(String)
+    /// Phase 16: a text document over `maxDocumentBytes` (was reported as "unsupported").
+    case documentTooLarge(String)
 }
 
 /// Prompt Relay's own data, next to the Core's but separate from it:
@@ -157,6 +160,34 @@ public final class ReportStore {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
+    // MARK: Phase 16 — one writer at a time across processes (S8)
+
+    private var lockDepth = 0
+    private var lockFD: Int32 = -1
+
+    /// Runs `body` holding an exclusive advisory lock on `<root>/.store.lock`.
+    /// The indexes (`attachments.json`, `materials.json`, the prepared-results
+    /// ledger) are read, changed and written whole; two running copies
+    /// (a Debug and a Release build both preparing a new answer's files)
+    /// could each write over the other's change. With the lock the second
+    /// writer reads the first one's result. Re-entrant in this process; if
+    /// the lock cannot be taken (an unwritable folder), runs as before.
+    func withStoreLock<T>(_ body: () throws -> T) rethrows -> T {
+        if lockDepth == 0 {
+            try? fm.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            let fd = Darwin.open(root.appendingPathComponent(".store.lock").path, O_RDWR | O_CREAT | O_CLOEXEC, 0o600)
+            if fd >= 0 {
+                if flock(fd, LOCK_EX) == 0 { lockFD = fd } else { Darwin.close(fd) }
+            }
+        }
+        lockDepth += 1
+        defer {
+            lockDepth -= 1
+            if lockDepth == 0, lockFD >= 0 { flock(lockFD, LOCK_UN); Darwin.close(lockFD); lockFD = -1 }
+        }
+        return try body()
+    }
+
     // MARK: Imports
 
     /// Every imported report, newest first. Unreadable files are skipped.
@@ -233,44 +264,55 @@ public final class ReportStore {
     /// image added twice to a report is kept once.
     @discardableResult
     public func addAttachment(from source: URL, to ref: ReportRef) throws -> ReportAttachment {
-        let name = source.lastPathComponent
-        if let type = UTType(filenameExtension: source.pathExtension), !type.conforms(to: .image) {
-            throw ReportStoreError.notAnImage(name)
+        try withStoreLock {
+            let name = source.lastPathComponent
+            if let type = UTType(filenameExtension: source.pathExtension), !type.conforms(to: .image) {
+                throw ReportStoreError.notAnImage(name)
+            }
+            if source.pathExtension.isEmpty { throw ReportStoreError.notAnImage(name) }
+            let size = (try? fm.attributesOfItem(atPath: source.path)[.size] as? Int) ?? 0
+            guard size <= Self.maxAttachmentBytes else { throw ReportStoreError.tooLarge(name) }
+            let data: Data
+            do { data = try Data(contentsOf: source) } catch let error as CocoaError where error.code == .fileReadNoPermission {
+                throw ReportStoreError.noPermission(name)
+            } catch {
+                throw ReportStoreError.unreadable(name)
+            }
+            guard let type = Self.imageType(of: data) else { throw ReportStoreError.damagedImage(name) }
+            let digest = Self.sha256(data)
+            var index = persistedAttachments()
+            if let existing = index.first(where: { $0.reportKey == ref.key && $0.sha256 == digest }) { return existing }
+            try ensure(attachmentsDir)
+            let id = UUID().uuidString.lowercased()
+            let stored = "\(id).\(type.preferredFilenameExtension ?? "img")"
+            try write(data, to: attachmentsDir.appendingPathComponent(stored))
+            let attachment = ReportAttachment(id: id, reportKey: ref.key, originalFilename: name, storedFilename: stored,
+                                              mimeType: type.preferredMIMEType ?? "image/*", byteCount: data.count,
+                                              sha256: digest, addedAt: Self.now(), provenance: "Added by you from a file on this Mac")
+            index.append(attachment)
+            try saveIndex(index)
+            return attachment
         }
-        if source.pathExtension.isEmpty { throw ReportStoreError.notAnImage(name) }
-        let size = (try? fm.attributesOfItem(atPath: source.path)[.size] as? Int) ?? 0
-        guard size <= Self.maxAttachmentBytes else { throw ReportStoreError.tooLarge(name) }
-        let data: Data
-        do { data = try Data(contentsOf: source) } catch let error as CocoaError where error.code == .fileReadNoPermission {
-            throw ReportStoreError.noPermission(name)
-        } catch {
-            throw ReportStoreError.unreadable(name)
-        }
-        guard let type = Self.imageType(of: data) else { throw ReportStoreError.damagedImage(name) }
-        let digest = Self.sha256(data)
-        var index = persistedAttachments()
-        if let existing = index.first(where: { $0.reportKey == ref.key && $0.sha256 == digest }) { return existing }
-        try ensure(attachmentsDir)
-        let id = UUID().uuidString.lowercased()
-        let stored = "\(id).\(type.preferredFilenameExtension ?? "img")"
-        try write(data, to: attachmentsDir.appendingPathComponent(stored))
-        let attachment = ReportAttachment(id: id, reportKey: ref.key, originalFilename: name, storedFilename: stored,
-                                          mimeType: type.preferredMIMEType ?? "image/*", byteCount: data.count,
-                                          sha256: digest, addedAt: Self.now(), provenance: "Added by you from a file on this Mac")
-        index.append(attachment)
-        try saveIndex(index)
-        return attachment
     }
 
     // MARK: Typed files (Phase 5, ADR-016)
 
     public static let maxDocumentBytes = 1024 * 1024
     /// Text formats kept as documents (the bytes must also be UTF-8).
-    static let textExtensions: Set<String> = [
+    nonisolated static let textExtensions: Set<String> = [
         "md", "markdown", "txt", "text", "json", "jsonl", "csv", "tsv", "yaml", "yml", "toml", "xml", "html", "htm",
         "css", "js", "mjs", "ts", "tsx", "jsx", "swift", "py", "rb", "go", "rs", "java", "kt", "c", "h", "m", "mm",
         "cpp", "hpp", "sh", "zsh", "bash", "sql", "log", "ini", "conf", "cfg", "plist", "diff", "patch", "rst",
     ]
+
+    /// Phase 16: whether a file of this name can be kept at all, before
+    /// reading it — so the UI says "cannot be attached" up front instead of
+    /// offering an Add that can only fail. The bytes still decide on Add.
+    public nonisolated static func canKeep(name: String) -> Bool {
+        let ext = (name as NSString).pathExtension.lowercased()
+        if textExtensions.contains(ext) || ext == "pdf" { return true }
+        return UTType(filenameExtension: ext)?.conforms(to: .image) ?? false
+    }
 
     /// What a file is, from its bytes (and, for text, its extension).
     static func classify(_ data: Data, name: String) -> (AttachmentKind, UTType)? {
@@ -312,37 +354,40 @@ public final class ReportStore {
     @discardableResult
     public func addData(_ data: Data, name: String, to ref: ReportRef, source: AttachmentSource,
                         displayPath: String? = nil, mockupID: String? = nil, stateID: String? = nil, sourceProvider: AgentProvider? = nil) throws -> ReportAttachment {
-        guard !data.isEmpty else { throw ReportStoreError.empty }
-        guard let (kind, type) = Self.classify(data, name: name) else {
-            let ext = (name as NSString).pathExtension.lowercased()
-            if let t = UTType(filenameExtension: ext), t.conforms(to: .image) { throw ReportStoreError.damagedImage(name) }
-            throw ReportStoreError.unsupported(name)
+        try withStoreLock {
+            guard !data.isEmpty else { throw ReportStoreError.empty }
+            guard let (kind, type) = Self.classify(data, name: name) else {
+                let ext = (name as NSString).pathExtension.lowercased()
+                if let t = UTType(filenameExtension: ext), t.conforms(to: .image) { throw ReportStoreError.damagedImage(name) }
+                if Self.textExtensions.contains(ext), data.count > Self.maxDocumentBytes { throw ReportStoreError.documentTooLarge(name) }
+                throw ReportStoreError.unsupported(name)
+            }
+            let digest = Self.sha256(data)
+            var index = persistedAttachments()
+            if let existing = index.first(where: { $0.reportKey == ref.key && $0.sha256 == digest && $0.mockupID == mockupID
+                                                   && $0.stateID == stateID && (source != .agentResult || $0.originalPath == displayPath) }) {
+                return existing
+            }
+            try ensure(attachmentsDir)
+            let id = UUID().uuidString.lowercased()
+            let ext = kind == .document ? ((name as NSString).pathExtension.isEmpty ? "txt" : (name as NSString).pathExtension.lowercased())
+                : (type.preferredFilenameExtension ?? "bin")
+            let stored = "\(id).\(ext)"
+            try write(data, to: attachmentsDir.appendingPathComponent(stored))
+            var attachment = ReportAttachment(id: id, reportKey: ref.key, originalFilename: name, storedFilename: stored,
+                                              mimeType: type.preferredMIMEType ?? (kind == .document ? "text/plain" : "application/octet-stream"),
+                                              byteCount: data.count, sha256: digest, addedAt: Self.now(),
+                                              provenance: Self.provenance(source))
+            attachment.kind = kind
+            attachment.source = source
+            attachment.sourceProvider = sourceProvider
+            attachment.originalPath = displayPath
+            attachment.mockupID = mockupID
+            attachment.stateID = stateID
+            index.append(attachment)
+            try saveIndex(index)
+            return attachment
         }
-        let digest = Self.sha256(data)
-        var index = persistedAttachments()
-        if let existing = index.first(where: { $0.reportKey == ref.key && $0.sha256 == digest && $0.mockupID == mockupID
-                                               && $0.stateID == stateID && (source != .agentResult || $0.originalPath == displayPath) }) {
-            return existing
-        }
-        try ensure(attachmentsDir)
-        let id = UUID().uuidString.lowercased()
-        let ext = kind == .document ? ((name as NSString).pathExtension.isEmpty ? "txt" : (name as NSString).pathExtension.lowercased())
-            : (type.preferredFilenameExtension ?? "bin")
-        let stored = "\(id).\(ext)"
-        try write(data, to: attachmentsDir.appendingPathComponent(stored))
-        var attachment = ReportAttachment(id: id, reportKey: ref.key, originalFilename: name, storedFilename: stored,
-                                          mimeType: type.preferredMIMEType ?? (kind == .document ? "text/plain" : "application/octet-stream"),
-                                          byteCount: data.count, sha256: digest, addedAt: Self.now(),
-                                          provenance: Self.provenance(source))
-        attachment.kind = kind
-        attachment.source = source
-        attachment.sourceProvider = sourceProvider
-        attachment.originalPath = displayPath
-        attachment.mockupID = mockupID
-        attachment.stateID = stateID
-        index.append(attachment)
-        try saveIndex(index)
-        return attachment
     }
 
     static func provenance(_ source: AttachmentSource) -> String {
@@ -361,11 +406,13 @@ public final class ReportStore {
 
     /// Include or exclude an attachment from Copy for ChatGPT and the hand-off.
     public func setSelected(_ id: String, _ selected: Bool) throws {
-        if let i = ephemeral.firstIndex(where: { $0.id == id }) { ephemeral[i].selected = selected; return }
-        var index = persistedAttachments()
-        guard let i = index.firstIndex(where: { $0.id == id }) else { return }
-        index[i].selected = selected
-        try saveIndex(index)
+        try withStoreLock {
+            if let i = ephemeral.firstIndex(where: { $0.id == id }) { ephemeral[i].selected = selected; return }
+            var index = persistedAttachments()
+            guard let i = index.firstIndex(where: { $0.id == id }) else { return }
+            index[i].selected = selected
+            try saveIndex(index)
+        }
     }
 
     /// The original changed since the snapshot (or is gone): for display.
@@ -395,60 +442,68 @@ public final class ReportStore {
     /// Adds a link or mockup; the same URL (or source) for a report is kept once.
     @discardableResult
     public func addMaterial(_ material: ReportMaterial) throws -> ReportMaterial {
-        var list = allMaterials()
-        if let existing = list.first(where: { $0.reportKey == material.reportKey && $0.kind == material.kind
-                                              && (($0.url != nil && $0.url == material.url)
-                                                  || ($0.url == nil && $0.sourcePath != nil && $0.sourcePath == material.sourcePath)) }) {
-            return existing
+        try withStoreLock {
+            var list = allMaterials()
+            if let existing = list.first(where: { $0.reportKey == material.reportKey && $0.kind == material.kind
+                                                  && (($0.url != nil && $0.url == material.url)
+                                                      || ($0.url == nil && $0.sourcePath != nil && $0.sourcePath == material.sourcePath)) }) {
+                return existing
+            }
+            list.append(material)
+            try saveMaterials(list)
+            return material
         }
-        list.append(material)
-        try saveMaterials(list)
-        return material
     }
 
     public func updateMaterial(_ material: ReportMaterial) throws {
-        var list = allMaterials()
-        guard let i = list.firstIndex(where: { $0.id == material.id }) else { return }
-        list[i] = material
-        try saveMaterials(list)
+        try withStoreLock {
+            var list = allMaterials()
+            guard let i = list.firstIndex(where: { $0.id == material.id }) else { return }
+            list[i] = material
+            try saveMaterials(list)
+        }
     }
 
     /// Removes a link or mockup and the state images stored for it.
     public func removeMaterial(_ id: String) throws {
-        var list = allMaterials()
-        guard let material = list.first(where: { $0.id == id }) else { return }
-        list.removeAll { $0.id == id }
-        do { try saveMaterials(list) } catch { throw ReportStoreError.removeFailed }
-        for attachment in allAttachments() where attachment.mockupID == material.id { try? removeAttachment(attachment.id) }
+        try withStoreLock {
+            var list = allMaterials()
+            guard let material = list.first(where: { $0.id == id }) else { return }
+            list.removeAll { $0.id == id }
+            do { try saveMaterials(list) } catch { throw ReportStoreError.removeFailed }
+            for attachment in allAttachments() where attachment.mockupID == material.id { try? removeAttachment(attachment.id) }
+        }
     }
 
     /// Stores an image for one state of a mockup (replacing an earlier one).
     @discardableResult
     public func setStateImage(from url: URL, mockupID: String, stateID: String) throws -> ReportMaterial {
-        var list = allMaterials()
-        guard let i = list.firstIndex(where: { $0.id == mockupID }),
-              let s = list[i].states.firstIndex(where: { $0.id == stateID }) else { throw ReportStoreError.writeFailed }
-        let ref = Self.ref(forKey: list[i].reportKey)
-        let previous = list[i].states[s].attachmentID
-        let attachment: ReportAttachment
-        do {
-            attachment = try addFile(from: url, to: ref, source: .you, mockupID: mockupID, stateID: stateID)
-        } catch {
-            list[i].states[s].status = .failed
-            list[i].states[s].failure = "the image could not be read"
-            try? saveMaterials(list)
-            throw error
+        try withStoreLock {
+            var list = allMaterials()
+            guard let i = list.firstIndex(where: { $0.id == mockupID }),
+                  let s = list[i].states.firstIndex(where: { $0.id == stateID }) else { throw ReportStoreError.writeFailed }
+            let ref = Self.ref(forKey: list[i].reportKey)
+            let previous = list[i].states[s].attachmentID
+            let attachment: ReportAttachment
+            do {
+                attachment = try addFile(from: url, to: ref, source: .you, mockupID: mockupID, stateID: stateID)
+            } catch {
+                list[i].states[s].status = .failed
+                list[i].states[s].failure = "the image could not be read"
+                try? saveMaterials(list)
+                throw error
+            }
+            guard attachment.effectiveKind == .image else {
+                try? removeAttachment(attachment.id)
+                throw ReportStoreError.notAnImage(url.lastPathComponent)
+            }
+            list[i].states[s].attachmentID = attachment.id
+            list[i].states[s].status = .captured
+            list[i].states[s].failure = nil
+            try saveMaterials(list)
+            if let previous, previous != attachment.id { try? removeAttachment(previous) }
+            return list[i]
         }
-        guard attachment.effectiveKind == .image else {
-            try? removeAttachment(attachment.id)
-            throw ReportStoreError.notAnImage(url.lastPathComponent)
-        }
-        list[i].states[s].attachmentID = attachment.id
-        list[i].states[s].status = .captured
-        list[i].states[s].failure = nil
-        try saveMaterials(list)
-        if let previous, previous != attachment.id { try? removeAttachment(previous) }
-        return list[i]
     }
 
     /// A ReportRef from its key (only the key is stored with a material).
@@ -476,13 +531,15 @@ public final class ReportStore {
     /// record uses it. The index is saved first, so a failure never leaves a
     /// record pointing at a deleted file.
     public func removeAttachment(_ id: String) throws {
-        if ephemeral.contains(where: { $0.id == id }) { dropEphemeral(id); return }
-        var index = persistedAttachments()
-        guard let attachment = index.first(where: { $0.id == id }) else { return }
-        index.removeAll { $0.id == id }
-        do { try saveIndex(index) } catch { throw ReportStoreError.removeFailed }
-        if !index.contains(where: { $0.storedFilename == attachment.storedFilename }), let url = fileURL(for: attachment) {
-            try? fm.removeItem(at: url)
+        try withStoreLock {
+            if ephemeral.contains(where: { $0.id == id }) { dropEphemeral(id); return }
+            var index = persistedAttachments()
+            guard let attachment = index.first(where: { $0.id == id }) else { return }
+            index.removeAll { $0.id == id }
+            do { try saveIndex(index) } catch { throw ReportStoreError.removeFailed }
+            if !index.contains(where: { $0.storedFilename == attachment.storedFilename }), let url = fileURL(for: attachment) {
+                try? fm.removeItem(at: url)
+            }
         }
     }
 

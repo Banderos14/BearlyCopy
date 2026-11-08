@@ -1692,6 +1692,13 @@ public final class AppModel {
     /// Bumped on every change so views showing attachments refresh.
     public internal(set) var attachmentsVersion = 0
     public internal(set) var attachmentMessage: String?
+    /// Phase 16: the last attachment action's success, in words ("Attached
+    /// X — selected for …"); `attachmentMessage` holds problems. Never both.
+    public internal(set) var attachmentNotice: String? {
+        didSet { attachmentNoticeKey = attachmentNotice == nil ? nil : currentRef?.key }
+    }
+    /// The answer the notice is about; shown only while that answer is open.
+    public internal(set) var attachmentNoticeKey: String?
 
     public func attachments(for ref: ReportRef?) -> [ReportAttachment] {
         _ = attachmentsVersion
@@ -1755,6 +1762,7 @@ public final class AppModel {
         switch error {
         case .notAnImage(let name): return "\(name) is not an image"
         case .tooLarge(let name): return "\(name) is larger than 50 MB"
+        case .documentTooLarge(let name): return "\(name) is a text document larger than 1 MB"
         case .noPermission(let name): return "\(name) could not be read: no permission"
         case .damagedImage(let name): return "\(name) is damaged or not a readable image"
         case .unreadable(let name): return "\(name) could not be read"
@@ -1771,6 +1779,7 @@ public final class AppModel {
         do {
             try reportStore?.removeAttachment(attachment.id)
             attachmentMessage = nil
+            attachmentNotice = nil
         } catch {
             attachmentMessage = "\(attachment.originalFilename) could not be removed. Try again."
         }

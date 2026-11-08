@@ -53,6 +53,11 @@ extension ReportStore {
     /// Persist successful discoveries, including files later removed by the user.
     /// Rediscovery must never reselect a checkbox or recreate a removed attachment.
     func prepareResults(_ show: ShowData) throws -> Int {
+        // Phase 16 (S8): the ledger and the index are read and written as one step.
+        try withStoreLock { try prepareResultsLocked(show) }
+    }
+
+    private func prepareResultsLocked(_ show: ShowData) throws -> Int {
         guard let cwd = show.session.project.path, let answer = show.turn.finalResponse?.text,
               let own = show.turn.observedDetail else { return 0 }
         // Phase 9.4: an intermediate Stop is not the result; its files are
