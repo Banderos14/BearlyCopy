@@ -240,13 +240,13 @@ class VersionTests(IsolatedTestCase):
         repo = Path(__file__).resolve().parent.parent
         plugin = json.loads((repo / "plugin" / ".claude-plugin" / "plugin.json").read_text())
         pbx = (repo / "macos" / "Xcode" / "PromptRelay.xcodeproj" / "project.pbxproj").read_text()
-        self.assertEqual(__version__, "0.6.0")   # 0.6.0: Phase 14 (hooks unchanged since 0.4.1; API v1, Context Pack v1)
+        self.assertEqual(__version__, "0.7.0")   # 0.7.0: Phase 16 daily-driver release (hooks unchanged since 0.4.1; API v1, Context Pack v1)
         self.assertEqual(plugin["version"], __version__)
         self.assertEqual(set(re.findall(r"MARKETING_VERSION = ([0-9.]+);", pbx)), {__version__})
         self.assertEqual(set(re.findall(r"CURRENT_PROJECT_VERSION = ([0-9.]+);", pbx)), {__version__})
         self.assertEqual(api.API_VERSION, 1)
         out = self.cli("--version")
-        self.assertIn(b"prompt-relay 0.6.0", out.stdout + out.stderr)
+        self.assertIn(b"prompt-relay 0.7.0", out.stdout + out.stderr)
         # The Context Pack format is versioned apart from the app (ADR-026).
         from prompt_relay import context_pack
         self.assertEqual((context_pack.FORMAT, context_pack.FORMAT_VERSION), ("prompt-relay-context-pack", 1))
