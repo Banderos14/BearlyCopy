@@ -121,3 +121,18 @@ Screen Recording grant, restart persistence — see
   nothing until it finishes.
 * Window links remain in memory (ADR-028): relink after each restart.
 * One known timing-sensitive test (above).
+
+## 9. Pre-install corrections (2026-11-09)
+
+| # | Issue | Fix | Test |
+|---|---|---|---|
+| C1 | `--no-build` could not install a build made before a docs-only commit (commit ≠ HEAD) | source rule: same commit, or an ancestor with no change since in `macos/Sources`, `macos/Resources`, `macos/Package.swift`, `bin`, `plugin`, build scripts, and a clean tree there; digest/signature/icon checks unchanged | `NoBuildSourceRuleTests` (3) |
+| C2 | `withStoreLock` ran the write when the lock could not be taken | throws `lockUnavailable`, nothing written | `noLockMeansNoUnprotectedWrite` (mutation-checked) |
+| C3 | copy happened after quitting; launch failure only advised `--rollback`; rollback chose by folder time and deleted the restored backup | staged copy before quit; reopen previous on copy/replace failure; automatic restore + reopen on launch failure; rollback by replacement stamp; all backups kept | 9 new installer tests |
+| C4 | `aHostWithoutSignalsKeepsItsLastConfirmedState` depended on wall time | `AppModel.clock`, fixed timestamps | full Swift Testing run 145/145 |
+
+Recovery per stage: build failure → nothing changed; verification failure →
+nothing changed; copy failure → nothing quit or replaced; final replacement
+failure → old app put back and reopened; launch failure after replacement →
+old app restored and reopened, new one kept as "(failed launch)" (no
+previous app: reported, new one left installed).

@@ -1,5 +1,23 @@
 # Status
 
+## 2026-11-09 — Phase 16 pre-install corrections (built `49ef5d3`, **not installed**)
+
+Fixed before the first real install: (1) `--no-build` required the build's
+commit to equal HEAD, so the proposed command could not run after a docs
+commit — now a build from an earlier commit is accepted only when nothing
+the app is built from changed since and the checkout is clean there (tested
+in a throwaway repo); (2) the attachment-store lock wrote unprotected when
+the lock could not be taken — now fails closed (`lockUnavailable`); (3)
+installer: the verified copy is staged before anything is quit, copy/replace
+failures reopen the previous app, a failed launch restores and reopens the
+previous app (failed one kept as "(failed launch)"), `--rollback` picks the
+most recently replaced version by name stamp (not folder time) and keeps all
+backups; (4) the time-dependent Phase 12.1 test uses a pinned clock. Python
+271+15 ×2 (3.14, 3.9.6), XCTest 358/0 (16 opt-in skips), Swift Testing
+145/145 in the full run, Xcode Debug/Release 0 warnings, packaged build
+`macos/build/Prompt Relay.app` 0.7.0 `49ef5d3` verified. Install command:
+`~/Projects/prompt-relay-phase16/scripts/install-local.sh --no-build`.
+
 ## 2026-11-09 — Phase 16: daily-driver release 0.7.0 (branch `phase/16-daily-driver`, built, **not installed**)
 
 Relay bear app icon drawn from `MascotView.shapes`, bundled identically by
