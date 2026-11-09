@@ -1,5 +1,28 @@
 # Status
 
+## 2026-11-09 — Phase 16: daily-driver release 0.7.0 (branch `phase/16-daily-driver`, built, **not installed**)
+
+Relay bear app icon drawn from `MascotView.shapes`, bundled identically by
+Xcode Debug/Release and `scripts/build-macos-app.sh`; bear in the menu bar;
+reopening the running app opens the island. Installer hardened (bundled-Core
+smoke test, icon/Release-id checks, verified copy before replacing,
+automatic put-back, Launch Services registration, launch verified by path,
+survival and commit, Debug copy asked never killed, `--status`/`--tidy` for
+the 0.2.0/0.3.0 copies found inside `~/Applications`, `--system`, `--sign`,
+`Update Prompt Relay.command`). Fixed: Add under "From this turn" could do
+nothing visible (duplicate bytes, errors below the fold, unattachable
+kinds); S8 confirmed as a real lost update between two running copies and
+fixed with a cross-process lock. Python 262+15 ×2 (3.14, 3.9.6; +13
+isolated installer tests), XCTest 358/0 (16 opt-in skips), Swift Testing
+143/144 in the full run — the one failure is a pre-existing time-based Phase
+12.1 test that stalled 33 s under load and passes 3/3 alone; Xcode Debug and
+Release BUILD SUCCEEDED, 0 compiler warnings; packaged build verified by
+`install-local.sh --dry-run`; isolated launch probe 0.16 s, ≈83 MB, 0 % idle
+CPU. Installed app still 0.4.1, plugin 0.4.1. [Phase 16](PHASE16.md) ·
+[acceptance](PHASE16_ACCEPTANCE.md). Next agreed stage: owner approves the
+install (and optionally `--tidy`, `--sign "Apple Development"`), then runs
+the 15 acceptance checks (Phase 17: acceptance and closure only).
+
 ## 2026-11-08 — Phase 15.2: product audit as a new user, screenshot reliability, safe Debug switch (not installed)
 
 Observed snapshot: an old Xcode Debug copy (`17844fe`, bundle id `.debug`,

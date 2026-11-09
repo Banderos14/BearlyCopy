@@ -90,6 +90,34 @@ hook contract are unchanged since 0.4.1, so the installed plugin 0.4.1
 keeps capturing everything (About says "older but compatible"); updating
 the plugin is optional and needs the owner's `claude plugin update`.
 
-## 7. Results
+## 7. Results (this Mac, 2026-11-08/09)
 
-See STATUS.md (2026-11-08, Phase 16) for the counts of this run.
+| Check | Result |
+|---|---|
+| Python unit + integrations, 3.14 | 262 OK (1 skip) + 15 OK |
+| Python unit + integrations, 3.9.6 | 262 OK (1 skip) + 15 OK |
+| Installer, isolated (`tests/test_install_local.py`) | 13/13 (part of the above) |
+| Hook latency (50 synthetic Stop) | median 38.7 ms, p95 40.4 ms; plugin launcher median 70.5 ms |
+| XCTest | 358 run, 0 failures, 16 opt-in skips |
+| Swift Testing | 144 tests: 143 passed, 1 failed in the full run — `aHostWithoutSignalsKeepsItsLastConfirmedState` (Phase 12.1, fixture "last event 10 s ago" went stale while the run stalled 33 s under load; code untouched by Phase 16); passes 3/3 alone. Not counted as passed. |
+| Phase 16 Swift tests | 12/12; mutation checks: no lock → S8 test fails; no duplicate detection → Add test fails; no put-back → installer test fails |
+| Xcode Debug / Release | BUILD SUCCEEDED, 0 compiler warnings; icon byte-identical to `macos/Resources/AppIcon.icns`; 0.7.0; signatures verify |
+| Packaged build (`install-local.sh --dry-run`) | verified (Release id, signature, version = Core, digest, icon) + smoke test verbatim; nothing changed. SwiftPM `-c release` took ≈61 min this time (machine busy) |
+| Launch probe (packaged app, temp data dir, background) | process in 0.16 s; RSS ≈86 → 83 MB; 0.0 % CPU idle, 0.21 s CPU in 30 s; stopped |
+| `git diff --check`, secret/personal-path scan | clean |
+
+**Not verified here (owner, macOS GUI):** Finder/Spotlight icon after a real
+install, quit/reopen from Applications, live capture, ChatGPT paste/drag,
+Screen Recording grant, restart persistence — see
+[PHASE16_ACCEPTANCE.md](PHASE16_ACCEPTANCE.md).
+
+## 8. Remaining risks
+
+* Ad-hoc signing: every update counts as a new app for Screen Recording
+  (toggle needed). `--sign "Apple Development"` fixes this locally; it is
+  the owner's choice (it uses their certificate). Not notarized: not for
+  other Macs.
+* The release build can be slow on a busy Mac; the installer replaces
+  nothing until it finishes.
+* Window links remain in memory (ADR-028): relink after each restart.
+* One known timing-sensitive test (above).
