@@ -307,4 +307,25 @@ struct Phase16StoreLockTests {
         #expect(flock(fd, LOCK_EX | LOCK_NB) == 0, "released afterwards")
         flock(fd, LOCK_UN)
     }
+
+    /// The lock cannot be taken: nothing is written, a clear error instead
+    /// (before, the change was written without protection).
+    @Test func noLockMeansNoUnprotectedWrite() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr16-nolock-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = ReportStore(root: root)
+        let ref = ReportRef.local(sessionKey: "k", turn: 1)
+        let seed = try store.addData(TypedAttachmentTests.png(.red), name: "seed.png", to: ref, source: .you)
+        let index = try Data(contentsOf: root.appendingPathComponent("attachments.json"))
+        store.lockURLOverride = root.appendingPathComponent("no-such-folder/.store.lock")
+        #expect(throws: ReportStoreError.lockUnavailable) {
+            try store.addData(TypedAttachmentTests.png(.blue), name: "blue.png", to: ref, source: .you)
+        }
+        #expect(throws: ReportStoreError.lockUnavailable) { try store.setSelected(seed.id, false) }
+        #expect(throws: ReportStoreError.lockUnavailable) { try store.removeAttachment(seed.id) }
+        #expect(try Data(contentsOf: root.appendingPathComponent("attachments.json")) == index, "index untouched")
+        let files = try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("attachments").path)
+        #expect(files.count == 1, "no orphan file written: \(files)")
+        #expect(AppModel.message(for: .lockUnavailable, file: "blue.png").contains("was not saved"))
+    }
 }

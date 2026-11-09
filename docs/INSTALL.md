@@ -50,19 +50,21 @@ scripts/install-local.sh               # same, then asks, installs to ~/Applicat
 |---|---|
 | Source | prints the branch, commit and subject it builds from; never pulls or downloads |
 | Build | `scripts/build-macos-app.sh` → `macos/build/Prompt Relay.app` (Release, ad-hoc signed, or `--sign "Apple Development"`). A failed build changes nothing |
+| Source | `--no-build`: the build must be from `HEAD`, or from an earlier commit when nothing the app is built from (`macos/Sources`, `macos/Resources`, `macos/Package.swift`, `bin`, `plugin`, the build scripts) changed since and the checkout is clean there |
 | Verify | Release bundle id (a Debug build is refused); signature; app version = bundled Core version; Core digest = recorded digest = this checkout; recorded commit = `HEAD`; the bear icon is bundled and named in Info.plist |
 | Smoke test | runs the **bundled** Core with a temporary data folder: a request and an answer (Cyrillic, emoji, a code fence, 3000 characters) must come back verbatim; your history is not touched |
 | Plan | new build, installed build (version, commit, signing), running copies, stray old copies in Applications, backup location, undo command |
 | Ask | `[y/N]` (or `--yes`). A running Debug build ("Prompt Relay Dev") would keep the notch: asked separately whether to quit it (`--quit-debug`) |
 | Quit | asks running copies to quit normally (like Quit in the menu) and waits 15 s; if one does not quit, stops and says how to quit it — never kills |
-| Install | copies next to the app under a hidden name and verifies the copy; only then moves the old app to `~/Library/Application Support/PromptRelay-AppBackups/` and the new one in place. If that last move fails, the old app is put back. Registers the app with Launch Services (Finder, Spotlight, Launchpad, icon) |
-| Launch | opens it; succeeds only when one Release copy runs **from the installed path**, is still running 3 s later, and the installed bundle reports the expected commit |
+| Stage | copies the new app next to the installed one and verifies the copy — **before** anything is quit. A failed copy changes nothing |
+| Install | moves the old app to `~/Library/Application Support/PromptRelay-AppBackups/` (named with version, commit and the time it was replaced) and the copy in place. If that move fails, the old app is put back (and reopened if it had been running). Registers the app with Launch Services (Finder, Spotlight, Launchpad, icon) |
+| Launch | opens it; succeeds only when one Release copy runs **from the installed path**, is still running 3 s later, and reports the expected commit. If it does not, the previous app is **put back and opened automatically**; the failed one is kept as "… (failed launch).app" |
 
 Other commands:
 
 ```bash
 scripts/install-local.sh --status         # installed build vs checkout, running copies, stray old copies
-scripts/install-local.sh --rollback       # restore the newest backup (asks; current app is backed up first)
+scripts/install-local.sh --rollback       # restore the most recently replaced version (asks; current app becomes a backup; no backup is deleted)
 scripts/install-local.sh --list-backups
 scripts/install-local.sh --tidy           # move old copies (e.g. "Prompt Relay.before-….app") out of Applications into the backups (asks)
 scripts/install-local.sh --system         # install into /Applications instead of ~/Applications (admin account)

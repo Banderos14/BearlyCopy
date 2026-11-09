@@ -764,6 +764,10 @@ public final class AppModel {
     /// turn never gets a Stop and would otherwise look busy forever).
     static let workingWindow: TimeInterval = 20 * 60
 
+    /// Phase 16: the time `readyIndicator` and Needs Input judge against
+    /// (tests pin it; the app uses the wall clock).
+    @ObservationIgnored var clock: () -> Date = Date.init
+
     public var readyIndicator: ReadyIndicator {
         if projects.error != nil, projects.value == nil { return .attention }
         // Phase 12.1: an agent blocked on the person comes first; the other
@@ -789,7 +793,7 @@ public final class AppModel {
             return .ready(sessions: Set(unseen.map(\.sessionKey)).count, automated: automated,
                           backgroundPending: answer.completion == .answerBackgroundRunning)
         }
-        let now = Date()
+        let now = clock()
         let working = allSessions.filter {
             $0.attention == nil && $0.lastTurn?.status == .awaitingResponse
                 && (Wording.date($0.lastEventAt).map { now.timeIntervalSince($0) < Self.workingWindow } ?? false)
@@ -1763,6 +1767,7 @@ public final class AppModel {
         case .notAnImage(let name): return "\(name) is not an image"
         case .tooLarge(let name): return "\(name) is larger than 50 MB"
         case .documentTooLarge(let name): return "\(name) is a text document larger than 1 MB"
+        case .lockUnavailable: return "\(file) was not saved: Prompt Relay's folder is busy or not writable. Try again"
         case .noPermission(let name): return "\(name) could not be read: no permission"
         case .damagedImage(let name): return "\(name) is damaged or not a readable image"
         case .unreadable(let name): return "\(name) could not be read"

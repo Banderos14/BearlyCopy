@@ -30,7 +30,8 @@ extension AppModel {
     /// A wait is unconfirmed when its newest signal is older than the window,
     /// or when a later conversation of the same agent profile in the same
     /// project shows activity after it (the person most likely moved on).
-    func isConfirmed(_ session: SessionSummary, now: Date = Date()) -> Bool {
+    func isConfirmed(_ session: SessionSummary, now: Date? = nil) -> Bool {
+        let now = now ?? clock()
         guard let attention = session.attention else { return false }
         let latest = attention.lastSignalAt ?? attention.since
         guard let at = Wording.date(latest), now.timeIntervalSince(at) < Self.waitConfirmationWindow else { return false }

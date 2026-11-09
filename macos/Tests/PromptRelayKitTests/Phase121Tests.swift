@@ -103,11 +103,18 @@ import Testing
 
     @Test func aHostWithoutSignalsKeepsItsLastConfirmedState() async throws {
         // Codex in Xcode: no waiting signal reaches Prompt Relay. Nothing is invented.
-        let (m, board) = model(core([Self.session("x", provider: "codex", host: "xcode", last: Self.now(minus: 10))]))
+        // Phase 16: fixed timestamps and a pinned clock — the result no longer
+        // depends on how long the run takes (it failed once after a 33 s stall).
+        let last = "2026-11-08T10:00:00.000Z"
+        let (m, board) = model(core([Self.session("x", provider: "codex", host: "xcode", last: last)]))
         defer { board.releaseGlobally() }
+        m.clock = { Wording.date("2026-11-08T10:00:10.000Z")! }
         await m.refreshNow()
-        #expect(m.readyIndicator == .working(sessions: 1))
+        #expect(m.readyIndicator == .working(sessions: 1), "got \(m.readyIndicator), projects error: \(String(describing: m.projects.error))")
         #expect(m.agentsNeedingInput.isEmpty)
+        // Still working an hour of wall time later? No: past the working window it is not shown as work.
+        m.clock = { Wording.date("2026-11-08T11:00:00.000Z")! }
+        #expect(m.readyIndicator != .working(sessions: 1))
     }
 
     @Test func notificationOncePerWaitNeverForWaitsFoundAtLaunch() async throws {

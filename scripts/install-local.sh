@@ -16,13 +16,19 @@
 #   --system          install into /Applications instead of ~/Applications (one location only)
 #   --sign IDENTITY   sign with this code-signing identity instead of ad-hoc, e.g.
 #                     --sign "Apple Development" (keeps Screen Recording permission across updates)
-#   --no-build        install macos/build/Prompt Relay.app as it is (it must match this checkout)
+#   --no-build        install macos/build/Prompt Relay.app as it is: built from HEAD, or from an
+#                     earlier commit when only files outside the app's sources changed since
 #   --no-launch       install without opening the app
 #   --skip-checks     skip the pre-install Core smoke test (not recommended)
 #
 # What it touches, and nothing else:
 #   ~/Applications/Prompt Relay.app (or /Applications with --system)  replaced, old copy kept as a backup
 #   ~/Library/Application Support/PromptRelay-AppBackups/              backups (never deleted by this script)
+# If anything fails before the new app is in place, the installed app is
+# untouched (and reopened if it had been quit). If the new app does not
+# start, the previous one is put back and opened, and the failed one is kept
+# in the backups marked "(failed launch)".
+#
 # It never touches history, settings or integrations
 # (~/Library/Application Support/PromptRelay, the app's preferences, Claude
 # Code / Codex configuration, plugins, hooks or trust records). It never
@@ -57,7 +63,7 @@ while [ $# -gt 0 ]; do
         --rollback) mode=rollback ;;
         --list-backups) mode=list ;;
         --tidy) mode=tidy ;;
-        -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,36p' "$0"; exit 0 ;;
         *) echo "unknown option: $1 (see --help)" >&2; exit 2 ;;
     esac
     shift
@@ -187,12 +193,37 @@ verify_bundle() { # app [1: must match this checkout] → checks, dies on failur
     case "$icon" in *.icns) ;; *) icon="$icon.icns" ;; esac
     [ -s "$app/Contents/Resources/$icon" ] || die "$app names the icon $icon but does not contain it"
     if [ "$against" = 1 ]; then
-        head=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+        check_source "$app"
         digest_repo=$(scripts/core-digest.sh "$repo")
-        [ "$(plist_get "$app" PRGitCommit)" = "$head" ] || die "the build is from $(plist_get "$app" PRGitCommit), the checkout is at $head — rebuild (drop --no-build)"
         [ "$digest_app" = "$digest_repo" ] || die "the bundled Core differs from this checkout's Core — rebuild"
     fi
     say "   verified: Release bundle id, signature ($(signing_of "$app")), version $version = Core $core_version, Core digest ${digest_app:0:12}…, icon $icon"
+}
+
+# Everything the app bundle is built from. A build from an earlier commit is
+# still this checkout's app when none of these changed since (for example
+# only docs/ did), the build was clean and the working tree is clean here.
+build_inputs="macos/Sources macos/Resources macos/Package.swift bin plugin scripts/build-macos-app.sh scripts/core-digest.sh"
+
+check_source() { # app → dies unless the bundle is built from this checkout's app sources
+    local app=$1 built_commit head full
+    built_commit=$(plist_get "$app" PRGitCommit)
+    head=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+    if [ "$built_commit" = "$head" ]; then
+        say "   source: built from $head = this checkout"
+        return 0
+    fi
+    full=$(git rev-parse --verify -q "${built_commit}^{commit}" 2>/dev/null || true)
+    [ -n "$full" ] && git merge-base --is-ancestor "$full" HEAD 2>/dev/null \
+        || die "the build is from $built_commit, which is not in this checkout's history (HEAD $head) — rebuild (drop --no-build)"
+    [ "$(plist_get "$app" PRGitDirty)" != yes ] || die "the build is from $built_commit with uncommitted changes, the checkout is at $head — rebuild (drop --no-build)"
+    # shellcheck disable=SC2086
+    [ -z "$(git status --porcelain -- $build_inputs)" ] || die "this checkout has uncommitted changes in the app's sources — commit them and rebuild"
+    # shellcheck disable=SC2086
+    if ! git diff --quiet "$full" HEAD -- $build_inputs; then
+        die "the build is from $built_commit; the app's sources changed since (HEAD $head) — rebuild (drop --no-build)"
+    fi
+    say "   source: built from $built_commit; HEAD $head differs only outside the app's sources ($(git diff --name-only "$full" HEAD | sed 's|/.*||' | sort -u | tr '\n' ' '))"
 }
 
 # The bundled Core, run from the bundle with an isolated, temporary data
@@ -257,54 +288,96 @@ backup_name() { # app, stamp → path in $backups
         "$(safe "$(plist_get "$1" PRGitCommit)")" "$2"
 }
 
-swap_in() { # source app → installs at $dest, keeping the old one as a backup
-    local src=$1 stamp backup="" tmp
-    stamp=$(date +%Y%m%d-%H%M%S)
-    tmp="$dest_dir/.Prompt Relay.app.installing-$stamp"
+# Install in three steps, so the installed app is untouched (and still
+# running) until a verified copy is ready next to it:
+#   stage_copy     copy the new app beside the destination and verify the copy
+#   replace_staged move the old app to the backups, the copy in; put back on failure
+#   launch_and_check / recover_after_launch_failure
+staged=""
+backup=""
+previous_was_running=0
+
+stage_copy() { # source app → $staged
+    local src=$1
     mkdir -p "$dest_dir" "$backups" || die "cannot create $dest_dir or $backups"
     chmod 700 "$backups"
     [ -w "$dest_dir" ] || die "$dest_dir is not writable by you$([ "$dest_dir" = "$system_apps" ] && echo ' (an administrator account is needed for /Applications; or install in ~/Applications without --system)')"
-    # 1. Copy next to the destination and verify the copy; the installed app
-    #    is untouched until the copy passes.
-    ditto "$src" "$tmp" || { rm -rf "$tmp"; die "copy failed (disk full?); nothing replaced"; }
-    if ! codesign --verify --strict "$tmp" 2>/dev/null \
-       || [ "$(scripts/core-digest.sh "$tmp/Contents/Resources/core" 2>/dev/null || true)" != "$(plist_get "$src" PRCoreDigest)" ]; then
-        rm -rf "$tmp"; die "the copied app does not verify; nothing replaced"
+    staged="$dest_dir/.Prompt Relay.app.installing-$(date +%Y%m%d-%H%M%S)"
+    if [ "${PROMPT_RELAY_TEST_FAIL_COPY:-0}" = 1 ] || ! ditto "$src" "$staged"; then
+        rm -rf "$staged"; staged=""; die "copying the new app failed (disk full?); nothing was quit or replaced"
     fi
-    # 2. Move the old app aside, then the new one in (renames on one volume).
+    if ! codesign --verify --strict "$staged" 2>/dev/null \
+       || [ "$(scripts/core-digest.sh "$staged/Contents/Resources/core" 2>/dev/null || true)" != "$(plist_get "$src" PRCoreDigest)" ]; then
+        rm -rf "$staged"; staged=""; die "the copied app does not verify; nothing was quit or replaced"
+    fi
+    say "== new app copied next to the installed one and verified"
+}
+
+reopen_previous() { # after a failure: start the old app again if it was running
+    if [ "$previous_was_running" = 1 ] && [ "$launch" = 1 ] && [ -d "$dest" ]; then
+        if [ "${PROMPT_RELAY_TEST_SIMULATE_LAUNCH:-}" = "" ]; then open "$dest" >/dev/null 2>&1 || true; fi
+        say "   the previous app was opened again"
+    fi
+}
+
+replace_staged() { # moves the old app to the backups and $staged into place
+    local stamp
+    stamp=$(date +%Y%m%d-%H%M%S)
+    backup=""
     if [ -d "$dest" ]; then
         backup=$(backup_name "$dest" "$stamp")
-        mv "$dest" "$backup" || { rm -rf "$tmp"; die "could not move the installed app aside; nothing replaced"; }
+        if ! mv "$dest" "$backup"; then
+            rm -rf "$staged"; staged=""; reopen_previous
+            die "could not move the installed app aside; nothing replaced"
+        fi
         unregister "$backup"
     fi
-    if [ "${PROMPT_RELAY_TEST_FAIL_SWAP:-0}" = 1 ] || ! mv "$tmp" "$dest"; then
+    if [ "${PROMPT_RELAY_TEST_FAIL_SWAP:-0}" = 1 ] || ! mv "$staged" "$dest"; then
         # Put the old app back exactly where it was.
-        if [ -n "$backup" ] && [ ! -e "$dest" ]; then mv "$backup" "$dest"; fi
-        rm -rf "$tmp"
+        if [ -n "$backup" ] && [ ! -e "$dest" ]; then mv "$backup" "$dest"; backup=""; fi
+        rm -rf "$staged"; staged=""
+        reopen_previous
         die "installing failed; the previous app was put back at $dest"
     fi
+    staged=""
     [ -z "$backup" ] || say "== previous app kept: $(tilde "$backup")"
     register "$dest"
     say "== installed $(tilde "$dest")"
 }
 
-launch_and_check() { # expected commit → verifies the launched process
-    local expected=$1 pids="" count others commit dbg
-    [ "$launch" = 1 ] || { say "== not launched (--no-launch). Open it from $(tilde "$dest_dir")."; return 0; }
-    open "$dest" || die "macOS could not open $dest"
+# Did the installed app start and keep running? Returns 1 (does not exit) on failure.
+launch_problem=""
+launched_ok() { # expected commit
+    local expected=$1 pids="" commit
+    launch_problem=""
+    case "${PROMPT_RELAY_TEST_SIMULATE_LAUNCH:-}" in
+        ok) return 0 ;;
+        fail) launch_problem="the app did not start within 15 s (simulated)"; return 1 ;;
+    esac
+    open "$dest" || { launch_problem="macOS could not open it"; return 1; }
     for _ in $(seq 1 30); do
         pids=$(installed_release_pids | tr '\n' ' ')
         [ -n "${pids// /}" ] && break
         sleep 0.5
     done
-    [ -n "${pids// /}" ] || die "the app did not start within 15 s. Open it from $(tilde "$dest_dir") yourself; if it does not start, roll back: scripts/install-local.sh --rollback"
+    [ -n "${pids// /}" ] || { launch_problem="the app did not start within 15 s"; return 1; }
     sleep 3   # still running a few seconds later (did not crash at start)
     pids=$(installed_release_pids | tr '\n' ' ')
-    [ -n "${pids// /}" ] || die "the app started but quit within 3 s. Roll back with: scripts/install-local.sh --rollback"
+    [ -n "${pids// /}" ] || { launch_problem="the app started but quit within 3 s"; return 1; }
+    commit=$(plist_get "$dest" PRGitCommit)
+    [ "$commit" = "$expected" ] || { launch_problem="the app at $dest reports commit $commit, expected $expected"; return 1; }
+    return 0
+}
+
+report_running() {
+    local pids count others dbg commit
+    commit=$(plist_get "$dest" PRGitCommit)
+    if [ -n "${PROMPT_RELAY_TEST_SIMULATE_LAUNCH:-}" ]; then
+        say "== running (simulated): $(tilde "$dest"), commit $commit"; return 0
+    fi
+    pids=$(installed_release_pids | tr '\n' ' ')
     count=$(printf '%s\n' $pids | grep -c . || true)
     others=$(all_release_pids | tr '\n' ' ')
-    commit=$(plist_get "$dest" PRGitCommit)
-    [ "$commit" = "$expected" ] || die "the app at $dest reports commit $commit, expected $expected"
     if [ "$count" = 1 ] && [ "$(printf '%s' "$others" | tr -d ' ')" = "$(printf '%s' "$pids" | tr -d ' ')" ]; then
         say "== running: one Release copy, PID ${pids// /}, from $(tilde "$dest"), version $(plist_get "$dest" CFBundleShortVersionString), commit $commit"
     else
@@ -315,11 +388,34 @@ launch_and_check() { # expected commit → verifies the launched process
     say "Check: Prompt Relay's menu-bar icon → Settings → About: Release, version $(plist_get "$dest" CFBundleShortVersionString), commit $commit."
 }
 
+launch_and_check() { # expected commit → verified launch, or automatic recovery
+    local expected=$1 failed stamp
+    [ "$launch" = 1 ] || { say "== not launched (--no-launch). Open it from $(tilde "$dest_dir")."; return 0; }
+    if launched_ok "$expected"; then report_running; return 0; fi
+    say "!! the new app failed: $launch_problem"
+    if [ -z "$backup" ] || [ ! -d "$backup" ]; then
+        die "$launch_problem. There was no previous app to restore. Open $(tilde "$dest") yourself to see the problem; nothing else was changed."
+    fi
+    # Automatic recovery: quit the new copy if it runs, keep it as a backup
+    # marked "(failed launch)", put the previous app back and open it.
+    quit_id "$release_id" "the new Prompt Relay"
+    stamp=$(date +%Y%m%d-%H%M%S)
+    failed="$backups/Prompt Relay $(safe "$(plist_get "$dest" CFBundleShortVersionString)")-$(safe "$(plist_get "$dest" PRGitCommit)")-$stamp (failed launch).app"
+    mv "$dest" "$failed" || die "$launch_problem; could not move it aside. Restore by hand: scripts/install-local.sh --rollback"
+    unregister "$failed"
+    mv "$backup" "$dest" || die "$launch_problem; the previous app is still at $(tilde "$backup") — move it back to $(tilde "$dest_dir")"
+    register "$dest"
+    say "== the previous app ($(plist_get "$dest" CFBundleShortVersionString), commit $(plist_get "$dest" PRGitCommit)) is installed again; the failed one is kept at $(tilde "$failed")"
+    if launched_ok "$(plist_get "$dest" PRGitCommit)"; then report_running
+    else say "!! the previous app did not start either: $launch_problem"; fi
+    die "the new version did not start ($launch_problem); the previous version was restored"
+}
+
 # One installer at a time (not for read-only modes).
 lock="${TMPDIR:-/tmp}/prompt-relay-install.lock"
 if [ "$mode" != status ] && [ "$mode" != list ] && [ "$dry" = 0 ]; then
     mkdir "$lock" 2>/dev/null || die "another install-local.sh is running (if not, remove $lock)"
-    trap 'rmdir "$lock" 2>/dev/null || true' EXIT
+    trap '[ -z "$staged" ] || rm -rf "$staged"; rmdir "$lock" 2>/dev/null || true' EXIT
 fi
 
 case "$mode" in
@@ -361,9 +457,13 @@ tidy)
     done
     exit 0 ;;
 rollback)
-    # Newest by modification time, without parsing ls; only direct children.
-    latest=$(find "$backups" -maxdepth 1 -type d -name 'Prompt Relay *.app' -exec stat -f '%m %N' {} + 2>/dev/null \
-        | sort -rn | head -1 | cut -d' ' -f2- || true)
+    # The most recently replaced app: backups are named "… <version>-<commit>-
+    # <YYYYmmdd-HHMMSS>.app" with the time they were replaced, so the newest
+    # stamp is the version installed just before the current one. Folder
+    # times are not used (a moved bundle keeps its old time). Copies marked
+    # "(moved …)" or "(failed launch)" are never chosen automatically.
+    latest=$(find "$backups" -maxdepth 1 -type d -name 'Prompt Relay *-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9].app' 2>/dev/null \
+        | sed -E 's/^(.*-([0-9]{8}-[0-9]{6})\.app)$/\2	\1/' | sort -r | head -1 | cut -f2- || true)
     [ -n "$latest" ] || die "no backup to roll back to in $backups"
     say "Installed now: $(describe "$dest")"
     say "Roll back to:  $(describe "$latest")"
@@ -372,10 +472,12 @@ rollback)
     verify_bundle "$latest" 0
     if [ "$dry" = 1 ]; then say "Dry run: nothing changed."; exit 0; fi
     confirm "Quit the running Release app (if any), keep the current app as a backup and restore this one?"
+    stage_copy "$latest"     # a verified copy; the backup itself is kept
+    [ -z "$(all_release_pids)" ] || previous_was_running=1
     quit_id "$release_id" "Prompt Relay"
-    swap_in "$latest"
-    rm -rf "$latest"   # now installed (a verified copy); the replaced app became a new backup
+    replace_staged
     launch_and_check "$(plist_get "$dest" PRGitCommit)"
+    say "Backups are all kept. Running --rollback again swaps back to the version you just replaced."
     exit 0 ;;
 esac
 
@@ -389,7 +491,9 @@ if [ -n "$(git status --porcelain --untracked-files=no -- macos/Sources macos/Re
 fi
 
 if [ "$build" = 1 ]; then
-    PROMPT_RELAY_SIGN_IDENTITY="$sign_identity" scripts/build-macos-app.sh || die "the build failed; nothing was installed or quit"
+    if [ "${PROMPT_RELAY_TEST_FAIL_BUILD:-0}" = 1 ] || ! PROMPT_RELAY_SIGN_IDENTITY="$sign_identity" scripts/build-macos-app.sh; then
+        die "the build failed; nothing was installed or quit"
+    fi
 else
     [ -d "$built" ] || die "no build at $built (drop --no-build)"
 fi
@@ -425,6 +529,8 @@ if [ -n "$(debug_pids)" ]; then
         quit_id "$debug_id" "Prompt Relay Dev (Debug)"
     fi
 fi
+stage_copy "$built"
+[ -z "$(all_release_pids)" ] || previous_was_running=1
 quit_id "$release_id" "Prompt Relay"
-swap_in "$built"
+replace_staged
 launch_and_check "$(plist_get "$built" PRGitCommit)"

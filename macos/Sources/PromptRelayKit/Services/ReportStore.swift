@@ -20,6 +20,8 @@ public enum ReportStoreError: Error, Equatable, Sendable {
     case unsupported(String)
     /// Phase 16: a text document over `maxDocumentBytes` (was reported as "unsupported").
     case documentTooLarge(String)
+    /// Phase 16: the store's cross-process lock could not be taken; nothing was written.
+    case lockUnavailable
 }
 
 /// Prompt Relay's own data, next to the Core's but separate from it:
@@ -164,21 +166,29 @@ public final class ReportStore {
 
     private var lockDepth = 0
     private var lockFD: Int32 = -1
+    /// Tests only: where the lock file is (default `<root>/.store.lock`).
+    var lockURLOverride: URL?
+    var lockURL: URL { lockURLOverride ?? root.appendingPathComponent(".store.lock") }
 
     /// Runs `body` holding an exclusive advisory lock on `<root>/.store.lock`.
     /// The indexes (`attachments.json`, `materials.json`, the prepared-results
     /// ledger) are read, changed and written whole; two running copies
     /// (a Debug and a Release build both preparing a new answer's files)
     /// could each write over the other's change. With the lock the second
-    /// writer reads the first one's result. Re-entrant in this process; if
-    /// the lock cannot be taken (an unwritable folder), runs as before.
-    func withStoreLock<T>(_ body: () throws -> T) rethrows -> T {
+    /// writer reads the first one's result. Re-entrant in this process.
+    ///
+    /// Fails closed: when the lock cannot be opened or taken, nothing is
+    /// written and `ReportStoreError.lockUnavailable` is thrown — an
+    /// unprotected write could silently lose another copy's change.
+    func withStoreLock<T>(_ body: () throws -> T) throws -> T {
         if lockDepth == 0 {
             try? fm.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-            let fd = Darwin.open(root.appendingPathComponent(".store.lock").path, O_RDWR | O_CREAT | O_CLOEXEC, 0o600)
-            if fd >= 0 {
-                if flock(fd, LOCK_EX) == 0 { lockFD = fd } else { Darwin.close(fd) }
-            }
+            let fd = Darwin.open(lockURL.path, O_RDWR | O_CREAT | O_CLOEXEC, 0o600)
+            guard fd >= 0 else { throw ReportStoreError.lockUnavailable }
+            var result: Int32
+            repeat { result = flock(fd, LOCK_EX) } while result != 0 && errno == EINTR
+            guard result == 0 else { Darwin.close(fd); throw ReportStoreError.lockUnavailable }
+            lockFD = fd
         }
         lockDepth += 1
         defer {

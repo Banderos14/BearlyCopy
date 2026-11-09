@@ -420,6 +420,7 @@ extension AppModel {
         case .notAnImage: return "it is not an image"
         case .tooLarge: return "it is larger than 50 MB"
         case .documentTooLarge: return "text documents can be at most 1 MB"
+        case .lockUnavailable: return "Prompt Relay's folder is busy or not writable; nothing was saved — try again"
         case .noPermission: return "macOS does not allow Prompt Relay to read it"
         case .damagedImage: return "it is damaged or not a readable image"
         case .unreadable: return "it could not be read (moved, deleted or a folder?)"
