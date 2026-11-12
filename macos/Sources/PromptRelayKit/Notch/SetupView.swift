@@ -45,6 +45,7 @@ struct SetupView: View {
         BoundedScroll(maxHeight: presentation.listHeight(chrome: 16)) {
             VStack(alignment: .leading, spacing: 8) {
                 welcome
+                if model.offersDailyUseSetup { DailyUseSetupCard(model: model) }
                 step(1, "Agents on this Mac") { agents }
                 step(2, "Enable a project") { projects }
                 step(3, "Verify capture") { verify }

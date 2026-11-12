@@ -116,7 +116,7 @@ struct Phase16AttachmentTests {
                                       "turn_count": 1, "cwds": [cwd.path], "last_turn": ["index": 1, "status": "stop_received"],
                                       "integrity": ["corrupt_lines": 0, "unsupported_lines": 0, "foreign_lines": 0]]
         func text(_ v: String) -> [String: Any] { ["text": v, "preview": v, "truncated": false, "char_count": v.count, "utf8_bytes": v.utf8.count,
-                                                   "prompt_id": "p1", "received_at": "2026-11-08T10:01:00Z"] }
+                                                   "prompt_id": "p1", "received_at": Phase17AttachmentTests.iso(Date().addingTimeInterval(1))] }
         let turn: [String: Any] = ["index": 1, "status": "stop_received", "link": "prompt_id", "request": text("Do it"),
                                    "final_response": text(answer), "response_event_count": 1, "candidate_request_turns": [],
                                    "observed_detail": observed]

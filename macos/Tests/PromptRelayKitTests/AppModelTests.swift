@@ -30,8 +30,11 @@ final class FakeCore: CoreProviding, @unchecked Sendable {
         guard let turns = turnsBySession[sessionKey] else { throw CoreError.api(code: "not_found", message: "no session") }
         return CoreResult(data: TurnsData(session: try session(sessionKey), turns: turns), warnings: [])
     }
+    /// Phase 17: awaited before `show` answers (controlled scheduling).
+    var showGate: ((String, Int) async -> Void)?
     func show(sessionKey: String, turn: Int) async throws -> CoreResult<ShowData> {
         showCalls.append((sessionKey, turn))
+        await showGate?(sessionKey, turn)
         return try showResult(sessionKey, turn).get()
     }
     func context(sessionKey: String, turn: Int) async throws -> CoreResult<ContextData> { try contextResult.get() }

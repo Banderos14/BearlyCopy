@@ -12,7 +12,10 @@ struct CaptureModeCard: View {
 
     var body: some View {
         let status = model.captureStatus
-        if model.offersGlobalCapture, case .selectedProjects = status {
+        if model.offersDailyUseSetup {
+            // Phase 17: one setup instead of separate offers.
+            DailyUseSetupCard(model: model)
+        } else if model.offersGlobalCapture, case .selectedProjects = status {
             offer
         } else if !compact || !status.isActive && status != .unknown {
             card(status)
@@ -31,7 +34,7 @@ struct CaptureModeCard: View {
                 }
             }
             HStack(spacing: 10) {
-                Button("Capture All Projects") { Task { await model.setCaptureMode(.mode(.global)) } }
+                Button("Capture All Projects") { Task { await model.requestGlobalCapture() } }
                     .buttonStyle(IslandPillStyle(prominent: true))
                     .accessibilityLabel("Turn on capture for all projects")
                 Button("Not Now") { model.dismissGlobalCaptureOffer() }
@@ -71,7 +74,7 @@ struct CaptureModeCard: View {
 
     private var modeMenu: some View {
         Menu {
-            Button("All Projects") { Task { await model.setCaptureMode(.mode(.global)) } }
+            Button("All Projects") { Task { await model.requestGlobalCapture() } }
             Button("Selected Projects Only") { Task { await model.setCaptureMode(.mode(.selected)) } }
             Divider()
             if model.captureSettings?.mode == .paused {

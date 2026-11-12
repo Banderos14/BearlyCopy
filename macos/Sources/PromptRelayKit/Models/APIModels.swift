@@ -475,6 +475,20 @@ public struct RetentionSettings: Decodable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case retentionDays = "retention_days", automaticDeletion = "automatic_deletion", capture
     }
+
+    public init(retentionDays: Int?, automaticDeletion: Bool, capture: CaptureSettings? = nil) {
+        self.retentionDays = retentionDays; self.automaticDeletion = automaticDeletion; self.capture = capture
+    }
+
+    /// Phase 17: a capture policy this app cannot read (a mode a newer Core
+    /// added) no longer fails the whole project list. It decodes as nil:
+    /// the status reads "unknown", never a false "capturing".
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        retentionDays = try c.decodeIfPresent(Int.self, forKey: .retentionDays)
+        automaticDeletion = try c.decode(Bool.self, forKey: .automaticDeletion)
+        capture = try? c.decodeIfPresent(CaptureSettings.self, forKey: .capture)
+    }
 }
 
 /// Phase 16: which agent events the Core stores (`prompt-relay capture`).

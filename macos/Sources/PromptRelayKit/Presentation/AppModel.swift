@@ -181,6 +181,7 @@ public final class AppModel {
         self.stateDefaults = stateDefaults
         self.reportStore = reportStore
         autoSelectResultAttachments = stateDefaults?.object(forKey: "attachments.autoSelectResults") as? Bool ?? true
+        autoSelectPreparedAttachments = stateDefaults?.object(forKey: Self.autoSelectPreparedKey) as? Bool ?? true
         autoCaptureFinalWindow = stateDefaults?.bool(forKey: Self.autoCaptureKey) ?? false
         autoScreenshotsInHandoff = stateDefaults?.bool(forKey: Self.autoCaptureHandoffKey) ?? false
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
@@ -246,6 +247,25 @@ public final class AppModel {
     public var autoSelectResultAttachments: Bool = true {
         didSet { stateDefaults?.set(autoSelectResultAttachments, forKey: "attachments.autoSelectResults") }
     }
+    /// Phase 17: files Prompt Relay prepared are ticked for Copy with
+    /// Context and drag (on by default). Off: prepared, listed, unticked.
+    public var autoSelectPreparedAttachments: Bool = true {
+        didSet { stateDefaults?.set(autoSelectPreparedAttachments, forKey: Self.autoSelectPreparedKey) }
+    }
+    static let autoSelectPreparedKey = "attachments.autoSelectPrepared"
+    // Phase 17, Daily Use (AppModel+DailyUse).
+    /// Bumped when something the readiness status reads outside observation changes.
+    var dailyUseVersion = 0
+    /// The setup card is open (Settings → Daily Use → Set Up…).
+    public var dailySetupOpen = false
+    public internal(set) var dailyUseOutcome: DailyUseSetupOutcome?
+    public internal(set) var dailyUseNotice: String?
+    /// The Core version this build bundled (nil outside an app bundle; tests set it).
+    @ObservationIgnored lazy var bundledCoreVersion: String? = AppBuild.launchStamp.coreVersion
+    @ObservationIgnored var arrivalBaseline: Date?
+    @ObservationIgnored var arrivalPrepared: Set<String> = []
+    @ObservationIgnored var arrivalTasks: [Task<Void, Never>] = []
+    @ObservationIgnored var driftCache: [String: (stamp: String, drift: SnapshotDrift)] = [:]
     public let reportStore: ReportStore?
     /// The optional clipboard image history (off by default; Settings).
     public var clipboardImages: ClipboardImageHistory?
@@ -394,6 +414,7 @@ public final class AppModel {
     public func surfaceAppeared() {
         acknowledgeNotch()
         islandOpened()
+        if visibleSurfaces == 0 { followLatestOnOpen() }
         visibleSurfaces += 1
         if visibleSurfaces == 1 {
             startWatching()
@@ -416,20 +437,69 @@ public final class AppModel {
         visibleSurfaces = max(0, visibleSurfaces - 1)
         if visibleSurfaces == 0 {
             stopPolling()
-            // Nobody is browsing: the next answer may take over — unless the
-            // user reads an older report in Details (Phase 9.4): it is still
-            // there on the next hover.
-            if !(detailsPreferred && !followsLatest) { followsLatest = true }
-            // Phase 9.3, Follow Latest: the next Quick Peek opens on the newest
-            // answer again — unless the user pinned, or a hand-off of the
-            // report shown is unfinished (it must still be there on return).
-            if !staysOnChosenSession, !sessionPinned, !detailsPreferred, handoffStep == nil, isOffLatest, let answer = readyAnswer {
-                lastFollowedAt = answer.at
-                select(answer)
-                Task { await loadSessions() }
+            closedHoldUntil = nil
+            // An explicit pin is the only thing that outlives closing for good.
+            if staysOnChosenSession || sessionPinned {
+                followsLatest = true
+                if !isOffLatest { deferredLatest = nil }
+                return
             }
-            if !isOffLatest { deferredLatest = nil }
+            // Phase 17: closing the island returns to Latest. Two short,
+            // bounded exceptions keep the report in hand (see
+            // `closedHoldActive`): an older report being read in Details
+            // (the pointer slipped off) and a file hand-off just started.
+            if detailsPreferred, !followsLatest, isOffLatest {
+                closedHoldUntil = clock().addingTimeInterval(Self.readingGrace)
+            }
+            if closedHoldActive(now: clock()) {
+                if !isOffLatest { followsLatest = true; deferredLatest = nil }
+                return
+            }
+            followLatestWhileClosed()
         }
+    }
+
+    // MARK: Following Latest while the island is closed (Phase 17)
+
+    /// How long an older report read in Details survives an accidental
+    /// close. After that, reopening shows the newest answer.
+    nonisolated static let readingGrace: TimeInterval = 90
+    /// How long a file hand-off that was just started (text copied, files
+    /// still to drag) keeps its report while the island is closed. Before
+    /// Phase 17 an unfinished hand-off held its report forever, so one
+    /// forgotten "Done" pinned an old answer across every reopen.
+    nonisolated static let handoffHoldWindow: TimeInterval = 10 * 60
+    /// Set at close (reading grace) or by a pick made while closed (a
+    /// notification, the menu bar): the selection is kept until then.
+    @ObservationIgnored var closedHoldUntil: Date?
+
+    /// The island is closed and the report shown must still be there when it
+    /// reopens. Never true for long: both reasons expire on their own.
+    func closedHoldActive(now: Date) -> Bool {
+        if let until = closedHoldUntil, until > now { return true }
+        if let step = handoffStep, !step.filesCopied, let started = step.startedAt,
+           now.timeIntervalSince(started) < Self.handoffHoldWindow { return true }
+        return false
+    }
+
+    /// Points the selection at the newest answer (closed island, no pin).
+    private func followLatestWhileClosed() {
+        followsLatest = true
+        deferredLatest = nil
+        guard isOffLatest, let answer = readyAnswer else { return }
+        lastFollowedAt = answer.at
+        select(answer)
+        Task { await loadSessions() }
+    }
+
+    /// Opening the island: the newest completed answer, unless the user
+    /// pinned a conversation or a short hold is still running. Decided here
+    /// (not from "unseen" marks): an older answer that was never opened must
+    /// not win over a newer one that was.
+    private func followLatestOnOpen() {
+        defer { closedHoldUntil = nil }
+        guard !staysOnChosenSession, !sessionPinned, !closedHoldActive(now: clock()) else { return }
+        followLatestWhileClosed()
     }
 
     func startWatching(allowPolling: Bool = true) {
@@ -601,7 +671,9 @@ public final class AppModel {
         detail = .loading(previous: nil)
         do {
             let result = try await core.show(sessionKey: key, turn: index)
-            guard token == generation else { return }
+            // Phase 17: also when the selection moved on without a new load
+            // having started yet — a late answer never lands on another report.
+            guard token == generation, key == selectedSessionKey, index == selectedTurnIndex else { return }
             detail = .loaded(result.data)
             prepareResultAttachments(result.data)
             detailWarnings = result.warnings
@@ -623,6 +695,7 @@ public final class AppModel {
         // Phase 14: every new final answer, of any agent, whether the island
         // is open or not (before: only the newest unseen one).
         autoCaptureNewFinals()
+        prepareNewFinals()
         guard let answer = finishedAnswers.first else {
             readyAnswer = nil
             return
@@ -636,8 +709,16 @@ public final class AppModel {
         // provider does not matter — a Claude Code answer after a Codex one
         // (or the reverse) becomes Latest the same way.
         // An unfinished hand-off of the report shown keeps it (Phase 9.3).
-        if followsLatest, handoffStep == nil || currentRef == ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex),
-           lastFollowedAt != at, !sessionPinned || answer.sessionKey == selectedSessionKey {
+        // Phase 17: with the island closed nothing but a pin or a running
+        // short hold keeps an older report (a stale hand-off no longer does).
+        let closedAndFree = visibleSurfaces == 0 && !staysOnChosenSession && !sessionPinned && !closedHoldActive(now: clock())
+        if closedAndFree { followsLatest = true }
+        let closedAndHeld = visibleSurfaces == 0 && closedHoldActive(now: clock())
+        if closedAndHeld, currentRef != ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex) {
+            deferredLatest = answer
+        } else if followsLatest,
+           closedAndFree || handoffStep == nil || currentRef == ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex),
+           lastFollowedAt != at || (closedAndFree && isOffLatest), !sessionPinned || answer.sessionKey == selectedSessionKey {
             if isReadingReport, lastFollowedAt != nil, currentRef != ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex) {
                 // Phase 12: the user is reading an answer on screen. A newer
                 // one (any agent) never replaces it mid-read: it waits
@@ -833,8 +914,14 @@ public final class AppModel {
     /// Open the newest unseen answer, respecting a pinned session. Only
     /// acknowledge after the requested report actually loaded successfully.
     public func revealReadyAnswer() async {
-        guard let answer = unseenAnswers.first ?? readyAnswer else { return }
+        // Phase 17: the newest answer, never "the newest unopened one" — an
+        // older answer in a conversation that was never opened used to
+        // replace the newest answer on every reopen. Unopened answers stay
+        // marked unread in the Inbox and in Project and Session.
+        guard let answer = readyAnswer else { return }
         if sessionPinned, answer.sessionKey != selectedSessionKey { return }
+        // A report kept on purpose (a pick, a hold) is not taken away here.
+        if !sessionPinned, isOffLatest, !followsLatest || handoffStep != nil { return }
         followsLatest = true
         lastFollowedAt = answer.at
         select(answer)
@@ -910,6 +997,14 @@ public final class AppModel {
         }
     }
 
+    /// Phase 17, "Stay on this conversation": the one deliberate action that
+    /// pins. An ordinary pick never does; the pin is kept across launches
+    /// and shown on Home until Follow Latest.
+    public func stayOnThisConversation() {
+        guard selectedSessionKey != nil, selectedImportID == nil else { return }
+        if staysOnChosenSession { pinSelection() } else { staysOnChosenSession = true }
+    }
+
     /// Settings → Follow Latest: turn pinning off and show the newest answer.
     public func followLatestNow() {
         staysOnChosenSession = false
@@ -934,12 +1029,19 @@ public final class AppModel {
     /// A manual pick keeps the selection until the user returns to the newest answer.
     private func noteManualSelection() {
         pinSelection()
+        holdPickMadeWhileClosed()
         guard let answer = readyAnswer else { followsLatest = true; return }
         followsLatest = selectedSessionKey == answer.sessionKey
             && (selectedTurnIndex == nil || selectedTurnIndex == answer.turnIndex)
     }
 
     // MARK: Selection
+
+    /// A report chosen while the island is closed (menu bar, shortcut,
+    /// import): the island opens on it, once.
+    private func holdPickMadeWhileClosed() {
+        if visibleSurfaces == 0 { closedHoldUntil = .distantFuture }
+    }
 
     public func selectProject(_ path: String?) {
         selectedImportID = nil
@@ -949,6 +1051,7 @@ public final class AppModel {
         selectedTurnIndex = nil
         followsLatest = false
         pinSelection()
+        holdPickMadeWhileClosed()
         sessions = .idle; turns = .idle; detail = .idle
         Task { await loadSessions() }
     }
@@ -1580,6 +1683,7 @@ public final class AppModel {
         guard imports.contains(where: { $0.id == id }) else { return }
         selectedImportID = id
         followsLatest = false
+        holdPickMadeWhileClosed()
     }
 
     /// Removes an import and its attachments (the user's explicit choice).
@@ -1613,6 +1717,9 @@ public final class AppModel {
         public var textChangeCount: Int?
         /// The island closed while it was open: shown as "Continue Transfer".
         public var resumed = false
+        /// Phase 17: when the text was copied. Absent in steps saved by
+        /// earlier versions: those never hold a report across a close.
+        public var startedAt: Date?
     }
     /// Unfinished hand-offs by `ReportRef.key`.
     public internal(set) var handoffs: [String: HandoffStep] = [:] {
@@ -2130,6 +2237,18 @@ public final class AppModel {
             return "Core responds; capture storage is writable. \(result.capture.enabledProjects.count) projects enabled; \(codex) Codex sessions recorded. This checks storage and recorded history, not a new AI turn. See Xcode delivery stages above."
         } catch {
             return "Connection check failed: \(Self.coreError(error).localizedDescription)"
+        }
+    }
+
+    /// Phase 17: awaitable (Daily Use needs the plugin version before it decides).
+    @discardableResult
+    func reloadDoctor() async -> Bool {
+        do {
+            doctor = .loaded(try await core.doctor().data)
+            return true
+        } catch {
+            doctor = doctor.failing(Self.coreError(error))
+            return false
         }
     }
 

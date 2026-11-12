@@ -17,6 +17,10 @@ public enum SecretScanner {
         ("JSON Web Token", #"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"#),
         ("credential assignment",
          #"(?i)\b[A-Z0-9_]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|APIKEY|PRIVATE_KEY)[A-Z0-9_]*\s*[:=]\s*['"]?[^\s'"]{8,}"#),
+        // Phase 17: the same in JSON form — `"api_key": "value"` (a quoted key
+        // was not matched, and JSON files are now prepared automatically).
+        ("credential assignment",
+         #"(?i)["'][A-Z0-9_-]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|APIKEY|API-KEY|PRIVATE_KEY)[A-Z0-9_-]*["']\s*:\s*["'][^\s'"]{8,}["']"#),
     ].map { ($0.0, try! NSRegularExpression(pattern: $0.1)) }
 
     /// Lines are split like Python's `str.splitlines()` for \n, \r\n and \r.

@@ -163,10 +163,18 @@ struct Phase81ReadyTests {
         core.turnsBySession["a", default: []].append(turn(3, status: "awaiting_response", preview: nil))
         await restarted.refreshNow()
         #expect(restarted.readyIndicator == .ready(sessions: 1, automated: false, backgroundPending: true))
+        // Phase 17: opening shows the newest answer (b); the older unread
+        // one in a is not put in front of it — it is opened on purpose.
         await restarted.revealReadyAnswer()
+        #expect(restarted.selectedSessionKey == "b")
+        #expect(restarted.hasUnseenAnswer, "a's earlier answer stays unread")
+        restarted.surfaceAppeared()
+        restarted.open(.local(sessionKey: "a", turn: 2))
+        for _ in 0..<400 where restarted.hasUnseenAnswer { try await Task.sleep(nanoseconds: 5_000_000) }
         #expect(restarted.selectedSessionKey == "a")
         #expect(restarted.selectedTurnIndex == 2)
         #expect(!restarted.hasUnseenAnswer)
+        restarted.surfaceDisappeared()
     }
 
     @Test
@@ -201,7 +209,14 @@ struct Phase81ReadyTests {
         let restarted = makeModel()
         await restarted.refreshNow()
         #expect(restarted.hasUnseenAnswer)
+        // Phase 17: opening stays on the newest turn; the earlier unread
+        // turn is opened on purpose.
         await restarted.revealReadyAnswer()
+        #expect(restarted.selectedTurnIndex == 3)
+        #expect(restarted.hasUnseenAnswer)
+        restarted.surfaceAppeared()
+        restarted.selectTurn(2)
+        for _ in 0..<400 where restarted.hasUnseenAnswer { try await Task.sleep(nanoseconds: 5_000_000) }
         #expect(restarted.selectedTurnIndex == 2)
         #expect(!restarted.hasUnseenAnswer)
         core.sessionsByProject["/a"] = [sessionSummary("a", project: "/a", last: "2026-10-31T10:04:00.000000Z", lastTurn: 3)]

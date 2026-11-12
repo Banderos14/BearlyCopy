@@ -26,6 +26,7 @@ struct IslandSettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 // Phase 11: General → Appearance & Motion → Agents & Projects →
                 // Clipboard & Handoff → Privacy & Permissions → Diagnostics → About.
+                dailyUse   // Phase 17: the working state first.
                 if let settings { general(settings) }
                 if let settings { appearance(settings) }
                 agentsAndProjects
@@ -234,6 +235,11 @@ struct IslandSettingsView: View {
         }
     }
 
+    /// Phase 17: the working state of daily use, first in Settings.
+    private var dailyUse: some View {
+        section("Daily Use") { DailyUseStatusCard(model: model) }
+    }
+
     /// Phase 11: setup status, projects and connection details in one place.
     private var agentsAndProjects: some View {
         let facts = AgentFacts.gather(model: model)
@@ -269,9 +275,15 @@ struct IslandSettingsView: View {
     /// Phase 9.3 / 11: what Copy with Context prepares, and the clipboard.
     private var handoff: some View {
         section("Clipboard & Handoff") {
-            toggle("Auto-select result attachments",
-                   detail: "Files the agent verifiably wrote and named are prepared for Copy with Context. Uncheck any.",
+            toggle("Attach result files automatically",
+                   detail: "When a final answer arrives, safe files it wrote or names in its project are copied into Prompt Relay. Off: they are offered with Add.",
                    isOn: Binding(get: { model.autoSelectResultAttachments }, set: { model.autoSelectResultAttachments = $0 }))
+            if model.autoSelectResultAttachments {
+                Hairline()
+                toggle("Select attached files for handoff",
+                       detail: "On: they start ticked for Copy with Context and drag. Off: attached, you tick them. A file you untick stays unticked.",
+                       isOn: Binding(get: { model.autoSelectPreparedAttachments }, set: { model.autoSelectPreparedAttachments = $0 }))
+            }
             Hairline()
             toggle("Automatic final screenshots",
                    detail: "Off by default. After each final answer, one still image of the window you linked to that agent. Kept in memory only: never saved, never copied, never sent.",

@@ -12,7 +12,7 @@ struct Phase9Tests {
         let answer = names.joined(separator: "\n") + "\nhttps://claude.ai/artifacts/private.pdf"
         let source: [String: Any] = ["provider": provider, "host": "xcode", "native_session_id": "same-native", "installation_id": "test", "capabilities": ["prompt", "final_response", "tools", "file_changes"], "capture": "hooks"]
         let session: [String: Any] = ["session_id": "same-native", "session_key": key, "project": ["path": root.path, "name": "Project"], "first_event_at": "2026-11-03T10:00:00Z", "last_event_at": "2026-11-03T10:01:00Z", "event_count": 2, "turn_count": 1, "cwds": [root.path], "last_turn": ["index": 1, "status": "stop_received"], "integrity": ["corrupt_lines": 0, "unsupported_lines": 0, "foreign_lines": 0], "source": source]
-        func text(_ value: String) -> [String: Any] { ["text": value, "preview": value, "truncated": false, "char_count": value.count, "utf8_bytes": value.utf8.count, "prompt_id": "native-turn", "received_at": "2026-11-03T10:01:00Z"] }
+        func text(_ value: String) -> [String: Any] { ["text": value, "preview": value, "truncated": false, "char_count": value.count, "utf8_bytes": value.utf8.count, "prompt_id": "native-turn", "received_at": Phase17AttachmentTests.iso(Date().addingTimeInterval(1))] }
         let turn: [String: Any] = ["index": 1, "status": "stop_received", "link": "prompt_id", "request": text("Full original task"), "final_response": text(answer), "response_event_count": 1, "candidate_request_turns": [], "observed_detail": observed]
         return try JSONDecoder().decode(ShowData.self, from: JSONSerialization.data(withJSONObject: ["session": session, "turn": turn]))
     }

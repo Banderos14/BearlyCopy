@@ -36,6 +36,14 @@ public final class ReportStore {
     public let root: URL
     private let fm = FileManager.default
     public static let maxAttachmentBytes = 50 * 1024 * 1024
+    /// Phase 17: why the last automatic preparation left a file out, by
+    /// report key and absolute path (this run only; never persisted).
+    var prepareSkips: [String: [String: ResultAttachments.Skip]] = [:]
+    /// Phase 17: prepared result files are ticked for the hand-off (Settings).
+    public var autoSelectsPrepared = true
+    /// Phase 17: a prepared path whose bytes were already attached under
+    /// another path — one record, one export item; value: that attachment.
+    var prepareDuplicates: [String: [String: String]] = [:]
 
     public init(root: URL) {
         self.root = root
@@ -363,7 +371,8 @@ public final class ReportStore {
     /// The same for bytes that are not a file yet (a clipboard image).
     @discardableResult
     public func addData(_ data: Data, name: String, to ref: ReportRef, source: AttachmentSource,
-                        displayPath: String? = nil, mockupID: String? = nil, stateID: String? = nil, sourceProvider: AgentProvider? = nil) throws -> ReportAttachment {
+                        displayPath: String? = nil, mockupID: String? = nil, stateID: String? = nil, sourceProvider: AgentProvider? = nil,
+                        autoPrepared: Bool = false, selected: Bool = true) throws -> ReportAttachment {
         try withStoreLock {
             guard !data.isEmpty else { throw ReportStoreError.empty }
             guard let (kind, type) = Self.classify(data, name: name) else {
@@ -394,6 +403,13 @@ public final class ReportStore {
             attachment.originalPath = displayPath
             attachment.mockupID = mockupID
             attachment.stateID = stateID
+            if autoPrepared {
+                attachment.autoPrepared = true
+                if source == .named {
+                    attachment.provenance = "Named in the answer and found in this project (not seen being written, not changed during this turn); automatically prepared. Not proof the agent created or changed it"
+                }
+            }
+            if !selected { attachment.selected = false }
             index.append(attachment)
             try saveIndex(index)
             return attachment

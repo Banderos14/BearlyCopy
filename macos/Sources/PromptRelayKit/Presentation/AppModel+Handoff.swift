@@ -6,9 +6,86 @@ import Foundation
 extension AppModel {
     func prepareResultAttachments(_ show: ShowData) {
         guard autoSelectResultAttachments, let store = reportStore else { return }
+        store.autoSelectsPrepared = autoSelectPreparedAttachments
+        let key = ReportRef.local(sessionKey: show.session.sessionKey, turn: show.turn.index).key
+        let before = store.prepareSkips[key]
         do {
-            if try store.prepareResults(show) > 0 { attachmentsVersion += 1 }
+            if try store.prepareResults(show) > 0 || store.prepareSkips[key] != before { attachmentsVersion += 1 }
         } catch { attachmentMessage = "Some result files could not be prepared. You can add them manually." }
+    }
+
+    /// Phase 17: result files are snapshotted when a final answer arrives,
+    /// for every conversation — not when its report is first opened, by
+    /// which time later work may have changed them. One `show` per new
+    /// answer; answers that were already there at launch are prepared when
+    /// opened, as before (their files are checked against the answer's time).
+    func prepareNewFinals() {
+        guard autoSelectResultAttachments, reportStore != nil else { return }
+        if arrivalBaseline == nil { arrivalBaseline = clock() }
+        guard let baseline = arrivalBaseline else { return }
+        let fresh = finishedAnswers.filter { answer in
+            guard answer.completion.isFinal, let finished = Wording.date(answer.at) else { return false }
+            return finished >= baseline.addingTimeInterval(-1)
+                && !arrivalPrepared.contains(ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex).key)
+        }
+        for answer in fresh.prefix(8) {
+            let ref = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex)
+            arrivalPrepared.insert(ref.key)
+            let task = Task { @MainActor [weak self] in
+                guard let self, let show = try? await self.core.show(sessionKey: answer.sessionKey, turn: answer.turnIndex) else { return }
+                self.prepareResultAttachments(show.data)
+            }
+            arrivalTasks.append(task)
+        }
+    }
+
+    /// Tests: every arrival-time preparation started so far has finished.
+    func arrivalPreparationSettled() async {
+        let tasks = arrivalTasks
+        arrivalTasks.removeAll()
+        for task in tasks { await task.value }
+    }
+
+    /// How a stored attachment got here, for its row: prepared by Prompt
+    /// Relay or added by the user, and on what evidence.
+    public nonisolated static func attachmentStatus(_ attachment: ReportAttachment) -> String {
+        switch attachment.effectiveSource {
+        case .agentResult: return "Attached automatically · written this turn"
+        case .namedVerified: return "Attached automatically · named, changed this turn"
+        case .named where attachment.autoPrepared == true: return "Attached automatically · named in the answer, not seen written"
+        case .named: return "Attached by you · named in the answer"
+        case .windowCapture: return "Auto screenshot"
+        case .windowSnapshot: return "Window snapshot by you"
+        case .you: return "Attached by you"
+        case .claude, .agentObserved: return "Attached by you · from this turn"
+        case .clipboard: return "Attached by you · clipboard"
+        }
+    }
+
+    /// Phase 17: the snapshot against its original now. The hand-off always
+    /// uses the snapshot (the bytes of the answer's moment); this only says
+    /// so when the two differ.
+    public enum SnapshotDrift: Equatable, Sendable { case same, changed, missing }
+
+    public func snapshotDrift(_ attachment: ReportAttachment) -> SnapshotDrift? {
+        guard !attachment.isInMemory, let relative = attachment.originalPath, !relative.hasPrefix("…"), !relative.hasPrefix("/"),
+              let store = reportStore, let show = detail.value, attachment.reportKey == currentRef?.key else { return nil }
+        let roots = attachmentRoots(for: show)
+        let candidates = [roots.display, roots.cwd, roots.legacy].compactMap { $0 }.map { $0 + "/" + relative }
+        guard let path = candidates.first(where: { FileManager.default.fileExists(atPath: $0) }) else {
+            return attachment.autoPrepared == true || attachment.effectiveSource != .you ? .missing : nil
+        }
+        let attributes = try? FileManager.default.attributesOfItem(atPath: path)
+        let stamp = "\((attributes?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0)-\(attributes?[.size] as? Int ?? -1)"
+        if let hit = driftCache[attachment.id], hit.stamp == stamp { return hit.drift }
+        let drift: SnapshotDrift
+        if let size = attributes?[.size] as? Int, size != attachment.byteCount {
+            drift = .changed
+        } else {
+            drift = store.originalChanged(attachment, original: URL(fileURLWithPath: path)).map { $0 ? .changed : .same } ?? .missing
+        }
+        driftCache[attachment.id] = (stamp, drift)
+        return drift
     }
 
     /// Phase 9.4: the header's version — no unconfirmed "Unknown" host.
@@ -173,6 +250,23 @@ extension AppModel {
         public let path: String?
         public let exists: Bool
         public let artifact: ObservedArtifact?
+        /// Phase 17: why Prompt Relay did not attach it by itself (nil: not
+        /// tried yet, or automatic preparation is off).
+        var autoSkip: ResultAttachments.Skip? = nil
+
+        /// The row's second line: the real state, never a bare "Add".
+        public var statusLine: String {
+            if let why = notAttachableReason { return why }
+            if let autoSkip { return autoSkip.sentence }
+            return reason + " · not attached yet"
+        }
+        public var isWarning: Bool {
+            guard attachable else { return true }
+            switch autoSkip {
+            case .sensitiveName?, .secretContent?, .outsideProject?, .missing?, .unstable?, .storeFailed?, .tooLarge?, .empty?, .unsupportedType?: return true
+            default: return false
+            }
+        }
 
         /// Phase 16: Add can work — the file is there and of a kind Prompt
         /// Relay keeps (text document, PDF or image); mockups always.
@@ -197,13 +291,26 @@ extension AppModel {
         // the agent ran in, or the logical project containing it). Before, a
         // separate Git worktree's files were compared in another form, so an
         // attached file stayed listed and Add silently did nothing.
+        // Phase 17: a path whose bytes were prepared under another path is
+        // attached too (kept once), while that attachment exists.
+        let present = Set(attachments(for: ref).map(\.id))
+        let duplicates = (reportStore?.prepareDuplicates[ref.key] ?? [:]).filter { present.contains($0.value) }
         let isAdded: (String) -> Bool = { path in
             added.contains(Self.displayPath(path, root: roots.display)) || added.contains(Self.displayPath(path, root: roots.legacy))
+                || duplicates[URL(fileURLWithPath: path).standardizedFileURL.path] != nil
+        }
+        let skips = reportStore?.prepareSkips[ref.key] ?? [:]
+        func marked(_ list: [Suggestion]) -> [Suggestion] {
+            list.map { s in
+                var s = s
+                if let path = s.path { s.autoSkip = skips[URL(fileURLWithPath: path).standardizedFileURL.path] }
+                return s
+            }
         }
         let exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
         guard let cwd = roots.cwd else {
-            return Self.suggestions(observed: observed, answer: show.turn.finalResponse?.text ?? "", root: roots.legacy,
-                                    addedPaths: added, addedURLs: urls, exists: exists, isAdded: isAdded)
+            return marked(Self.suggestions(observed: observed, answer: show.turn.finalResponse?.text ?? "", root: roots.legacy,
+                                           addedPaths: added, addedURLs: urls, exists: exists, isAdded: isAdded))
         }
         // Names in the answer resolve in the agent's own folder first (its
         // worktree), then in the project — never to another checkout's copy.
@@ -215,7 +322,7 @@ extension AppModel {
                                     addedPaths: added, addedURLs: urls, exists: exists, isAdded: isAdded)
                 .filter { !known.contains($0.path ?? "") && !known.contains($0.artifact?.url ?? "\u{0}") }
         }
-        return out
+        return marked(out)
     }
 
     /// Phase 16: the folders a turn's files are judged against. `cwd`: where
@@ -511,7 +618,7 @@ extension AppModel {
 
     func beginHandoff(ref: ReportRef, text: String) {
         let ids = handoffAttachments(for: ref).map(\.id)
-        handoffs[ref.key] = ids.isEmpty ? nil : HandoffStep(ref: ref, text: text, attachmentIDs: ids, textChangeCount: clipboard.changeCount)
+        handoffs[ref.key] = ids.isEmpty ? nil : HandoffStep(ref: ref, text: text, attachmentIDs: ids, textChangeCount: clipboard.changeCount, startedAt: clock())
     }
 
     /// Puts the hand-off's own text on the clipboard again, byte for byte

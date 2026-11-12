@@ -255,9 +255,14 @@ struct SessionHeader: View {
             .accessibilityLabel("Project \(projectTitle), session \(sessionTitle ?? "none"). Choose project and session")
             .islandHelp("Switch project or conversation")
             Spacer(minLength: 6)
+            // Phase 17: pinned / not on the newest answer is always said
+            // here, with the way back — never only in a tooltip or Settings.
+            if model.sessionPinned || (model.isOffLatest && model.newAnswerElsewhere == nil) {
+                LatestChip(model: model, pinOnly: model.newAnswerElsewhere != nil)
+            }
             if let other = model.newAnswerElsewhere {
                 NewElsewhereChip(model: model, answer: other)
-            } else if facts.source != nil {
+            } else if facts.source != nil, !model.sessionPinned, !model.isOffLatest {
                 SourceLine(model: model, facts: facts)
             }
         }
@@ -873,9 +878,12 @@ struct AttachmentRow: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(attachment.originalFilename).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
                             .lineLimit(1).truncationMode(.middle)
+                        let drift = available ? model.snapshotDrift(attachment) : nil
                         Text(!available ? (memory ? "No longer in memory" : "Missing")
-                             : "\(ReviewPack.type(attachment)) · \(ReviewPack.size(attachment.byteCount)) · \(attachment.effectiveSource.label)\(memory ? " · in memory" : "")")
-                            .font(.system(size: 11)).foregroundStyle(!available ? Island.warning : Island.tertiary).lineLimit(1)
+                             : drift == .changed ? "Snapshot from the answer · the original has changed since"
+                             : drift == .missing ? "\(AppModel.attachmentStatus(attachment)) · original no longer there"
+                             : "\(AppModel.attachmentStatus(attachment)) · \(ReviewPack.type(attachment)) · \(ReviewPack.size(attachment.byteCount))\(memory ? " · in memory" : "")")
+                            .font(.system(size: 11)).foregroundStyle(!available || drift == .changed ? Island.warning : Island.tertiary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
@@ -951,9 +959,11 @@ struct SuggestionRow: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(suggestion.title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
                     .lineLimit(1).truncationMode(.middle)
-                Text(suggestion.notAttachableReason ?? suggestion.reason + " · not attached yet")
-                    .font(.system(size: 11)).foregroundStyle(suggestion.attachable ? Island.tertiary : Island.warning)
-                    .lineLimit(1)
+                Text(suggestion.statusLine)
+                    .font(.system(size: 11)).foregroundStyle(suggestion.isWarning ? Island.warning : Island.tertiary)
+                    .lineLimit(1).truncationMode(.tail)
+                    .islandHelp(suggestion.statusLine)
+                    .accessibilityLabel(suggestion.statusLine)
             }
             Spacer(minLength: 0)
             Button("Add") { model.accept(suggestion) }

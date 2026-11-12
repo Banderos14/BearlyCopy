@@ -128,7 +128,7 @@ public struct ReportAttachment: Codable, Identifiable, Equatable, Sendable {
     public let sha256: String
     public let addedAt: String
     /// How it got here, in words.
-    public let provenance: String
+    public var provenance: String
     // Phase 5 (optional: older records decode unchanged).
     public var kind: AttachmentKind? = nil
     public var source: AttachmentSource? = nil
@@ -142,6 +142,10 @@ public struct ReportAttachment: Codable, Identifiable, Equatable, Sendable {
     public var stateID: String? = nil
     /// Phase 10: a window snapshot held in memory only (never in the index).
     public var inMemory: Bool? = nil
+    /// Phase 17: Prompt Relay prepared it when the answer arrived (no Add).
+    /// An optional field, not a new `source` value: an older app that reads
+    /// this index after a rollback still decodes every record.
+    public var autoPrepared: Bool? = nil
 
     public var isInMemory: Bool { inMemory ?? false }
     public var effectiveKind: AttachmentKind { kind ?? .image }

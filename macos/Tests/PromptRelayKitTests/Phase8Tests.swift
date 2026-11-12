@@ -374,9 +374,15 @@ final class Phase8Tests: XCTestCase {
         XCTAssertEqual(m.readyIndicator, .ready(sessions: 1, automated: false, backgroundPending: false),
                        "opening s2 leaves s1 unread")
         XCTAssertEqual(m.selectedSessionKey, "s2", "the newest answer's session is opened")
+        // Phase 17: opening again stays on the newest answer. Before, the
+        // older unopened s1 replaced it ("an older answer after reopening");
+        // s1 stays unread in the Inbox and in Project and Session.
         await m.revealReadyAnswer()
-        XCTAssertEqual(m.selectedSessionKey, "s1")
-        XCTAssertEqual(m.readyIndicator, .none)
+        XCTAssertEqual(m.selectedSessionKey, "s2")
+        XCTAssertEqual(m.unseenAnswers.map(\.sessionKey), ["s1"])
+        m.surfaceAppeared()
+        XCTAssertEqual(m.readyIndicator, .none, "the notch dot is cleared by opening the island")
+        m.surfaceDisappeared()
     }
 
     func testReadyIndicatorMarksATurnClaudeCodeStartedItself() async throws {

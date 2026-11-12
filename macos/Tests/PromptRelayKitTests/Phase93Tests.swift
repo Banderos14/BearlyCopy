@@ -262,7 +262,11 @@ struct Phase93Tests {
         try await waitUntil { m.selectedResponseText == "a#1" }
         let ref = ReportRef.local(sessionKey: "a", turn: 1)
         // Copy with Context put the text on the clipboard; files are still to transfer.
-        m.handoffs[ref.key] = AppModel.HandoffStep(ref: ref, text: "pack", attachmentIDs: ["x"], textChangeCount: 1)
+        // Phase 17: a transfer just started holds its report (for
+        // `handoffHoldWindow`; a forgotten one no longer does — Phase17LatestTests).
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        m.clock = { now }
+        m.handoffs[ref.key] = AppModel.HandoffStep(ref: ref, text: "pack", attachmentIDs: ["x"], textChangeCount: 1, startedAt: now)
         m.surfaceAppeared()
         m.surfaceDisappeared()   // the user switches to the other AI
 
@@ -384,10 +388,15 @@ struct Phase93Tests {
         let store = ReportStore(root: repo.appendingPathComponent("store-data"))
         let ref = ReportRef.local(sessionKey: "codex-nested", turn: 1)
 
-        #expect(try store.prepareResults(data) == 2)
+        // Phase 17: old.png (named, present, not changed this turn) is
+        // prepared too, as "named" — never as written or changed by the agent.
+        #expect(try store.prepareResults(data) == 3)
         let prepared = store.attachments(for: ref)
-        #expect(Set(prepared.map(\.originalFilename)) == ["REPORT.md", "shot.png"])
+        #expect(Set(prepared.map(\.originalFilename)) == ["REPORT.md", "shot.png", "old.png"], ".env and source.swift never")
         #expect(prepared.allSatisfy { $0.isSelected })
+        let oldShot = try #require(prepared.first { $0.originalFilename == "old.png" })
+        #expect(oldShot.effectiveSource == .named && oldShot.autoPrepared == true)
+        #expect(!ReviewPack.origin(oldShot).contains("created") && ReviewPack.origin(oldShot).contains("not seen being written"))
         let report = try #require(prepared.first { $0.originalFilename == "REPORT.md" })
         let shot = try #require(prepared.first { $0.originalFilename == "shot.png" })
         #expect(report.effectiveSource == .agentResult, "observed write: confirmed")
@@ -567,7 +576,10 @@ struct Phase94AttachmentTests {
 
         // Without the chain the follow-up turn could not see them (the old gap).
         let isolated = try show(root: root, turn: 3, completion: "answer", chain: false, requestAt: followUpAt, taskAt: taskAt)
-        #expect(try ReportStore(root: root.appendingPathComponent("other")).prepareResults(isolated) == 0)
+        // Phase 17: they are still attached, but only as "named in the answer".
+        let other = ReportStore(root: root.appendingPathComponent("other"))
+        #expect(try other.prepareResults(isolated) == 2)
+        #expect(other.attachments(for: ref).allSatisfy { $0.effectiveSource == .named && $0.autoPrepared == true })
 
         let data = try show(root: root, turn: 3, completion: "answer", chain: true, requestAt: followUpAt, taskAt: taskAt)
         #expect(try store.prepareResults(data) == 2)
