@@ -168,6 +168,9 @@ final class Phase17DailyUseTests: XCTestCase {
         r.permission.granted = false
         XCTAssertEqual(m.dailyUse.state, .permissionRequired)
         XCTAssertEqual(m.dailyUse.action, .openScreenRecordingSettings)
+        XCTAssertEqual(m.dailyUse.secondaryAction, .quitToApply)
+        XCTAssertEqual(m.dailyUse.steps.count, 3, "off, on, reopen — in order")
+        XCTAssertTrue(m.dailyUse.steps[1].contains("off, then on"))
         m.perform(.openScreenRecordingSettings)
         XCTAssertEqual(r.permission.opens, 1)
         XCTAssertEqual(m.dailyUse.state, .permissionRequired, "opening Settings is not a grant")
@@ -373,5 +376,51 @@ final class Phase17ContractTests: XCTestCase {
         let before = try JSONDecoder().decode(ProjectsData.self, from: Data(old.utf8))
         XCTAssertNil(before.settings.capture)
         XCTAssertEqual(before.projects.first?.captureEnabled, true)
+    }
+}
+
+/// Phase 17.1: the permission state says what to do, in order, and recovers.
+/// Found on the owner's Mac: after an (ad-hoc signed) update the switch in
+/// Screen Recording looked on but belonged to the previous build.
+@MainActor
+final class Phase17PermissionRecoveryTests: XCTestCase {
+    func testPermissionRequiredGivesStepsAQuitActionAndClearsOnARealGrant() async {
+        let store = MemorySettingsStore([AppModel.autoCaptureKey: true, AppModel.dailySetupAnsweredKey: true])
+        let board = NSPasteboard(name: .init("PR17P-\(UUID().uuidString)"))
+        defer { board.releaseGlobally() }
+        let core = FakeCore(projects: [project("/p", sessions: 0, last: nil)])
+        let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: store,
+                         reportStore: ReportStore(root: FileManager.default.temporaryDirectory.appendingPathComponent("pr17p-\(UUID().uuidString)")))
+        let permission = Phase141PermissionTests.FakePermission()
+        m.screenRecordingPermission = permission
+        var quits = 0
+        m.quitApp = { quits += 1 }
+        // Linking a window was refused by macOS.
+        m.autoCapturePermissionBlocked = true
+        let blocked = m.dailyUse.checks.first { $0.id == "screenshots" }
+        XCTAssertEqual(blocked?.action, .openScreenRecordingSettings)
+        XCTAssertEqual(blocked?.level, .attention)
+
+        // The steps are short and say the non-obvious part.
+        m.perform(.quitToApply)
+        XCTAssertEqual(quits, 1, "Quit is the app's normal quit, never a forced relaunch")
+
+        // Still refused: Check Again does not pretend.
+        permission.granted = false
+        await m.recheckDailyUse()
+        XCTAssertTrue(m.autoCapturePermissionBlocked)
+        // Granted for real: the remembered refusal is cleared, and the next step is the window.
+        permission.granted = true
+        await m.recheckDailyUse()
+        XCTAssertFalse(m.autoCapturePermissionBlocked)
+        XCTAssertEqual(m.dailyUse.checks.first { $0.id == "screenshots" }?.action, .linkWindow)
+    }
+
+    func testEveryStateFitsOneShortSentence() {
+        for text in ["Nothing new is saved while capture is paused.",
+                     "Screenshots need Screen Recording for this version of Prompt Relay.",
+                     "Pick the Claude window once to get screenshots. Needed again after each restart."] {
+            XCTAssertLessThanOrEqual(text.count, 90)
+        }
     }
 }

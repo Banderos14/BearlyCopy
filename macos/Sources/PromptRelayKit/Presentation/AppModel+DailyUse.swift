@@ -129,6 +129,8 @@ extension AppModel {
     /// The one thing to do next, offered beside the status.
     public enum DailyUseAction: String, Equatable, Sendable {
         case openSetup, resumeCapture, showPluginUpdate, openScreenRecordingSettings, linkWindow, connectAgents, turnOnAttachments, followLatest
+        /// Quit, so the app can be opened again with the new permission.
+        case quitToApply
 
         public var title: String {
             switch self {
@@ -140,6 +142,7 @@ extension AppModel {
             case .connectAgents: return "Set Up Agents"
             case .turnOnAttachments: return "Turn On"
             case .followLatest: return "Follow Latest"
+            case .quitToApply: return "Quit Prompt Relay"
             }
         }
     }
@@ -159,6 +162,9 @@ extension AppModel {
         public let summary: String
         public let action: DailyUseAction?
         public let checks: [DailyUseCheck]
+        /// What to do, in order, when one press is not enough.
+        public var steps: [String] = []
+        public var secondaryAction: DailyUseAction? = nil
     }
 
     /// Terminal commands that bring the Claude Code plugin to the version
@@ -203,15 +209,15 @@ extension AppModel {
             checks.append(DailyUseCheck(id: "capture", title: "Capture", level: .attention, detail: "Paused: nothing new is stored.", action: .resumeCapture))
         case .pluginUpdateRequired(let installed, let needed):
             checks.append(DailyUseCheck(id: "capture", title: "Capture", level: .attention,
-                                        detail: "The mode is set, but plugin \(installed) cannot honor it (needs \(needed)): nothing is stored.",
+                                        detail: "Plugin \(installed) is too old (needs \(needed)): nothing is saved.",
                                         action: .showPluginUpdate))
         case .allProjects(let excluded):
             checks.append(DailyUseCheck(id: "capture", title: "Capture", level: .ok,
                                         detail: excluded == 0 ? "All projects." : "All projects, \(excluded) excluded."))
         case .selectedProjects(let count):
             checks.append(DailyUseCheck(id: "capture", title: "Capture", level: count > 0 ? .ok : .attention,
-                                        detail: count > 0 ? "Selected projects only (\(count)). A new repository must be switched on."
-                                            : "No project is switched on: nothing is captured.",
+                                        detail: count > 0 ? "Selected projects only (\(count))."
+                                            : "No project is switched on, so nothing is saved.",
                                         action: count > 0 ? nil : .openSetup))
         case .unknown:
             checks.append(DailyUseCheck(id: "capture", title: "Capture", level: .attention, detail: "The capture mode could not be read."))
@@ -222,7 +228,7 @@ extension AppModel {
         let stored = doctorData?.observed.outcomes["stored"] ?? 0
         if let blocked = globalCaptureBlockedByPlugin {
             checks.append(DailyUseCheck(id: "plugin", title: "Claude Code plugin", level: status == .pluginUpdateRequired(installed: blocked.installed, needed: blocked.needed) ? .attention : .info,
-                                        detail: "Installed \(blocked.installed). All Projects needs \(blocked.needed) or newer.", action: .showPluginUpdate))
+                                        detail: "\(blocked.installed) — All Projects needs \(blocked.needed).", action: .showPluginUpdate))
         } else if let plugin {
             checks.append(DailyUseCheck(id: "plugin", title: "Claude Code plugin", level: .ok, detail: "Installed \(plugin)."))
         } else if doctorData != nil {
@@ -232,25 +238,25 @@ extension AppModel {
         }
         if doctorData != nil {
             checks.append(DailyUseCheck(id: "hooks", title: "Hook deliveries", level: stored > 0 ? .ok : .attention,
-                                        detail: stored > 0 ? "\(stored) stored events seen in the hook log."
-                                            : "No stored event yet. Ask an agent something in a captured project.",
+                                        detail: stored > 0 ? "Working (\(stored) events saved)."
+                                            : "Nothing saved yet. Ask Claude something in a captured project.",
                                         action: stored > 0 ? nil : .connectAgents))
         }
 
         // 4. Latest and attachments (work without setup).
         checks.append(sessionPinned
             ? DailyUseCheck(id: "latest", title: "Latest answer", level: .info,
-                            detail: "Staying on a pinned conversation; newer answers elsewhere wait behind \u{201C}New\u{201D}.", action: .followLatest)
-            : DailyUseCheck(id: "latest", title: "Latest answer", level: .ok, detail: "Opens on the newest final answer of any project."))
+                            detail: "Pinned to one conversation.", action: .followLatest)
+            : DailyUseCheck(id: "latest", title: "Latest answer", level: .ok, detail: "Opens on the newest answer."))
         if reportStore == nil {
             checks.append(DailyUseCheck(id: "attachments", title: "Result files", level: .attention, detail: "The attachment folder is not available."))
         } else if !autoSelectResultAttachments {
             checks.append(DailyUseCheck(id: "attachments", title: "Result files", level: .off,
-                                        detail: "Off: files are offered under From this turn, with Add.", action: .turnOnAttachments))
+                                        detail: "Off — you add files yourself.", action: .turnOnAttachments))
         } else {
             checks.append(DailyUseCheck(id: "attachments", title: "Result files", level: .ok,
-                                        detail: autoSelectPreparedAttachments ? "Attached and selected when the answer arrives."
-                                            : "Attached when the answer arrives; you tick what to hand over."))
+                                        detail: autoSelectPreparedAttachments ? "Attached and ticked automatically."
+                                            : "Attached automatically, you tick them."))
         }
 
         // 5. Automatic screenshots: permission and a live window link.
@@ -261,38 +267,52 @@ extension AppModel {
         } else if autoCapturePermissionBlocked || (!autoCaptureBindings.isEmpty && !screenRecordingPermission.isGranted()) {
             screenshotBlock = .permissionRequired
             checks.append(DailyUseCheck(id: "screenshots", title: "Automatic screenshots", level: .attention,
-                                        detail: "macOS has not allowed Prompt Relay to capture the linked window.", action: .openScreenRecordingSettings))
+                                        detail: "Screen Recording is not allowed for this version.", action: .openScreenRecordingSettings))
         } else if autoCaptureBindings.isEmpty {
             screenshotBlock = .windowNotLinked
             checks.append(DailyUseCheck(id: "screenshots", title: "Automatic screenshots", level: .attention,
-                                        detail: "On, but no window is linked (links end when Prompt Relay quits). Open a conversation and link its window.",
+                                        detail: "On, no window picked yet.",
                                         action: .linkWindow))
         } else {
             let n = autoCaptureBindings.count
             checks.append(DailyUseCheck(id: "screenshots", title: "Automatic screenshots", level: .ok,
                                         detail: "\(n == 1 ? "1 window" : "\(n) windows") linked. "
-                                            + (autoScreenshotsInHandoff ? "Screenshots start ticked for hand-offs." : "Screenshots wait unticked until you tick them.")))
+                                            + (autoScreenshotsInHandoff ? "Ticked for hand-offs." : "Not ticked for hand-offs.")))
         }
 
         // The state: the first thing that stops daily use, in order of harm.
-        let state: DailyUseState
-        let summary: String
-        let action: DailyUseAction?
         func first(_ id: String) -> DailyUseCheck? { checks.first { $0.id == id } }
         if status == .paused {
-            (state, summary, action) = (.capturePaused, "Capture is paused: nothing new is stored.", .resumeCapture)
-        } else if case .pluginUpdateRequired(let installed, let needed) = status {
-            (state, summary, action) = (.pluginUpdateRequired, "Plugin \(installed) cannot honor the capture mode (needs \(needed)); nothing is stored until it is updated.", .showPluginUpdate)
-        } else if let failing = ["core", "capture", "plugin", "hooks", "attachments"].compactMap(first).first(where: { $0.level == .attention }) {
-            (state, summary, action) = (.setupIncomplete, failing.title + ": " + failing.detail, failing.action ?? .connectAgents)
-        } else if !dailySetupAnswered {
-            (state, summary, action) = (.setupIncomplete, "Choose once how Prompt Relay captures projects and screenshots.", .openSetup)
-        } else if let screenshotBlock, let check = first("screenshots") {
-            (state, summary, action) = (screenshotBlock, check.detail, check.action)
-        } else {
-            (state, summary, action) = (.ready, "New answers, their files\(autoCaptureFinalWindow ? " and screenshots" : "") arrive by themselves.", nil)
+            return DailyUseReport(state: .capturePaused, summary: "Nothing new is saved while capture is paused.", action: .resumeCapture, checks: checks)
         }
-        return DailyUseReport(state: state, summary: summary, action: action, checks: checks)
+        if case .pluginUpdateRequired(let installed, let needed) = status {
+            return DailyUseReport(state: .pluginUpdateRequired, summary: "Nothing is saved until the Claude Code plugin is updated (\(installed) → \(needed)).",
+                                  action: .showPluginUpdate, checks: checks,
+                                  steps: ["Copy the commands and run them in Terminal.", "Start a new Claude chat.", "Press Check Again."])
+        }
+        if let failing = ["core", "capture", "plugin", "hooks", "attachments"].compactMap(first).first(where: { $0.level == .attention }) {
+            return DailyUseReport(state: .setupIncomplete, summary: failing.detail, action: failing.action, checks: checks)
+        }
+        if !dailySetupAnswered {
+            return DailyUseReport(state: .setupIncomplete, summary: "One step left: choose what Prompt Relay captures.", action: .openSetup, checks: checks)
+        }
+        if screenshotBlock == .permissionRequired {
+            // macOS ties the permission to one build of the app. After an
+            // update the switch can look on while it still belongs to the
+            // old build — so: off, on, reopen.
+            return DailyUseReport(state: .permissionRequired, summary: "Screenshots need Screen Recording for this version of Prompt Relay.",
+                                  action: .openScreenRecordingSettings, checks: checks,
+                                  steps: ["Open the settings and find Prompt Relay (the bear).",
+                                          "Turn it off, then on again — even if it already looks on.",
+                                          "Quit Prompt Relay and open it again."],
+                                  secondaryAction: .quitToApply)
+        }
+        if screenshotBlock == .windowNotLinked {
+            return DailyUseReport(state: .windowNotLinked, summary: "Pick the Claude window once to get screenshots. Needed again after each restart.",
+                                  action: .linkWindow, checks: checks)
+        }
+        return DailyUseReport(state: .ready, summary: autoCaptureFinalWindow ? "New answers, files and screenshots arrive by themselves."
+                                : "New answers and their files arrive by themselves.", action: nil, checks: checks)
     }
 
     /// Runs the readiness action. `linkWindow` needs an open conversation
@@ -314,6 +334,7 @@ extension AppModel {
         case .connectAgents: navigate(to: .setup)
         case .turnOnAttachments: autoSelectResultAttachments = true
         case .followLatest: followLatestNow()
+        case .quitToApply: quitApp()
         }
         dailyUseVersion += 1
     }
@@ -323,6 +344,7 @@ extension AppModel {
         dailyUseNotice = nil
         await refreshNow()
         await reloadDoctor()
+        if screenRecordingPermission.isGranted() { autoCapturePermissionBlocked = false }
         dailyUseVersion += 1
     }
 }

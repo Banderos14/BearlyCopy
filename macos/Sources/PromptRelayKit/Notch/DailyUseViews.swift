@@ -15,28 +15,28 @@ struct DailyUseSetupCard: View {
                 Image(systemName: "sparkles").font(.system(size: 13)).foregroundStyle(Island.accent).frame(width: 18)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Set up daily use").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Island.primary)
-                    Text("The newest answer and its result files already arrive by themselves. These three need your yes, once. Everything stays on this Mac.")
+                    Text("Three choices, once. Everything stays on this Mac.")
                         .font(.system(size: 11)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
             choice("Capture all projects",
-                   detail: "Every project Claude Code or a connected Codex works in, without a per-project switch. You can exclude projects or pause.",
+                   detail: "No per-project switch. You can exclude a project or pause.",
                    isOn: current.globalCapture) { var c = current; c.globalCapture.toggle(); choices = c }
             if current.globalCapture, model.captureSettings?.mode != .global, let blocked = model.globalCaptureBlockedByPlugin {
-                Label("The Claude Code plugin is \(blocked.installed); All Projects needs \(blocked.needed). It will be switched on after the plugin update, not before — an old plugin would store nothing.",
+                Label("Update the Claude Code plugin first (\(blocked.installed) → \(blocked.needed)). Until then this stays off.",
                       systemImage: "exclamationmark.triangle")
                     .font(.system(size: 11)).foregroundStyle(Island.warning).fixedSize(horizontal: false, vertical: true)
                     .padding(.leading, 24)
             }
             choice("Automatic final screenshots",
-                   detail: "After each final answer, one still image of the window you link to that agent. Memory only. macOS asks for Screen Recording when you link a window.",
+                   detail: "One picture of the Claude window after each answer. Kept in memory only.",
                    isOn: current.autoScreenshots) {
                 var c = current; c.autoScreenshots.toggle()
                 if !c.autoScreenshots { c.screenshotsInHandoff = model.autoScreenshotsInHandoff }
                 choices = c
             }
             choice("Include screenshots in hand-offs",
-                   detail: "On: they start ticked for Copy with Context and drag. Off: you tick them yourself.",
+                   detail: "Screenshots go with Copy with Context unless you untick them.",
                    isOn: current.screenshotsInHandoff, enabled: current.autoScreenshots) {
                 var c = current; c.screenshotsInHandoff.toggle(); choices = c
             }
@@ -107,30 +107,44 @@ struct DailyUseStatusCard: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Daily use: \(report.state.title). \(report.summary)")
-            Text(report.summary).font(.system(size: 11)).foregroundStyle(report.state == .ready ? Island.tertiary : Island.secondary)
+            Text(report.summary).font(.system(size: 11.5)).foregroundStyle(report.state == .ready ? Island.tertiary : Island.secondary)
                 .fixedSize(horizontal: false, vertical: true).padding(.leading, 26).textSelection(.enabled)
+            if !report.steps.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(report.steps.enumerated()), id: \.offset) { index, step in
+                        HStack(alignment: .top, spacing: 5) {
+                            Text("\(index + 1).").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(Island.secondary)
+                                .frame(width: 14, alignment: .leading)
+                            Text(step).font(.system(size: 11.5)).foregroundStyle(Island.primary).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding(.leading, 26)
+                .accessibilityElement(children: .combine)
+            }
             if let notice = model.dailyUseNotice {
                 Text(notice).font(.system(size: 11)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
                     .padding(.leading, 26)
             }
-            if case .pluginUpdateFirst(let installed, let needed)? = model.dailyUseOutcome, model.globalCaptureBlockedByPlugin != nil {
-                Text("All Projects is not on yet: the Claude Code plugin is \(installed) and needs \(needed). Update it, start a new Claude session, then choose All Projects.")
-                    .font(.system(size: 11)).foregroundStyle(Island.warning).fixedSize(horizontal: false, vertical: true).padding(.leading, 26)
-            }
             HStack(spacing: 8) {
                 if let action = report.action {
-                    Button(action.title) { model.perform(action) }.buttonStyle(IslandPillStyle(prominent: true))
+                    Button(action.title) { model.perform(action) }.buttonStyle(IslandPillStyle(prominent: true)).fixedSize()
                 }
-                if report.action != .openSetup {
-                    Button("Set Up…") { model.dailySetupOpen = true }.buttonStyle(IslandPillStyle(prominent: false))
-                        .islandHelp("Review Global Capture and automatic screenshots")
-                }
-                if model.globalCaptureBlockedByPlugin != nil, report.action != .showPluginUpdate {
-                    Button("Copy Update Commands") { model.perform(.showPluginUpdate) }.buttonStyle(IslandPillStyle(prominent: false))
+                if let second = report.secondaryAction {
+                    Button(second.title) { model.perform(second) }.buttonStyle(IslandPillStyle(prominent: false)).fixedSize()
                 }
                 Spacer(minLength: 0)
-                Button(showsChecks ? "Hide Checks" : "Show Checks") { showsChecks.toggle() }
-                    .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
+            }
+            .padding(.leading, 26)
+            HStack(spacing: 14) {
+                if report.action != .openSetup, report.secondaryAction != .openSetup {
+                    Button("Set Up…") { model.dailySetupOpen.toggle() }
+                        .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent).fixedSize()
+                        .accessibilityLabel("Review capture and screenshot choices")
+                }
+                Button(showsChecks ? "Hide Details" : "Details") { showsChecks.toggle() }
+                    .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent).fixedSize()
+                Spacer(minLength: 0)
             }
             .padding(.leading, 26)
             if model.dailySetupOpen {
@@ -142,7 +156,7 @@ struct DailyUseStatusCard: View {
                         HStack(alignment: .top, spacing: 6) {
                             Image(systemName: symbol(check.level)).font(.system(size: 10)).foregroundStyle(tint(check.level)).frame(width: 14)
                             Text(check.title).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.primary)
-                                .frame(width: 128, alignment: .leading)
+                                .frame(width: 104, alignment: .leading)
                             Text(check.detail).font(.system(size: 11)).foregroundStyle(Island.tertiary)
                                 .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 0)
