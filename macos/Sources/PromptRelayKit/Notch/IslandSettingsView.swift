@@ -243,7 +243,11 @@ struct IslandSettingsView: View {
             rowButton("Set Up Agents", detail: "Connect Claude Code or Codex and check the first capture.",
                       value: "\(connected) of \(max(detected, 1)) connected") { model.navigate(to: .setup) }
             Hairline()
-            rowButton("Projects", detail: "Folders whose agent answers are captured. New folders start off.", value: captureSummary) {
+            CaptureModeCard(model: model).padding(.horizontal, 8).padding(.vertical, 4)
+            Hairline()
+            rowButton("Projects", detail: model.captureSettings?.mode == .global
+                      ? "Every project an agent works in appears automatically; turn one off to exclude it."
+                      : "Folders whose agent answers are captured. New folders start off.", value: captureSummary) {
                 model.navigate(to: .capture)
             }
             if !model.knownProfiles.isEmpty {

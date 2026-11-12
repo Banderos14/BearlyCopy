@@ -510,6 +510,7 @@ public final class AppModel {
         do {
             let result = try await core.projects()
             rawProjects = result.data.projects
+            captureSettings = result.data.settings.capture
             // Projects with history first (newest activity), then enabled ones without history.
             let list = Self.logicalProjects(result.data.projects).sorted { a, b in
                 let da = Wording.date(a.lastEventAt) ?? .distantPast, db = Wording.date(b.lastEventAt) ?? .distantPast
@@ -1963,7 +1964,11 @@ public final class AppModel {
     public private(set) var rawProjects: [ProjectInfo] = []
 
     public var projectRows: [ProjectRow] {
-        let core = rawProjects.compactMap { p -> ProjectRow? in
+        // Phase 16: with all projects captured, the switches exclude whole
+        // projects, so the list shows projects (a repository with its
+        // subfolders), not every folder an agent ran in.
+        let source = captureSettings?.mode == .global ? (projects.value ?? rawProjects) : rawProjects
+        let core = source.compactMap { p -> ProjectRow? in
             guard let path = p.path else { return nil }
             return ProjectRow(path: path, name: Wording.projectName(p), captureEnabled: p.captureEnabled,
                               explicitlyEnabled: p.explicitlyEnabled, sessionCount: p.sessionCount,
@@ -1992,6 +1997,100 @@ public final class AppModel {
     }
 
     /// `prompt-relay enable|disable`, then refresh the lists and the status.
+    // MARK: Phase 16 — capture mode
+
+    /// The Core's capture policy as last listed (nil: a Core before 0.8.0).
+    public internal(set) var captureSettings: CaptureSettings?
+    /// A mode change in progress or its last error.
+    public internal(set) var captureModeError: String?
+
+    /// What capture is doing now, in one state the UI shows everywhere.
+    public enum CaptureStatus: Equatable, Sendable {
+        case allProjects(excluded: Int)
+        case selectedProjects(count: Int)
+        case paused
+        /// A mode is set, but the installed Claude Code plugin is too old to
+        /// honor it: that plugin stores nothing until it is updated.
+        case pluginUpdateRequired(installed: String, needed: String)
+        case unknown
+
+        public var title: String {
+            switch self {
+            case .allProjects(let n): return n == 0 ? "Capturing all projects" : "Capturing all projects · \(n) excluded"
+            case .selectedProjects(let n): return n == 1 ? "Capturing 1 selected project" : "Capturing \(n) selected projects"
+            case .paused: return "Capture paused"
+            case .pluginUpdateRequired: return "Plugin update required"
+            case .unknown: return "Capture status unknown"
+            }
+        }
+
+        public var detail: String? {
+            switch self {
+            case .allProjects: return "Every project Claude Code or a connected Codex works in appears automatically."
+            case .selectedProjects: return "Only projects switched on in Projects are captured."
+            case .paused: return "Nothing new is stored until you resume."
+            case .pluginUpdateRequired(let installed, let needed):
+                return "The Claude Code plugin is \(installed); capture modes need \(needed). Until it is updated, nothing is captured. In Terminal: claude plugin update prompt-relay@prompt-relay — then start a new Claude session."
+            case .unknown: return nil
+            }
+        }
+
+        public var isActive: Bool {
+            switch self { case .allProjects, .selectedProjects: return true; default: return false }
+        }
+    }
+
+    /// The installed Claude Code plugin's version, when `doctor` found one.
+    public var installedPluginVersion: String? {
+        doctor.value?.configuration.plugin.records.first { $0.id.hasPrefix("prompt-relay@") }?.version
+    }
+
+    public var captureStatus: CaptureStatus {
+        Self.captureStatus(settings: captureSettings, installedPlugin: installedPluginVersion)
+    }
+
+    static func captureStatus(settings: CaptureSettings?, installedPlugin: String?) -> CaptureStatus {
+        guard let settings else { return .unknown }
+        let policy = settings.mode != .selected || !settings.excludedProjects.isEmpty
+        if policy, let installed = installedPlugin,
+           let a = AppBuild.numeric(installed), let b = AppBuild.numeric(settings.minimumPluginVersion), a.lexicographicallyPrecedes(b) {
+            return .pluginUpdateRequired(installed: installed, needed: settings.minimumPluginVersion)
+        }
+        switch settings.mode {
+        case .global: return .allProjects(excluded: settings.excludedProjects.count)
+        case .selected: return .selectedProjects(count: settings.enabledProjects.count)
+        case .paused: return .paused
+        }
+    }
+
+    static let globalOfferDismissedKey = "PromptRelayGlobalCaptureOfferDismissed"
+
+    /// Phase 16: the one-time offer to capture every project, shown while the
+    /// user has not chosen (selected mode, not dismissed). Never switched on
+    /// without this explicit choice.
+    public var offersGlobalCapture: Bool {
+        captureSettings?.mode == .selected && !(stateDefaults?.bool(forKey: Self.globalOfferDismissedKey) ?? false)
+            && !globalOfferDismissedNow
+    }
+    var globalOfferDismissedNow = false
+
+    public func dismissGlobalCaptureOffer() {
+        stateDefaults?.set(true, forKey: Self.globalOfferDismissedKey)
+        globalOfferDismissedNow = true
+    }
+
+    public func setCaptureMode(_ change: CapturePolicyChange) async {
+        captureModeError = nil
+        do {
+            captureSettings = try await core.setCaptureMode(change)
+            if case .mode = change { dismissGlobalCaptureOffer() }
+        } catch {
+            captureModeError = Self.message(for: error)
+        }
+        await refreshNow()
+        loadDoctor()
+    }
+
     public func setCapture(_ enabled: Bool, for path: String) async {
         captureChange = .working(path: path)
         do {

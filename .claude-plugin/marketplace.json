@@ -8,7 +8,7 @@
     {
       "name": "prompt-relay",
       "source": "./plugin",
-      "description": "Captures Claude Code's final answers locally, opt-in per project. No network."
+      "description": "Captures Claude Code's final answers locally: selected projects, or all projects with Global Capture. No network."
     }
   ]
 }

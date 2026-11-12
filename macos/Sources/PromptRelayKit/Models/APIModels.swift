@@ -435,6 +435,8 @@ public struct ProjectInfo: Decodable, Equatable, Hashable, Identifiable, Sendabl
     public var logicalProject: LogicalProject? = nil
     /// Phase 9.3, app side: the raw folders merged into this logical project.
     public var memberPaths: [String] = []
+    /// Phase 16: excluded from capture (wins over every mode).
+    public var excluded: Bool = false
 
     public var id: String { path ?? "" }
 
@@ -448,16 +450,68 @@ public struct ProjectInfo: Decodable, Equatable, Hashable, Identifiable, Sendabl
     enum CodingKeys: String, CodingKey {
         case path, name
         case captureEnabled = "capture_enabled", explicitlyEnabled = "explicitly_enabled"
-        case sessionCount = "session_count", lastEventAt = "last_event_at", logicalProject = "logical_project"
+        case sessionCount = "session_count", lastEventAt = "last_event_at", logicalProject = "logical_project", excluded
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        path = try c.decodeIfPresent(String.self, forKey: .path)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        captureEnabled = try c.decode(Bool.self, forKey: .captureEnabled)
+        explicitlyEnabled = try c.decode(Bool.self, forKey: .explicitlyEnabled)
+        sessionCount = try c.decode(Int.self, forKey: .sessionCount)
+        lastEventAt = try c.decodeIfPresent(String.self, forKey: .lastEventAt)
+        logicalProject = try c.decodeIfPresent(LogicalProject.self, forKey: .logicalProject)
+        excluded = try c.decodeIfPresent(Bool.self, forKey: .excluded) ?? false
     }
 }
 
 public struct RetentionSettings: Decodable, Equatable, Sendable {
     public let retentionDays: Int?
     public let automaticDeletion: Bool
+    /// Phase 16: the capture policy (absent from Cores before 0.8.0).
+    public var capture: CaptureSettings? = nil
 
     enum CodingKeys: String, CodingKey {
-        case retentionDays = "retention_days", automaticDeletion = "automatic_deletion"
+        case retentionDays = "retention_days", automaticDeletion = "automatic_deletion", capture
+    }
+}
+
+/// Phase 16: which agent events the Core stores (`prompt-relay capture`).
+public enum CaptureMode: String, Decodable, Equatable, Sendable, CaseIterable {
+    /// Every project a connected agent works in, except exclusions.
+    case global
+    /// Only projects switched on one by one (the pre-0.8 behavior).
+    case selected
+    /// Nothing new is stored.
+    case paused
+
+    public var title: String {
+        switch self {
+        case .global: return "All projects"
+        case .selected: return "Selected projects"
+        case .paused: return "Paused"
+        }
+    }
+}
+
+public struct CaptureSettings: Decodable, Equatable, Sendable {
+    public let mode: CaptureMode
+    public let excludedProjects: [String]
+    public let enabledProjects: [String]
+    public let resumeMode: CaptureMode?
+    /// The oldest Claude Code plugin whose hook honors `mode` (older ones store nothing).
+    public let minimumPluginVersion: String
+
+    public init(mode: CaptureMode, excludedProjects: [String] = [], enabledProjects: [String] = [],
+                resumeMode: CaptureMode? = nil, minimumPluginVersion: String = "0.8.0") {
+        self.mode = mode; self.excludedProjects = excludedProjects; self.enabledProjects = enabledProjects
+        self.resumeMode = resumeMode; self.minimumPluginVersion = minimumPluginVersion
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case mode, excludedProjects = "excluded_projects", enabledProjects = "enabled_projects",
+             resumeMode = "resume_mode", minimumPluginVersion = "minimum_plugin_version"
     }
 }
 

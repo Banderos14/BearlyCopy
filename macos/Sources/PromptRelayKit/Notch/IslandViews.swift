@@ -1468,7 +1468,10 @@ struct ProjectsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
-            Text("Capture keeps connected agents' final answers from a folder. New projects start with capture off; turning it off keeps their history.")
+            CaptureModeCard(model: model)
+            Text(model.captureSettings?.mode == .global
+                 ? "Projects appear here automatically when an agent works in them. Turning a project off excludes it; its history is kept."
+                 : "Capture keeps connected agents' final answers from a folder. New projects start with capture off; turning it off keeps their history.")
                 .font(.system(size: 11.5)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             if let error = model.projects.error, model.projects.value == nil {
                 MessageCard(title: error.title, detail: error.detail, symbol: "exclamationmark.triangle", tint: Island.warning, action: nil)
@@ -1507,7 +1510,9 @@ struct ProjectRowView: View {
     let model: AppModel
     let row: AppModel.ProjectRow
 
-    private var inherited: Bool { row.captureEnabled && !row.explicitlyEnabled }
+    /// Selected mode only: on because a parent folder is on (changed there).
+    /// With all projects captured every switch works (off = exclude).
+    private var inherited: Bool { model.captureSettings?.mode != .global && row.captureEnabled && !row.explicitlyEnabled }
     private var busy: Bool { if case .working = model.captureChange { return true } else { return false } }
     private var selected: Bool { row.path == model.selectedProjectPath && model.selectedImport == nil }
 
@@ -1544,7 +1549,9 @@ struct ProjectRowView: View {
             .disabled(busy || inherited)
             .opacity(inherited ? 0.55 : 1)
             .accessibilityLabel("Capture for \(row.name)")
-            .islandHelp(inherited ? "Captured because a parent folder is on; change it there." : "Keep agent answers from this folder")
+            .islandHelp(inherited ? "Captured because a parent folder is on; change it there."
+                        : model.captureSettings?.mode == .global ? (row.captureEnabled ? "Turn off to exclude this project from capture" : "Excluded — turn on to capture it again")
+                        : "Keep agent answers from this folder")
             .padding(.trailing, 12)
         }
         .padding(.horizontal, 2)
@@ -1557,7 +1564,7 @@ struct ProjectRowView: View {
             parts.append(row.sessionCount == 1 ? "1 session" : "\(row.sessionCount) sessions")
             parts.append("last \(Wording.relative(row.lastEventAt))")
         } else {
-            parts.append(row.captureEnabled ? "No answers yet" : "Capture is off")
+            parts.append(row.captureEnabled ? "No answers yet" : (model.captureSettings?.mode == .global ? "Excluded" : "Capture is off"))
         }
         if imports > 0 { parts.append(imports == 1 ? "1 cloud import" : "\(imports) cloud imports") }
         return parts.joined(separator: " · ")

@@ -83,9 +83,35 @@ public protocol CoreProviding: Sendable {
     func setCapture(_ enabled: Bool, path: String) async throws -> String
     /// Phase 13: the sections of several results, in this order (`context-pack`).
     func contextPack(_ slots: [PackSlot]) async throws -> CoreResult<ContextPackData>
+    /// Phase 16: `prompt-relay capture --global|--selected|--pause|--resume`.
+    func setCaptureMode(_ change: CapturePolicyChange) async throws -> CaptureSettings
+}
+
+/// Phase 16: one change of the capture policy.
+public enum CapturePolicyChange: Equatable, Sendable {
+    case mode(CaptureMode)
+    case resume
+    case exclude(String)
+    case include(String)
+
+    var arguments: [String] {
+        switch self {
+        case .mode(.global): return ["--global"]
+        case .mode(.selected): return ["--selected"]
+        case .mode(.paused): return ["--pause"]
+        case .resume: return ["--resume"]
+        case .exclude(let path): return ["--exclude", path]
+        case .include(let path): return ["--include", path]
+        }
+    }
 }
 
 extension CoreProviding {
+    /// Doubles without a `capture` command (a Core before 0.8.0 has none).
+    public func setCaptureMode(_ change: CapturePolicyChange) async throws -> CaptureSettings {
+        throw CoreError.api(code: "unsupported", message: "This Core has no capture modes; update Prompt Relay")
+    }
+
     /// Doubles (and Previews) without a `results` command: the same list,
     /// built from `sessions` and `turns` — final answers only, newest first.
     public func results(limit: Int) async throws -> CoreResult<ResultsData> {
@@ -211,6 +237,10 @@ public struct CoreClient: CoreProviding {
 
     public func doctor() async throws -> CoreResult<DoctorData> {
         try await call(["doctor", "--no-project"])
+    }
+
+    public func setCaptureMode(_ change: CapturePolicyChange) async throws -> CaptureSettings {
+        try await call(["capture"] + change.arguments).data
     }
 
     public func setCapture(_ enabled: Bool, path: String) async throws -> String {

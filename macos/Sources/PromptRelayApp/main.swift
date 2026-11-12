@@ -70,6 +70,14 @@ struct PromptRelayApp: App {
             Button("History") { services.present(.history) }
             Button("Import AI Result…") { services.present(.importReport) }
             Divider()
+            // Phase 16: capture state, always visible here, with Pause/Resume.
+            Text(services.model.captureStatus.title)
+            if services.model.captureSettings?.mode == .paused {
+                Button("Resume Capture") { Task { await services.model.setCaptureMode(.resume) } }
+            } else if services.model.captureSettings != nil {
+                Button("Pause Capture") { Task { await services.model.setCaptureMode(.mode(.paused)) } }
+            }
+            Divider()
             Button("Settings…") { services.present(.settings) }
                 .keyboardShortcut(",")
             Divider()

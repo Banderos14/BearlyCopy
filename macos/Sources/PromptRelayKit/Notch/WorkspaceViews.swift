@@ -34,6 +34,7 @@ struct InboxView: View {
                         .islandHelp("Mark the results listed here as read")
                 }
             }
+            CaptureModeCard(model: model, compact: true)
             content(entries)
             PackBar(model: model)
         }
