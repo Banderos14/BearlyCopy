@@ -32,6 +32,9 @@ MAX_STDIN_BYTES = 64 * 1024 * 1024
 LOG_MAX_BYTES = 256 * 1024
 ENV_DISABLE = "PROMPT_RELAY_DISABLE"
 ENV_VIA = "PROMPT_RELAY_VIA"  # set to "plugin" by plugin/hooks/run-hook
+# Expected outcomes: logged, never written to stderr.
+QUIET_OUTCOMES = ("stored", "duplicate", "ignored_event", "project_not_enabled", "disabled", "capture_paused",
+                  "project_excluded", "outside_capture_scope", "no_project_dir")
 
 
 def _utc_iso(epoch: float) -> str:
@@ -106,9 +109,13 @@ def process(raw: bytes, env: Mapping[str, str], now: Optional[float] = None, roo
     cfg = _config.load(root)
     if cfg.error:
         return label, cfg.error
+    # The project the agent works in: Claude Code's own CLAUDE_PROJECT_DIR,
+    # else the event's cwd. Phase 16: the capture policy decides (selected
+    # projects, global with exclusions, or paused); every doubt fails closed.
     project_dir = (env.get("CLAUDE_PROJECT_DIR") if env.get("PROMPT_RELAY_PROVIDER", "claude_code") == "claude_code" else None) or payload.get("cwd")
-    if not isinstance(project_dir, str) or not _config.is_enabled(cfg, project_dir):
-        return label, "project_not_enabled"
+    allowed, why = _config.capture_decision(cfg, project_dir if isinstance(project_dir, str) else None)
+    if not allowed:
+        return label, why
 
     payload = normalize(payload, env)
     if payload is None:
@@ -219,7 +226,7 @@ def main(stdin: Any = None, env: Optional[Mapping[str, str]] = None) -> int:
         event, outcome = process(raw, env, root=root)
     except Exception as exc:  # never let a failure reach Claude Code
         outcome = "internal_error:" + type(exc).__name__
-    if outcome not in ("stored", "duplicate", "ignored_event", "project_not_enabled", "disabled"):
+    if outcome not in QUIET_OUTCOMES:
         try:
             sys.stderr.write(f"prompt-relay: {outcome}\n")
         except Exception:

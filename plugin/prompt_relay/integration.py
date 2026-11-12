@@ -24,6 +24,21 @@ from prompt_relay import runtime
 from prompt_relay.paths import data_dir
 
 PLUGIN_NAME = "prompt-relay"
+# Phase 16: the first plugin whose hook understands capture modes (config schema 2).
+MIN_POLICY_PLUGIN = "0.8.0"
+
+
+def _older(version: Any, floor: str) -> bool:
+    """True when ``version`` is a dotted number below ``floor``; unknown → False."""
+    def parse(v: Any) -> Optional[Tuple[int, ...]]:
+        if not isinstance(v, str):
+            return None
+        try:
+            return tuple(int(x) for x in v.split(".")[:3])
+        except ValueError:
+            return None
+    a, b = parse(version), parse(floor)
+    return a is not None and b is not None and a < b
 MAX_JSON_BYTES = 5 * 1024 * 1024
 LOG_TAIL_LINES = 5000
 # Markers that identify a Prompt Relay hook handler in a settings file.
@@ -188,7 +203,9 @@ def diagnose(env: Mapping[str, str], project: Optional[str], python_version: Tup
     capture = {
         "config_error": cfg.error,
         "enabled_projects": list(cfg.enabled_projects),
-        "project": None if not project else {"path": project, "capture_enabled": _config.is_enabled(cfg, project)},
+        "mode": None if cfg.error else cfg.capture_mode,
+        "excluded_projects": list(cfg.excluded_projects),
+        "project": None if not project else {"path": project, "capture_enabled": _config.capture_decision(cfg, project)[0]},
     }
     enabled_flags = [v for s in settings for v in s["enabled_plugins"].values()]
     plugin_configured = bool(plugin["records"]) or any(v is True for v in enabled_flags)
@@ -209,8 +226,16 @@ def diagnose(env: Mapping[str, str], project: Optional[str], python_version: Tup
         add("error", "storage_not_writable", "the data directory is not writable; hooks cannot store events")
     if cfg.error:
         add("error", "config_unusable", f"config.json is unusable ({cfg.error}); capture is off everywhere")
-    elif not cfg.enabled_projects:
-        add("warning", "no_projects_enabled", "capture is off: no project is enabled ('prompt-relay enable <dir>')")
+    elif cfg.capture_mode == _config.MODE_PAUSED:
+        add("warning", "capture_paused", "capture is paused: nothing new is stored ('prompt-relay capture --resume')")
+    elif cfg.capture_mode == _config.MODE_SELECTED and not cfg.enabled_projects:
+        add("warning", "no_projects_enabled", "capture is off: no project is enabled ('prompt-relay enable <dir>' or 'prompt-relay capture --global')")
+    if not cfg.error and (cfg.capture_mode != _config.MODE_SELECTED or cfg.excluded_projects):
+        for rec in plugin["records"]:
+            if _older(rec.get("version"), MIN_POLICY_PLUGIN):
+                add("error", "plugin_too_old_for_capture_mode",
+                    f"installed plugin {rec['id']} is {rec.get('version')}; capture modes need {MIN_POLICY_PLUGIN}+. "
+                    "Until it is updated it captures nothing ('claude plugin update prompt-relay@prompt-relay', then start a new session)")
     if capture["project"] and not capture["project"]["capture_enabled"]:
         add("warning", "project_not_enabled", "capture is off for this project")
     if plugin_configured and settings_hooks:
@@ -232,7 +257,8 @@ def diagnose(env: Mapping[str, str], project: Optional[str], python_version: Tup
     if "plugin" in via and "direct" in via:
         add("warning", "events_from_two_sources", "handler.log shows events from both the plugin and another registration")
     failures = {k: v for k, v in seen["outcomes"].items()
-                if k not in ("stored", "duplicate", "ignored_event", "project_not_enabled", "disabled")}
+                if k not in ("stored", "duplicate", "ignored_event", "project_not_enabled", "disabled", "capture_paused",
+                             "project_excluded", "outside_capture_scope", "no_project_dir")}
     if failures:
         add("warning", "handler_errors_logged", "handler.log records failures: " + ", ".join(f"{k}×{v}" for k, v in failures.items()))
     return {

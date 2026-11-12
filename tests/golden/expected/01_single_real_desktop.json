@@ -117,6 +117,7 @@
         "projects": [
           {
             "capture_enabled": true,
+            "excluded": false,
             "explicitly_enabled": true,
             "last_event_at": "2026-01-01T00:00:01.000000Z",
             "logical_project": {
@@ -130,6 +131,7 @@
           },
           {
             "capture_enabled": true,
+            "excluded": false,
             "explicitly_enabled": true,
             "last_event_at": null,
             "logical_project": {
@@ -144,6 +146,16 @@
         ],
         "settings": {
           "automatic_deletion": false,
+          "capture": {
+            "enabled_projects": [
+              "__PROJECT_A__",
+              "__PROJECT_B__"
+            ],
+            "excluded_projects": [],
+            "minimum_plugin_version": "0.8.0",
+            "mode": "selected",
+            "resume_mode": null
+          },
           "retention_days": null
         }
       },

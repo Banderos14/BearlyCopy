@@ -60,7 +60,8 @@
     "retention": "retention_data",
     "doctor": "doctor_data",
     "results": "results_data",
-    "context-pack": "context_pack_data"
+    "context-pack": "context_pack_data",
+    "capture": "capture_data"
   },
   "$defs": {
     "timestamp": {
@@ -866,6 +867,9 @@
         },
         "automatic_deletion": {
           "const": false
+        },
+        "capture": {
+          "$ref": "#/$defs/capture_data"
         }
       }
     },
@@ -918,6 +922,9 @@
               },
               "logical_project": {
                 "$ref": "#/$defs/logical_project"
+              },
+              "excluded": {
+                "type": "boolean"
               }
             }
           }
@@ -1406,6 +1413,20 @@
                   "type": "null"
                 }
               ]
+            },
+            "mode": {
+              "enum": [
+                "selected",
+                "global",
+                "paused",
+                null
+              ]
+            },
+            "excluded_projects": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         },
@@ -2458,6 +2479,48 @@
         },
         "attachments": {
           "type": "array"
+        }
+      }
+    },
+    "capture_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "excluded_projects",
+        "enabled_projects",
+        "resume_mode",
+        "minimum_plugin_version"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "selected",
+            "global",
+            "paused"
+          ]
+        },
+        "excluded_projects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabled_projects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resume_mode": {
+          "enum": [
+            "selected",
+            "global",
+            null
+          ]
+        },
+        "minimum_plugin_version": {
+          "type": "string"
         }
       }
     }

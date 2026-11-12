@@ -126,10 +126,19 @@ def _enable(args: argparse.Namespace) -> int:
     if path == os.sep or path == os.path.realpath(os.path.expanduser("~")):
         _err("refusing to enable capture for / or your home directory; choose a project directory")
         return EXIT_ERROR
-    if path not in cfg.enabled_projects:
+    changed = False
+    if path in cfg.excluded_projects:
+        cfg.excluded_projects.remove(path)
+        changed = True
+    if path not in cfg.enabled_projects and cfg.capture_mode != _config.MODE_GLOBAL:
         cfg.enabled_projects.append(path)
+        changed = True
+    if changed:
         _config.save(root, cfg)
-    print(f"capture enabled for {path}")
+    if cfg.capture_mode == _config.MODE_GLOBAL:
+        print(f"capture enabled for {path} (all projects are captured; it is no longer excluded)")
+    else:
+        print(f"capture enabled for {path}")
     _pin_if_needed(root)
     return 0
 
@@ -180,12 +189,76 @@ def _disable(args: argparse.Namespace) -> int:
         _err(f"config is unusable ({cfg.error})")
         return EXIT_ERROR
     path = _config.normalize_project_path(args.path)
-    if path in cfg.enabled_projects:
+    if cfg.capture_mode == _config.MODE_GLOBAL:
+        # Phase 16: with all projects captured, turning one off excludes it.
+        if path in cfg.enabled_projects:
+            cfg.enabled_projects.remove(path)
+        if path not in cfg.excluded_projects:
+            cfg.excluded_projects.append(path)
+        _config.save(root, cfg)
+        print(f"capture disabled for {path}: excluded (existing history is kept; use 'delete' to remove it)")
+    elif path in cfg.enabled_projects:
         cfg.enabled_projects.remove(path)
         _config.save(root, cfg)
         print(f"capture disabled for {path} (existing history is kept; use 'delete' to remove it)")
     else:
         print(f"capture was not enabled for {path}")
+    return 0
+
+
+def capture_settings(cfg: "_config.Config") -> Dict[str, Any]:
+    """The capture policy for --json (projects, capture)."""
+    return {"mode": cfg.capture_mode, "excluded_projects": sorted(cfg.excluded_projects),
+            "enabled_projects": sorted(cfg.enabled_projects), "resume_mode": cfg.resume_mode,
+            "minimum_plugin_version": _integration_min_plugin()}
+
+
+def _integration_min_plugin() -> str:
+    from prompt_relay import integration
+    return integration.MIN_POLICY_PLUGIN
+
+
+def cmd_capture(args: argparse.Namespace) -> int:
+    """Phase 16: show or change the capture mode and exclusions."""
+    root = data_dir()
+    with _config.locked(root):
+        cfg = _config.load(root)
+        if cfg.error:
+            raise CommandError(EXIT_ERROR, api.CONFIG_ERROR,
+                               f"config is unusable ({cfg.error}); capture is OFF for all projects. Fix or delete {root / 'config.json'}")
+        before = (cfg.capture_mode, list(cfg.excluded_projects), cfg.resume_mode)
+        if args.mode_global:
+            cfg.capture_mode, cfg.resume_mode = _config.MODE_GLOBAL, None
+        elif args.selected:
+            cfg.capture_mode, cfg.resume_mode = _config.MODE_SELECTED, None
+        elif args.pause:
+            if cfg.capture_mode != _config.MODE_PAUSED:
+                cfg.resume_mode, cfg.capture_mode = cfg.capture_mode, _config.MODE_PAUSED
+        elif args.resume:
+            if cfg.capture_mode == _config.MODE_PAUSED:
+                cfg.capture_mode, cfg.resume_mode = cfg.resume_mode or _config.MODE_SELECTED, None
+        for raw in args.exclude or []:
+            path = _config.normalize_project_path(raw)
+            if path not in cfg.excluded_projects:
+                cfg.excluded_projects.append(path)
+        for raw in args.include or []:
+            path = _config.normalize_project_path(raw)
+            if path in cfg.excluded_projects:
+                cfg.excluded_projects.remove(path)
+        if (cfg.capture_mode, cfg.excluded_projects, cfg.resume_mode) != before:
+            _config.save(root, cfg)
+    data = capture_settings(cfg)
+    if _json(args):
+        return _emit(args, data)
+    words = {_config.MODE_GLOBAL: "ON for every project a connected agent works in (except excluded ones)",
+             _config.MODE_SELECTED: f"ON only for enabled projects ({len(cfg.enabled_projects)})",
+             _config.MODE_PAUSED: "PAUSED: nothing new is stored ('prompt-relay capture --resume')"}
+    print(f"capture: {words[cfg.capture_mode]}")
+    for p in sorted(cfg.excluded_projects):
+        print(f"excluded: {p}")
+    if cfg.capture_mode != _config.MODE_SELECTED or cfg.excluded_projects:
+        print(f"note: the Claude Code plugin must be {_integration_min_plugin()} or newer; older plugins capture nothing "
+              "with this setting ('prompt-relay doctor' checks)")
     return 0
 
 
@@ -195,7 +268,11 @@ def cmd_projects(args: argparse.Namespace) -> int:
         raise CommandError(EXIT_ERROR, api.CONFIG_ERROR,
                            f"config is unusable ({cfg.error}); capture is OFF for all projects")
     if not _json(args):
-        if not cfg.enabled_projects:
+        if cfg.capture_mode == _config.MODE_GLOBAL:
+            print("capture is on for all projects (excluded: %d)" % len(cfg.excluded_projects))
+        elif cfg.capture_mode == _config.MODE_PAUSED:
+            print("capture is paused")
+        elif not cfg.enabled_projects:
             print("no projects enabled (capture is off)")
         for p in cfg.enabled_projects:
             print(p)
@@ -204,14 +281,15 @@ def cmd_projects(args: argparse.Namespace) -> int:
     by_path: Dict[Optional[str], List[history.Session]] = {}
     for s in sessions:
         by_path.setdefault(s.project_dir, []).append(s)
-    paths = set(by_path) | set(cfg.enabled_projects)
+    paths = set(by_path) | set(cfg.enabled_projects) | set(cfg.excluded_projects)
     resolver = _projects.Resolver(cfg.enabled_projects)
     projects = []
     for path in sorted(paths, key=lambda p: (p is None, p or "")):
         group = by_path.get(path, [])
         ref = api.project_ref(path)
         ref.update({
-            "capture_enabled": path is not None and _config.is_enabled(cfg, path),
+            "capture_enabled": path is not None and _config.capture_decision(cfg, path)[0],
+            "excluded": path is not None and _config.is_excluded(cfg, path),
             "explicitly_enabled": path in cfg.enabled_projects,
             "session_count": len(group),
             "last_event_at": max((s.last_at for s in group if s.last_at), default=None),
@@ -223,7 +301,8 @@ def cmd_projects(args: argparse.Namespace) -> int:
     warnings = []
     if cfg.retention_error:
         warnings.append(api.warning("retention_setting_invalid", "retention_days in config.json is invalid and ignored"))
-    data = {"projects": projects, "settings": {"retention_days": cfg.retention_days, "automatic_deletion": False}}
+    data = {"projects": projects, "settings": {"retention_days": cfg.retention_days, "automatic_deletion": False,
+                                               "capture": capture_settings(cfg)}}
     return _emit(args, data, warnings)
 
 
@@ -769,6 +848,17 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("disable", help="disable capture for a project directory")
     p.add_argument("path")
     p.set_defaults(func=cmd_disable)
+    p = sub.add_parser("capture", help="show or change the capture mode: --global, --selected, --pause, --resume; --exclude/--include DIR")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--global", dest="mode_global", action="store_true", help="capture every project a connected agent works in")
+    g.add_argument("--selected", action="store_true", help="capture only enabled projects (per-project opt-in)")
+    g.add_argument("--pause", action="store_true", help="store nothing new until --resume")
+    g.add_argument("--resume", action="store_true", help="return to the mode before --pause")
+    p.add_argument("--exclude", action="append", metavar="DIR", help="never capture this folder (wins over every mode)")
+    p.add_argument("--include", action="append", metavar="DIR", help="remove an exclusion")
+    _add_json(p)
+    p.set_defaults(func=cmd_capture)
+
     p = sub.add_parser("projects", help="list projects with capture enabled (--json: also projects with history)")
     _add_json(p)
     p.set_defaults(func=cmd_projects)
