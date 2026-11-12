@@ -1,5 +1,26 @@
 # Status
 
+## 2026-11-12 — Global Capture, 0.8.0 release candidate (built `6020544`, **not installed**)
+
+The theatre answer was rejected by the hook (`handler.log`: `Stop …
+project_not_enabled`, 2026-11-09 13:32:25 UTC) because that repository was
+never switched on; nothing was stored, so it cannot be recovered from
+Prompt Relay (Import AI Result is the way to keep it). New capture modes —
+All projects (global), Selected projects (default, as before), Paused — with
+exclusions that always win, protected locations, fail-closed config (schema
+2, refused by plugins before 0.8.0, which then store nothing). Projects are
+discovered from stored sessions and grouped by the existing Project
+Intelligence. App: capture card with a one-time offer, Pause/Resume in the
+menu-bar menu, project switches exclude in global mode, "Plugin update
+required" instead of a false "capturing". Python 290+15 ×2 (3.14, 3.9.6),
+XCTest 362/0 (16 opt-in skips), Swift Testing 145/145, Xcode Debug/Release
+0 warnings, packaged 0.8.0 verified (`--no-build --dry-run`). Installed:
+app 0.7.0 (`49ef5d3`, installed by the owner), plugin 0.4.1 — its
+marketplace source is `~/Projects/prompt-relay` (0.6.0), so the plugin
+needs a re-pointed marketplace ([GLOBAL_CAPTURE.md](GLOBAL_CAPTURE.md)).
+Next: owner approves app 0.8.0 + plugin 0.8.0, turns on All projects, and
+checks one real answer from an unknown repository.
+
 ## 2026-11-09 — Phase 16 pre-install corrections (built `49ef5d3`, **not installed**)
 
 Fixed before the first real install: (1) `--no-build` required the build's
