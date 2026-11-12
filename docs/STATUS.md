@@ -1,5 +1,38 @@
 # Status
 
+## 2026-11-12 — Phase 17: daily workflow stabilization, 0.9.0 release candidate (built `9e1784e`, **not installed**)
+
+Branch `phase/17-daily-stabilization` from `1afa08b`. Two owner reports
+reproduced by tests first, then fixed. **Older answer after reopening:**
+opening the island selected the newest *unopened* answer, not the newest
+one; an unfinished file hand-off held its report forever (7 found in the
+owner's data, read only); a report read in Details was kept without limit.
+Now: closed island + no pin = Latest; hand-off holds 10 min, Details 90 s;
+only a deliberate pin persists; "Pinned" / "Jump to Latest" are in the Home
+header. **`api-v1.schema.json` with Add:** JSON/HTML were not prepared
+types and a file not changed in the turn was only offered. Now result files
+are attached and ticked when the answer arrives (all conversations), named
+existing files too (≤ 6, honest provenance), with reasons for every skip,
+a freshness check and "original changed since". Also: JSON-form secrets
+(`"api_key": "…"`) were not detected (app and Core, fixed); All Projects is
+refused while the plugin is older than 0.8.0 (before, capture stopped); an
+unknown capture mode no longer breaks the project list. New: Daily Use —
+one setup (All Projects, screenshots, screenshots in hand-offs; the user's
+own press) and a readiness status from the working state. Settings
+inventory, API contract tests against the current schema (the older
+attached snapshot was not used), ADR-029. Python 295+15 ×2 (3.14, 3.9.6; 1
+skip by design), XCTest 373/0 (16 opt-in skips), Swift Testing 172/172,
+Xcode Debug/Release 0 source warnings, `git diff --check` clean, packaged
+0.9.0 verified (`install-local.sh --no-build --dry-run`). After the last
+full run one line changed (a `try?` warning): the two affected suites and
+both builds were rerun. Installed: app 0.7.0, plugin 0.4.1 — untouched.
+Not verified live: the installed app, real Claude sessions, the real Screen
+Recording prompt. Open owner decision: ADR-028's 30-minute association rule
+skips screenshots for a new chat started soon after another one.
+[Phase 17](PHASE17.md) · [acceptance](PHASE17_ACCEPTANCE.md). Next agreed
+stage: owner approves app 0.9.0 + plugin 0.9.0 (plugin first, then All
+Projects), runs the ten acceptance checks; then merge into `develop`.
+
 ## 2026-11-12 — Global Capture, 0.8.0 release candidate (built `6020544`, **not installed**)
 
 The theatre answer was rejected by the hook (`handler.log`: `Stop …
