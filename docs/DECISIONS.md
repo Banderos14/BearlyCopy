@@ -926,3 +926,44 @@ action, never a self-relaunch. A closed window is never reported as a
 permission problem. Each running copy (Debug/Release) has its own bundle id
 and therefore its own macOS authorization record; the check is always
 process-local, so one copy's grant cannot be read as another's.
+
+## ADR-029: Latest is the default on every open; automatic result files include named ones (Phase 17)
+
+**Context.** Two owner reports from daily use. (1) Reopening Quick Peek
+showed older answers: the island opened on the newest *unopened* answer
+rather than the newest one, an unfinished file hand-off held its report
+without limit (seven were found in the owner's data), and a report read in
+Details was kept across close without limit. (2) A schema file named in a
+final answer stayed an "Add" suggestion: JSON was not a prepared type and a
+file not changed during the turn was only ever offered.
+
+**Decision.**
+1. With the island closed and no pin, the selection is the newest completed
+   answer (the Core's `answered_at`; ties by session key and turn). Opening
+   never selects by "unseen".
+2. The only persistent hold is the deliberate pin. Two bounded holds
+   survive a close: a file hand-off for 10 minutes from its copy
+   (`handoffHoldWindow`), a report read in Details for 90 seconds
+   (`readingGrace`). A hand-off record saved without a start time holds
+   nothing. While the island is open, the report being read is never
+   replaced (unchanged).
+3. Result files are prepared when a final answer arrives, for every
+   conversation. Prepared types gain JSON and HTML. A supported file named
+   in the answer and present in the answer's own project is prepared even
+   when it was not changed in the turn, as source `named` with
+   `autoPrepared` (an optional field, not a new enum value, so an older app
+   still reads the index after a rollback), at most six per answer.
+4. A file modified after the answer arrived is never snapshotted
+   automatically; hidden, credential-like or secret-bearing files never;
+   nothing outside the project, by path or by symlink.
+5. Privacy-sensitive features (All Projects, automatic screenshots,
+   screenshots in hand-offs) are switched on only by the user in the Daily
+   Use setup. Readiness is derived from the working state. All Projects is
+   refused while the installed Claude Code plugin is older than the Core's
+   `minimum_plugin_version`.
+
+**Consequences.** An answer that merely lists files it read attaches up to
+six of them, ticked; "Select attached files for handoff" (off) or unticking
+avoids that. Old answers get their named files when first opened unless the
+file changed since. ADR-028 (window links) is unchanged, including its
+30-minute association rule.

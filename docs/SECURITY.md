@@ -92,3 +92,31 @@ below apply only if a settings-based fallback installer is ever built.
 | Prompts, responses, raw hook payloads | `events/*.jsonl` | until deleted; optional `retention --days N` used by `prune` (never automatic) | `delete --session ID --yes` / `delete --all --yes` / `prune --yes` (each previews first; active sessions need `--force-active`), or remove the data dir |
 | Enabled project paths | `config.json` | until changed | `prompt-relay disable <dir>` |
 | Diagnostics (timestamp, event, outcome) | `handler.log` (256 KiB × 2) | rotating | delete the file |
+| Result-file snapshots (Phase 9 / 17) | `app/attachments/` + `index.json`, 0600 in a 0700 folder | until removed | "Remove from This Report", or remove the data dir |
+
+### Automatic result files (Phase 17)
+
+When a final answer arrives, Prompt Relay copies eligible files into its own
+folder and ticks them for the hand-off. It is a local copy only: nothing is
+uploaded, nothing is executed, and a hand-off still happens only when the
+user copies or drags.
+
+* **Which files:** ones a tool was seen writing or the agent showed, and
+  supported files the answer names that exist in the answer's own project
+  (at most six that were not changed in the turn). Types: text documents,
+  JSON, HTML, CSV, PDF, images. The project is never walked.
+* **Never:** a path outside the answer's project or worktree (each path
+  component is opened with `O_NOFOLLOW`, so a symlink cannot lead out);
+  hidden files (`.env`, `.npmrc`, …); names that look like credentials
+  (`credential`, `secret`, `password`, `token`, `private`, `keychain`,
+  `apikey`, `service-account`, `id_rsa`, …); content matching a secret
+  pattern — including, since 0.9.0, JSON-form assignments such as
+  `"api_key": "…"`; files over the size limits; a file modified after the
+  answer arrived. Each skipped file says why on its row; Add remains the
+  user's explicit choice.
+* **Residual risk:** the secret patterns are heuristics. A secret in an
+  unrecognised form inside a file the answer names would be copied into
+  Prompt Relay's private folder and ticked. It leaves the Mac only if the
+  user hands it over; Copy with Context still scans the text it copies.
+  "Attach result files automatically" (off) or "Select attached files for
+  handoff" (off) remove the automatic step.

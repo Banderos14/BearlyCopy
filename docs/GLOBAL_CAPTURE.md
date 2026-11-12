@@ -52,10 +52,11 @@ no adapter.
 
 ## Owner setup (after approval)
 
-1. Install the app 0.8.0: `~/Projects/prompt-relay-phase16/scripts/install-local.sh --no-build`
+1. Install the app (0.9.0 since Phase 17): `~/Projects/prompt-relay-phase16/scripts/install-local.sh --no-build`
 2. Point Claude Code's plugin marketplace at the Phase 16 worktree and
-   install plugin 0.8.0 (today it reads `~/Projects/prompt-relay`, which
-   holds 0.6.0, so `plugin update` alone would not bring 0.8.0):
+   install the plugin from it (0.9.0; 0.8.0 is the minimum for capture
+   modes — today the marketplace reads `~/Projects/prompt-relay`, which
+   holds 0.6.0, so `plugin update` alone would not bring it):
    ```bash
    claude plugin marketplace remove prompt-relay
    claude plugin marketplace add ~/Projects/prompt-relay-phase16
@@ -65,7 +66,10 @@ no adapter.
    History and `config.json` are not touched. Open conversations keep the
    old hook until a **new** Claude Code session (Desktop: new conversation
    or restart Claude) starts.
-3. In Prompt Relay → Projects: **Capture All Projects**.
+3. In Prompt Relay → Settings → Daily Use → **Set Up…** (or Projects →
+   **Capture All Projects**). Since Phase 17 the switch is refused, with
+   the reason, while the installed plugin is older than 0.8.0 — before, it
+   was made and the old plugin then stored nothing.
 4. Verify for real: in a new Claude session in any not-yet-known
    repository, ask something short; the answer appears in the Inbox under
    that project. `handler.log` shows `Stop via=plugin … stored`.
