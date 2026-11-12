@@ -1,5 +1,26 @@
 # Status
 
+## 2026-11-12 — Phase 17.1: Daily Use card and Screen Recording after an update (installed `b2b3eac`, signed)
+
+From the owner's screenshots of the installed 0.9.0: the Daily Use card had
+a tall gap and a one-letter column on the right ("Show Checks" squeezed by
+three buttons), and "Permission required" stayed although Prompt Relay was
+switched on in Screen Recording. Cause of the second: the build was ad-hoc
+signed, so for macOS every update is another app and the switch shown
+belonged to the previous build. Fixed: compact card (one sentence, numbered
+steps, one primary action, small Set Up / Details links), shorter wording
+everywhere in Daily Use, the permission state says "off, then on, reopen"
+and offers Quit, Check Again clears a remembered refusal after a real
+grant. Installed with `install-local.sh --sign "Apple Development" --yes`
+(owner asked for the fix): one Release copy, 0.9.0 `b2b3eac`, signed with
+the owner's development certificate, so later updates keep the permission.
+XCTest 375/0 (16 opt-in skips), Swift Testing 172/172; Python unchanged
+since the last check. The card was checked in an offscreen render of the
+real view, not in the live island. Still the owner's: switch Prompt Relay
+off and on once in Screen Recording for the signed build, then the ten
+acceptance checks. The second "Prompt Relay" row in that list (generic
+icon) is the Debug build's record.
+
 ## 2026-11-12 — Phase 17: daily workflow stabilization, 0.9.0 (built `9e1784e`; **app installed** with the owner's approval, plugin still 0.4.1)
 
 Installed 2026-11-12 with `install-local.sh --no-build --yes`: one Release

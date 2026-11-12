@@ -187,8 +187,11 @@ See [STATUS.md](STATUS.md) for the counts of the final run.
 
 No Xcode needed. Nothing below was run.
 
-1. App: `~/Projects/prompt-relay-phase16/scripts/install-local.sh --no-build`
+1. App: `~/Projects/prompt-relay-phase16/scripts/install-local.sh --sign "Apple Development"`
    (shows installed vs new, asks, backs up, verifies; `--rollback` undoes).
+   Signing with your development certificate keeps the Screen Recording
+   permission across updates; an ad-hoc build is a new app for macOS each
+   time, and the switch then looks on while it belongs to the old build.
 2. Plugin — it must come from this worktree (today's marketplace points at
    `~/Projects/prompt-relay`, 0.6.0):
    ```bash
