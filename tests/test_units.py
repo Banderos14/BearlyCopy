@@ -703,6 +703,15 @@ class PlatformTests(unittest.TestCase):
                          [(2, "private key block"), (3, "AWS access key id"), (4, "credential assignment")])
         self.assertEqual(sensitive.scan("Use `TOKEN` env var; see docs.", "r"), [])
 
+    def test_sensitive_patterns_json_form(self):
+        # A quoted JSON key was not matched before 0.9.0.
+        text = '{\n  "api_key": "abcdefgh12345678",\n  "client-secret": "zzzzzzzz9"\n}'
+        self.assertEqual([(f.line, f.kind) for f in sensitive.scan(text, "r")],
+                         [(2, "credential assignment"), (3, "credential assignment")])
+        # Schemas and usage numbers are not secrets.
+        clean = '{"token": {"type": "string"}, "total_tokens": 12345678, "password": null, "token_type": "Bearer"}'
+        self.assertEqual(sensitive.scan(clean, "r"), [])
+
 
 class SourceSafetyTests(unittest.TestCase):
     SOURCES = sorted(PACKAGE.glob("*.py")) + [REPO / "bin" / "prompt-relay", PLUGIN / "hooks" / "prompt_relay_hook.py"]
