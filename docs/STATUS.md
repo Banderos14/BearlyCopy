@@ -1,6 +1,15 @@
 # Status
 
-## 2026-11-12 — Phase 17: daily workflow stabilization, 0.9.0 release candidate (built `9e1784e`, **not installed**)
+## 2026-11-12 — Phase 17: daily workflow stabilization, 0.9.0 (built `9e1784e`; **app installed** with the owner's approval, plugin still 0.4.1)
+
+Installed 2026-11-12 with `install-local.sh --no-build --yes`: one Release
+copy runs from `~/Applications`, 0.9.0 `9e1784e`; the 0.7.0 app is kept in
+`PromptRelay-AppBackups`. Before installing, the owner's real history was
+replayed read only through the new selection logic: six opens, the same
+newest answer each time. Preferences and capture config were not changed
+(Selected mode, schema 1). The ten acceptance checks are still the owner's.
+What follows was written before the install.
+
 
 Branch `phase/17-daily-stabilization` from `1afa08b`. Two owner reports
 reproduced by tests first, then fixed. **Older answer after reopening:**
@@ -25,7 +34,7 @@ skip by design), XCTest 373/0 (16 opt-in skips), Swift Testing 172/172,
 Xcode Debug/Release 0 source warnings, `git diff --check` clean, packaged
 0.9.0 verified (`install-local.sh --no-build --dry-run`). After the last
 full run one line changed (a `try?` warning): the two affected suites and
-both builds were rerun. Installed: app 0.7.0, plugin 0.4.1 — untouched.
+both builds were rerun. At that point: app 0.7.0, plugin 0.4.1 — untouched.
 Not verified live: the installed app, real Claude sessions, the real Screen
 Recording prompt. Open owner decision: ADR-028's 30-minute association rule
 skips screenshots for a new chat started soon after another one.
