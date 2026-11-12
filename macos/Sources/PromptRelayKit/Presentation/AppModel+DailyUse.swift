@@ -302,8 +302,12 @@ extension AppModel {
         case .openSetup: dailySetupOpen = true
         case .resumeCapture: Task { await setCaptureMode(.resume); dailyUseVersion += 1 }
         case .showPluginUpdate:
-            try? clipboard.copy(Self.pluginUpdateCommands())
-            dailyUseNotice = "Commands copied. Run them in Terminal, start a new Claude session, then Check Again."
+            do {
+                _ = try clipboard.copy(Self.pluginUpdateCommands())
+                dailyUseNotice = "Commands copied. Run them in Terminal, start a new Claude session, then Check Again."
+            } catch {
+                dailyUseNotice = "The commands could not be copied. They are in docs/PHASE17.md, section 8."
+            }
         case .openScreenRecordingSettings: openScreenRecordingSettings()
         case .linkWindow:
             if autoCaptureBlocker == nil { chooseAutoCaptureWindow() } else { dailyUseNotice = autoCaptureBlocker }
