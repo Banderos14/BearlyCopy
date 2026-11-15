@@ -98,12 +98,6 @@ public final class AppModel {
     /// Load `readyAnswer` on every refresh (one extra Core call per refresh;
     /// refreshes happen only when history changes). On by default: the app
     /// opens on the newest answer across all captured projects.
-    /// Context Packs and Export Bundle (Phase 13) stay out of the menus, the
-    /// Inbox and the context menus until the owner turns them on (Settings →
-    /// Advanced). Off by default: most people never need them.
-    public var advancedToolsEnabled: Bool = UserDefaults.standard.bool(forKey: "advanced.tools") {
-        didSet { UserDefaults.standard.set(advancedToolsEnabled, forKey: "advanced.tools") }
-    }
     public var tracksReadyAnswers = true {
         didSet { if tracksReadyAnswers && !oldValue { refresh() } }
     }

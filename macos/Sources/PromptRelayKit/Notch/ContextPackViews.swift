@@ -441,7 +441,7 @@ struct PackBar: View {
     let model: AppModel
 
     var body: some View {
-        if model.advancedToolsEnabled, !model.packRefs.isEmpty {
+        if !model.packRefs.isEmpty {
             HStack(spacing: 8) {
                 Image(systemName: "square.stack.3d.up").font(.system(size: 11, weight: .semibold)).foregroundStyle(Island.accent)
                 Text("\(model.packRefs.count) chosen for a Context Pack").font(.system(size: 11.5, weight: .medium))

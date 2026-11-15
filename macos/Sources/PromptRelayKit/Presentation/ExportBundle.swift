@@ -82,20 +82,6 @@ public enum ExportBundle {
 }
 
 extension AppModel {
-    /// ⋯ → Export Bundle…: asks for a folder, then writes the bundle of the
-    /// answer shown. A package with possible secrets is not exported (copy it
-    /// with the confirmation instead).
-    public func exportBundle() {
-        guard let ref = currentRef else { return }
-        presentDialog(.exportFolder) { [weak self] urls in
-            guard let self, let parent = urls?.first else { return }
-            Task {
-                // Finder shows the new folder: the confirmation, and where it is.
-                if let folder = await self.writeBundle(ref, into: parent) { NSWorkspace.shared.activateFileViewerSelecting([folder]) }
-            }
-        }
-    }
-
     @discardableResult
     public func writeBundle(_ ref: ReportRef, into parent: URL) async -> URL? {
         switch await buildPack(ref) {

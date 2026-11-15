@@ -120,7 +120,7 @@ final class Phase17SettingsTests: XCTestCase {
     func testSettingsCopySaysWhatHappens() throws {
         let source = try String(contentsOfFile: Repo.root.appendingPathComponent("macos/Sources/PromptRelayKit/Notch/IslandSettingsView.swift").path, encoding: .utf8)
         for title in ["Open on hover", "Stay on the conversation I open", "Attach result files automatically", "Select attached files for handoff",
-                      "Automatic final screenshots", "Include auto screenshots in handoff", "Keep the last 5 copied images",
+                      "Automatic final screenshots", "Include auto screenshots in handoff", "Keep the last 10 copied images",
                       "Notify when an answer is ready", "Notify when an agent needs input", "Open at login", "Daily Use"] {
             XCTAssertTrue(source.contains("\"\(title)\""), "missing control: \(title)")
         }

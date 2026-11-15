@@ -297,10 +297,6 @@ struct IslandSettingsView: View {
                        isOn: Binding(get: { model.autoScreenshotsInHandoff }, set: { model.autoScreenshotsInHandoff = $0 }))
             }
             Hairline()
-            toggle("Advanced tools: Context Packs and Export Bundle",
-                   detail: "Off by default. A Context Pack combines several results into one Markdown file for another AI; Export Bundle saves one result with its files. Turning this off only hides them.",
-                   isOn: Binding(get: { model.advancedToolsEnabled }, set: { model.advancedToolsEnabled = $0 }))
-            Hairline()
             toggle("Keep the last 10 copied images",
                    detail: "Images you copy anywhere, kept on this Mac for 24 hours. Text from other apps is never read. Off deletes them.",
                    isOn: Binding(get: { model.clipboardHistoryEnabled }, set: { model.clipboardHistoryEnabled = $0 }))

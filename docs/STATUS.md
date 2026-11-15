@@ -6,8 +6,8 @@ Second monitor as main display: the island no longer falls back to the first
 (external) display when macOS reports no notch for the built-in one — the
 built-in display wins and its last-seen notch size is restored (test added,
 not verified with a real second monitor). Clipboard image history 5 → 10.
-Context Packs and Export Bundle hidden behind Settings → Advanced tools (off
-by default). Capture modes already exist since Phase 16 (`prompt-relay
+The "Export Bundle…" menu item is removed (Context Pack stays; its export
+keeps the writer). Capture modes already exist since Phase 16 (`prompt-relay
 capture --global`); the parallel ADR-029 attempt was dropped.
 
 ## 2026-11-12 — Phase 17.1: Daily Use card and Screen Recording after an update (installed `b2b3eac`, signed)
