@@ -63,6 +63,9 @@ import Testing
             return .init(png: Phase14CaptureTests.png(c), label: "Window")
         }
         func forget(_ window: PickedWindow) { forgotten.append(window.handle) }
+        /// Phase 18: the window of the app in front when a prompt starts.
+        var front: PickedWindow?
+        func frontmostWindow() async -> PickedWindow? { front }
         /// Phase 15.2: windows macOS no longer lists; offscreen ones exist but are hidden.
         var gone: Set<String> = []
         var offscreen: Set<String> = []
@@ -129,6 +132,61 @@ import Testing
     }
 
     func cleanup(_ w: World) { w.board.releaseGlobally(); try? FileManager.default.removeItem(at: w.root) }
+
+    // MARK: Phase 18 — the window where the agent works
+
+    @Test func aPromptJustSentLinksTheWindowInFrontToThatConversation() async {
+        let at = Date()
+        let s = Self.session("s1", last: Self.iso.string(from: at), running: true)
+        let w = await world([s])
+        defer { cleanup(w) }
+        w.model.captureNow = { at.addingTimeInterval(1) }
+        w.capture.front = PickedWindow(handle: "front", label: "Terminal window", windowID: 7)
+        await w.model.refreshNow()
+        for _ in 0..<100 where w.model.autoCaptureBindings.isEmpty { try? await Task.sleep(nanoseconds: 50_000_000) }
+        #expect(w.model.autoCaptureBindings.count == 1)
+        #expect(w.model.autoCaptureBindings.first?.window.handle == "front")
+        #expect(w.model.autoCaptureBindings.first?.sessionKey == "s1")
+    }
+
+    @Test func aConversationThatWasAlreadyWorkingIsNotLinkedToWhateverIsInFront() async {
+        let at = Date()
+        let s = Self.session("s1", last: Self.iso.string(from: at.addingTimeInterval(-120)), running: true)
+        let w = await world([s])
+        defer { cleanup(w) }
+        w.model.captureNow = { at.addingTimeInterval(1) }
+        w.capture.front = PickedWindow(handle: "front", label: "Safari window", windowID: 9)
+        await w.model.refreshNow()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        #expect(w.model.autoCaptureBindings.isEmpty)
+    }
+
+    @Test func twoPromptsAtOnceLinkNothing() async {
+        let at = Date()
+        let a = Self.session("s1", last: Self.iso.string(from: at), running: true)
+        let b = Self.session("s2", project: "/a", last: Self.iso.string(from: at), running: true)
+        let w = await world([a, b])
+        defer { cleanup(w) }
+        w.model.captureNow = { at.addingTimeInterval(1) }
+        w.capture.front = PickedWindow(handle: "front", label: "Claude window", windowID: 7)
+        await w.model.refreshNow()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        #expect(w.model.autoCaptureBindings.isEmpty)
+    }
+
+    @Test func frontWindowIsTheTopmostOrdinaryWindowOfThatApp() {
+        func entry(_ n: Int, pid: Int, layer: Int, w: Double, h: Double) -> [String: Any] {
+            [kCGWindowNumber as String: n, kCGWindowOwnerPID as String: pid, kCGWindowLayer as String: layer,
+             kCGWindowAlpha as String: 1.0, kCGWindowBounds as String: ["Width": w, "Height": h]]
+        }
+        let list = [entry(1, pid: 5, layer: 25, w: 1400, h: 30),     // menu bar item
+                    entry(2, pid: 9, layer: 0, w: 900, h: 700),      // another app
+                    entry(3, pid: 5, layer: 0, w: 120, h: 90),       // palette
+                    entry(4, pid: 5, layer: 0, w: 1000, h: 800),     // the working window
+                    entry(5, pid: 5, layer: 0, w: 1000, h: 800)]
+        #expect(WindowCapture.frontWindowNumber(in: list, pid: 5) == 4)
+        #expect(WindowCapture.frontWindowNumber(in: list, pid: 77) == nil)
+    }
 
     // MARK: Planner rules
 

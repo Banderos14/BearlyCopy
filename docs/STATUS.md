@@ -1,5 +1,11 @@
 # Status
 
+## 2026-11-15 — Auto window link (ADR-030)
+
+Automatic final screenshots now link the window of the app in front when a
+conversation starts working (any app, per conversation). Tests added; real
+mouse/window behaviour and Screen Recording: owner.
+
 ## 2026-11-15 — QA pass on 0.9.0: notch stays on the MacBook, 10 images, advanced tools hidden
 
 Second monitor as main display: the island no longer falls back to the first

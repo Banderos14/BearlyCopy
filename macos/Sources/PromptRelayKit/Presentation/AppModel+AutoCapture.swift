@@ -82,6 +82,38 @@ extension AppModel {
         }
     }
 
+    // MARK: Phase 18 — the window where the agent is working
+
+    /// A conversation that started working just now (its prompt was sent
+    /// seconds ago) is linked to the window of the app in front: that is where
+    /// the person typed it — Claude Desktop, a terminal, an editor, anything.
+    /// One link per conversation, replaced when a later prompt is sent from
+    /// another window; never when Prompt Relay itself is in front, never for a
+    /// conversation that was already working, never a window of another app.
+    func autoLinkWorkingWindows() {
+        guard autoCaptureFinalWindow else { return }
+        let now = captureNow()
+        let running = allSessions.filter { $0.running == true }
+        autoLinkedRunning.formIntersection(Set(running.map(\.sessionKey)))   // a finished run may link again next time
+        let fresh = running.filter { s in
+            !autoLinkedRunning.contains(s.sessionKey) && (s.source?.environment ?? .unknown) != .unknown
+                && (s.lastEventAt.flatMap(Wording.date).map { abs(now.timeIntervalSince($0)) <= 6 } ?? false)
+        }
+        // Two prompts at the same moment: the front window cannot be told to belong to either.
+        guard fresh.count == 1, let session = fresh.first, let key = captureKey(for: session), !isPresentingSystemDialog else { return }
+        autoLinkedRunning.insert(session.sessionKey)
+        Task { @MainActor [weak self] in
+            guard let self, let window = await self.windowCapture.frontmostWindow() else { return }
+            for old in self.autoCaptureBindings where old.key == key && old.sessionKey == session.sessionKey {
+                self.unlink(old, forgetWindow: old.window.handle != window.handle)
+            }
+            self.autoCaptureBindings.append(WindowBinding(key: key, sessionKey: session.sessionKey, window: window,
+                                                          createdAt: self.captureNow()))
+            self.autoCaptureMessage = nil
+            self.autoCapturePermissionBlocked = false
+        }
+    }
+
     // MARK: Phase 14.1 — permission recovery
 
     /// Opens System Settings at the Screen Recording pane (with fallbacks

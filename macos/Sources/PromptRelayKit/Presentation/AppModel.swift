@@ -694,6 +694,7 @@ public final class AppModel {
         announceNewWaits()
         // Phase 14: every new final answer, of any agent, whether the island
         // is open or not (before: only the newest unseen one).
+        autoLinkWorkingWindows()
         autoCaptureNewFinals()
         prepareNewFinals()
         guard let answer = finishedAnswers.first else {
@@ -1251,6 +1252,8 @@ public final class AppModel {
     public internal(set) var autoCaptureMessage: String?
     /// Reports already considered in this run (never twice for one answer).
     @ObservationIgnored var autoCapturedRefs: Set<String> = []
+    /// Conversations already auto-linked during their current run (Phase 18).
+    @ObservationIgnored var autoLinkedRunning: Set<String> = []
     /// One capture job per window at a time; a newer answer cancels it.
     @ObservationIgnored var autoCaptureJobs: [String: (ref: String, task: Task<Void, Never>)] = [:]
     /// How long the window may settle before and between stills (tests: immediate).

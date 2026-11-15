@@ -25,6 +25,10 @@ public protocol WindowCapturing: AnyObject {
     /// (no image, no title), so a failed capture of a minimized window or one
     /// on another Space is not mistaken for a closed window.
     @MainActor func presence(of window: PickedWindow) -> WindowPresence
+    /// Owner request (Phase 18): the window of the app in front right now,
+    /// where the person just typed a prompt. nil: none usable (Prompt Relay
+    /// itself, no on-screen window, no permission). Never a window of another app.
+    @MainActor func frontmostWindow() async -> PickedWindow?
 }
 
 /// Phase 15.2: what macOS says about a linked window's existence.
@@ -39,6 +43,7 @@ public enum WindowPresence: Equatable, Sendable {
 
 public extension WindowCapturing {
     @MainActor func presence(of window: PickedWindow) -> WindowPresence { .unknown }
+    @MainActor func frontmostWindow() async -> PickedWindow? { nil }
 }
 
 public enum WindowCaptureError: Error, Equatable {
@@ -84,6 +89,38 @@ public final class WindowCapture: NSObject, WindowCapturing, SCContentSharingPic
             // decided with `presence(of:)`, not from one failed capture.
             throw Self.map(error)
         }
+    }
+
+    public func frontmostWindow() async -> PickedWindow? {
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              app.processIdentifier != ProcessInfo.processInfo.processIdentifier,
+              app.bundleIdentifier != Bundle.main.bundleIdentifier else { return nil }
+        let pid = app.processIdentifier
+        // Front to back; the first ordinary window of that app with a real size.
+        let list = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]) ?? []
+        guard let number = Self.frontWindowNumber(in: list, pid: pid) else { return nil }
+        guard let content = try? await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true),
+              let window = content.windows.first(where: { $0.windowID == number }) else { return nil }
+        let handle = UUID().uuidString
+        filters[handle] = SCContentFilter(desktopIndependentWindow: window)
+        let name = app.localizedName ?? window.owningApplication?.applicationName ?? ""
+        return PickedWindow(handle: handle, label: name.isEmpty ? "the app in front" : "\(name) window", windowID: window.windowID)
+    }
+
+    /// The topmost normal-layer window of `pid` that is big enough to be a
+    /// working window (not a palette or a menu). Pure: tested with fixtures.
+    nonisolated static func frontWindowNumber(in list: [[String: Any]], pid: pid_t) -> UInt32? {
+        for entry in list {
+            guard (entry[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid,
+                  (entry[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
+                  (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1 > 0.01,
+                  let bounds = entry[kCGWindowBounds as String] as? [String: Any],
+                  let w = (bounds["Width"] as? NSNumber)?.doubleValue, let h = (bounds["Height"] as? NSNumber)?.doubleValue,
+                  w >= 300, h >= 200,
+                  let n = (entry[kCGWindowNumber as String] as? NSNumber)?.uint32Value else { continue }
+            return n
+        }
+        return nil
     }
 
     public func presence(of window: PickedWindow) -> WindowPresence {

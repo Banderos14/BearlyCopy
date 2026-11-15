@@ -967,3 +967,23 @@ six of them, ticked; "Select attached files for handoff" (off) or unticking
 avoids that. Old answers get their named files when first opened unless the
 file changed since. ADR-028 (window links) is unchanged, including its
 30-minute association rule.
+
+---
+
+## ADR-030: Automatic window link where the agent works (owner decision, 2026-11-15)
+
+**Context.** ADR-028 linked windows only through macOS's picker; the owner
+wants the link to follow wherever the agent is actually used (Claude
+Desktop, a terminal, an editor — any app).
+
+**Decision.** When Automatic final screenshots are on and exactly one
+conversation has just started working (its prompt arrived within 6 s, its
+host is recorded), the window of the app in front is linked to that
+conversation only (the topmost ordinary window of the frontmost app, found
+with `CGWindowList` metadata and ScreenCaptureKit). Never when Prompt Relay is
+in front, for a conversation already running, or when two prompts arrive at
+once. A later prompt replaces the link. Still memory-only, no title or
+content read to choose, capture still needs Screen Recording consent.
+
+**Risk.** If the person switches apps within a second of pressing Enter the
+wrong window is linked; the screenshot is memory-only and never sent.
