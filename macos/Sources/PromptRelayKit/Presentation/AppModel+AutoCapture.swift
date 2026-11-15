@@ -97,7 +97,7 @@ extension AppModel {
         autoLinkedRunning.formIntersection(Set(running.map(\.sessionKey)))   // a finished run may link again next time
         let fresh = running.filter { s in
             !autoLinkedRunning.contains(s.sessionKey) && (s.source?.environment ?? .unknown) != .unknown
-                && (s.lastEventAt.flatMap(Wording.date).map { abs(now.timeIntervalSince($0)) <= 6 } ?? false)
+                && (s.lastEventAt.flatMap(Wording.date).map { (0...6).contains(now.timeIntervalSince($0)) } ?? false)
         }
         // Two prompts at the same moment: the front window cannot be told to belong to either.
         guard fresh.count == 1, let session = fresh.first, let key = captureKey(for: session), !isPresentingSystemDialog else { return }
