@@ -161,9 +161,11 @@ struct InboxRow: View {
         .contextMenu {
             Button("Open") { model.openResult(result) }
             Button(model.isPinned(result.ref) ? "Unpin" : "Pin") { model.togglePin(result.ref) }
-            Button(model.isInPack(result.ref) ? "Remove from Context Pack" : "Add to Context Pack") { model.togglePack(result.ref) }
+            if model.advancedToolsEnabled {
+                Button(model.isInPack(result.ref) ? "Remove from Context Pack" : "Add to Context Pack") { model.togglePack(result.ref) }
+            }
         }
-        PackToggle(model: model, ref: result.ref).padding(.top, 4)
+        if model.advancedToolsEnabled { PackToggle(model: model, ref: result.ref).padding(.top, 4) }
         }
     }
 

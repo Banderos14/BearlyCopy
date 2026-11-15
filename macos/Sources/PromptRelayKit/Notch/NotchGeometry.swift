@@ -40,6 +40,17 @@ public struct ScreenDescriptor: Equatable, Sendable {
     }
 
     public var hasNotch: Bool { notchRect != nil }
+
+    /// The same display with a camera housing of the given size at the top
+    /// center. Used when the built-in display reports no safe area (a
+    /// transient or menu-bar-less state) although its notch was seen before.
+    public func withNotch(width: CGFloat, height: CGFloat) -> ScreenDescriptor {
+        let left = CGRect(x: frame.minX, y: frame.maxY - height, width: (frame.width - width) / 2, height: height)
+        let right = CGRect(x: left.maxX + width, y: left.minY, width: left.width, height: height)
+        return ScreenDescriptor(displayID: displayID, name: name, isBuiltIn: isBuiltIn, frame: frame, safeAreaTop: height,
+                                auxiliaryTopLeft: left, auxiliaryTopRight: right, menuBarHeight: menuBarHeight,
+                                visibleFrame: visibleFrame)
+    }
 }
 
 extension ScreenDescriptor {
@@ -75,7 +86,11 @@ public enum DisplayChoice: Hashable, Sendable {
         switch choice {
         case .automatic:
             let notched = screens.filter(\.hasNotch)
-            return notched.first(where: \.isBuiltIn) ?? notched.first
+            // The built-in display is the notch's home even when it is not the
+            // "main" display (an external monitor with the menu bar) and even
+            // while macOS momentarily reports no safe area for it: never fall
+            // through to whichever display happens to be first.
+            return notched.first(where: \.isBuiltIn) ?? screens.first(where: \.isBuiltIn) ?? notched.first
         case .display(let id):
             // Phase 7.2: a chosen display without a notch gets the floating
             // island there (it used to return nil, and the island then

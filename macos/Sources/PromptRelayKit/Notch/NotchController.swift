@@ -340,7 +340,16 @@ public final class NotchController {
     /// scaling changes, wake from sleep, Space changes.
     public func relayout() {
         guard isRunning else { return }
-        let all = screens.screens
+        var all = screens.screens
+        // Remember the built-in notch; if the built-in display reports none
+        // while it is the notch's home, restore it so the island never leaves.
+        if let builtIn = all.firstIndex(where: \.isBuiltIn) {
+            if let notch = all[builtIn].notchRect {
+                settings.lastBuiltInNotch = notch.size
+            } else if let size = settings.lastBuiltInNotch, case .automatic = settings.display {
+                all[builtIn] = all[builtIn].withNotch(width: size.width, height: size.height)
+            }
+        }
         // The chosen notched display, else a floating island on the menu-bar display.
         guard let screen = DisplayChoice.pick(settings.display, from: all) ?? all.first else {
             activeScreen = nil

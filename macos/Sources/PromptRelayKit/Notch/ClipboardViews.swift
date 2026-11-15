@@ -2,9 +2,9 @@ import AppKit
 import SwiftUI
 
 // Clipboard: Prompt Relay's small shelf, usable without Claude Code. Text
-// holds the last five copies made in Prompt Relay (references, fetched
+// holds the last ten copies made in Prompt Relay (references, fetched
 // fresh on Copy Again; text from other apps is never read). Images holds
-// the last five images copied anywhere (ADR-014's history: SHA-256
+// the last ten images copied anywhere (ADR-014's history: SHA-256
 // de-duplication, 20 MB limit, 24 h, sensitive types skipped, local only).
 // A clipboard image becomes a report attachment only through Add to Report.
 
@@ -123,7 +123,7 @@ struct ClipboardImagesPane: View {
                 previewPane(history, item)
             } else if items.isEmpty {
                 MessageCard(title: "No images yet",
-                            detail: "Copy a screenshot (⌃⇧⌘4) or an image file; the last five appear here, also without Claude Code.",
+                            detail: "Copy a screenshot (⌃⇧⌘4) or an image file; the last ten appear here, also without Claude Code.",
                             symbol: "photo.on.rectangle", tint: Island.secondary, action: nil)
             } else {
                 HStack(spacing: Island.Space.m) {
@@ -144,7 +144,7 @@ struct ClipboardImagesPane: View {
                         symbol: "photo.on.rectangle", tint: Island.secondary, action: nil)
         } else {
             MessageCard(title: "Image history is off",
-                        detail: "When on, the last five images you copy (screenshots with ⌃⇧⌘4, image files) are kept on this Mac for 24 hours, to copy or drag later. Text is never read; password-manager items are skipped.",
+                        detail: "When on, the last ten images you copy (screenshots with ⌃⇧⌘4, image files) are kept on this Mac for 24 hours, to copy or drag later. Text is never read; password-manager items are skipped.",
                         symbol: "photo.on.rectangle", tint: Island.secondary,
                         action: ("Turn On", { model.clipboardHistoryEnabled = true; model.answerClipboardNotice(keepOn: true) }))
         }
@@ -295,7 +295,7 @@ struct ClipboardNotice: View {
             HStack(alignment: .top, spacing: Island.Space.m) {
                 Image(systemName: "photo.on.rectangle").font(.system(size: 13)).foregroundStyle(Island.accent)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Clipboard keeps your last 5 copied images").font(.system(size: 12, weight: .semibold))
+                    Text("Clipboard keeps your last 10 copied images").font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Island.primary)
                     Text("Screenshots and image files you copy are saved on this Mac for 24 hours, to copy or drag into another app later. Nothing leaves this Mac; text is never read.")
                         .font(.system(size: 11)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)

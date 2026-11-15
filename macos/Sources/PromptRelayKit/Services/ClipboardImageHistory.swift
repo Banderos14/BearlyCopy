@@ -4,7 +4,7 @@ import ImageIO
 import Observation
 import UniformTypeIdentifiers
 
-/// The optional history of the last five images on the clipboard (ADR-014).
+/// The optional history of the last ten images on the clipboard (ADR-014).
 ///
 /// Off by default. While off nothing is polled. While on, a 1 s timer (with
 /// tolerance, paused while the displays sleep) reads only
@@ -26,7 +26,7 @@ public final class ClipboardImageHistory {
         public var displayName: String { originalName ?? "Screenshot" }
     }
 
-    public static let limit = 5
+    public static let limit = 10
     public static let maxBytes = 20 * 1024 * 1024
     public static let ownType = NSPasteboard.PasteboardType("com.promptrelay.origin")
     static let skippedTypes: [NSPasteboard.PasteboardType] = [

@@ -384,16 +384,16 @@ final class ClipboardImageHistoryTests: XCTestCase {
         history.setEnabled(false)
     }
 
-    func testAtMostFiveExpiryAndDeletion() {
+    func testAtMostTenExpiryAndDeletion() {
         let history = ClipboardImageHistory(folder: folder, pasteboard: board)
         history.setEnabled(true)
-        let colors: [NSColor] = [.red, .green, .blue, .orange, .purple, .brown, .cyan]
+        let colors: [NSColor] = (0..<13).map { NSColor(hue: CGFloat($0) / 13, saturation: 1, brightness: 1, alpha: 1) }
         for c in colors { put(TypedAttachmentTests.png(c)); history.poll() }
         XCTAssertEqual(history.items.count, ClipboardImageHistory.limit)
         let files = try? FileManager.default.contentsOfDirectory(atPath: folder.path).filter { $0.hasSuffix(".png") }
-        XCTAssertEqual(files?.count, 5, "older images are deleted from disk too")
+        XCTAssertEqual(files?.count, ClipboardImageHistory.limit, "older images are deleted from disk too")
         history.remove(history.items[0])
-        XCTAssertEqual(history.items.count, 4)
+        XCTAssertEqual(history.items.count, ClipboardImageHistory.limit - 1)
         history.prune(now: Date().addingTimeInterval(history.retention + 1))
         XCTAssertTrue(history.items.isEmpty, "expired after the retention period")
         put(TypedAttachmentTests.png(.yellow)); history.poll()

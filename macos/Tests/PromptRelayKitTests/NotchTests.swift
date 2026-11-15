@@ -234,6 +234,20 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertLessThanOrEqual(layout.expanded.height, small.frame.height)
     }
 
+    /// Second monitor is the main display and macOS reports no safe area for
+    /// the built-in one: the island must stay on the MacBook, never jump.
+    func testBuiltInKeepsTheIslandWhenItReportsNoNotch() throws {
+        let b = builtInScreen(), external = externalScreen()
+        let noNotch = ScreenDescriptor(displayID: b.displayID, name: b.name, isBuiltIn: true, frame: b.frame,
+                                       safeAreaTop: 0, auxiliaryTopLeft: nil, auxiliaryTopRight: nil)
+        XCTAssertEqual(DisplayChoice.pick(.automatic, from: [external, noNotch])?.displayID, b.displayID)
+        let notch = try XCTUnwrap(b.notchRect)
+        let restored = noNotch.withNotch(width: notch.width, height: notch.height)
+        XCTAssertEqual(restored.notchRect?.width ?? 0, notch.width, accuracy: 0.5)
+        XCTAssertEqual(restored.notchRect?.midX ?? 0, b.frame.midX, accuracy: 0.5)
+        XCTAssertNotNil(NotchLayout(screen: restored))
+    }
+
     func testDisplayChoice() {
         let builtIn = builtInScreen(), external = externalScreen()
         XCTAssertEqual(DisplayChoice.pick(.automatic, from: [external, builtIn]), builtIn, "never one panel per display")

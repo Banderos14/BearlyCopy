@@ -255,13 +255,13 @@ final class Phase6Tests: XCTestCase {
         let history = ClipboardImageHistory(folder: folder, pasteboard: source)
         history.setEnabled(true)
         defer { history.setEnabled(false) }
-        // Five screenshots in a row (⌃⇧⌘4 puts PNG data on the clipboard).
-        for i in 0..<6 {
+        // Screenshots in a row, one more than kept (⌃⇧⌘4 puts PNG data on the clipboard).
+        for i in 0..<(ClipboardImageHistory.limit + 1) {
             source.clearContents()
             source.setData(Self.png(seed: i), forType: .png)
             history.poll()
         }
-        XCTAssertEqual(history.items.count, ClipboardImageHistory.limit, "the last five are kept")
+        XCTAssertEqual(history.items.count, ClipboardImageHistory.limit, "only the latest ten are kept")
         let chosen = Array(history.items.prefix(3))
         let urls = history.exportFiles(chosen)
         XCTAssertEqual(urls.count, 3)

@@ -56,6 +56,8 @@ public final class NotchSettings {
         static let relayIdle = "relay.idle"
         static let relayFollows = "relay.followsPointer"
         static let relayWithoutNotch = "relay.withoutNotch"
+        static let builtInNotchWidth = "notch.builtIn.width"
+        static let builtInNotchHeight = "notch.builtIn.height"
         static let shortcutModifiers = "shortcuts.modifiers"
         static func shortcut(_ s: GlobalShortcut) -> String { "shortcuts.enabled." + s.rawValue }
     }
@@ -88,6 +90,20 @@ public final class NotchSettings {
     /// On a display without a notch, Relay rests in a small pill under the
     /// menu bar (hover opens Quick Peek). Off: nothing rests there.
     public var relayWithoutNotch: Bool { didSet { defaults.set(relayWithoutNotch, forKey: Key.relayWithoutNotch) } }
+    /// The built-in display's camera housing as last seen, so the island stays
+    /// at the notch when macOS briefly reports none (second monitor is main).
+    public var lastBuiltInNotch: CGSize? {
+        get {
+            guard let w = defaults.object(forKey: Key.builtInNotchWidth) as? Double,
+                  let h = defaults.object(forKey: Key.builtInNotchHeight) as? Double, w > 0, h > 0 else { return nil }
+            return CGSize(width: w, height: h)
+        }
+        set {
+            guard let size = newValue, size.width > 0, size.height > 0 else { return }
+            defaults.set(Double(size.width), forKey: Key.builtInNotchWidth)
+            defaults.set(Double(size.height), forKey: Key.builtInNotchHeight)
+        }
+    }
     public var display: DisplayChoice {
         didSet {
             switch display {

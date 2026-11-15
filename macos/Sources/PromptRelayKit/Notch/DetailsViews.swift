@@ -368,13 +368,15 @@ struct NavigationIcons: View {
             .keyboardShortcut(",", modifiers: .command)
             Menu {
                 Button(Labels.importAIResult + "…") { model.navigate(to: .importReport) }
-                Button("Export Bundle…") { model.exportBundle() }
-                    .disabled(model.currentRef == nil || model.reportStore == nil)
-                Divider()
-                if let ref = model.currentRef {
-                    Button(model.isInPack(ref) ? "Remove from Context Pack" : "Add to Context Pack") { model.togglePack(ref) }
+                if model.advancedToolsEnabled {
+                    Button("Export Bundle…") { model.exportBundle() }
+                        .disabled(model.currentRef == nil || model.reportStore == nil)
+                    Divider()
+                    if let ref = model.currentRef {
+                        Button(model.isInPack(ref) ? "Remove from Context Pack" : "Add to Context Pack") { model.togglePack(ref) }
+                    }
+                    Button("Context Pack (\(model.packRefs.count))…") { model.openContextPack() }
                 }
-                Button("Context Pack (\(model.packRefs.count))…") { model.openContextPack() }
                 Button("Handoff History…") { model.navigate(to: .handoffHistory) }
                     .disabled(model.handoffHistory.isEmpty)
                 Divider()
@@ -385,7 +387,7 @@ struct NavigationIcons: View {
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("More")
-            .islandHelp("Import, export, or quit")
+            .islandHelp("Import an AI result, or quit")
         }
         .foregroundStyle(Island.secondary)
     }
