@@ -115,19 +115,23 @@ transcripts or project files. Window screenshots are held in memory and are
 never written to disk unless you export them. Nothing leaves the Mac unless
 you paste it. Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
 
-## Install (macOS 14+)
+## Install (macOS 14+) — 3 steps
 
-1. Download **Prompt Relay.zip** from the [latest release](https://github.com/Banderos14/prompt-relay/releases), unzip and move the app to `~/Applications`.
-2. The build is signed with a development certificate but **not notarized**, so macOS warns on the first launch: right-click the app → **Open** → **Open**.
-3. Open Prompt Relay → **Set Up**. It shows the exact commands to connect Claude Code (and Codex) and how to undo them.
-4. Connect Claude Code manually if you prefer:
-   ```bash
-   claude plugin marketplace add Banderos14/prompt-relay
-   claude plugin install prompt-relay@prompt-relay
-   ```
-5. Send any prompt in Claude Code. The answer appears at the notch.
+<p align="center">
+  <a href="https://github.com/Banderos14/prompt-relay/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-Prompt%20Relay.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
+</p>
 
-Requirements: macOS 14 or newer, Python 3.9+ (Xcode Command Line Tools, Homebrew or python.org — the app tells you if none is found), Claude Code and/or Codex. Optional screenshots need **Screen Recording** permission, which the app asks for only when you turn them on.
+1. **Download** `Prompt-Relay-0.9.0.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
+2. **Open it** (first launch only): the build is signed but not notarized, so macOS warns. Right-click the app → **Open** → **Open**.
+3. **Set Up**: the app opens its **Set Up** screen. Press the buttons; it shows the exact commands to connect Claude Code and how to undo them. Then send any prompt in Claude Code — the answer appears at the notch.
+
+Prefer the terminal? Connect Claude Code by hand:
+```bash
+claude plugin marketplace add Banderos14/prompt-relay
+claude plugin install prompt-relay@prompt-relay
+```
+
+Requirements: macOS 14 or newer, Python 3.9+ (Xcode Command Line Tools, Homebrew or python.org — the app tells you if none is found), Claude Code and/or Codex. Optional screenshots need **Screen Recording** permission, which the app asks for only when you turn them on. To uninstall: quit the app, delete it, and run `claude plugin uninstall prompt-relay`; your history stays in `~/Library/Application Support/PromptRelay` until you delete that folder.
 
 ## Limitations
 
