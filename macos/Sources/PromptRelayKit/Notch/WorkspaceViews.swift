@@ -71,7 +71,7 @@ struct InboxView: View {
                         if model.inboxFilter == .attention {
                             AttentionNote()
                         }
-                        ForEach(entries) { r in InboxRow(model: model, result: r) }
+                        ForEach(entries) { r in InboxRow(model: model, result: r).scrollRow("r." + r.id) }
                         if !attention.isEmpty {
                             HStack(spacing: 5) {
                                 Image(systemName: "exclamationmark.triangle").font(.system(size: 10, weight: .semibold))
@@ -81,7 +81,7 @@ struct InboxView: View {
                             .padding(.horizontal, 9).padding(.top, entries.isEmpty ? 4 : 10).padding(.bottom, 2)
                             .islandFrame("inbox.attention")
                             AttentionNote()
-                            ForEach(attention) { r in InboxRow(model: model, result: r) }
+                            ForEach(attention) { r in InboxRow(model: model, result: r).scrollRow("r." + r.id) }
                         }
                         footer(shown: entries.count)
                     }

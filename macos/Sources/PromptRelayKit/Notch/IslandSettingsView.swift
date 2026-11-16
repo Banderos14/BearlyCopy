@@ -526,6 +526,7 @@ struct IslandSettingsView: View {
         }
         .toggleStyle(IslandSwitchStyle())
         .padding(.horizontal, 12).padding(.vertical, 7)
+        .scrollRow("t." + title)
     }
 
     private func rowButton(_ title: String, detail: String, value: String, action: @escaping () -> Void) -> some View {
