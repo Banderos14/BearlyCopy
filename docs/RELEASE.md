@@ -1,5 +1,7 @@
 # Releasing Prompt Relay on GitHub (Phase 11, ADR-020)
 
+> Every release must also carry the stable-name assets `Prompt-Relay-macOS.zip` and `Prompt-Relay-macOS.dmg` (copies of the versioned files) and a `SHA256SUMS.txt` listing them: `scripts/install.sh` downloads `releases/latest/download/Prompt-Relay-macOS.zip`. Keep the Team ID pinned in that script equal to the signing team.
+
 Nothing in this file has been run against Apple's notary service. As of
 Phase 11 this Mac has only an *Apple Development* certificate, which cannot
 be used for distribution; a *Developer ID Application* certificate (paid
