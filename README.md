@@ -131,7 +131,7 @@ you paste it. Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
    - Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/Prompt Relay.app"` and open the app again.
 3. **Quick Tour, then Set Up**: the app shows a short tour, then **Set Up** with the exact commands to connect Claude Code (and how to undo them). Send any prompt in Claude Code — the answer appears at the notch.
 
-**No warning at all (one line in Terminal).** Files downloaded by `curl` are not quarantined, so this installs the latest release straight into `~/Applications` and opens it. It verifies the SHA-256 and the signature first; read [scripts/install.sh](scripts/install.sh) before you run it:
+**No warning at all (one line in Terminal).** Files downloaded by `curl` are not quarantined, so this installs the latest release straight into `~/Applications` and opens it. It verifies the SHA-256 and that the app is signed by the author's Apple team first, and changes no security setting; read [scripts/install.sh](scripts/install.sh) before you run it:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Banderos14/prompt-relay/main/scripts/install.sh | bash
 ```

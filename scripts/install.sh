@@ -1,7 +1,9 @@
 #!/bin/bash
-# Installs the latest Prompt Relay release from GitHub without the macOS
-# "Not Opened" warning: files downloaded by curl are not quarantined, so
-# Gatekeeper has nothing to block. Read it before you run it.
+# Installs the latest Prompt Relay release from GitHub. Files downloaded by
+# curl are not quarantined by macOS, so the "Not Opened" warning for the
+# non-notarized app does not appear; this script does not change any security
+# attribute. It verifies the SHA-256 and that the app is signed by the
+# author's Apple team before installing. Read it before you run it.
 #
 #   curl -fsSL https://raw.githubusercontent.com/Banderos14/prompt-relay/main/scripts/install.sh | bash
 #
@@ -33,7 +35,12 @@ echo "Checksum ok."
 
 ditto -x -k "$tmp/$ZIP" "$tmp/out"
 [ -d "$tmp/out/Prompt Relay.app" ] || { echo "Unexpected archive layout." >&2; exit 1; }
-codesign --verify --strict "$tmp/out/Prompt Relay.app" || { echo "The app signature does not verify." >&2; exit 1; }
+# Authenticity: the app must be signed by the author's Apple team (a changed
+# download cannot satisfy this without that team's private key). The checksum
+# above only catches a damaged download; this is the real gate.
+TEAM_ID="9KV676HTZM"
+codesign --verify --strict -R="anchor apple generic and identifier \"io.github.banderos14.PromptRelay\" and certificate leaf[subject.OU] = \"$TEAM_ID\"" "$tmp/out/Prompt Relay.app" \
+  || { echo "The app is not signed by the expected developer: not installing." >&2; exit 1; }
 
 mkdir -p "$DEST"
 if pgrep -f "$DEST/Prompt Relay.app/Contents/MacOS/PromptRelay" >/dev/null 2>&1; then
@@ -46,6 +53,5 @@ if [ -d "$DEST/Prompt Relay.app" ]; then
   mv "$DEST/Prompt Relay.app" "$backup/Prompt Relay (replaced $(date +%Y%m%d-%H%M%S)).app"
 fi
 ditto "$tmp/out/Prompt Relay.app" "$DEST/Prompt Relay.app"
-xattr -dr com.apple.quarantine "$DEST/Prompt Relay.app" 2>/dev/null || true
 echo "Installed: $DEST/Prompt Relay.app"
 if [ "${NO_OPEN:-0}" != "1" ]; then open "$DEST/Prompt Relay.app"; fi
