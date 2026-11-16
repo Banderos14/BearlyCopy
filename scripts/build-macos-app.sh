@@ -87,7 +87,7 @@ identity="${PROMPT_RELAY_SIGN_IDENTITY:-}"
 [ -n "$identity" ] || identity="-"
 # The only Mach-O is the main executable; the Core and the icon are
 # resources sealed by the bundle signature.
-codesign --force --sign "$identity" --timestamp=none "$app"
+codesign --force --options runtime --sign "$identity" --timestamp=none "$app"
 codesign --verify --strict "$app"
 if [ "$identity" = "-" ]; then how="ad-hoc signed"; else how="signed with $(codesign -dv --verbose=2 "$app" 2>&1 | sed -n 's/^Authority=//p' | head -1)"; fi
 echo "== built $app (version $version, commit $commit, $how)"

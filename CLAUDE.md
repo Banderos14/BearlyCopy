@@ -1,7 +1,7 @@
 # Rules for AI agents working in this repository
 
 Prompt Relay is an independent product. Read `docs/STATUS.md` and
-`docs/CLOUD_TO_LOCAL_HANDOFF.md` first. They hold the current phase and what
+`docs/archive/CLOUD_TO_LOCAL_HANDOFF.md` first. They hold the current phase and what
 is approved.
 
 ## Scope

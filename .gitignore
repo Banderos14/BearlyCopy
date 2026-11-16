@@ -37,3 +37,6 @@ xcuserdata/
 *.swp
 .idea/
 .vscode/
+
+# Local acceptance artefacts (screenshots, logs) never go to the repository
+macos/acceptance/

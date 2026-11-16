@@ -1,7 +1,9 @@
 # Contributing to Prompt Relay
 
-Thanks for looking. Prompt Relay is a small, local-first macOS tool; the
-rules below keep it trustworthy.
+Prompt Relay is a source-available portfolio project (see `LICENSE`): the code
+is public to read, but **external contributions and reuse are not accepted**.
+Issues with bug reports are welcome. The rules below are the maintainer's own
+working rules and show how the project is kept trustworthy.
 
 ## Ground rules (product invariants)
 
@@ -11,7 +13,7 @@ Read `CLAUDE.md` — it applies to human contributors too. In short:
    I/O, runs no git/shell commands and reads no transcripts or project files.
 2. Captured text is stored and copied **verbatim**.
 3. Sessions are never merged; uncertain links are labelled, not guessed.
-4. Capture is opt-in per project and fails closed.
+4. Capture is opt-in (selected projects, or the owner's explicit "all projects" mode with exclusions) and fails closed.
 5. User data never enters the repository. Never commit captured text or real
    payloads without redaction.
 6. The Core is Python 3.9+, standard library only.

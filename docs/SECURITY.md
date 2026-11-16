@@ -120,3 +120,33 @@ user copies or drags.
   user hands it over; Copy with Context still scans the text it copies.
   "Attach result files automatically" (off) or "Select attached files for
   handoff" (off) remove the automatic step.
+
+## 7. Release security review (1.0 candidate)
+
+Audit of the repository and its whole history before publication:
+
+- **Secrets**: no tokens, private keys or credentials in the tree or in any
+  revision (patterns for AWS, GitHub, OpenAI, Slack, Google keys and PEM
+  headers). The only key-shaped strings are fake fixtures in the secret-scan
+  tests (`AKIA1234567890ABCDEF`, `AKIAABCDEFGHIJKLMNOP`).
+- **Personal data**: no e-mail addresses, phone numbers or captured prompt
+  text in the repository. Local acceptance artefacts (screenshots, logs) are
+  not part of the published tree (`macos/acceptance/` is ignored).
+- **Network**: neither the app (no `URLSession`/sockets) nor the plugin/Core
+  (no `socket`, `urllib`, `http`) contains network code. The only outbound
+  data path is the clipboard, by user action.
+- **Execution**: no `shell=True`, `eval`, `exec` or `os.system` in the Core,
+  CLI or scripts; no `sudo` in the install scripts.
+- **Dependencies**: the Core is Python standard library only; the app has no
+  third-party Swift packages.
+- **Hardening**: the app is built with the macOS hardened runtime
+  (`codesign --options runtime`); it is not sandboxed because it must read
+  the history folder and launch the bundled Python Core. It is signed with a
+  development certificate and **not notarized**.
+- **Permissions**: Screen Recording is requested only when automatic
+  screenshots are turned on; snapshots stay in memory.
+
+### Reporting a vulnerability
+Please use GitHub's private vulnerability reporting for this repository
+(Security → Report a vulnerability). Do not open a public issue for security
+problems. Expect a first reply within a few days.

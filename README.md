@@ -2,138 +2,97 @@
 
 **The final answer of your AI coding agent, verbatim, one click from any other chat.**
 
-Prompt Relay is a small macOS app at the notch. When Claude Code or Codex
-finishes a task in a project you enabled, it keeps the agent's complete
-final answer — exactly as written — with the request, the project, the
-agent and host, and the files the agent verifiably wrote. **Copy Answer**
-gives you the text; **Copy with Context** gives a reviewer (another AI or a
-person) everything needed to check it, labelled *Reported by the agent* or
+Prompt Relay is a small macOS app that lives at the MacBook notch. When Claude
+Code or Codex finishes a task, it keeps the agent's complete final answer —
+exactly as written — together with the request, the project and the files the
+agent verifiably wrote. **Copy Answer** puts the text on your clipboard.
+**Copy with Context** hands a reviewer (another AI or a person) everything
+needed to check the work, every claim labelled *Reported by the agent* or
 *Confirmed locally*.
 
 <p align="center">
-  <img src="docs/images/phase6-warm-cocoa/warm-details.png" width="560"
-       alt="Prompt Relay's island: the task, the answer, Copy with Context contents and two attachments">
-  <br><sub>The island's Details view, rendered offscreen by the test suite from synthetic data.</sub>
+  <img src="docs/images/phase6-warm-cocoa/warm-peek.png" width="420" alt="Quick Peek: the latest answer with Copy Answer and Copy with Context">
+  &nbsp;
+  <img src="docs/images/phase6-warm-cocoa/warm-details.png" width="420" alt="Details: task, answer, what Copy with Context includes, attachments">
+  <br><sub>Quick Peek and Details, rendered offscreen by the test suite from synthetic data.</sub>
 </p>
+
+## Why
+
+Planning in one AI and building with another means copying long answers by
+hand: Markdown breaks, conversations get mixed up, and "all tests pass" is
+taken on faith. Prompt Relay copies the exact text and separates what the
+agent *claimed* from what was *observed on your Mac*.
+
+## How it works
 
 ```mermaid
 flowchart LR
-  A[Claude Code / Codex] -- lifecycle hooks --> H[hook handler<br/>Python, exits 0, no network]
+  A[Claude Code / Codex] -- official lifecycle hooks --> H[hook handler<br/>Python, no network, exits 0]
   H --> S[(local history<br/>~/Library/Application Support/PromptRelay)]
   S -- JSON API v1 --> P[Prompt Relay app<br/>SwiftUI + AppKit]
   P -- Copy Answer / Copy with Context --> C[clipboard]
   C -- you paste --> R[ChatGPT, Claude, a reviewer…]
 ```
 
+1. A small plugin/hook receives the agent's events (prompt, stop, tool use).
+2. The Python Core stores each turn locally, verbatim, one conversation at a time.
+3. The app watches that history and shows it in an island at the notch: hover to peek, click for details.
+4. You copy the answer, or a context pack, and paste it where you want.
+
 ## Features
 
-- **Verbatim capture** of every final answer through official hooks (Claude
-  Code plugin; Codex hook profiles for Terminal and Xcode). No scraping, no
-  AI API calls, no tokens spent.
-- **Copy with Context**: request + answer + project, agent, host, completion
-  state, commands and files observed, with provenance labels. Secret check
-  before copying.
-- **Background-work aware**: an answer is not "ready" while tests it started
-  are still running.
-- **Attachments**: result files the agent wrote and named are pre-selected;
-  window snapshots (opt-in, system picker) stay in memory only.
-- **History** per project and conversation, search, follow-latest or stay
-  on a conversation.
+- **Verbatim capture** through official hooks. No scraping, no AI API calls, no tokens spent.
+- **All your projects**: capture follows the agent into any folder; exclude a project or pause at any time.
+- **Copy with Context**: request, answer, project, agent, host, completion state, commands and files observed. A secret check runs before anything is copied.
+- **Background-work aware**: an answer is not "ready" while tests it started are still running; "needs your input" is shown when the agent is waiting for you.
+- **Attachments**: result files the agent wrote and named are attached automatically; an optional screenshot of the window where the agent worked is kept in memory only.
+- **Inbox and History** across projects and agents, search, follow-latest or stay on one conversation.
 - **First-run Setup** that says *Connected* only after a real event arrived.
+- Works on the MacBook notch (and stays there with an external monitor); a small floating island on displays without a notch.
 
-## Privacy
+## Privacy and security
 
-Everything stays on your Mac. No network access, no account, no telemetry,
-no AI service. Capture is off until you enable a project. History lives in
-`~/Library/Application Support/PromptRelay` (folder 0700, files 0600) and is
-never inside the app or the plugin. Window snapshots are never written to
-disk unless you export them. Nothing leaves the Mac unless you paste it.
-Details: [SECURITY](docs/SECURITY.md).
+Everything stays on your Mac: no network access, no account, no telemetry, no
+AI service. Data lives in `~/Library/Application Support/PromptRelay` (folder
+0700, files 0600), never inside the app or the plugin. The hook handler never
+writes to stdout, always exits 0, does no network I/O and never reads
+transcripts or project files. Window screenshots are held in memory and are
+never written to disk unless you export them. Nothing leaves the Mac unless
+you paste it. Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
 
-## Requirements
+## Install (macOS 14+)
 
-macOS 14 or newer · Python 3.9+ (Command Line Tools, Homebrew or python.org;
-the app tells you if none is found) · Claude Code and/or Codex.
+1. Download **Prompt Relay.zip** from the [latest release](https://github.com/Banderos14/prompt-relay/releases), unzip and move the app to `~/Applications`.
+2. The build is signed with a development certificate but **not notarized**, so macOS warns on the first launch: right-click the app → **Open** → **Open**.
+3. Open Prompt Relay → **Set Up**. It shows the exact commands to connect Claude Code (and Codex) and how to undo them.
+4. Connect Claude Code manually if you prefer:
+   ```bash
+   claude plugin marketplace add Banderos14/prompt-relay
+   claude plugin install prompt-relay@prompt-relay
+   ```
+5. Send any prompt in Claude Code. The answer appears at the notch.
 
-## Install
-
-- **Release download** — not published yet. Signed and notarized builds
-  will be on GitHub Releases ([RELEASE](docs/RELEASE.md)).
-- **From a checkout** (developers): `scripts/install-local.sh --dry-run`,
-  then `scripts/install-local.sh`. It builds, verifies, keeps your previous
-  app as a backup and never touches your history or agent settings
-  ([INSTALL](docs/INSTALL.md)).
-
-Then open Prompt Relay → **Set Up**: connect an agent (it shows the exact
-commands and how to undo them), enable a project, send any prompt.
-
-Connect Claude Code by hand:
-```bash
-claude plugin marketplace add Banderos14/prompt-relay   # or the path of your checkout
-claude plugin install prompt-relay@prompt-relay
-```
-Codex: `macos/Integrations/configure-codex.py` (preview first; see [PHASE9](macos/PHASE9.md)).
+Requirements: macOS 14 or newer, Python 3.9+ (Xcode Command Line Tools, Homebrew or python.org — the app tells you if none is found), Claude Code and/or Codex. Optional screenshots need **Screen Recording** permission, which the app asks for only when you turn them on.
 
 ## Limitations
 
-- Pre-release; no signed build is published yet.
-- Codex setup currently needs a source checkout (the hook command points to
-  its launcher).
-- Mixed text + image in one paste is not supported by most chat apps; Copy
-  with Context hands over images in a second step, by design.
-- Some checks need a person at a Mac (real paste into web chats, the window
-  picker); see `macos/PHASE11.md`.
+- Pre-release (0.9): not notarized; no auto-update.
+- Mixed text and images in one paste are not supported by most chat apps; images are handed over in a second step by design.
+- A window screenshot shows whatever the window displays at that moment, not a specific tab inside it.
 
-## Contributing · License
+## License
 
-See [CONTRIBUTING](CONTRIBUTING.md). **License: not chosen yet** — until the
-owner adds a LICENSE file, all rights are reserved. Relay the bear and other
-graphics are original to this project and follow the same license.
+Source-available, **all rights reserved** — see [LICENSE](LICENSE). You may
+read the code and use the released app personally; copying, modifying and
+redistributing are not allowed. No external contributions are accepted.
 
-## Tests
-```bash
-scripts/check.sh                 # Python Core (also with python3.9 if present)
-(cd macos && swift test)         # Swift app model and views (offscreen)
-scripts/synthetic_demo.sh        # isolated demo with a MOCK clipboard
-```
+## For reviewers
 
-## CLI
-```bash
-bin/prompt-relay enable ~/code/my-project     # opt in a project
-bin/prompt-relay sessions                     # captured sessions
-bin/prompt-relay turns [--session ID]         # turns with status and link quality
-bin/prompt-relay show [--project DIR]         # print the latest final answer verbatim
-bin/prompt-relay copy [--verify]              # Copy Response → clipboard (macOS)
-bin/prompt-relay context                      # preview Copy Context
-bin/prompt-relay copy-context                 # Copy Context → clipboard (secret check first)
-bin/prompt-relay sessions --json              # machine API for the app (docs/JSON_API.md)
-bin/prompt-relay prune --older-than-days 30   # preview deletion of old sessions; add --yes to delete
-bin/prompt-relay delete --session ID          # preview; add --yes (and --force-active for a live session)
-bin/prompt-relay doctor [--json]               # Python, storage, capture, plugin/settings registration (read-only)
-bin/prompt-relay pin-python [--show]           # the Python the plugin hook uses (enable pins one automatically)
-bin/prompt-relay hook-config                  # settings-hook JSON for isolated checks (`claude --settings`); writes nothing
-```
-
-## Documentation
-| Doc | Content |
+| | |
 |---|---|
-| [PRODUCT_SPEC](docs/PRODUCT_SPEC.md) | vision, users, stories, scope, non-goals |
-| [ARCHITECTURE](docs/ARCHITECTURE.md) | components, data flow, hook contract, correlation |
-| [DATA_MODEL](docs/DATA_MODEL.md) | on-disk format (contract for the future app) |
-| [PLUGIN](docs/PLUGIN.md) | install, enable, disable, uninstall, diagnostics, coexistence |
-| [DECISIONS](docs/DECISIONS.md) | ADR-001…022 |
-| [JSON_API](docs/JSON_API.md) | machine-readable CLI API v1, versioning rules ([schema](docs/api/api-v1.schema.json)) |
-| [HOOKS_RESEARCH](docs/HOOKS_RESEARCH.md) | hook schemas, install options, open questions |
-| [SECURITY](docs/SECURITY.md) | threat model, privacy, installation safety |
-| [TEST_PLAN](docs/TEST_PLAN.md) | unit, integration, manual and regression tests |
-| [ROADMAP](docs/ROADMAP.md) | phases and acceptance criteria |
-| [UI_RESEARCH](docs/UI_RESEARCH.md) | notch UI foundations, OpenNook vs custom panel, Coucou reference |
-| [MACOS_APP](docs/MACOS_APP.md) | the macOS app and notch island: build, Xcode, architecture, verification |
-| [LOCAL_MAC_VALIDATION](docs/LOCAL_MAC_VALIDATION.md) | step-by-step Mac checks |
-| [CLOUD_TO_LOCAL_HANDOFF](docs/CLOUD_TO_LOCAL_HANDOFF.md) | how to continue in a local session |
-| [INSTALL](docs/INSTALL.md) | install, local developer install, troubleshooting |
-| [RELEASE](docs/RELEASE.md) | signing, notarization, GitHub Release checklist |
-| [MCP_EVALUATION](docs/MCP_EVALUATION.md) | hooks vs MCP, read-only MCP design (not built) |
-| [MULTI_AGENT_MODEL](docs/MULTI_AGENT_MODEL.md) | provider → profile → host identity proposal |
-| [STATUS](docs/STATUS.md) | current state, verification matrix, risks |
-| [SELF_REVIEW](docs/SELF_REVIEW.md) | Core audit results and the Phase 1.5 plan |
+| Stack | Python 3.9+ (stdlib only) Core · Swift / SwiftUI + AppKit · ScreenCaptureKit · FSEvents |
+| Tests | `scripts/check.sh` (Python Core), `(cd macos && swift test)` (app, offscreen) |
+| Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [decisions (ADRs)](docs/DECISIONS.md) |
+| Case study | [docs/PORTFOLIO.md](docs/PORTFOLIO.md) |
+| Docs index | [docs/](docs) (phase-by-phase history in [docs/archive](docs/archive)) |

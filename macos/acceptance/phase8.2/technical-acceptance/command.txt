@@ -1,2 +1,0 @@
-All PROMPT_RELAY_* and COMPACT_HELP_* environment overrides removed.
-swift test --disable-sandbox --cache-path /tmp/prompt-relay-p81-cache

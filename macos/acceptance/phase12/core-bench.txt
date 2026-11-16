@@ -1,3 +1,0 @@
-200 results: sessions 186 ms, results --limit 300 195 ms, results --limit 3000 184 ms
-1000 results: sessions 222 ms, results --limit 300 213 ms, results --limit 3000 227 ms
-3000 results: sessions 267 ms, results --limit 300 290 ms, results --limit 3000 301 ms

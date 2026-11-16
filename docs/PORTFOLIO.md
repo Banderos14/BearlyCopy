@@ -48,5 +48,21 @@ numbers exist):
   "no network constructs" and "captured text never in the repo" guards.
 - App size ≈ 10 MB with the bundled Core (no bundled Python, ADR-019).
 
-**Status.** Pre-release. Signed/notarized distribution is prepared but not
-published; see `docs/RELEASE.md`.
+**Security stance.** Local-first and offline by construction: no network code in
+the app or the Core, no third-party dependencies, hook handler that cannot fail
+the agent (always exit 0, never stdout), strict file permissions, secret scan
+before anything is copied, hardened-runtime build. Audited before release
+(see `docs/SECURITY.md` §7).
+
+**Try it in 60 seconds.**
+1. Install the app and connect Claude Code (README → Install).
+2. Send any prompt in Claude Code. A bear appears at the notch.
+3. Hover the notch: Quick Peek shows the latest answer. Click **Details**.
+4. **Copy with Context** and paste into another chat: request, answer and
+   what was actually observed on the Mac, with *Reported* / *Confirmed*
+   labels.
+5. Settings → Daily Use shows whether everything is connected.
+
+**Status.** 0.9 pre-release. Source-available (view-only license); the app is
+signed with a development certificate and not notarized, so macOS asks you to
+confirm the first launch.

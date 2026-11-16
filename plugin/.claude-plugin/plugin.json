@@ -2,11 +2,16 @@
   "name": "prompt-relay",
   "displayName": "Prompt Relay",
   "version": "0.9.0",
-  "description": "Captures Claude Code's final answers locally (opt-in per project) so you can copy them verbatim into another chat. No network, no extra API calls.",
+  "description": "Captures Claude Code's final answers locally so you can copy them verbatim into another chat. No network, no extra API calls.",
   "author": {
     "name": "Banderos14"
   },
   "repository": "https://github.com/Banderos14/prompt-relay",
-  "license": "UNLICENSED",
-  "keywords": ["clipboard", "capture", "local-first", "hooks"]
+  "license": "SEE LICENSE IN LICENSE",
+  "keywords": [
+    "clipboard",
+    "capture",
+    "local-first",
+    "hooks"
+  ]
 }
