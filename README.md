@@ -51,6 +51,60 @@ flowchart LR
 - **First-run Setup** that says *Connected* only after a real event arrived.
 - Works on the MacBook notch (and stays there with an external monitor); a small floating island on displays without a notch.
 
+## How to use
+
+**1. Connect your agent (once).** Open Prompt Relay → **Set Up**. It shows the
+exact commands for Claude Code (and Codex) and how to undo them. It says
+*Connected* only after a real event has arrived.
+
+**2. Work as usual.** Send a prompt in Claude Code. A small bear appears
+beside the notch while the agent works.
+
+**3. Hover the notch for a Quick Peek.** The latest answer, the request it
+answered and two buttons: **Copy Answer** and **Copy with Context**.
+
+<p align="center">
+  <img src="docs/images/phase6-warm-cocoa/warm-peek.png" width="520" alt="Quick Peek at the notch">
+</p>
+
+**4. Click Details for the full picture.** The task, the answer, what Copy
+with Context will include, and the attachments (files the agent wrote, and an
+optional window screenshot). Icons at the bottom open the **Inbox** (every
+agent's finished answers), **History**, the **Clipboard** and **Settings**.
+
+<p align="center">
+  <img src="docs/images/phase6-warm-cocoa/warm-details.png" width="640" alt="Details view">
+</p>
+
+**5. Copy with Context.** Preview exactly what will be copied before it goes
+to the clipboard. Every statement carries a label — *Confirmed locally*,
+*Reported by Claude*, *Supplied by you* or *Not verified* — and a secret check
+runs first. Paste it into ChatGPT, another Claude chat or send it to a
+reviewer.
+
+<p align="center">
+  <img src="docs/images/phase6-warm-cocoa/warm-package-preview.png" width="560" alt="Copy with Context preview with provenance labels">
+</p>
+
+**6. Optional: screenshots of where the agent worked.** In **Settings →
+Attachments**, turn on *Automatic final screenshots*. macOS asks for Screen
+Recording once. When you send a prompt, Prompt Relay links the window you are
+working in; when the answer is ready, it keeps one still image of that window
+in memory (never written to disk, never sent anywhere) and lists it under
+Attachments, unticked until you choose to include it.
+
+**7. Check it works.** Settings → **Daily Use** shows *Ready*, or the one
+thing that needs attention, with a button to fix it.
+
+Quick tips: the island opens on hover (turn that off in Settings to open it
+from the menu bar or with ⌃⌥⌘P); Esc or a click elsewhere closes it; with an
+external monitor the island stays on the MacBook notch.
+
+<p align="center">
+  <img src="docs/images/phase71-relay/relay-poses.png" width="560" alt="Relay the bear: resting, working, done">
+  <br><sub>Relay the bear shows what the agent is doing: resting, working, waiting for you, done.</sub>
+</p>
+
 ## Privacy and security
 
 Everything stays on your Mac: no network access, no account, no telemetry, no
