@@ -468,6 +468,21 @@ final class IslandHost {
         settle()
     }
 
+    /// Retina render (2x pixels) for documentation images.
+    func png2x(_ path: String) throws {
+        settle()
+        let scale: CGFloat = 2
+        let rep = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(host.bounds.width * scale),
+                                                 pixelsHigh: Int(host.bounds.height * scale), bitsPerSample: 8, samplesPerPixel: 4,
+                                                 hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        rep.size = host.bounds.size
+        host.cacheDisplay(in: host.bounds, to: rep)
+        let cropRect = NSRect(x: 0, y: (host.bounds.height - height) * scale, width: width * scale, height: height * scale)
+        let cg = try XCTUnwrap(rep.cgImage?.cropping(to: CGRect(x: 0, y: CGFloat(rep.pixelsHigh) - cropRect.maxY, width: cropRect.width, height: cropRect.height)))
+        let out = NSBitmapImageRep(cgImage: cg)
+        try XCTUnwrap(out.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: path))
+    }
+
     func png(_ path: String) throws {
         settle()
         let rect = NSRect(x: 0, y: host.bounds.height - height, width: width, height: height)
