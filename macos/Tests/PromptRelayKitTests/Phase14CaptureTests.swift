@@ -65,7 +65,8 @@ import Testing
         func forget(_ window: PickedWindow) { forgotten.append(window.handle) }
         /// Phase 18: the window of the app in front when a prompt starts.
         var front: PickedWindow?
-        func frontmostWindow() async -> PickedWindow? { front }
+        var frontCalls = 0
+        func frontmostWindow() async -> PickedWindow? { frontCalls += 1; return front }
         /// Phase 15.2: windows macOS no longer lists; offscreen ones exist but are hidden.
         var gone: Set<String> = []
         var offscreen: Set<String> = []
@@ -135,11 +136,43 @@ import Testing
 
     // MARK: Phase 18 — the window where the agent works
 
+    final class AlwaysGranted: ScreenRecordingPermissionChecking {
+        var granted = true
+        func isGranted() -> Bool { granted }
+        @discardableResult func openSettings() -> Bool { true }
+    }
+
+    /// Turns the link on the way the person does: the switch and an existing grant.
+    func enableAutoLink(_ w: World, granted: Bool = true) {
+        let p = AlwaysGranted(); p.granted = granted
+        w.model.screenRecordingPermission = p
+        w.model.autoLinkWindowEnabled = true
+    }
+
+    @Test func nothingReadsTheWindowListWithoutTheSwitchOrTheGrant() async {
+        let at = Date()
+        let s = Self.session("s1", last: Self.iso.string(from: at), running: true)
+        let w = await world([s])
+        defer { cleanup(w) }
+        w.model.captureNow = { at.addingTimeInterval(1) }
+        w.capture.front = PickedWindow(handle: "front", label: "Terminal window", windowID: 7)
+        w.model.screenRecordingPermission = AlwaysGranted()          // granted, switch off (default)
+        await w.model.refreshNow()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        #expect(w.model.autoCaptureBindings.isEmpty)
+        #expect(w.capture.frontCalls == 0)
+        enableAutoLink(w, granted: false)                             // switch on, no grant
+        await w.model.refreshNow()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        #expect(w.capture.frontCalls == 0, "no enumeration, so no macOS dialog")
+    }
+
     @Test func aPromptJustSentLinksTheWindowInFrontToThatConversation() async {
         let at = Date()
         let s = Self.session("s1", last: Self.iso.string(from: at), running: true)
         let w = await world([s])
         defer { cleanup(w) }
+        enableAutoLink(w)
         w.model.captureNow = { at.addingTimeInterval(1) }
         w.capture.front = PickedWindow(handle: "front", label: "Terminal window", windowID: 7)
         await w.model.refreshNow()
@@ -154,6 +187,7 @@ import Testing
         let s = Self.session("s1", last: Self.iso.string(from: at.addingTimeInterval(-120)), running: true)
         let w = await world([s])
         defer { cleanup(w) }
+        enableAutoLink(w)
         w.model.captureNow = { at.addingTimeInterval(1) }
         w.capture.front = PickedWindow(handle: "front", label: "Safari window", windowID: 9)
         await w.model.refreshNow()
@@ -167,6 +201,7 @@ import Testing
         let b = Self.session("s2", project: "/a", last: Self.iso.string(from: at), running: true)
         let w = await world([a, b])
         defer { cleanup(w) }
+        enableAutoLink(w)
         w.model.captureNow = { at.addingTimeInterval(1) }
         w.capture.front = PickedWindow(handle: "front", label: "Claude window", windowID: 7)
         await w.model.refreshNow()

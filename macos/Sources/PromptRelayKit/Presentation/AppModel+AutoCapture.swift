@@ -91,7 +91,9 @@ extension AppModel {
     /// another window; never when Prompt Relay itself is in front, never for a
     /// conversation that was already working, never a window of another app.
     func autoLinkWorkingWindows() {
-        guard autoCaptureFinalWindow else { return }
+        // Never reads the window list unless the person turned this on AND
+        // macOS already allows capture (a non-prompting check): no dialog.
+        guard autoCaptureFinalWindow, autoLinkWindowEnabled, screenRecordingPermission.isGranted() else { return }
         let now = captureNow()
         let running = allSessions.filter { $0.running == true }
         autoLinkedRunning.formIntersection(Set(running.map(\.sessionKey)))   // a finished run may link again next time

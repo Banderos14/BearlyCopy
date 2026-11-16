@@ -184,6 +184,7 @@ public final class AppModel {
         autoSelectPreparedAttachments = stateDefaults?.object(forKey: Self.autoSelectPreparedKey) as? Bool ?? true
         autoCaptureFinalWindow = stateDefaults?.bool(forKey: Self.autoCaptureKey) ?? false
         autoScreenshotsInHandoff = stateDefaults?.bool(forKey: Self.autoCaptureHandoffKey) ?? false
+        autoLinkWindowEnabled = stateDefaults?.bool(forKey: Self.autoLinkKey) ?? false
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
         seenAnswers = stateDefaults?.dictionary(forKey: Self.seenAnswersKey) as? [String: String] ?? [:]
         notchAcknowledgedAt = stateDefaults?.string(forKey: Self.notchAckKey)
@@ -1243,6 +1244,13 @@ public final class AppModel {
     /// Context Packs and Drag only when the user turns this on (off by default).
     public var autoScreenshotsInHandoff = false {
         didSet { stateDefaults?.set(autoScreenshotsInHandoff, forKey: Self.autoCaptureHandoffKey) }
+    }
+    /// Phase 18: link the window of the app in front when a prompt starts.
+    /// Off by default: it reads the window list, which macOS may ask about
+    /// again. Needs Screen Recording already granted (checked without a prompt).
+    static let autoLinkKey = "attachments.autoLinkWindow"
+    public var autoLinkWindowEnabled = false {
+        didSet { stateDefaults?.set(autoLinkWindowEnabled, forKey: Self.autoLinkKey) }
     }
     /// Phase 14: windows linked to agents (memory only: window identity does
     /// not survive a restart of Prompt Relay or of the agent's app).
