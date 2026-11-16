@@ -49,6 +49,8 @@ already said.
 
 ## How to use
 
+**0. First launch.** A short **Quick Tour** (9 pages) explains the basics. Skip it any time; Settings → **Show Quick Tour** opens it again.
+
 **1. Connect your agent (once).** Open Prompt Relay → **Set Up**. It shows the
 exact commands for Claude Code (and Codex) and how to undo them. It says
 *Connected* only after a real event has arrived.
@@ -121,7 +123,7 @@ you paste it. Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
   <a href="https://github.com/Banderos14/prompt-relay/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-Prompt%20Relay.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
 </p>
 
-1. **Download** `Prompt-Relay-0.9.0.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
+1. **Download** `Prompt-Relay-0.9.1.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
 2. **Open it** (first launch only): the build is signed but not notarized, so macOS warns. Right-click the app → **Open** → **Open**.
 3. **Set Up**: the app opens its **Set Up** screen. Press the buttons; it shows the exact commands to connect Claude Code and how to undo them. Then send any prompt in Claude Code — the answer appears at the notch.
 

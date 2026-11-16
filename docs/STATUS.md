@@ -1,5 +1,9 @@
 # Status
 
+## 2026-11-16 — 0.9.1: Quick Tour (first-run guide)
+
+Nine-page tour in the island (hover the notch → Quick Tour), shown once on the first launch, reopened from Settings → About → Show Quick Tour or the ⋯ menu. Explains only; changes no setting. Setup welcome text updated for global capture. XCTest 386/0, Swift Testing 177, Python 295+15. Plugin/app/Core 0.9.1.
+
 ## 2026-11-15 — Auto window link (ADR-030)
 
 Automatic final screenshots now link the window of the app in front when a
