@@ -1,5 +1,9 @@
 # Status
 
+## 2026-11-17 — 0.9.3: install and tour fixes
+
+One-line Terminal installer (`scripts/install.sh`, signer-pinned, no quarantine warning) is the primary install path; DMG steps corrected for macOS 15+ (Open Anyway). The Quick Tour is shown by itself at most twice (a first launch whose island closed at once gets a second chance); Done or Skip ends it. Plugin/app/Core 0.9.3.
+
 ## 2026-11-16 — 0.9.2: screenshot mode picker, bear in the tour
 
 Settings → Attachments → Final screenshots: Automatic (recommended) / Manual / Off, so a person with permission or window-link trouble can change it. Quick Tour opens 0.6 s after the first launch; the welcome and bear pages show Relay instead of an icon. Plugin/app/Core 0.9.2.

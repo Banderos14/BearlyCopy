@@ -76,7 +76,7 @@ final class Phase19TourTests: XCTestCase {
         XCTAssertTrue(m.shouldAutoShowTour, "a fresh install shows it")
         m.startTour()
         m.tourNext()
-        m.finishTour()
+        m.finishTour()   // Done or Skip: finished for good
         XCTAssertTrue(m.tourSeen)
         XCTAssertFalse(m.shouldAutoShowTour)
         XCTAssertEqual(m.route, .home)
@@ -85,12 +85,15 @@ final class Phase19TourTests: XCTestCase {
         XCTAssertFalse(again.shouldAutoShowTour, "a new run of the app does not show it again")
     }
 
-    func testLeavingWithTheIslandsOwnBackStillCountsAsSeen() async {
+    func testTheTourGetsASecondChanceIfItClosedAtOnce() async {
         let m = await model()
-        m.markTourSeen()   // what the page does when it appears
-        XCTAssertFalse(m.shouldAutoShowTour)
-        let again = await model()
-        XCTAssertFalse(again.shouldAutoShowTour)
+        m.markTourSeen()   // shown once, then it closed by itself
+        XCTAssertTrue(m.shouldAutoShowTour, "one more try on the next launch")
+        let second = await model()
+        second.markTourSeen()
+        XCTAssertFalse(second.shouldAutoShowTour, "never a third time")
+        let third = await model()
+        XCTAssertFalse(third.shouldAutoShowTour)
     }
 
     func testItCanBeReopenedAfterwardsAndDoneCanLeadToSetUp() async {
