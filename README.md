@@ -11,10 +11,7 @@ needed to check the work, every claim labelled *Reported by the agent* or
 *Confirmed locally*.
 
 <p align="center">
-  <img src="docs/images/phase6-warm-cocoa/warm-peek.png" width="420" alt="Quick Peek: the latest answer with Copy Answer and Copy with Context">
-  &nbsp;
-  <img src="docs/images/phase6-warm-cocoa/warm-details.png" width="420" alt="Details: task, answer, what Copy with Context includes, attachments">
-  <br><sub>Quick Peek and Details, rendered offscreen by the test suite from synthetic data.</sub>
+  <img src="docs/images/readme/peek.png" width="720" alt="Quick Peek at the notch: the latest answer with Copy Answer and Copy with Context">
 </p>
 
 ## Why
@@ -26,19 +23,21 @@ agent *claimed* from what was *observed on your Mac*.
 
 ## How it works
 
+Prompt Relay sits between your AI coding agent and the next chat you want to
+paste into. It never talks to the agent itself; it just keeps what the agent
+already said.
+
 ```mermaid
 flowchart LR
-  A[Claude Code / Codex] -- official lifecycle hooks --> H[hook handler<br/>Python, no network, exits 0]
-  H --> S[(local history<br/>~/Library/Application Support/PromptRelay)]
-  S -- JSON API v1 --> P[Prompt Relay app<br/>SwiftUI + AppKit]
-  P -- Copy Answer / Copy with Context --> C[clipboard]
-  C -- you paste --> R[ChatGPT, Claude, a reviewer…]
+  A["1 · Your agent<br/>Claude Code, Codex"] --> B["2 · Prompt Relay<br/>keeps the answer, verbatim"]
+  B --> C["3 · Copy"]
+  C --> D["4 · Paste anywhere<br/>ChatGPT, Claude, a teammate"]
 ```
 
-1. A small plugin/hook receives the agent's events (prompt, stop, tool use).
-2. The Python Core stores each turn locally, verbatim, one conversation at a time.
-3. The app watches that history and shows it in an island at the notch: hover to peek, click for details.
-4. You copy the answer, or a context pack, and paste it where you want.
+1. **Work as usual** in Claude Code or Codex.
+2. When the agent finishes, Prompt Relay saves the final answer exactly as written, with the request, the project and the files it wrote. Everything stays on your Mac.
+3. **Hover the notch** to see it, and press **Copy Answer** or **Copy with Context**.
+4. **Paste** it into any other chat or send it to a reviewer.
 
 ## Features
 
@@ -64,7 +63,7 @@ beside the notch while the agent works.
 answered and two buttons: **Copy Answer** and **Copy with Context**.
 
 <p align="center">
-  <img src="docs/images/phase6-warm-cocoa/warm-peek.png" width="520" alt="Quick Peek at the notch">
+  <img src="docs/images/readme/peek.png" width="560" alt="Quick Peek at the notch">
 </p>
 
 **4. Click Details for the full picture.** The task, the answer, what Copy
@@ -73,7 +72,7 @@ optional window screenshot). Icons at the bottom open the **Inbox** (every
 agent's finished answers), **History**, the **Clipboard** and **Settings**.
 
 <p align="center">
-  <img src="docs/images/phase6-warm-cocoa/warm-details.png" width="640" alt="Details view">
+  <img src="docs/images/readme/details.png" width="640" alt="Details view">
 </p>
 
 **5. Copy with Context.** Preview exactly what will be copied before it goes
@@ -83,7 +82,11 @@ runs first. Paste it into ChatGPT, another Claude chat or send it to a
 reviewer.
 
 <p align="center">
-  <img src="docs/images/phase6-warm-cocoa/warm-package-preview.png" width="560" alt="Copy with Context preview with provenance labels">
+  <img src="docs/images/readme/context-preview.png" width="640" alt="Copy with Context preview with provenance labels">
+</p>
+
+<p align="center">
+  <img src="docs/images/readme/attachment.png" width="640" alt="An attachment preview: a screenshot the agent produced">
 </p>
 
 **6. Optional: screenshots of where the agent worked.** In **Settings →
