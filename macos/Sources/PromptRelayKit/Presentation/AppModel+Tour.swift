@@ -13,8 +13,11 @@ extension AppModel {
         public let text: String
     }
 
+    /// The page icon that is Relay the bear instead of an SF Symbol.
+    public static let tourBearSymbol = "relay.bear"
+
     public static let tourPages: [TourPage] = [
-        TourPage(id: 0, symbol: "pawprint.fill", title: "Welcome to Prompt Relay",
+        TourPage(id: 0, symbol: tourBearSymbol, title: "Welcome to Prompt Relay",
                  text: "It keeps the final answer of Claude Code or Codex exactly as written, one click from any other chat."),
         TourPage(id: 1, symbol: "macbook", title: "The notch is the app",
                  text: "Hover the notch to open Prompt Relay. Press Esc or click anywhere else to close it."),
@@ -28,7 +31,7 @@ extension AppModel {
                  text: "See the task, the answer and the files the agent wrote. An optional screenshot of the agent's window stays in memory only."),
         TourPage(id: 6, symbol: "tray.full", title: "Inbox and History",
                  text: "Every agent and project in one place, with search. Follow the latest answer or stay on one conversation."),
-        TourPage(id: 7, symbol: "face.smiling", title: "Relay the bear tells you what is happening",
+        TourPage(id: 7, symbol: tourBearSymbol, title: "Relay the bear tells you what is happening",
                  text: "Resting, working, waiting for your input, done, or an error. A glance is enough."),
         TourPage(id: 8, symbol: "lock.shield", title: "Set up once, stays private",
                  text: "Connect your agent in Set Up. Everything stays on this Mac: no account, no network. Settings → Daily Use shows Ready."),

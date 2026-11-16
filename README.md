@@ -88,12 +88,14 @@ reviewer.
   <img src="docs/images/readme/attachment.png" width="640" alt="An attachment preview: a screenshot the agent produced">
 </p>
 
-**6. Optional: screenshots of where the agent worked.** In **Settings →
-Attachments**, turn on *Automatic final screenshots*. macOS asks for Screen
-Recording once. When you send a prompt, Prompt Relay links the window you are
-working in; when the answer is ready, it keeps one still image of that window
-in memory (never written to disk, never sent anywhere) and lists it under
-Attachments, unticked until you choose to include it.
+**6. Screenshots of where the agent worked.** In **Settings → Attachments →
+Final screenshots** pick **Automatic** (recommended), **Manual** or **Off**.
+macOS asks for Screen Recording once. In *Automatic*, when you send a prompt
+Prompt Relay links the window you are working in; when the answer is ready it
+keeps one still image of that window in memory (never written to disk, never
+sent anywhere) and lists it under Attachments, unticked until you choose to
+include it. If automatic linking ever picks the wrong window or macOS keeps
+asking for permission, switch to *Manual* (you choose the window) or *Off*.
 
 **7. Check it works.** Settings → **Daily Use** shows *Ready*, or the one
 thing that needs attention, with a button to fix it.
@@ -123,7 +125,7 @@ you paste it. Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
   <a href="https://github.com/Banderos14/prompt-relay/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-Prompt%20Relay.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
 </p>
 
-1. **Download** `Prompt-Relay-0.9.1.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
+1. **Download** `Prompt-Relay-0.9.2.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
 2. **Open it** (first launch only): the build is signed but not notarized, so macOS warns. Right-click the app → **Open** → **Open**.
 3. **Set Up**: the app opens its **Set Up** screen. Press the buttons; it shows the exact commands to connect Claude Code and how to undo them. Then send any prompt in Claude Code — the answer appears at the notch.
 

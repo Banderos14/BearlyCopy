@@ -272,6 +272,28 @@ struct IslandSettingsView: View {
         }
     }
 
+    /// Phase 19.1: Automatic / Manual / Off for the window screenshots.
+    private var screenshotModeRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Final screenshots").font(.system(size: 12.5)).foregroundStyle(Island.primary)
+                Spacer()
+                Picker("Final screenshots", selection: Binding(get: { model.screenshotMode }, set: { model.screenshotMode = $0 })) {
+                    ForEach(AppModel.ScreenshotMode.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented).labelsHidden().fixedSize()
+                .accessibilityLabel("Final screenshots: Automatic, Manual or Off")
+            }
+            Text(model.screenshotMode.detail).font(.system(size: 11)).foregroundStyle(Island.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+            if model.screenshotMode != .off {
+                Text("Kept in memory only: never saved, never copied, never sent.").font(.system(size: 11)).foregroundStyle(Island.tertiary)
+            }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .scrollRow("screenshots.mode")
+    }
+
     /// Phase 9.3 / 11: what Copy with Context prepares, and the clipboard.
     private var handoff: some View {
         section("Clipboard & Handoff") {
@@ -285,16 +307,10 @@ struct IslandSettingsView: View {
                        isOn: Binding(get: { model.autoSelectPreparedAttachments }, set: { model.autoSelectPreparedAttachments = $0 }))
             }
             Hairline()
-            toggle("Automatic final screenshots",
-                   detail: "Off by default. After each final answer, one still image of the window you linked to that agent. Kept in memory only: never saved, never copied, never sent.",
-                   isOn: Binding(get: { model.autoCaptureFinalWindow }, set: { model.autoCaptureFinalWindow = $0 }))
+            screenshotModeRow
             if model.autoCaptureFinalWindow {
                 AutoCaptureLinksView(model: model)
                     .padding(.horizontal, 12).padding(.vertical, 6)
-                Hairline()
-                toggle("Link the window automatically",
-                       detail: "When you send a prompt, the window of the app in front (Claude Desktop, a terminal, an editor) is linked to that conversation and used for its screenshot. Needs Screen Recording allowed; if it is not, use Link Window.",
-                       isOn: Binding(get: { model.autoLinkWindowEnabled }, set: { model.autoLinkWindowEnabled = $0 }))
                 Hairline()
                 toggle("Include auto screenshots in handoff",
                        detail: "Off: they wait unchecked under Attachments until you tick them. On: they start checked for Copy with Context, Context Packs and Drag.",
@@ -329,7 +345,7 @@ struct IslandSettingsView: View {
             Hairline()
             VStack(alignment: .leading, spacing: 2) {
                 Text("Screen Recording").font(.system(size: 12.5)).foregroundStyle(Island.primary)
-                Text("Asked only when you choose a window to capture; macOS shows its own picker. Manage it in System Settings → Privacy & Security.")
+                Text("Needed only for screenshots. In Manual mode macOS shows its own window picker; in Automatic the app also needs this permission to find the window. Manage it in System Settings → Privacy & Security.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 12).padding(.vertical, 7)

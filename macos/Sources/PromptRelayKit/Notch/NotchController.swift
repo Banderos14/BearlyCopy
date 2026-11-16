@@ -713,7 +713,7 @@ public final class NotchController {
     private func presentTourOnFirstLaunch() {
         guard model.shouldAutoShowTour else { return }
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            try? await Task.sleep(nanoseconds: 600_000_000)
             guard let self, self.isRunning, self.model.shouldAutoShowTour, !self.dialogOpen else { return }
             self.model.tourPage = 0
             self.present(.tour)
