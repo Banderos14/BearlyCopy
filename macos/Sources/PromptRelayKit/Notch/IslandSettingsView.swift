@@ -415,6 +415,9 @@ struct IslandSettingsView: View {
 
     private var about: some View {
         section("About") {
+            Button("Show Quick Tour") { model.startTour() }
+                .buttonStyle(IslandPillStyle(prominent: false)).padding(.horizontal, 12).padding(.top, 6)
+                .islandHelp("Nine short pages on what Prompt Relay does")
             HStack {
                 Text("Version").font(.system(size: 12.5)).foregroundStyle(Island.primary)
                 Spacer()

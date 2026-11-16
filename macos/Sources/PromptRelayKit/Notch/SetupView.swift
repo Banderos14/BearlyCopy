@@ -75,7 +75,7 @@ struct SetupView: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Connect an agent once").font(.system(size: 13, weight: .semibold)).foregroundStyle(Island.primary)
-                Text("Prompt Relay keeps each final answer of Claude Code or Codex on this Mac, ready to copy with its context. Nothing is captured until you enable a project.")
+                Text("Prompt Relay keeps each final answer of Claude Code or Codex on this Mac, ready to copy with its context. Everything stays on this Mac.")
                     .font(.system(size: 11.5)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 6)

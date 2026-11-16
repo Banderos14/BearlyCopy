@@ -373,6 +373,7 @@ struct NavigationIcons: View {
                     Button(model.isInPack(ref) ? "Remove from Context Pack" : "Add to Context Pack") { model.togglePack(ref) }
                 }
                 Button("Context Pack (\(model.packRefs.count))…") { model.openContextPack() }
+                Button("Quick Tour…") { model.startTour() }
                 Button("Handoff History…") { model.navigate(to: .handoffHistory) }
                     .disabled(model.handoffHistory.isEmpty)
                 Divider()

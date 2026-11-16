@@ -307,6 +307,7 @@ public final class NotchController {
         model.startBackgroundObservation()
         observeModel()
         relayout()
+        presentTourOnFirstLaunch()
     }
 
     public func stop() {
@@ -703,6 +704,19 @@ public final class NotchController {
             pendingRoute = route
             interaction.toggle()
             if !interaction.phase.isExpanded { pendingRoute = nil }
+        }
+    }
+
+    /// Phase 19: the Quick Tour opens by itself once, a moment after the
+    /// first launch, never over a system dialog and never again after it was
+    /// finished or skipped.
+    private func presentTourOnFirstLaunch() {
+        guard model.shouldAutoShowTour else { return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard let self, self.isRunning, self.model.shouldAutoShowTour, !self.dialogOpen else { return }
+            self.model.tourPage = 0
+            self.present(.tour)
         }
     }
 
