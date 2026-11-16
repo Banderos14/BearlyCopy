@@ -127,8 +127,8 @@ Audit of the repository and its whole history before publication:
 
 - **Secrets**: no tokens, private keys or credentials in the tree or in any
   revision (patterns for AWS, GitHub, OpenAI, Slack, Google keys and PEM
-  headers). The only key-shaped strings are fake fixtures in the secret-scan
-  tests (`AKIA1234567890ABCDEF`, `AKIAABCDEFGHIJKLMNOP`).
+  headers). The only key-shaped strings are fake fixtures inside the secret-scan
+  tests; CI (`secrets` job) fails on any real-looking key outside them.
 - **Personal data**: no e-mail addresses, phone numbers or captured prompt
   text in the repository. Local acceptance artefacts (screenshots, logs) are
   not part of the published tree (`macos/acceptance/` is ignored).
