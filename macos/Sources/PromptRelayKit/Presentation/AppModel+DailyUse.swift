@@ -264,7 +264,10 @@ extension AppModel {
         if !autoCaptureFinalWindow {
             checks.append(DailyUseCheck(id: "screenshots", title: "Automatic screenshots", level: .off, detail: "Off.",
                                         action: dailySetupAnswered ? nil : .openSetup))
-        } else if autoCapturePermissionBlocked || (!autoCaptureBindings.isEmpty && !screenRecordingPermission.isGranted()) {
+        } else if autoCapturePermissionBlocked {
+            // Only a real refused capture blocks. A window picked in macOS's own
+            // picker is captured with its per-window consent, so the system-wide
+            // preflight alone (which can read "no" for a newly signed build) never does.
             screenshotBlock = .permissionRequired
             checks.append(DailyUseCheck(id: "screenshots", title: "Automatic screenshots", level: .attention,
                                         detail: "Screen Recording is not allowed for this version.", action: .openScreenRecordingSettings))

@@ -116,14 +116,30 @@ final class Phase141PermissionTests: XCTestCase {
     func testCheckAgainWithAccessStillDeniedStaysPermissionRequiredAndNeverLoops() async throws {
         let (m, permission, capture) = await model()
         let ref = try XCTUnwrap(m.currentRef)
+        m.chooseAutoCaptureWindow()
         m.autoCaptureStatuses[ref.key] = .permissionRequired
         permission.granted = false
+        capture.captureResult = .failure(WindowCaptureError.permissionDenied)
         for _ in 0..<3 {
             let result = await m.checkAutoCaptureAccess(for: ref)
             XCTAssertEqual(result, .permissionRequired)
             XCTAssertEqual(m.autoCaptureStatus(for: ref), .permissionRequired)
         }
-        XCTAssertEqual(capture.captures, 0, "no real capture is attempted while the API itself says denied")
+        XCTAssertEqual(capture.captures, 3, "the real capture decides, once per check")
+    }
+
+    /// A window picked in macOS's own picker is captured with its per-window
+    /// consent: the system-wide "not granted" reading alone never blocks.
+    func testCheckAgainSucceedsWhenTheCaptureWorksEvenIfThePreflightSaysNo() async throws {
+        let (m, permission, _) = await model()
+        let ref = try XCTUnwrap(m.currentRef)
+        m.chooseAutoCaptureWindow()
+        m.autoCaptureStatuses[ref.key] = .permissionRequired
+        permission.granted = false
+        let result = await m.checkAutoCaptureAccess(for: ref)
+        XCTAssertNil(result)
+        XCTAssertNil(m.autoCaptureStatus(for: ref))
+        XCTAssertNotEqual(m.dailyUse.state, .permissionRequired)
     }
 
     // MARK: Check Again — granted, capture confirms it

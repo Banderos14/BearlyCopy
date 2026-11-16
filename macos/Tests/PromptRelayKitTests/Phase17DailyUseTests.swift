@@ -166,6 +166,8 @@ final class Phase17DailyUseTests: XCTestCase {
         XCTAssertEqual(m.dailyUse.action, .linkWindow)
         link(m)
         r.permission.granted = false
+        XCTAssertNotEqual(m.dailyUse.state, .permissionRequired, "the preflight alone never blocks a picked window")
+        m.autoCapturePermissionBlocked = true   // a real capture was refused
         XCTAssertEqual(m.dailyUse.state, .permissionRequired)
         XCTAssertEqual(m.dailyUse.action, .openScreenRecordingSettings)
         XCTAssertEqual(m.dailyUse.secondaryAction, .quitToApply)
@@ -175,6 +177,7 @@ final class Phase17DailyUseTests: XCTestCase {
         XCTAssertEqual(r.permission.opens, 1)
         XCTAssertEqual(m.dailyUse.state, .permissionRequired, "opening Settings is not a grant")
         r.permission.granted = true
+        await m.recheckDailyUse()   // Check Again
         XCTAssertEqual(m.dailyUse.state, .ready)
         XCTAssertNil(m.dailyUse.action)
         XCTAssertTrue(m.dailyUse.checks.allSatisfy { $0.level != .attention })

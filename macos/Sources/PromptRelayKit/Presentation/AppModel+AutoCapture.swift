@@ -145,10 +145,6 @@ extension AppModel {
     @discardableResult
     public func checkAutoCaptureAccess(for ref: ReportRef?) async -> AutoCaptureStatus? {
         guard let ref else { return nil }
-        guard screenRecordingPermission.isGranted() else {
-            autoCaptureStatuses[ref.key] = .permissionRequired
-            return .permissionRequired
-        }
         guard let binding = autoCaptureBinding(for: ref) else {
             let status: AutoCaptureStatus = autoCaptureBindings.isEmpty ? .windowNotBound : .associationRequired
             autoCaptureStatuses[ref.key] = status
@@ -165,9 +161,10 @@ extension AppModel {
             let status: AutoCaptureStatus
             switch WindowCapture.map(error) {
             case .permissionDenied:
-                // The API already says granted; capture disagrees because
-                // this process started before the grant took effect.
-                status = .restartRequired
+                // Capture refused. If the system API says "not granted" the
+                // permission is missing; if it says granted, this process
+                // started before the grant took effect.
+                status = screenRecordingPermission.isGranted() ? .restartRequired : .permissionRequired
             case let other:
                 status = afterCaptureFailure(other, binding: binding)
             }
