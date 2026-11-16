@@ -51,6 +51,60 @@ flowchart LR
 - **First-run Setup** that says *Connected* only after a real event arrived.
 - Works on the MacBook notch (and stays there with an external monitor); a small floating island on displays without a notch.
 
+## How to use
+
+**1. Connect your agent (once).** Open Prompt Relay → **Set Up**. It shows the
+exact commands for Claude Code (and Codex) and how to undo them. It says
+*Connected* only after a real event has arrived.
+
+**2. Work as usual.** Send a prompt in Claude Code. A small bear appears
+beside the notch while the agent works.
+
+**3. Hover the notch for a Quick Peek.** The latest answer, the request it
+answered and two buttons: **Copy Answer** and **Copy with Context**.
+
+<p align="center">
+  <img src="docs/images/phase6-warm-cocoa/warm-peek.png" width="520" alt="Quick Peek at the notch">
+</p>
+
+**4. Click Details for the full picture.** The task, the answer, what Copy
+with Context will include, and the attachments (files the agent wrote, and an
+optional window screenshot). Icons at the bottom open the **Inbox** (every
+agent's finished answers), **History**, the **Clipboard** and **Settings**.
+
+<p align="center">
+  <img src="docs/images/phase6-warm-cocoa/warm-details.png" width="640" alt="Details view">
+</p>
+
+**5. Copy with Context.** Preview exactly what will be copied before it goes
+to the clipboard. Every statement carries a label — *Confirmed locally*,
+*Reported by Claude*, *Supplied by you* or *Not verified* — and a secret check
+runs first. Paste it into ChatGPT, another Claude chat or send it to a
+reviewer.
+
+<p align="center">
+  <img src="docs/images/phase6-warm-cocoa/warm-package-preview.png" width="560" alt="Copy with Context preview with provenance labels">
+</p>
+
+**6. Optional: screenshots of where the agent worked.** In **Settings →
+Attachments**, turn on *Automatic final screenshots*. macOS asks for Screen
+Recording once. When you send a prompt, Prompt Relay links the window you are
+working in; when the answer is ready, it keeps one still image of that window
+in memory (never written to disk, never sent anywhere) and lists it under
+Attachments, unticked until you choose to include it.
+
+**7. Check it works.** Settings → **Daily Use** shows *Ready*, or the one
+thing that needs attention, with a button to fix it.
+
+Quick tips: the island opens on hover (turn that off in Settings to open it
+from the menu bar or with ⌃⌥⌘P); Esc or a click elsewhere closes it; with an
+external monitor the island stays on the MacBook notch.
+
+<p align="center">
+  <img src="docs/images/phase71-relay/relay-poses.png" width="560" alt="Relay the bear: resting, working, done">
+  <br><sub>Relay the bear shows what the agent is doing: resting, working, waiting for you, done.</sub>
+</p>
+
 ## Privacy and security
 
 Everything stays on your Mac: no network access, no account, no telemetry, no
@@ -61,19 +115,23 @@ transcripts or project files. Window screenshots are held in memory and are
 never written to disk unless you export them. Nothing leaves the Mac unless
 you paste it. Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
 
-## Install (macOS 14+)
+## Install (macOS 14+) — 3 steps
 
-1. Download **Prompt Relay.zip** from the [latest release](https://github.com/Banderos14/prompt-relay/releases), unzip and move the app to `~/Applications`.
-2. The build is signed with a development certificate but **not notarized**, so macOS warns on the first launch: right-click the app → **Open** → **Open**.
-3. Open Prompt Relay → **Set Up**. It shows the exact commands to connect Claude Code (and Codex) and how to undo them.
-4. Connect Claude Code manually if you prefer:
-   ```bash
-   claude plugin marketplace add Banderos14/prompt-relay
-   claude plugin install prompt-relay@prompt-relay
-   ```
-5. Send any prompt in Claude Code. The answer appears at the notch.
+<p align="center">
+  <a href="https://github.com/Banderos14/prompt-relay/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-Prompt%20Relay.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
+</p>
 
-Requirements: macOS 14 or newer, Python 3.9+ (Xcode Command Line Tools, Homebrew or python.org — the app tells you if none is found), Claude Code and/or Codex. Optional screenshots need **Screen Recording** permission, which the app asks for only when you turn them on.
+1. **Download** `Prompt-Relay-0.9.0.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
+2. **Open it** (first launch only): the build is signed but not notarized, so macOS warns. Right-click the app → **Open** → **Open**.
+3. **Set Up**: the app opens its **Set Up** screen. Press the buttons; it shows the exact commands to connect Claude Code and how to undo them. Then send any prompt in Claude Code — the answer appears at the notch.
+
+Prefer the terminal? Connect Claude Code by hand:
+```bash
+claude plugin marketplace add Banderos14/prompt-relay
+claude plugin install prompt-relay@prompt-relay
+```
+
+Requirements: macOS 14 or newer, Python 3.9+ (Xcode Command Line Tools, Homebrew or python.org — the app tells you if none is found), Claude Code and/or Codex. Optional screenshots need **Screen Recording** permission, which the app asks for only when you turn them on. To uninstall: quit the app, delete it, and run `claude plugin uninstall prompt-relay`; your history stays in `~/Library/Application Support/PromptRelay` until you delete that folder.
 
 ## Limitations
 
