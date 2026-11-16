@@ -345,7 +345,7 @@ struct IslandSettingsView: View {
             Hairline()
             VStack(alignment: .leading, spacing: 2) {
                 Text("Screen Recording").font(.system(size: 12.5)).foregroundStyle(Island.primary)
-                Text("Asked only when you choose a window to capture; macOS shows its own picker. Manage it in System Settings → Privacy & Security.")
+                Text("Needed only for screenshots. In Manual mode macOS shows its own window picker; in Automatic the app also needs this permission to find the window. Manage it in System Settings → Privacy & Security.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 12).padding(.vertical, 7)
