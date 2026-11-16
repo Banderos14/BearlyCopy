@@ -184,7 +184,7 @@ public final class AppModel {
         autoSelectPreparedAttachments = stateDefaults?.object(forKey: Self.autoSelectPreparedKey) as? Bool ?? true
         autoCaptureFinalWindow = stateDefaults?.bool(forKey: Self.autoCaptureKey) ?? false
         autoScreenshotsInHandoff = stateDefaults?.bool(forKey: Self.autoCaptureHandoffKey) ?? false
-        autoLinkWindowEnabled = stateDefaults?.bool(forKey: Self.autoLinkKey) ?? false
+        autoLinkWindowEnabled = (stateDefaults?.object(forKey: Self.autoLinkKey) as? Bool) ?? true
         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
         seenAnswers = stateDefaults?.dictionary(forKey: Self.seenAnswersKey) as? [String: String] ?? [:]
         notchAcknowledgedAt = stateDefaults?.string(forKey: Self.notchAckKey)
@@ -1245,11 +1245,12 @@ public final class AppModel {
     public var autoScreenshotsInHandoff = false {
         didSet { stateDefaults?.set(autoScreenshotsInHandoff, forKey: Self.autoCaptureHandoffKey) }
     }
-    /// Phase 18: link the window of the app in front when a prompt starts.
-    /// Off by default: it reads the window list, which macOS may ask about
-    /// again. Needs Screen Recording already granted (checked without a prompt).
+    /// Phase 18: link the window of the app in front when a prompt starts, so
+    /// the screenshot is of the window where the agent works. On by default
+    /// (it only does anything while Automatic final screenshots are on). It
+    /// needs Screen Recording already granted, checked without a prompt.
     static let autoLinkKey = "attachments.autoLinkWindow"
-    public var autoLinkWindowEnabled = false {
+    public var autoLinkWindowEnabled = true {
         didSet { stateDefaults?.set(autoLinkWindowEnabled, forKey: Self.autoLinkKey) }
     }
     /// Phase 14: windows linked to agents (memory only: window identity does

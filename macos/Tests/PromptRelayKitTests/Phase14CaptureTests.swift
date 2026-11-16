@@ -156,7 +156,8 @@ import Testing
         defer { cleanup(w) }
         w.model.captureNow = { at.addingTimeInterval(1) }
         w.capture.front = PickedWindow(handle: "front", label: "Terminal window", windowID: 7)
-        w.model.screenRecordingPermission = AlwaysGranted()          // granted, switch off (default)
+        w.model.screenRecordingPermission = AlwaysGranted()
+        w.model.autoLinkWindowEnabled = false                        // granted, switch off
         await w.model.refreshNow()
         try? await Task.sleep(nanoseconds: 200_000_000)
         #expect(w.model.autoCaptureBindings.isEmpty)

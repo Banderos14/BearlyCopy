@@ -293,7 +293,7 @@ struct IslandSettingsView: View {
                     .padding(.horizontal, 12).padding(.vertical, 6)
                 Hairline()
                 toggle("Link the window automatically",
-                       detail: "Off by default. When a prompt starts, link the window of the app in front to that conversation. macOS may ask about Screen Recording again; if it does, turn this off and use Link Window.",
+                       detail: "When you send a prompt, the window of the app in front (Claude Desktop, a terminal, an editor) is linked to that conversation and used for its screenshot. Needs Screen Recording allowed; if it is not, use Link Window.",
                        isOn: Binding(get: { model.autoLinkWindowEnabled }, set: { model.autoLinkWindowEnabled = $0 }))
                 Hairline()
                 toggle("Include auto screenshots in handoff",
