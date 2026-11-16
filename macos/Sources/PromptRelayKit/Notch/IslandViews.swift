@@ -265,6 +265,7 @@ struct IslandContent: View {
                 case .taskReader: TaskReaderView(model: model, presentation: presentation)
                 case .evidence: EvidenceView(model: model, presentation: presentation)
                 case .setup: SetupView(model: model, presentation: presentation)
+                case .tour: TourView(model: model, presentation: presentation)
                 case .inbox: InboxView(model: model, presentation: presentation)
                 case .switcher: QuickSwitcherView(model: model, presentation: presentation)
                 case .packagePreview: PackagePreviewView(model: model, presentation: presentation)

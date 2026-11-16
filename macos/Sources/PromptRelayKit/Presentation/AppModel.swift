@@ -98,6 +98,9 @@ public final class AppModel {
     /// Load `readyAnswer` on every refresh (one extra Core call per refresh;
     /// refreshes happen only when history changes). On by default: the app
     /// opens on the newest answer across all captured projects.
+    /// Phase 19: the Quick Tour's page and a counter that refreshes `tourSeen`.
+    public var tourPage = 0
+    public var tourVersion = 0
     public var tracksReadyAnswers = true {
         didSet { if tracksReadyAnswers && !oldValue { refresh() } }
     }
@@ -1101,6 +1104,8 @@ public final class AppModel {
         case evidence
         /// Phase 11: first-run setup (agents, project, first capture).
         case setup
+        /// Phase 19: the Quick Tour (first launch, Settings → Show Quick Tour).
+        case tour
         /// Phase 12: final results of every agent, newest first.
         case inbox
         /// Phase 12: jump to an agent, profile, project, conversation or result.
@@ -1130,6 +1135,7 @@ public final class AppModel {
             case .taskReader: return "Full Task"
             case .evidence: return "Evidence & Review"
             case .setup: return "Set Up"
+            case .tour: return "Quick Tour"
             case .inbox: return "Results Inbox"
             case .switcher: return "Go To"
             case .contextPack: return "Context Pack"
