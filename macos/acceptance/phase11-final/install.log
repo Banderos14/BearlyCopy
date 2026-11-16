@@ -1,0 +1,39 @@
+== swift build (release)
+Building for production...
+[2 / 14]
+[3 / 15] PromptRelayKit
+[5 / 21]
+[6 / 21]
+[9 / 21]
+/Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift:1914:13: [1;33mwarning: [1;39minitialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1912 |[0;0m 
+[0;36m1913 |[0;0m     var body: some View {
+[0;36m1914 |[0;0m         let facts = ReportFacts(model: model)
+     [0;36m|[0;0m             `- [1;33mwarning: [1;39minitialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1915 |[0;0m         let task = model.fullTask
+[0;36m1916 |[0;0m         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[10 / 21] PromptRelayKit
+[17 / 22] PromptRelayApp-product
+[19 / 23] PromptRelayApp-product
+[21 / 23] PromptRelayApp-product
+[22 / 23] PromptRelayApp-product
+Build complete! (35,37 secs)
+macos/build/Prompt Relay.app: replacing existing signature
+== built macos/build/Prompt Relay.app (version 0.3.0, ad-hoc signed)
+== install with: scripts/install-local.sh (or --dry-run first)
+
+== plan
+New build:  0.3.0 · commit 3287bc3 · built 2026-11-05T20:11:38Z
+   verified: signature, version 0.3.0 = Core 0.3.0, Core digest 7e2ff3296324…
+Installed:  0.3.0 · commit 6c004a2 · built -
+Running:    Release none   Debug (Xcode) 54554 
+Keeps:      history, settings and integrations (/Users/admin/Library/Application Support/PromptRelay, app preferences, Claude/Codex config) — untouched
+Backup to:  /Users/admin/Library/Application Support/PromptRelay-AppBackups/
+Then:       install to /Users/admin/Applications/Prompt Relay.app, open it, check one copy runs
+Undo:       scripts/install-local.sh --rollback
+== previous app kept: /Users/admin/Library/Application Support/PromptRelay-AppBackups/Prompt Relay 0.3.0-6c004a2-20261105-211139.app
+== installed /Users/admin/Applications/Prompt Relay.app
+== running: one Release copy, PID 9710 , from /Users/admin/Applications/Prompt Relay.app
+note: the Debug build from Xcode is running too (PID 54554 ); the Release app steps aside at the notch while it runs. Stop it in Xcode to use the installed app.

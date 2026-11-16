@@ -1,0 +1,1014 @@
+Building for debugging...
+[2 / 7] PromptRelayKitTests-product
+[4 / 21]
+[7 / 21]
+[8 / 21]
+[13 / 21]
+[14 / 21]
+[16 / 21] PromptRelayKitTests-product
+[19 / 22] PromptRelayKitTests-product
+[21 / 25] PromptRelayKitTests-product
+Build complete! (8,77 secs)
+Test Suite 'All tests' started at 2026-11-05 23:52:17.429.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-11-05 23:52:17.430.
+Test Suite 'AppBuildTests' started at 2026-11-05 23:52:17.430.
+Test Case '-[PromptRelayKitTests.AppBuildTests testOtherBuildsAreDetectedWithoutCountingItself]' started.
+Test Case '-[PromptRelayKitTests.AppBuildTests testOtherBuildsAreDetectedWithoutCountingItself]' passed (0.001 seconds).
+Test Suite 'AppBuildTests' passed at 2026-11-05 23:52:17.430.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'AppModelTests' started at 2026-11-05 23:52:17.430.
+Test Case '-[PromptRelayKitTests.AppModelTests testApiErrorTurnIsNotCopyable]' started.
+Test Case '-[PromptRelayKitTests.AppModelTests testApiErrorTurnIsNotCopyable]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.AppModelTests testCopyResponseUsesFullTextNotPreview]' started.
+Test Case '-[PromptRelayKitTests.AppModelTests testCopyResponseUsesFullTextNotPreview]' passed (0.006 seconds).
+Test Case '-[PromptRelayKitTests.AppModelTests testCoreFailureIsShownAndRecoverable]' started.
+Test Case '-[PromptRelayKitTests.AppModelTests testCoreFailureIsShownAndRecoverable]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.AppModelTests testDefaultsToNewestProjectSessionAndCopyableTurn]' started.
+Test Case '-[PromptRelayKitTests.AppModelTests testDefaultsToNewestProjectSessionAndCopyableTurn]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.AppModelTests testEmptyHistoryShowsNoProjects]' started.
+Test Case '-[PromptRelayKitTests.AppModelTests testEmptyHistoryShowsNoProjects]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.AppModelTests testFailedShowReportsErrorAndClipboardIsUntouched]' started.
+Test Case '-[PromptRelayKitTests.AppModelTests testFailedShowReportsErrorAndClipboardIsUntouched]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.AppModelTests testSelectionChangeLoadsThatSession]' started.
+Test Case '-[PromptRelayKitTests.AppModelTests testSelectionChangeLoadsThatSession]' passed (0.029 seconds).
+Test Case '-[PromptRelayKitTests.AppModelTests testSensitiveContextNeedsConfirmation]' started.
+Test Case '-[PromptRelayKitTests.AppModelTests testSensitiveContextNeedsConfirmation]' passed (0.003 seconds).
+Test Suite 'AppModelTests' passed at 2026-11-05 23:52:17.475.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.044 (0.044) seconds
+Test Suite 'AttachmentHandoffTests' started at 2026-11-05 23:52:17.475.
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testAFileWithoutReadPermissionIsReportedAsSuch]' started.
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testAFileWithoutReadPermissionIsReportedAsSuch]' passed (0.033 seconds).
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testALocalPackListsImagesBeforeNotCheckedWithoutTouchingTheResponse]' started.
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testALocalPackListsImagesBeforeNotCheckedWithoutTouchingTheResponse]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testAStoredNameNeverResolvesOutsideTheFolder]' started.
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testAStoredNameNeverResolvesOutsideTheFolder]' passed (0.004 seconds).
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testCopyImageGivesImageDataAndTheFileUnderItsOriginalName]' started.
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testCopyImageGivesImageDataAndTheFileUnderItsOriginalName]' passed (0.013 seconds).
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testHandoffNamesAreSafeAndUnique]' started.
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testHandoffNamesAreSafeAndUnique]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testOnlyRealImagesAreKeptTypedByTheirContent]' started.
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testOnlyRealImagesAreKeptTypedByTheirContent]' passed (0.004 seconds).
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testRemovalFailureIsShownAndTheTextIsUntouched]' started.
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testRemovalFailureIsShownAndTheTextIsUntouched]' passed (0.007 seconds).
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testRemovingUnlinksOneImageAndKeepsFilesOthersUse]' started.
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testRemovingUnlinksOneImageAndKeepsFilesOthersUse]' passed (0.006 seconds).
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testTheOriginalIsNeverChangedAndRecordsSurviveARestart]' started.
+Test Case '-[PromptRelayKitTests.AttachmentHandoffTests testTheOriginalIsNeverChangedAndRecordsSurviveARestart]' passed (0.004 seconds).
+Test Suite 'AttachmentHandoffTests' passed at 2026-11-05 23:52:17.549.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.073 (0.074) seconds
+Test Suite 'AuditRegressionTests' started at 2026-11-05 23:52:17.549.
+Test Case '-[PromptRelayKitTests.AuditRegressionTests testANewPendingPromptDoesNotHideThePreviousAnswer]' started.
+Test Case '-[PromptRelayKitTests.AuditRegressionTests testANewPendingPromptDoesNotHideThePreviousAnswer]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.AuditRegressionTests testCodeInsideAListItemLosesOnlyTheListIndent]' started.
+Test Case '-[PromptRelayKitTests.AuditRegressionTests testCodeInsideAListItemLosesOnlyTheListIndent]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.AuditRegressionTests testFormattedReaderDropsNoLineOfALongReport]' started.
+Test Case '-[PromptRelayKitTests.AuditRegressionTests testFormattedReaderDropsNoLineOfALongReport]' passed (0.360 seconds).
+Test Case '-[PromptRelayKitTests.AuditRegressionTests testRecentCopiesNameTheEnabledProject]' started.
+Test Case '-[PromptRelayKitTests.AuditRegressionTests testRecentCopiesNameTheEnabledProject]' passed (0.001 seconds).
+Test Suite 'AuditRegressionTests' passed at 2026-11-05 23:52:17.913.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.363 (0.364) seconds
+Test Suite 'CaptureCommandTests' started at 2026-11-05 23:52:17.913.
+Test Case '-[PromptRelayKitTests.CaptureCommandTests testEnableRunsTheTextCommandWithoutJSON]' started.
+Test Case '-[PromptRelayKitTests.CaptureCommandTests testEnableRunsTheTextCommandWithoutJSON]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.CaptureCommandTests testRefusalCarriesTheCoreMessage]' started.
+Test Case '-[PromptRelayKitTests.CaptureCommandTests testRefusalCarriesTheCoreMessage]' passed (0.000 seconds).
+Test Suite 'CaptureCommandTests' passed at 2026-11-05 23:52:17.913.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'CaptureIntegrationTests' started at 2026-11-05 23:52:17.913.
+Test Case '-[PromptRelayKitTests.CaptureIntegrationTests testRealEnableDisableRoundTrip]' started.
+Test Case '-[PromptRelayKitTests.CaptureIntegrationTests testRealEnableDisableRoundTrip]' passed (0.616 seconds).
+Test Suite 'CaptureIntegrationTests' passed at 2026-11-05 23:52:18.529.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.616 (0.616) seconds
+Test Suite 'ClipboardImageHistoryTests' started at 2026-11-05 23:52:18.529.
+Test Case '-[PromptRelayKitTests.ClipboardImageHistoryTests testAtMostFiveExpiryAndDeletion]' started.
+Test Case '-[PromptRelayKitTests.ClipboardImageHistoryTests testAtMostFiveExpiryAndDeletion]' passed (0.021 seconds).
+Test Case '-[PromptRelayKitTests.ClipboardImageHistoryTests testOffByDefaultAndNothingPolledWhileOff]' started.
+Test Case '-[PromptRelayKitTests.ClipboardImageHistoryTests testOffByDefaultAndNothingPolledWhileOff]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.ClipboardImageHistoryTests testOnlyImagesAreKeptAndPasswordsAndOwnCopiesAreSkipped]' started.
+Test Case '-[PromptRelayKitTests.ClipboardImageHistoryTests testOnlyImagesAreKeptAndPasswordsAndOwnCopiesAreSkipped]' passed (0.007 seconds).
+Test Case '-[PromptRelayKitTests.ClipboardImageHistoryTests testPromptRelaysOwnCopyIsMarked]' started.
+Test Case '-[PromptRelayKitTests.ClipboardImageHistoryTests testPromptRelaysOwnCopyIsMarked]' passed (0.001 seconds).
+Test Suite 'ClipboardImageHistoryTests' passed at 2026-11-05 23:52:18.559.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.029 (0.030) seconds
+Test Suite 'ClipboardServiceTests' started at 2026-11-05 23:52:18.559.
+Test Case '-[PromptRelayKitTests.ClipboardServiceTests testEmptyStringIsStillAWrite]' started.
+Test Case '-[PromptRelayKitTests.ClipboardServiceTests testEmptyStringIsStillAWrite]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.ClipboardServiceTests testLargeTextAndReplacement]' started.
+Test Case '-[PromptRelayKitTests.ClipboardServiceTests testLargeTextAndReplacement]' passed (0.044 seconds).
+Test Case '-[PromptRelayKitTests.ClipboardServiceTests testTextIsCopiedVerbatim]' started.
+Test Case '-[PromptRelayKitTests.ClipboardServiceTests testTextIsCopiedVerbatim]' passed (0.001 seconds).
+Test Suite 'ClipboardServiceTests' passed at 2026-11-05 23:52:18.605.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.046 (0.046) seconds
+Test Suite 'CopyWithContextHeaderTests' started at 2026-11-05 23:52:18.605.
+Test Case '-[PromptRelayKitTests.CopyWithContextHeaderTests testTitleAndPreviewStayOnOneLine]' started.
+Test Case '-[PromptRelayKitTests.CopyWithContextHeaderTests testTitleAndPreviewStayOnOneLine]' passed (1.305 seconds).
+Test Suite 'CopyWithContextHeaderTests' passed at 2026-11-05 23:52:19.910.
+	 Executed 1 test, with 0 failures (0 unexpected) in 1.305 (1.305) seconds
+Test Suite 'CoreClientTests' started at 2026-11-05 23:52:19.910.
+Test Case '-[PromptRelayKitTests.CoreClientTests testApiErrorIsMappedWithCodeAndMessage]' started.
+Test Case '-[PromptRelayKitTests.CoreClientTests testApiErrorIsMappedWithCodeAndMessage]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.CoreClientTests testDoctorNeverInspectsTheCurrentDirectory]' started.
+Test Case '-[PromptRelayKitTests.CoreClientTests testDoctorNeverInspectsTheCurrentDirectory]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.CoreClientTests testFutureApiVersionIsRefused]' started.
+Test Case '-[PromptRelayKitTests.CoreClientTests testFutureApiVersionIsRefused]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.CoreClientTests testMissingPythonOrCliAndRunnerFailures]' started.
+Test Case '-[PromptRelayKitTests.CoreClientTests testMissingPythonOrCliAndRunnerFailures]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.CoreClientTests testOkWithNonZeroExitIsAnError]' started.
+Test Case '-[PromptRelayKitTests.CoreClientTests testOkWithNonZeroExitIsAnError]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.CoreClientTests testProcessRunnerDrainsLargeOutputAndTimesOut]' started.
+Test Case '-[PromptRelayKitTests.CoreClientTests testProcessRunnerDrainsLargeOutputAndTimesOut]' passed (0.519 seconds).
+Test Case '-[PromptRelayKitTests.CoreClientTests testRunsIsolatedInterpreterWithExplicitArgumentsAndJSON]' started.
+Test Case '-[PromptRelayKitTests.CoreClientTests testRunsIsolatedInterpreterWithExplicitArgumentsAndJSON]' passed (0.013 seconds).
+Test Case '-[PromptRelayKitTests.CoreClientTests testTracebackOrEmptyOutputIsMalformed]' started.
+Test Case '-[PromptRelayKitTests.CoreClientTests testTracebackOrEmptyOutputIsMalformed]' passed (0.001 seconds).
+Test Suite 'CoreClientTests' passed at 2026-11-05 23:52:20.447.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.535 (0.537) seconds
+Test Suite 'CoreIntegrationTests' started at 2026-11-05 23:52:20.447.
+Test Case '-[PromptRelayKitTests.CoreIntegrationTests testCapturedAnswerRoundTripsExactly]' started.
+Test Case '-[PromptRelayKitTests.CoreIntegrationTests testCapturedAnswerRoundTripsExactly]' passed (1.269 seconds).
+Test Case '-[PromptRelayKitTests.CoreIntegrationTests testEmptyStoreThroughTheRealCore]' started.
+Test Case '-[PromptRelayKitTests.CoreIntegrationTests testEmptyStoreThroughTheRealCore]' passed (0.321 seconds).
+Test Case '-[PromptRelayKitTests.CoreIntegrationTests testModelLoadsRealCoreAndCopiesToPrivatePasteboard]' started.
+Test Case '-[PromptRelayKitTests.CoreIntegrationTests testModelLoadsRealCoreAndCopiesToPrivatePasteboard]' passed (0.856 seconds).
+Test Suite 'CoreIntegrationTests' passed at 2026-11-05 23:52:22.893.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 2.446 (2.446) seconds
+Test Suite 'CoreLocatorTests' started at 2026-11-05 23:52:22.893.
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testBundledCoreAndPinnedPythonAreUsed]' started.
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testBundledCoreAndPinnedPythonAreUsed]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testForeignPinIsIgnoredAndOldPythonSkipped]' started.
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testForeignPinIsIgnoredAndOldPythonSkipped]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testMissingCliListsWhereItLooked]' started.
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testMissingCliListsWhereItLooked]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testOverridesAndTestHome]' started.
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testOverridesAndTestHome]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testStubPythonIsNotUsedWithoutCommandLineTools]' started.
+Test Case '-[PromptRelayKitTests.CoreLocatorTests testStubPythonIsNotUsedWithoutCommandLineTools]' passed (0.000 seconds).
+Test Suite 'CoreLocatorTests' passed at 2026-11-05 23:52:22.894.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'DecodingTests' started at 2026-11-05 23:52:22.894.
+Test Case '-[PromptRelayKitTests.DecodingTests testAmbiguousAndApiErrorTurns]' started.
+Test Case '-[PromptRelayKitTests.DecodingTests testAmbiguousAndApiErrorTurns]' passed (0.005 seconds).
+Test Case '-[PromptRelayKitTests.DecodingTests testBackgroundTasksWarningIsKept]' started.
+Test Case '-[PromptRelayKitTests.DecodingTests testBackgroundTasksWarningIsKept]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.DecodingTests testEmptyStore]' started.
+Test Case '-[PromptRelayKitTests.DecodingTests testEmptyStore]' passed (0.004 seconds).
+Test Case '-[PromptRelayKitTests.DecodingTests testEveryGoldenResponseDecodesOrMapsToItsError]' started.
+Test Case '-[PromptRelayKitTests.DecodingTests testEveryGoldenResponseDecodesOrMapsToItsError]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.DecodingTests testRealDesktopAnswerIsExact]' started.
+Test Case '-[PromptRelayKitTests.DecodingTests testRealDesktopAnswerIsExact]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.DecodingTests testUnicodeAndMarkdownSurviveDecoding]' started.
+Test Case '-[PromptRelayKitTests.DecodingTests testUnicodeAndMarkdownSurviveDecoding]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.DecodingTests testUnknownFieldsAndEnumValuesAreTolerated]' started.
+Test Case '-[PromptRelayKitTests.DecodingTests testUnknownFieldsAndEnumValuesAreTolerated]' passed (0.000 seconds).
+Test Suite 'DecodingTests' passed at 2026-11-05 23:52:22.913.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.018 (0.019) seconds
+Test Suite 'EvidenceTests' started at 2026-11-05 23:52:22.913.
+Test Case '-[PromptRelayKitTests.EvidenceTests testChecklistComesFromFactsAndStaysSmall]' started.
+Test Case '-[PromptRelayKitTests.EvidenceTests testChecklistComesFromFactsAndStaysSmall]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.EvidenceTests testImportsAndMissingCaptureAreUnavailableNotGuessed]' started.
+Test Case '-[PromptRelayKitTests.EvidenceTests testImportsAndMissingCaptureAreUnavailableNotGuessed]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.EvidenceTests testMockupSixOfSevenStates]' started.
+Test Case '-[PromptRelayKitTests.EvidenceTests testMockupSixOfSevenStates]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.EvidenceTests testObservedFactsAndClaimsStayApart]' started.
+Test Case '-[PromptRelayKitTests.EvidenceTests testObservedFactsAndClaimsStayApart]' passed (0.000 seconds).
+Test Suite 'EvidenceTests' passed at 2026-11-05 23:52:22.915.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'ExportBundleTests' started at 2026-11-05 23:52:22.915.
+Test Case '-[PromptRelayKitTests.ExportBundleTests testBundleHasThePackageTheChosenSnapshotsAndAManifest]' started.
+Test Case '-[PromptRelayKitTests.ExportBundleTests testBundleHasThePackageTheChosenSnapshotsAndAManifest]' passed (0.013 seconds).
+Test Suite 'ExportBundleTests' passed at 2026-11-05 23:52:22.928.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.013 (0.013) seconds
+Test Suite 'FollowLatestTests' started at 2026-11-05 23:52:22.928.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testCopyKeepsEveryAnswer]' started.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testCopyKeepsEveryAnswer]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.FollowLatestTests testEmptyHistoryAndErrors]' started.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testEmptyHistoryAndErrors]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.FollowLatestTests testLaunchOpensOnNewestFinishedAnswer]' started.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testLaunchOpensOnNewestFinishedAnswer]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.FollowLatestTests testNewAnswerIsFollowedUnlessTheUserBrowsesElsewhere]' started.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testNewAnswerIsFollowedUnlessTheUserBrowsesElsewhere]' passed (0.058 seconds).
+Test Case '-[PromptRelayKitTests.FollowLatestTests testPinnedSessionSurvivesARestart]' started.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testPinnedSessionSurvivesARestart]' passed (0.018 seconds).
+Test Suite 'FollowLatestTests' passed at 2026-11-05 23:52:23.009.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.081 (0.082) seconds
+Test Suite 'FullTaskTests' started at 2026-11-05 23:52:23.009.
+Test Case '-[PromptRelayKitTests.FullTaskTests testAutomaticTurnIsNotTheUsersTask]' started.
+Test Case '-[PromptRelayKitTests.FullTaskTests testAutomaticTurnIsNotTheUsersTask]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.FullTaskTests testLabelsArePhase7Names]' started.
+Test Case '-[PromptRelayKitTests.FullTaskTests testLabelsArePhase7Names]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.FullTaskTests testLongMarkdownRequestIsWholeAndVerbatim]' started.
+Test Case '-[PromptRelayKitTests.FullTaskTests testLongMarkdownRequestIsWholeAndVerbatim]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.FullTaskTests testOnlyThePreviewAtHandIsMarkedIncomplete]' started.
+Test Case '-[PromptRelayKitTests.FullTaskTests testOnlyThePreviewAtHandIsMarkedIncomplete]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.FullTaskTests testOrderLinkAndImportsSayWhereTheTaskCameFrom]' started.
+Test Case '-[PromptRelayKitTests.FullTaskTests testOrderLinkAndImportsSayWhereTheTaskCameFrom]' passed (0.000 seconds).
+Test Suite 'FullTaskTests' passed at 2026-11-05 23:52:23.014.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'ImportAnalysisTests' started at 2026-11-05 23:52:23.014.
+Test Case '-[PromptRelayKitTests.ImportAnalysisTests testAutomaticTurnPackageGivesNoTask]' started.
+Test Case '-[PromptRelayKitTests.ImportAnalysisTests testAutomaticTurnPackageGivesNoTask]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.ImportAnalysisTests testOwnPackageIsRecognised]' started.
+Test Case '-[PromptRelayKitTests.ImportAnalysisTests testOwnPackageIsRecognised]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.ImportAnalysisTests testProjectOnlyFromExplicitFieldsAndAmbiguityIsShown]' started.
+Test Case '-[PromptRelayKitTests.ImportAnalysisTests testProjectOnlyFromExplicitFieldsAndAmbiguityIsShown]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.ImportAnalysisTests testTaskHeadingAndSourceAreOnlySuggestions]' started.
+Test Case '-[PromptRelayKitTests.ImportAnalysisTests testTaskHeadingAndSourceAreOnlySuggestions]' passed (0.000 seconds).
+Test Suite 'ImportAnalysisTests' passed at 2026-11-05 23:52:23.015.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'ImportFlowTests' started at 2026-11-05 23:52:23.015.
+Test Case '-[PromptRelayKitTests.ImportFlowTests testImportKeepsTextSourceAndPackageChoiceAndOldImportsStillDecode]' started.
+Test Case '-[PromptRelayKitTests.ImportFlowTests testImportKeepsTextSourceAndPackageChoiceAndOldImportsStillDecode]' passed (0.140 seconds).
+Test Case '-[PromptRelayKitTests.ImportFlowTests testLongReportScrollsInsideItsCard]' started.
+Test Case '-[PromptRelayKitTests.ImportFlowTests testLongReportScrollsInsideItsCard]' passed (0.584 seconds).
+Test Suite 'ImportFlowTests' passed at 2026-11-05 23:52:23.739.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.724 (0.724) seconds
+Test Suite 'IslandLayoutTests' started at 2026-11-05 23:52:23.739.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testContentKeepsItsDistanceFromTheIslandOutline]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testContentKeepsItsDistanceFromTheIslandOutline]' passed (2.315 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testEveryMoodDrawsAtEverySize]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testEveryMoodDrawsAtEverySize]' passed (0.119 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testGazeIsMeasuredFromRelayInTheBand]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testGazeIsMeasuredFromRelayInTheBand]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testMetricsAdaptToTheDisplay]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testMetricsAdaptToTheDisplay]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testPastedRequestsAreShownWithoutTheirWrapperButKeptVerbatim]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testPastedRequestsAreShownWithoutTheirWrapperButKeptVerbatim]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testQuickPeekKeepsTheSameRules]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testQuickPeekKeepsTheSameRules]' passed (0.540 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testRelaysPoseIsBoundedAndNeutralWithoutAPointer]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testRelaysPoseIsBoundedAndNeutralWithoutAPointer]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testSeveralImagesStayInsideTheAttachmentsCardAndDetailsStillFits]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testSeveralImagesStayInsideTheAttachmentsCardAndDetailsStillFits]' passed (3.604 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testStepTwoBarAndCopyLineFitInsideDetails]' started.
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testStepTwoBarAndCopyLineFitInsideDetails]' passed (4.466 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testTheResponseIsReadBackFromTheReviewPackExactly]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testTheResponseIsReadBackFromTheReviewPackExactly]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testTheResponseScrollsInsideItsCardAndCopyAlwaysTakesTheWholeText]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testTheResponseScrollsInsideItsCardAndCopyAlwaysTakesTheWholeText]' passed (2.684 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testWriteVisualExamples]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/IslandLayoutTests.swift:289: -[PromptRelayKitTests.IslandLayoutTests testWriteVisualExamples] : Test skipped - set PROMPT_RELAY_VISUALS=<dir> to write visual examples
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testWriteVisualExamples]' skipped (0.001 seconds).
+Test Suite 'IslandLayoutTests' passed at 2026-11-05 23:52:37.475.
+	 Executed 12 tests, with 1 test skipped and 0 failures (0 unexpected) in 13.734 (13.736) seconds
+Test Suite 'IslandNavigationTests' started at 2026-11-05 23:52:37.475.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testAllResponsesGroupsEverySessionByProjectWithoutExtraCalls]' started.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testAllResponsesGroupsEverySessionByProjectWithoutExtraCalls]' passed (0.112 seconds).
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testCopyFromTheWorkspaceUsesTheFullText]' started.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testCopyFromTheWorkspaceUsesTheFullText]' passed (0.117 seconds).
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testHistoryOpensAnEarlierAnswer]' started.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testHistoryOpensAnEarlierAnswer]' passed (0.107 seconds).
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testNewAnswerMarksItsProjectAndParentFolders]' started.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testNewAnswerMarksItsProjectAndParentFolders]' passed (0.011 seconds).
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testPickingAProjectShowsItsNewestAnswer]' started.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testPickingAProjectShowsItsNewestAnswer]' passed (0.114 seconds).
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testPickingTheSelectedProjectAgainOnlySwitchesTab]' started.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testPickingTheSelectedProjectAgainOnlySwitchesTab]' passed (0.105 seconds).
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testStartsOnHomeAndBackReturnsWhereItCameFrom]' started.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testStartsOnHomeAndBackReturnsWhereItCameFrom]' passed (0.001 seconds).
+Test Suite 'IslandNavigationTests' passed at 2026-11-05 23:52:38.044.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.567 (0.569) seconds
+Test Suite 'LivingRelayTests' started at 2026-11-05 23:52:38.044.
+Test Case '-[PromptRelayKitTests.LivingRelayTests testEveryBeatEndsInIdleWithoutOverlap]' started.
+Test Case '-[PromptRelayKitTests.LivingRelayTests testEveryBeatEndsInIdleWithoutOverlap]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.LivingRelayTests testExtremePosesStayInsideTheEar]' started.
+Test Case '-[PromptRelayKitTests.LivingRelayTests testExtremePosesStayInsideTheEar]' passed (0.029 seconds).
+Test Case '-[PromptRelayKitTests.LivingRelayTests testIdleBeatsYieldToTheUserAndSleepAfterQuiet]' started.
+Test Case '-[PromptRelayKitTests.LivingRelayTests testIdleBeatsYieldToTheUserAndSleepAfterQuiet]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.LivingRelayTests testRelayMotionSettings]' started.
+Test Case '-[PromptRelayKitTests.LivingRelayTests testRelayMotionSettings]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.LivingRelayTests testTurnParallaxIsLayered]' started.
+Test Case '-[PromptRelayKitTests.LivingRelayTests testTurnParallaxIsLayered]' passed (0.000 seconds).
+Test Suite 'LivingRelayTests' passed at 2026-11-05 23:52:38.078.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.033 (0.034) seconds
+Test Suite 'LongReportIntegrationTests' started at 2026-11-05 23:52:38.078.
+Test Case '-[PromptRelayKitTests.LongReportIntegrationTests testLongReportIsCapturedPreviewedAndCopiedUnchanged]' started.
+Test Case '-[PromptRelayKitTests.LongReportIntegrationTests testLongReportIsCapturedPreviewedAndCopiedUnchanged]' passed (1.584 seconds).
+Test Suite 'LongReportIntegrationTests' passed at 2026-11-05 23:52:39.662.
+	 Executed 1 test, with 0 failures (0 unexpected) in 1.584 (1.584) seconds
+Test Suite 'NotchAppearanceTests' started at 2026-11-05 23:52:39.662.
+Test Case '-[PromptRelayKitTests.NotchAppearanceTests testNoHaloAroundTheIsland]' started.
+Test Case '-[PromptRelayKitTests.NotchAppearanceTests testNoHaloAroundTheIsland]' passed (1.948 seconds).
+Test Case '-[PromptRelayKitTests.NotchAppearanceTests testRestingIslandStaysInsideTheCameraHousing]' started.
+Test Case '-[PromptRelayKitTests.NotchAppearanceTests testRestingIslandStaysInsideTheCameraHousing]' passed (0.320 seconds).
+Test Suite 'NotchAppearanceTests' passed at 2026-11-05 23:52:41.931.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 2.268 (2.269) seconds
+Test Suite 'NotchControllerTests' started at 2026-11-05 23:52:41.931.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testAnOpenMenuKeepsTheIslandOpen]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testAnOpenMenuKeepsTheIslandOpen]' passed (0.030 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testAnotherCopyKeepsTheNotchSoOnlyOneRelayShows]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testAnotherCopyKeepsTheNotchSoOnlyOneRelayShows]' passed (0.007 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testArrowKeysStepAnswersOnlyOnHome]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testArrowKeysStepAnswersOnlyOnHome]' passed (0.067 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testArrowStepsThroughAnswersWithoutLists]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testArrowStepsThroughAnswersWithoutLists]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testCoordinatorFollowsSettings]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testCoordinatorFollowsSettings]' passed (0.115 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testCopyResponseFromTheNotchCopiesTheFullText]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testCopyResponseFromTheNotchCopiesTheFullText]' passed (0.063 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testDetailsHasTheSameFullGeometryHoweverItOpens]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testDetailsHasTheSameFullGeometryHoweverItOpens]' passed (7.895 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testDisplayChangesFallBackAndRecover]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testDisplayChangesFallBackAndRecover]' passed (0.131 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testExcerptIsDisplayOnly]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testExcerptIsDisplayOnly]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testFullReportFormatSwitchKeepsTheIslandAndTheText]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testFullReportFormatSwitchKeepsTheIslandAndTheText]' passed (3.962 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testHoverExpandsPanelAndCollapsesBack]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testHoverExpandsPanelAndCollapsesBack]' passed (0.543 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testHoverOpensQuickPeekAndAClickOpensTheIslandOnHome]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testHoverOpensQuickPeekAndAClickOpensTheIslandOnHome]' passed (1.847 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testHoverReopensTheLevelTheUserLeft]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testHoverReopensTheLevelTheUserLeft]' passed (0.097 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testIndicatorWidensTheHoverTargetOnlyWhenAnAnswerIsNew]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testIndicatorWidensTheHoverTargetOnlyWhenAnAnswerIsNew]' passed (0.217 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testMascotSitsInTheLeftEarBlinksOnlyWhileVisibleAndReactsToFacts]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testMascotSitsInTheLeftEarBlinksOnlyWhileVisibleAndReactsToFacts]' passed (0.339 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testMenuBarOpensTheIslandOnAView]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testMenuBarOpensTheIslandOnAView]' passed (0.101 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testOffKeepsRelayStillAndStopsIdleTimers]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testOffKeepsRelayStillAndStopsIdleTimers]' passed (0.018 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testRelayFollowsThePointerAnywhereOnlyWhileVisible]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testRelayFollowsThePointerAnywhereOnlyWhileVisible]' passed (0.081 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testRelayMovesPerFrameAndStopsWhenSettled]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testRelayMovesPerFrameAndStopsWhenSettled]' passed (0.029 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testRelayRestsInAPillOnADisplayWithoutANotch]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testRelayRestsInAPillOnADisplayWithoutANotch]' passed (0.017 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testRestingSizeIsNeverNegative]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testRestingSizeIsNeverNegative]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testScrollWheelOverTheAnswerScrollsOnlyTheAnswerInTheRealPanel]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testScrollWheelOverTheAnswerScrollsOnlyTheAnswerInTheRealPanel]' passed (3.086 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testStartsCompactOnTheNotchedDisplayOnly]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testStartsCompactOnTheNotchedDisplayOnly]' passed (0.021 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testStartStopCyclesLeakNothing]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testStartStopCyclesLeakNothing]' passed (0.210 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testStepsAsideWhileAnotherNotchAppRuns]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testStepsAsideWhileAnotherNotchAppRuns]' passed (0.346 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testTheFilePickerHasTheScreenToItselfAndTheIslandComesBackAsItWas]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testTheFilePickerHasTheScreenToItselfAndTheIslandComesBackAsItWas]' passed (0.137 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testTheRealOpenPanelGetsTheScreenAndTheIslandComesBack]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/NotchControllerTests.swift:500: -[PromptRelayKitTests.NotchControllerTests testTheRealOpenPanelGetsTheScreenAndTheIslandComesBack] : Test skipped - set PROMPT_RELAY_REAL_DIALOG=1 to open a real file dialog
+Test Case '-[PromptRelayKitTests.NotchControllerTests testTheRealOpenPanelGetsTheScreenAndTheIslandComesBack]' skipped (0.002 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testTrackingAreaIsReplacedNotAccumulated]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testTrackingAreaIsReplacedNotAccumulated]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.NotchControllerTests testWithoutANotchTheIslandFloatsAndOpensOnlyOnRequest]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testWithoutANotchTheIslandFloatsAndOpensOnlyOnRequest]' passed (0.441 seconds).
+Test Suite 'NotchControllerTests' passed at 2026-11-05 23:53:01.740.
+	 Executed 29 tests, with 1 test skipped and 0 failures (0 unexpected) in 19.804 (19.809) seconds
+Test Suite 'NotchGeometryTests' started at 2026-11-05 23:53:01.740.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testDisplayChoice]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testDisplayChoice]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testDisplayWithoutNotchHasNoLayout]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testDisplayWithoutNotchHasNoLayout]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testExpandedFrameFollowsContentAndStaysAnchored]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testExpandedFrameFollowsContentAndStaysAnchored]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testLayoutFollowsTheDisplayWhereverItIsArranged]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testLayoutFollowsTheDisplayWhereverItIsArranged]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testNotchRectAndFrames]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testNotchRectAndFrames]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testShortDisplaysCapTheIslandAndFloatingHangsBelowTheMenuBar]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testShortDisplaysCapTheIslandAndFloatingHangsBelowTheMenuBar]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testSmallOrScaledDisplayKeepsThePanelOnScreen]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testSmallOrScaledDisplayKeepsThePanelOnScreen]' passed (0.000 seconds).
+Test Suite 'NotchGeometryTests' passed at 2026-11-05 23:53:01.745.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.003 (0.005) seconds
+Test Suite 'NotchInteractionTests' started at 2026-11-05 23:53:01.745.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testClickOrShortcutOpensFocusedAndOnlyEscapeOrFocusLossCloses]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testClickOrShortcutOpensFocusedAndOnlyEscapeOrFocusLossCloses]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testHoverOpensAfterDwellAndClosesAfterGrace]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testHoverOpensAfterDwellAndClosesAfterGrace]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testPinnedPanelStaysOpenUntilUnpinned]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testPinnedPanelStaysOpenUntilUnpinned]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testQuickPassDoesNotOpenAndReturningCancelsClose]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testQuickPassDoesNotOpenAndReturningCancelsClose]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testRapidRepeatedHoverKeepsAtMostOneTimer]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testRapidRepeatedHoverKeepsAtMostOneTimer]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testTransitionsAreReported]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testTransitionsAreReported]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testUnavailableHidesAndCancelsEverything]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testUnavailableHidesAndCancelsEverything]' passed (0.000 seconds).
+Test Suite 'NotchInteractionTests' passed at 2026-11-05 23:53:01.749.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.003 (0.005) seconds
+Test Suite 'NotchSettingsTests' started at 2026-11-05 23:53:01.749.
+Test Case '-[PromptRelayKitTests.NotchSettingsTests testDefaultsAndPersistence]' started.
+Test Case '-[PromptRelayKitTests.NotchSettingsTests testDefaultsAndPersistence]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.NotchSettingsTests testReduceMotion]' started.
+Test Case '-[PromptRelayKitTests.NotchSettingsTests testReduceMotion]' passed (0.001 seconds).
+Test Suite 'NotchSettingsTests' passed at 2026-11-05 23:53:01.751.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'PasteInteropKit' started at 2026-11-05 23:53:01.751.
+Test Case '-[PromptRelayKitTests.PasteInteropKit testPutTestContentOnTheGeneralPasteboard]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/PasteInteropKit.swift:14: -[PromptRelayKitTests.PasteInteropKit testPutTestContentOnTheGeneralPasteboard] : Test skipped - set PROMPT_RELAY_PASTE_TEST=text-image, image or text to prepare a manual paste test
+Test Case '-[PromptRelayKitTests.PasteInteropKit testPutTestContentOnTheGeneralPasteboard]' skipped (0.001 seconds).
+Test Suite 'PasteInteropKit' passed at 2026-11-05 23:53:01.753.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Phase6PolishTests' started at 2026-11-05 23:53:01.753.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testEachCopyConfirmsOnlyItselfAndOnlyAfterTheClipboardHasIt]' started.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testEachCopyConfirmsOnlyItselfAndOnlyAfterTheClipboardHasIt]' passed (0.008 seconds).
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testEveryThemeKeepsTextAndStatesReadable]' started.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testEveryThemeKeepsTextAndStatesReadable]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testFilesAreConfirmedByReadingTheClipboardBack]' started.
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testFilesAreConfirmedByReadingTheClipboardBack]' passed (0.004 seconds).
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testHistorySessionOpensClosesAndSwitchesByKey]' started.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testHistorySessionOpensClosesAndSwitchesByKey]' passed (0.169 seconds).
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testQuickPeekFactsArePlainAndOnlyWhatExists]' started.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testQuickPeekFactsArePlainAndOnlyWhatExists]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testSwitchingAnswersChangesTheCardOnceWithoutAPreviewDip]' started.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testSwitchingAnswersChangesTheCardOnceWithoutAPreviewDip]' passed (4.060 seconds).
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testThemeChoicePersistsAndClassicStaysAvailable]' started.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testThemeChoicePersistsAndClassicStaysAvailable]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testTooltipsAppearAfterTheDelaySwitchAtOnceAndNeverLinger]' started.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testTooltipsAppearAfterTheDelaySwitchAtOnceAndNeverLinger]' passed (0.812 seconds).
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testWriteThemeComparison]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6PolishTests.swift:227: -[PromptRelayKitTests.Phase6PolishTests testWriteThemeComparison] : Test skipped - set PROMPT_RELAY_VISUALS=<dir>
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testWriteThemeComparison]' skipped (0.002 seconds).
+Test Suite 'Phase6PolishTests' passed at 2026-11-05 23:53:06.813.
+	 Executed 9 tests, with 1 test skipped and 0 failures (0 unexpected) in 5.059 (5.060) seconds
+Test Suite 'Phase6Tests' started at 2026-11-05 23:53:06.813.
+Test Case '-[PromptRelayKitTests.Phase6Tests testALongTaskScrollsInsideItsCardAtABoundedHeight]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testALongTaskScrollsInsideItsCardAtABoundedHeight]' passed (0.469 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testAnswersAreNumberedInTheOrderTheyCame]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testAnswersAreNumberedInTheOrderTheyCame]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testASecondHeightReportBeforeTheFirstIsAppliedIsNotLost]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testASecondHeightReportBeforeTheFirstIsAppliedIsNotLost]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testChangedSelectionAfterTheCopyIsNotHandedOverSilently]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testChangedSelectionAfterTheCopyIsNotHandedOverSilently]' passed (0.023 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testClipboardImagesExportUnderReadableNamesAndCopyAsFiles]' started.
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+Test Case '-[PromptRelayKitTests.Phase6Tests testClipboardImagesExportUnderReadableNamesAndCopyAsFiles]' passed (0.022 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testClosingTheIslandKeepsStepTwoUntilDone]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testClosingTheIslandKeepsStepTwoUntilDone]' passed (0.035 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testDetailsNeverOverlapsAcrossDifferentAnswers]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testDetailsNeverOverlapsAcrossDifferentAnswers]' passed (8.056 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testHandoffBelongsToOneReportAndEndsWhenAnotherIsShown]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testHandoffBelongsToOneReportAndEndsWhenAnotherIsShown]' passed (0.015 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testRecentCopiesAreTheClipboardsTextTab]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testRecentCopiesAreTheClipboardsTextTab]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testRenderRealHistory]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6Tests.swift:373: -[PromptRelayKitTests.Phase6Tests testRenderRealHistory] : Test skipped - set PROMPT_RELAY_REAL_RENDER=<dir>
+Test Case '-[PromptRelayKitTests.Phase6Tests testRenderRealHistory]' skipped (0.000 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testShortAnswersLeaveNoEmptySpace]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testShortAnswersLeaveNoEmptySpace]' passed (0.573 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testSwitchingToASessionEndsTheHandoffAndDoneKeepsTheClipboard]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testSwitchingToASessionEndsTheHandoffAndDoneKeepsTheClipboard]' passed (0.015 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testTheImageHistoryStartsOnlyOnceItsNoticeWasShown]' started.
+Test Case '-[PromptRelayKitTests.Phase6Tests testTheImageHistoryStartsOnlyOnceItsNoticeWasShown]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.Phase6Tests testWritePhase6Visuals]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6Tests.swift:316: -[PromptRelayKitTests.Phase6Tests testWritePhase6Visuals] : Test skipped - set PROMPT_RELAY_VISUALS=<dir> to write visual examples
+Test Case '-[PromptRelayKitTests.Phase6Tests testWritePhase6Visuals]' skipped (0.001 seconds).
+Test Suite 'Phase6Tests' passed at 2026-11-05 23:53:16.034.
+	 Executed 14 tests, with 2 tests skipped and 0 failures (0 unexpected) in 9.219 (9.221) seconds
+Test Suite 'Phase6VisualTests' started at 2026-11-05 23:53:16.034.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testCardsOfARowEndOnTheSameLineAndNothingOverlaps]' started.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testCardsOfARowEndOnTheSameLineAndNothingOverlaps]' passed (4.556 seconds).
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testOpeningAnAttachmentChangesNothingAndShowsItsText]' started.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testOpeningAnAttachmentChangesNothingAndShowsItsText]' passed (0.012 seconds).
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testPreviewShowsExactlyWhatIsCopiedAndBelongsToOneAnswer]' started.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testPreviewShowsExactlyWhatIsCopiedAndBelongsToOneAnswer]' passed (0.009 seconds).
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testTaskExpandsWithoutASnap]' started.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testTaskExpandsWithoutASnap]' passed (1.933 seconds).
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testTooltipsStayInsideTheIslandOnEveryEdge]' started.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testTooltipsStayInsideTheIslandOnEveryEdge]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testWarmCocoaIsTheDefaultAndAnExplicitChoiceIsKept]' started.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testWarmCocoaIsTheDefaultAndAnExplicitChoiceIsKept]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testWriteWarmCocoaVisuals]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6VisualTests.swift:177: -[PromptRelayKitTests.Phase6VisualTests testWriteWarmCocoaVisuals] : Test skipped - set PROMPT_RELAY_VISUALS
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testWriteWarmCocoaVisuals]' skipped (0.001 seconds).
+Test Suite 'Phase6VisualTests' passed at 2026-11-05 23:53:22.547.
+	 Executed 7 tests, with 1 test skipped and 0 failures (0 unexpected) in 6.512 (6.513) seconds
+Test Suite 'Phase71Tests' started at 2026-11-05 23:53:22.547.
+Test Case '-[PromptRelayKitTests.Phase71Tests testCaptureHealthTellsTheCasesApart]' started.
+Test Case '-[PromptRelayKitTests.Phase71Tests testCaptureHealthTellsTheCasesApart]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase71Tests testHandOffSurvivesSwitchingAnswersAndARestart]' started.
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+Test Case '-[PromptRelayKitTests.Phase71Tests testHandOffSurvivesSwitchingAnswersAndARestart]' passed (0.061 seconds).
+Test Case '-[PromptRelayKitTests.Phase71Tests testOnlyTheNewestCopyOfABuildKeepsTheNotch]' started.
+Test Case '-[PromptRelayKitTests.Phase71Tests testOnlyTheNewestCopyOfABuildKeepsTheNotch]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.Phase71Tests testReplacedClipboardOffersTheSameTextAgain]' started.
+Test Case '-[PromptRelayKitTests.Phase71Tests testReplacedClipboardOffersTheSameTextAgain]' passed (0.006 seconds).
+Test Case '-[PromptRelayKitTests.Phase71Tests testRestartDropsAHandOffWhoseFilesAreGone]' started.
+Test Case '-[PromptRelayKitTests.Phase71Tests testRestartDropsAHandOffWhoseFilesAreGone]' passed (0.005 seconds).
+Test Case '-[PromptRelayKitTests.Phase71Tests testWidestStepTwoFitsQuickPeekAndDetails]' started.
+Test Case '-[PromptRelayKitTests.Phase71Tests testWidestStepTwoFitsQuickPeekAndDetails]' passed (2.242 seconds).
+Test Suite 'Phase71Tests' passed at 2026-11-05 23:53:24.863.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 2.315 (2.315) seconds
+Test Suite 'Phase7ClipboardHitTests' started at 2026-11-05 23:53:24.863.
+Test Case '-[PromptRelayKitTests.Phase7ClipboardHitTests testEveryFillImageHasAContentShape]' started.
+Test Case '-[PromptRelayKitTests.Phase7ClipboardHitTests testEveryFillImageHasAContentShape]' passed (0.043 seconds).
+Test Case '-[PromptRelayKitTests.Phase7ClipboardHitTests testFiveWideThumbnailsDoNotOverlap]' started.
+Test Case '-[PromptRelayKitTests.Phase7ClipboardHitTests testFiveWideThumbnailsDoNotOverlap]' passed (0.568 seconds).
+Test Suite 'Phase7ClipboardHitTests' passed at 2026-11-05 23:53:25.474.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.611 (0.611) seconds
+Test Suite 'Phase7Tests' started at 2026-11-05 23:53:25.474.
+Test Case '-[PromptRelayKitTests.Phase7Tests testEveryRealTooltipIsDrawnInsideTheIsland]' started.
+Test Case '-[PromptRelayKitTests.Phase7Tests testEveryRealTooltipIsDrawnInsideTheIsland]' passed (44.361 seconds).
+Test Case '-[PromptRelayKitTests.Phase7Tests testNoAppKitTooltipsInTheSources]' started.
+Test Case '-[PromptRelayKitTests.Phase7Tests testNoAppKitTooltipsInTheSources]' passed (0.040 seconds).
+Test Case '-[PromptRelayKitTests.Phase7Tests testTipPlacementStaysInsideTheVisibleIslandForEveryAnchor]' started.
+Test Case '-[PromptRelayKitTests.Phase7Tests testTipPlacementStaysInsideTheVisibleIslandForEveryAnchor]' passed (0.008 seconds).
+Test Suite 'Phase7Tests' passed at 2026-11-05 23:54:09.884.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 44.409 (44.410) seconds
+Test Suite 'Phase8Tests' started at 2026-11-05 23:54:09.884.
+Test Case '-[PromptRelayKitTests.Phase8Tests testBlankTipIsNeverShown]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testBlankTipIsNeverShown]' passed (0.912 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testEveryInfoExplanationHasTheFourParts]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testEveryInfoExplanationHasTheFourParts]' passed (0.005 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testExpressiveOvershootsMoreAndBothSettle]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testExpressiveOvershootsMoreAndBothSettle]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testFailureInspectorEdgeCases]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testFailureInspectorEdgeCases]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testFailureInspectorReportsOnlyWhatWasObserved]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testFailureInspectorReportsOnlyWhatWasObserved]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testFormattedJumpFindsTheSameHeadingAsTheSource]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testFormattedJumpFindsTheSameHeadingAsTheSource]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testFormattedPreviewOfLongPackagesStaysFast]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testFormattedPreviewOfLongPackagesStaysFast]' passed (0.709 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testFullReportLinkEvidenceChipAndFooterNeverOverlap]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testFullReportLinkEvidenceChipAndFooterNeverOverlap]' passed (4.484 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testNodAndPerkAreShortAndSettle]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testNodAndPerkAreShortAndSettle]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testPitchIsLayeredAndEarsMoveAgainstIt]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testPitchIsLayeredAndEarsMoveAgainstIt]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testReadyIndicatorMarksATurnClaudeCodeStartedItself]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testReadyIndicatorMarksATurnClaudeCodeStartedItself]' passed (0.004 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testReadyIndicatorStates]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testReadyIndicatorStates]' passed (0.009 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testRenderPhase8States]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase8Tests.swift:507: -[PromptRelayKitTests.Phase8Tests testRenderPhase8States] : Test skipped - set PROMPT_RELAY_VISUALS=<dir> to write the Phase 8 renders
+Test Case '-[PromptRelayKitTests.Phase8Tests testRenderPhase8States]' skipped (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testRenderRelayPointerSheet]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase8Tests.swift:471: -[PromptRelayKitTests.Phase8Tests testRenderRelayPointerSheet] : Test skipped - set PROMPT_RELAY_VISUALS=<dir> to write the Phase 8 renders
+Test Case '-[PromptRelayKitTests.Phase8Tests testRenderRelayPointerSheet]' skipped (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testTipsAvoidTheMainActionsAndStayInside]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testTipsAvoidTheMainActionsAndStayInside]' passed (34.361 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testVerticalPointerMovementMovesTheLookAcrossTheScreen]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testVerticalPointerMovementMovesTheLookAcrossTheScreen]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testWrappedTipEndsWhereItsLongestLineEnds]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testWrappedTipEndsWhereItsLongestLineEnds]' passed (0.477 seconds).
+Test Suite 'Phase8Tests' passed at 2026-11-05 23:54:50.857.
+	 Executed 17 tests, with 2 tests skipped and 0 failures (0 unexpected) in 40.971 (40.973) seconds
+Test Suite 'PointerFollowerTests' started at 2026-11-05 23:54:50.857.
+Test Case '-[PromptRelayKitTests.PointerFollowerTests testMovementIsThrottledAndEndsWhereThePointerStopped]' started.
+Test Case '-[PromptRelayKitTests.PointerFollowerTests testMovementIsThrottledAndEndsWhereThePointerStopped]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.PointerFollowerTests testRestsWhenThePointerIsStillAndStopsCleanly]' started.
+Test Case '-[PromptRelayKitTests.PointerFollowerTests testRestsWhenThePointerIsStillAndStopsCleanly]' passed (0.001 seconds).
+Test Suite 'PointerFollowerTests' passed at 2026-11-05 23:54:50.860.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.002 (0.003) seconds
+Test Suite 'ProjectCaptureTests' started at 2026-11-05 23:54:50.860.
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testAddedProjectStartsWithCaptureOffAndNoCoreCall]' started.
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testAddedProjectStartsWithCaptureOffAndNoCoreCall]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testCoreRefusalIsShown]' started.
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testCoreRefusalIsShown]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testDisablingKeepsHistoryVisible]' started.
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testDisablingKeepsHistoryVisible]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testEnableAndDisableGoThroughTheCoreAndRefresh]' started.
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testEnableAndDisableGoThroughTheCoreAndRefresh]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testInheritedCaptureIsReported]' started.
+Test Case '-[PromptRelayKitTests.ProjectCaptureTests testInheritedCaptureIsReported]' passed (0.001 seconds).
+Test Suite 'ProjectCaptureTests' passed at 2026-11-05 23:54:50.873.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.012 (0.013) seconds
+Test Suite 'ReadyAnswerTests' started at 2026-11-05 23:54:50.873.
+Test Case '-[PromptRelayKitTests.ReadyAnswerTests testNewAnswerIsAnnouncedOnceAndRememberedAcrossRestarts]' started.
+Test Case '-[PromptRelayKitTests.ReadyAnswerTests testNewAnswerIsAnnouncedOnceAndRememberedAcrossRestarts]' passed (0.012 seconds).
+Test Case '-[PromptRelayKitTests.ReadyAnswerTests testTrackingCostsExactlyOneExtraSessionsCall]' started.
+Test Case '-[PromptRelayKitTests.ReadyAnswerTests testTrackingCostsExactlyOneExtraSessionsCall]' passed (0.001 seconds).
+Test Suite 'ReadyAnswerTests' passed at 2026-11-05 23:54:50.886.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.013 (0.014) seconds
+Test Suite 'RealHandoffE2ETests' started at 2026-11-05 23:54:50.886.
+Test Case '-[PromptRelayKitTests.RealHandoffE2ETests testRealTurnSuggestionsCopyAndFileHandoff]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/RealHandoffE2ETests.swift:18: -[PromptRelayKitTests.RealHandoffE2ETests testRealTurnSuggestionsCopyAndFileHandoff] : Test skipped - set PROMPT_RELAY_E2E_SESSION, _TURN and _FILES to check a real hand-off
+Test Case '-[PromptRelayKitTests.RealHandoffE2ETests testRealTurnSuggestionsCopyAndFileHandoff]' skipped (0.001 seconds).
+Test Suite 'RealHandoffE2ETests' passed at 2026-11-05 23:54:50.887.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'RealSessionAuditTests' started at 2026-11-05 23:54:50.887.
+Test Case '-[PromptRelayKitTests.RealSessionAuditTests testRealCapturedReportSurvivesCopyReviewPackAndReader]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/RealSessionAuditTests.swift:18: -[PromptRelayKitTests.RealSessionAuditTests testRealCapturedReportSurvivesCopyReviewPackAndReader] : Test skipped - set PROMPT_RELAY_AUDIT_SESSION, _TURN and _EXPECTED to audit a real captured report
+Test Case '-[PromptRelayKitTests.RealSessionAuditTests testRealCapturedReportSurvivesCopyReviewPackAndReader]' skipped (0.000 seconds).
+Test Suite 'RealSessionAuditTests' passed at 2026-11-05 23:54:50.888.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'RelayLayerPoseRenderTests' started at 2026-11-05 23:54:50.888.
+Test Case '-[PromptRelayKitTests.RelayLayerPoseRenderTests testRenderPosesThroughLayers]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase72Tests.swift:109: -[PromptRelayKitTests.RelayLayerPoseRenderTests testRenderPosesThroughLayers] : Test skipped - set PROMPT_RELAY_SNAPSHOT_DIR to render Relay's poses
+Test Case '-[PromptRelayKitTests.RelayLayerPoseRenderTests testRenderPosesThroughLayers]' skipped (0.000 seconds).
+Test Suite 'RelayLayerPoseRenderTests' passed at 2026-11-05 23:54:50.888.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'RelayMotionTests' started at 2026-11-05 23:54:50.888.
+Test Case '-[PromptRelayKitTests.RelayMotionTests testALongGapIsNotReplayed]' started.
+Test Case '-[PromptRelayKitTests.RelayMotionTests testALongGapIsNotReplayed]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RelayMotionTests testBlinkClosesFastOpensSoftlyAndEnds]' started.
+Test Case '-[PromptRelayKitTests.RelayMotionTests testBlinkClosesFastOpensSoftlyAndEnds]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RelayMotionTests testExpressionsBlendInsteadOfJumping]' started.
+Test Case '-[PromptRelayKitTests.RelayMotionTests testExpressionsBlendInsteadOfJumping]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RelayMotionTests testEyesLeadHeadTrailsEarsSwingThenStill]' started.
+Test Case '-[PromptRelayKitTests.RelayMotionTests testEyesLeadHeadTrailsEarsSwingThenStill]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RelayMotionTests testFrameIntervalAsksForSixtyFramesASecond]' started.
+Test Case '-[PromptRelayKitTests.RelayMotionTests testFrameIntervalAsksForSixtyFramesASecond]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RelayMotionTests testSpeedDoesNotDependOnTheRefreshRate]' started.
+Test Case '-[PromptRelayKitTests.RelayMotionTests testSpeedDoesNotDependOnTheRefreshRate]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.RelayMotionTests testUnevenFramesGiveTheSameMotion]' started.
+Test Case '-[PromptRelayKitTests.RelayMotionTests testUnevenFramesGiveTheSameMotion]' passed (0.000 seconds).
+Test Suite 'RelayMotionTests' passed at 2026-11-05 23:54:50.891.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.002 (0.003) seconds
+Test Suite 'RelayPerformanceTests' started at 2026-11-05 23:54:50.891.
+Test Case '-[PromptRelayKitTests.RelayPerformanceTests testCPUWhileThePointerIsStillAndMoving]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/RelayFollowTests.swift:69: -[PromptRelayKitTests.RelayPerformanceTests testCPUWhileThePointerIsStillAndMoving] : Test skipped - set PROMPT_RELAY_PERF=1 to measure Relay's CPU use
+Test Case '-[PromptRelayKitTests.RelayPerformanceTests testCPUWhileThePointerIsStillAndMoving]' skipped (0.000 seconds).
+Test Suite 'RelayPerformanceTests' passed at 2026-11-05 23:54:50.892.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'RelayPoseRenderTests' started at 2026-11-05 23:54:50.892.
+Test Case '-[PromptRelayKitTests.RelayPoseRenderTests testRenderPoses]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase71Tests.swift:289: -[PromptRelayKitTests.RelayPoseRenderTests testRenderPoses] : Test skipped - set PROMPT_RELAY_SNAPSHOT_DIR to render Relay's poses
+Test Case '-[PromptRelayKitTests.RelayPoseRenderTests testRenderPoses]' skipped (0.000 seconds).
+Test Suite 'RelayPoseRenderTests' passed at 2026-11-05 23:54:50.892.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'RelayRestingTests' started at 2026-11-05 23:54:50.892.
+Test Case '-[PromptRelayKitTests.RelayRestingTests testBreathingRunsOnTheRenderServerOnlyWhenActive]' started.
+Test Case '-[PromptRelayKitTests.RelayRestingTests testBreathingRunsOnTheRenderServerOnlyWhenActive]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RelayRestingTests testEveryPoseStaysInsideTheEarAndTheHeadStillMoves]' started.
+Test Case '-[PromptRelayKitTests.RelayRestingTests testEveryPoseStaysInsideTheEarAndTheHeadStillMoves]' passed (0.019 seconds).
+Test Case '-[PromptRelayKitTests.RelayRestingTests testReduceMotionKeepsTheHeadStillButStillShowsFeelings]' started.
+Test Case '-[PromptRelayKitTests.RelayRestingTests testReduceMotionKeepsTheHeadStillButStillShowsFeelings]' passed (0.004 seconds).
+Test Case '-[PromptRelayKitTests.RelayRestingTests testRenderedRelayIsNeverClippedAndNeverOverTheCamera]' started.
+Test Case '-[PromptRelayKitTests.RelayRestingTests testRenderedRelayIsNeverClippedAndNeverOverTheCamera]' passed (0.251 seconds).
+Test Case '-[PromptRelayKitTests.RelayRestingTests testTheBudgetIsUsedInFullWhereItFits]' started.
+Test Case '-[PromptRelayKitTests.RelayRestingTests testTheBudgetIsUsedInFullWhereItFits]' passed (0.000 seconds).
+Test Suite 'RelayRestingTests' passed at 2026-11-05 23:54:51.167.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.274 (0.275) seconds
+Test Suite 'ReportStoreTests' started at 2026-11-05 23:54:51.167.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testAttachmentsAreCopiedCheckedAndRemovedWithTheirImport]' started.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testAttachmentsAreCopiedCheckedAndRemovedWithTheirImport]' passed (0.006 seconds).
+Test Case '-[PromptRelayKitTests.ReportStoreTests testImportedReviewPackIsHonestAndComplete]' started.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testImportedReviewPackIsHonestAndComplete]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.ReportStoreTests testImportKeepsTextExactlyDeduplicatesAndIsPrivate]' started.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testImportKeepsTextExactlyDeduplicatesAndIsPrivate]' passed (0.006 seconds).
+Test Case '-[PromptRelayKitTests.ReportStoreTests testSecretScannerMatchesTheCore]' started.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testSecretScannerMatchesTheCore]' passed (0.145 seconds).
+Test Suite 'ReportStoreTests' passed at 2026-11-05 23:54:51.326.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.158 (0.158) seconds
+Test Suite 'ReportWorkflowTests' started at 2026-11-05 23:54:51.326.
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testAttachmentsTravelWithTheirReportOnly]' started.
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testAttachmentsTravelWithTheirReportOnly]' passed (0.261 seconds).
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testImportedReportIsShownCopiedAndReviewPackedLikeALocalOne]' started.
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testImportedReportIsShownCopiedAndReviewPackedLikeALocalOne]' passed (0.146 seconds).
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testImportedSecretsWaitForConfirmationAndAreNotKeptInRecentCopies]' started.
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testImportedSecretsWaitForConfirmationAndAreNotKeptInRecentCopies]' passed (0.012 seconds).
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testPinsPersistAndSearchFindsImportsInFullAndLocalPreviews]' started.
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testPinsPersistAndSearchFindsImportsInFullAndLocalPreviews]' passed (0.012 seconds).
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testProjectsNeverMixReports]' started.
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testProjectsNeverMixReports]' passed (0.268 seconds).
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testRecentCopiesKeepFiveReferencesAcrossRestartsAndCopyAgainFetchesTheText]' started.
+Test Case '-[PromptRelayKitTests.ReportWorkflowTests testRecentCopiesKeepFiveReferencesAcrossRestartsAndCopyAgainFetchesTheText]' passed (0.028 seconds).
+Test Suite 'ReportWorkflowTests' passed at 2026-11-05 23:54:52.055.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.728 (0.729) seconds
+Test Suite 'RequestOriginTests' started at 2026-11-05 23:54:52.055.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testAutomatedTurnShowsTheEarlierUserRequest]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testAutomatedTurnShowsTheEarlierUserRequest]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testAutomatedTurnWithoutEarlierRequestShowsNone]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testAutomatedTurnWithoutEarlierRequestShowsNone]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testDisplayDropsAutomatedBlocksButKeepsTheText]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testDisplayDropsAutomatedBlocksButKeepsTheText]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testFailedCommandCountDecodes]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testFailedCommandCountDecodes]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testNamedFileIsNotClaimedAsConfirmed]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testNamedFileIsNotClaimedAsConfirmed]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testUserAndOlderCoreKeepTheRequest]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testUserAndOlderCoreKeepTheRequest]' passed (0.000 seconds).
+Test Suite 'RequestOriginTests' passed at 2026-11-05 23:54:52.057.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'ReviewCheckMarkTests' started at 2026-11-05 23:54:52.057.
+Test Case '-[PromptRelayKitTests.ReviewCheckMarkTests testTicksAreTheUsersAndRememberedPerAnswer]' started.
+Test Case '-[PromptRelayKitTests.ReviewCheckMarkTests testTicksAreTheUsersAndRememberedPerAnswer]' passed (0.002 seconds).
+Test Suite 'ReviewCheckMarkTests' passed at 2026-11-05 23:54:52.059.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'SmartContextTests' started at 2026-11-05 23:54:52.059.
+Test Case '-[PromptRelayKitTests.SmartContextTests testCopyAndPreviewAreAlwaysFull]' started.
+Test Case '-[PromptRelayKitTests.SmartContextTests testCopyAndPreviewAreAlwaysFull]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.SmartContextTests testSectionsComeFromTheTextAndSkipFencedLines]' started.
+Test Case '-[PromptRelayKitTests.SmartContextTests testSectionsComeFromTheTextAndSkipFencedLines]' passed (0.001 seconds).
+Test Suite 'SmartContextTests' passed at 2026-11-05 23:54:52.063.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'SnapshotTests' started at 2026-11-05 23:54:52.063.
+Test Case '-[PromptRelayKitTests.SnapshotTests testRenderSurfaces]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/SnapshotTests.swift:15: -[PromptRelayKitTests.SnapshotTests testRenderSurfaces] : Test skipped - set PROMPT_RELAY_SNAPSHOT_DIR to render screenshots
+Test Case '-[PromptRelayKitTests.SnapshotTests testRenderSurfaces]' skipped (0.001 seconds).
+Test Suite 'SnapshotTests' passed at 2026-11-05 23:54:52.063.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'StoreWatcherTests' started at 2026-11-05 23:54:52.063.
+Test Case '-[PromptRelayKitTests.StoreWatcherTests testAppendToSessionFileIsReported]' started.
+Test Case '-[PromptRelayKitTests.StoreWatcherTests testAppendToSessionFileIsReported]' passed (0.314 seconds).
+Test Case '-[PromptRelayKitTests.StoreWatcherTests testLogOnlyChangesAreIgnored]' started.
+Test Case '-[PromptRelayKitTests.StoreWatcherTests testLogOnlyChangesAreIgnored]' passed (1.823 seconds).
+Test Case '-[PromptRelayKitTests.StoreWatcherTests testMissingDirectoryFallsBack]' started.
+Test Case '-[PromptRelayKitTests.StoreWatcherTests testMissingDirectoryFallsBack]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.StoreWatcherTests testOnlyHistoryAndConfigChangesCount]' started.
+Test Case '-[PromptRelayKitTests.StoreWatcherTests testOnlyHistoryAndConfigChangesCount]' passed (0.001 seconds).
+Test Suite 'StoreWatcherTests' passed at 2026-11-05 23:54:54.204.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 2.139 (2.140) seconds
+Test Suite 'SuggestionTests' started at 2026-11-05 23:54:54.204.
+Test Case '-[PromptRelayKitTests.SuggestionTests testNamedProjectFileMadeByAScriptIsSuggestedWithAnHonestReason]' started.
+Test Case '-[PromptRelayKitTests.SuggestionTests testNamedProjectFileMadeByAScriptIsSuggestedWithAnHonestReason]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.SuggestionTests testOnlyWhatClaudeShowedOrNamedIsSuggested]' started.
+Test Case '-[PromptRelayKitTests.SuggestionTests testOnlyWhatClaudeShowedOrNamedIsSuggested]' passed (0.004 seconds).
+Test Case '-[PromptRelayKitTests.SuggestionTests testPathsAreShownWithoutTheUserName]' started.
+Test Case '-[PromptRelayKitTests.SuggestionTests testPathsAreShownWithoutTheUserName]' passed (0.001 seconds).
+Test Suite 'SuggestionTests' passed at 2026-11-05 23:54:54.213.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.008 (0.009) seconds
+Test Suite 'SurfaceAuditRenderTests' started at 2026-11-05 23:54:54.213.
+Test Case '-[PromptRelayKitTests.SurfaceAuditRenderTests testRenderSurfacesForAudit]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase72Tests.swift:175: -[PromptRelayKitTests.SurfaceAuditRenderTests testRenderSurfacesForAudit] : Test skipped - set PROMPT_RELAY_AUDIT_DIR to render the surfaces
+Test Case '-[PromptRelayKitTests.SurfaceAuditRenderTests testRenderSurfacesForAudit]' skipped (0.001 seconds).
+Test Suite 'SurfaceAuditRenderTests' passed at 2026-11-05 23:54:54.214.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'TooltipWidthTests' started at 2026-11-05 23:54:54.214.
+Test Case '-[PromptRelayKitTests.TooltipWidthTests testTipIsAsWideAsItsTextAndWrapsAtTheMaximum]' started.
+Test Case '-[PromptRelayKitTests.TooltipWidthTests testTipIsAsWideAsItsTextAndWrapsAtTheMaximum]' passed (0.470 seconds).
+Test Suite 'TooltipWidthTests' passed at 2026-11-05 23:54:54.685.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.470 (0.471) seconds
+Test Suite 'TypedAttachmentTests' started at 2026-11-05 23:54:54.685.
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testDeclaredStatesAreReadAsJSONOnly]' started.
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testDeclaredStatesAreReadAsJSONOnly]' passed (0.004 seconds).
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testFilesAreTypedByContent]' started.
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testFilesAreTypedByContent]' passed (0.043 seconds).
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testHandoffNamesAndOrder]' started.
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testHandoffNamesAndOrder]' passed (0.015 seconds).
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testMockupStatesHaveHonestStatuses]' started.
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testMockupStatesHaveHonestStatuses]' passed (0.009 seconds).
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testRecordsWrittenBeforePhase5AreImagesAndSelected]' started.
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testRecordsWrittenBeforePhase5AreImagesAndSelected]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testSameBytesAreKeptOnceAndTheSnapshotDoesNotFollowTheOriginal]' started.
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testSameBytesAreKeptOnceAndTheSnapshotDoesNotFollowTheOriginal]' passed (0.003 seconds).
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testTheAttachmentsSectionListsWhatIsAvailableAndWhatIsNot]' started.
+Test Case '-[PromptRelayKitTests.TypedAttachmentTests testTheAttachmentsSectionListsWhatIsAvailableAndWhatIsNot]' passed (0.008 seconds).
+Test Suite 'TypedAttachmentTests' passed at 2026-11-05 23:54:54.770.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.083 (0.085) seconds
+Test Suite 'WordingTests' started at 2026-11-05 23:54:54.770.
+Test Case '-[PromptRelayKitTests.WordingTests testShortRelativeTime]' started.
+Test Case '-[PromptRelayKitTests.WordingTests testShortRelativeTime]' passed (0.001 seconds).
+Test Suite 'WordingTests' passed at 2026-11-05 23:54:54.771.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'PromptRelayKitTests.xctest' passed at 2026-11-05 23:54:54.771.
+	 Executed 271 tests, with 16 tests skipped and 0 failures (0 unexpected) in 157.298 (157.341) seconds
+Test Suite 'All tests' passed at 2026-11-05 23:54:54.771.
+	 Executed 271 tests, with 16 tests skipped and 0 failures (0 unexpected) in 157.298 (157.342) seconds
+P8-PREVIEW 10070 chars: 76 ms to first layout
+P8-PREVIEW 30113 chars: 76 ms to first layout
+P8-PREVIEW 100148 chars: 77 ms to first layout
+P8-PREVIEW 300074 chars: 89 ms to first layout
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase11ConnectionStatusTests started.
+◇ Suite CompactHelpTests started.
+◇ Suite Phase11HookMatchingTests started.
+◇ Suite Phase10SnapshotTests started.
+◇ Suite Phase94UITests started.
+◇ Suite Phase93Tests started.
+◇ Suite Phase11BuildDiagnosticsTests started.
+◇ Suite LoadingDotsTests started.
+◇ Suite Phase9Tests started.
+◇ Suite Phase94CompletionTests started.
+◇ Suite Phase12Tests started.
+◇ Suite Phase91Tests started.
+◇ Suite Phase10IndicatorTests started.
+◇ Suite Phase81ReadyTests started.
+◇ Suite Phase92Tests started.
+◇ Suite AdaptiveIslandHeightTests started.
+◇ Suite Phase121Tests started.
+◇ Suite Phase11SettingsStoreTests started.
+◇ Suite Phase81Tests started.
+◇ Test onlyTheExactRelayCommandShapeCounts() started.
+◇ Suite Phase94AttachmentTests started.
+◇ Test latestFollowsCompletionAcrossProviders() started.
+◇ Test sameBuildEverywhereSaysNothing() started.
+◇ Test rapidSwitchingAndDismissal() started.
+◇ Test intermediateTurnsAreNotAnswersAnywhere() started.
+◇ Test claudeStepsFromInstalledToConnectedOnlyWithStoredEvents() started.
+◇ Test xcodeBuildNamesTheStaleInstalledApp() started.
+◇ Test foreignAndCLIConfigurationsDoNotProveXcode() started.
+◇ Test definitionsAreNotConnectionEvidence() started.
+◇ Suite Phase82Tests started.
+◇ Test replacedWhileRunningAsksForARestart() started.
+◇ Test aSnapshotIsListedSelectedAndNeverWritten() started.
+◇ Test readingOneSessionPreservesOtherUnreadAcrossRestartAndNewPrompt() started.
+◇ Test backgroundTestsThenFollowUpUpdateLatestOnce() started.
+◇ Test coreMismatchesAreReportedOnlyWhenKnown() started.
+◇ Test codexNeedsDefinitionsThenTrustThenDelivery() started.
+◇ Test dotsAnimateOnlyWithoutReduceMotion() started.
+◇ Test nothingInstalledIsNotDetectedEverywhere() started.
+◇ Test openingTheIslandClearsTheNotchButNotPerProjectUnread() started.
+◇ Test profilesStayApartWithEqualTitlesAndNativeIDs() started.
+◇ Test aRejectedEventIsAnErrorWithItsReason() started.
+◇ Test stampIsReadFromTheBundleOnDisk() started.
+◇ Test diagnosticsSeparateExecutionFromStorageAndSupportOldCore() started.
+◇ Test aCLIDeliveryNeverConnectsXcode() started.
+◇ Test aCoreProblemIsReportedForEveryAgent() started.
+◇ Test automaticallyPreparesFiveAndPreservesUserSelection() started.
+◇ Test severalBlocksAndScreenLimit() started.
+◇ Test connectionCheckPublishesFreshSessions() started.
+◇ Test decodesAttentionAndKinds() started.
+◇ Test cliCannotConfirmXcodeAndPromptCannotConfirmStop() started.
+◇ Test setupCommandsAreReversibleAndScoped() started.
+◇ Test notchSettingsPersistIntoAnInjectedStore() started.
+◇ Test memoryStoreBehavesLikeUserDefaultsForTheMethodsTheAppUses() started.
+◇ Test helpNeverCoversContent() started.
+◇ Test noTestCreatesARealUserDefaultsSuite() started.
+◇ Test finalAnswerAfterBackgroundWorkGetsTheTaskFilesWithoutAdd() started.
+✔ Test onlyTheExactRelayCommandShapeCounts() passed after 0.001 seconds.
+◇ Test diagnosticFactsAndTaskExcerpt() started.
+✔ Test sameBuildEverywhereSaysNothing() passed after 0.001 seconds.
+✔ Test replacedWhileRunningAsksForARestart() passed after 0.001 seconds.
+✔ Test claudeStepsFromInstalledToConnectedOnlyWithStoredEvents() passed after 0.001 seconds.
+✔ Test codexNeedsDefinitionsThenTrustThenDelivery() passed after 0.001 seconds.
+✔ Test nothingInstalledIsNotDetectedEverywhere() passed after 0.001 seconds.
+✔ Suite Phase11HookMatchingTests passed after 0.001 seconds.
+✔ Test setupCommandsAreReversibleAndScoped() passed after 0.001 seconds.
+✔ Test aCoreProblemIsReportedForEveryAgent() passed after 0.001 seconds.
+✔ Test aRejectedEventIsAnErrorWithItsReason() passed after 0.001 seconds.
+✔ Test aCLIDeliveryNeverConnectsXcode() passed after 0.001 seconds.
+✔ Suite Phase11ConnectionStatusTests passed after 0.001 seconds.
+✔ Test coreMismatchesAreReportedOnlyWhenKnown() passed after 0.001 seconds.
+✔ Test xcodeBuildNamesTheStaleInstalledApp() passed after 0.001 seconds.
+✔ Test definitionsAreNotConnectionEvidence() passed after 0.003 seconds.
+✔ Test foreignAndCLIConfigurationsDoNotProveXcode() passed after 0.003 seconds.
+✔ Suite Phase91Tests passed after 0.003 seconds.
+✔ Test stampIsReadFromTheBundleOnDisk() passed after 0.004 seconds.
+✔ Suite Phase11BuildDiagnosticsTests passed after 0.004 seconds.
+✔ Test connectionCheckPublishesFreshSessions() passed after 0.096 seconds.
+✔ Test dotsAnimateOnlyWithoutReduceMotion() passed after 0.127 seconds.
+✔ Test automaticallyPreparesFiveAndPreservesUserSelection() passed after 0.127 seconds.
+✔ Test aSnapshotIsListedSelectedAndNeverWritten() passed after 0.127 seconds.
+✔ Test cliCannotConfirmXcodeAndPromptCannotConfirmStop() passed after 0.127 seconds.
+✔ Test finalAnswerAfterBackgroundWorkGetsTheTaskFilesWithoutAdd() passed after 0.126 seconds.
+✔ Test noTestCreatesARealUserDefaultsSuite() passed after 0.127 seconds.
+✔ Test diagnosticFactsAndTaskExcerpt() passed after 0.126 seconds.
+✔ Test diagnosticsSeparateExecutionFromStorageAndSupportOldCore() passed after 0.127 seconds.
+✔ Test decodesAttentionAndKinds() passed after 0.127 seconds.
+✔ Test memoryStoreBehavesLikeUserDefaultsForTheMethodsTheAppUses() passed after 0.127 seconds.
+✔ Test notchSettingsPersistIntoAnInjectedStore() passed after 0.127 seconds.
+✔ Suite LoadingDotsTests passed after 0.128 seconds.
+◇ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() started.
+✔ Suite Phase92Tests passed after 0.127 seconds.
+◇ Test limitsDropTheOldestByCountBytesAndAge() started.
+✔ Suite Phase11SettingsStoreTests passed after 0.127 seconds.
+◇ Test exactPreviewAndPersistentTransfer() started.
+◇ Test needsInputComesFirstAndOtherAgentsKeepTheirState() started.
+◇ Test quickPeekCopyWithContextHandsOffTheFilesWithoutDetails() started.
+✔ Test profilesStayApartWithEqualTitlesAndNativeIDs() passed after 0.129 seconds.
+◇ Test profileLabelsPersistAndRemovingOneKeepsHistory() started.
+✔ Test helpNeverCoversContent() passed after 69.557 seconds.
+✔ Suite Phase81Tests passed after 69.559 seconds.
+✔ Test severalBlocksAndScreenLimit() passed after 77.182 seconds.
+◇ Test heightReportsConvergeAndFramesKeepTopAndCenter() started.
+✔ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() passed after 77.118 seconds.
+◇ Test snapshotAndQuickPeekHandoffUseSameSelection() started.
+✔ Test limitsDropTheOldestByCountBytesAndAge() passed after 77.119 seconds.
+◇ Test pixelSizeIsCappedKeepingTheAspect() started.
+✔ Test needsInputComesFirstAndOtherAgentsKeepTheirState() passed after 77.122 seconds.
+✔ Test heightReportsConvergeAndFramesKeepTopAndCenter() passed after 0.067 seconds.
+◇ Test bannersAndDismissal() started.
+◇ Test answeredWaitReturnsToWorkingThenAnswer() started.
+✔ Test intermediateTurnsAreNotAnswersAnywhere() passed after 77.314 seconds.
+◇ Test conversationsGroupSortAndRememberExpansion() started.
+✔ Test pixelSizeIsCappedKeepingTheAspect() passed after 0.074 seconds.
+◇ Test copyImageAndCopyWithImagesUseDataNotFiles() started.
+✔ Test quickPeekCopyWithContextHandsOffTheFilesWithoutDetails() passed after 77.195 seconds.
+◇ Test intermediateStopPreparesNothing() started.
+sandbox_extension_consume failed: 1 (Operation not permitted)
+✔ Test profileLabelsPersistAndRemovingOneKeepsHistory() passed after 77.225 seconds.
+◇ Test historicalSessionsWithoutProfileAreUnassignedNotGuessed() started.
+✔ Test bannersAndDismissal() passed after 41.676 seconds.
+✔ Suite AdaptiveIslandHeightTests passed after 118.927 seconds.
+✔ Test latestFollowsCompletionAcrossProviders() passed after 118.990 seconds.
+◇ Test parallelAgentsAreOrderedByCompletionWithText() started.
+✔ Test copyImageAndCopyWithImagesUseDataNotFiles() passed after 41.678 seconds.
+✔ Test intermediateStopPreparesNothing() passed after 41.676 seconds.
+✔ Suite Phase94AttachmentTests passed after 119.000 seconds.
+◇ Test autoSnapshotReachesTheHandoffWithoutDetailsOrFiles() started.
+✔ Test conversationsGroupSortAndRememberExpansion() passed after 41.699 seconds.
+◇ Test codexClaudeCodexMovesLatestEachTime() started.
+✔ Test answeredWaitReturnsToWorkingThenAnswer() passed after 41.768 seconds.
+◇ Test severalWaitingAgentsAreCountedNotMerged() started.
+✔ Test historicalSessionsWithoutProfileAreUnassignedNotGuessed() passed after 41.678 seconds.
+◇ Test decodesTheCoresResultsDocument() started.
+✔ Test snapshotAndQuickPeekHandoffUseSameSelection() passed after 41.794 seconds.
+◇ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() started.
+✔ Test exactPreviewAndPersistentTransfer() passed after 118.947 seconds.
+◇ Test pointerLifecycle() started.
+✔ Test severalWaitingAgentsAreCountedNotMerged() passed after 0.062 seconds.
+◇ Test aHostWithoutSignalsKeepsItsLastConfirmedState() started.
+✔ Test decodesTheCoresResultsDocument() passed after 0.054 seconds.
+◇ Test inboxListsEveryAgentNewestFirstAndOnlyFinalResults() started.
+✔ Test pointerLifecycle() passed after 0.015 seconds.
+◇ Test clipboardAndDynamicHelp() started.
+✔ Test aHostWithoutSignalsKeepsItsLastConfirmedState() passed after 0.011 seconds.
+◇ Test notificationOncePerWaitNeverForWaitsFoundAtLaunch() started.
+✔ Test openingTheIslandClearsTheNotchButNotPerProjectUnread() passed after 119.097 seconds.
+✔ Suite Phase10IndicatorTests passed after 119.097 seconds.
+✔ Test readingOneSessionPreservesOtherUnreadAcrossRestartAndNewPrompt() passed after 119.100 seconds.
+◇ Test openingNewestTurnLeavesEarlierTurnUnreadInSameSession() started.
+✔ Test clipboardAndDynamicHelp() passed after 33.206 seconds.
+✔ Suite Phase82Tests passed after 152.298 seconds.
+✔ Test backgroundTestsThenFollowUpUpdateLatestOnce() passed after 152.346 seconds.
+◇ Test noContinuationEndsAsUnknownNotReady() started.
+✔ Test inboxListsEveryAgentNewestFirstAndOnlyFinalResults() passed after 33.258 seconds.
+◇ Test completionUnknownIsSeparateFromFinishedResults() started.
+✔ Test codexClaudeCodexMovesLatestEachTime() passed after 33.332 seconds.
+◇ Test viewingTheReadyAnswerTurnsTheIndicatorNeutral() started.
+✔ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() passed after 33.311 seconds.
+✔ Suite Phase9Tests passed after 152.353 seconds.
+✔ Test parallelAgentsAreOrderedByCompletionWithText() passed after 33.366 seconds.
+◇ Test pinnedSessionStaysAndOffersJumpToLatest() started.
+✔ Test autoSnapshotReachesTheHandoffWithoutDetailsOrFiles() passed after 33.360 seconds.
+◇ Test copyAttachmentOfAnExpiredSnapshotFailsHonestly() started.
+✔ Test noContinuationEndsAsUnknownNotReady() passed after 0.015 seconds.
+◇ Test olderCoreWithoutCompletionIsConservative() started.
+✔ Test olderCoreWithoutCompletionIsConservative() passed after 0.006 seconds.
+✔ Suite Phase94CompletionTests passed after 152.368 seconds.
+✔ Test copyAttachmentOfAnExpiredSnapshotFailsHonestly() passed after 0.009 seconds.
+✔ Suite Phase10SnapshotTests passed after 152.370 seconds.
+✔ Test notificationOncePerWaitNeverForWaitsFoundAtLaunch() passed after 33.283 seconds.
+◇ Test notifyNeedsInputIsOffByDefault() started.
+✔ Test viewingTheReadyAnswerTurnsTheIndicatorNeutral() passed after 0.029 seconds.
+◇ Test autoCaptureIsOptInBoundToAgentHostAndProjectAndNeverFallsBack() started.
+✔ Test notifyNeedsInputIsOffByDefault() passed after 0.001 seconds.
+◇ Test bandShowsNeedsInputInQuickPeekAndDetails() started.
+✔ Test completionUnknownIsSeparateFromFinishedResults() passed after 0.037 seconds.
+◇ Test readingOneResultLeavesTheOthersUnreadAcrossRestarts() started.
+✔ Test openingNewestTurnLeavesEarlierTurnUnreadInSameSession() passed after 33.286 seconds.
+◇ Test pinnedSessionDoesNotAcknowledgeAnUnopenedAnswer() started.
+✔ Test bandShowsNeedsInputInQuickPeekAndDetails() passed after 2.140 seconds.
+✔ Suite Phase121Tests passed after 154.520 seconds.
+✔ Test rapidSwitchingAndDismissal() passed after 154.542 seconds.
+◇ Test layoutStates() started.
+✔ Test layoutStates() passed after 34.153 seconds.
+✔ Suite CompactHelpTests passed after 188.696 seconds.
+✔ Test pinnedSessionStaysAndOffersJumpToLatest() passed after 36.383 seconds.
+◇ Test followLatestHoldsOnlyWhileTheIslandIsOpen() started.
+✔ Test pinnedSessionDoesNotAcknowledgeAnUnopenedAnswer() passed after 36.355 seconds.
+✔ Suite Phase81ReadyTests passed after 188.742 seconds.
+✔ Test autoCaptureIsOptInBoundToAgentHostAndProjectAndNeverFallsBack() passed after 36.387 seconds.
+◇ Test noWindowCanBeChosenForAConversationWithoutAHost() started.
+✔ Test noWindowCanBeChosenForAConversationWithoutAHost() passed after 0.001 seconds.
+◇ Test captureFinalWindowAddsOnlyWhatTheUserPicked() started.
+✔ Test captureFinalWindowAddsOnlyWhatTheUserPicked() passed after 0.001 seconds.
+✔ Suite Phase94UITests passed after 188.767 seconds.
+✔ Test followLatestHoldsOnlyWhileTheIslandIsOpen() passed after 0.031 seconds.
+◇ Test savedPinMigratesToStayModeAndIsKept() started.
+✔ Test savedPinMigratesToStayModeAndIsKept() passed after 0.006 seconds.
+◇ Test unfinishedHandoffHoldsTheReportUntilDone() started.
+✔ Test readingOneResultLeavesTheOthersUnreadAcrossRestarts() passed after 36.395 seconds.
+◇ Test markAllReadOnlyMarksTheRowsShownAndNextUnreadWalksNewestFirst() started.
+✔ Test unfinishedHandoffHoldsTheReportUntilDone() passed after 0.011 seconds.
+◇ Test nestedFolderSessionsShareTheLogicalProject() started.
+✔ Test nestedFolderSessionsShareTheLogicalProject() passed after 0.006 seconds.
+◇ Test captureErrorIsAWarningNotAReadyDot() started.
+✔ Test captureErrorIsAWarningNotAReadyDot() passed after 0.001 seconds.
+◇ Test observedAndVerifiedNamedResultsAreAutoSelectedOthersAreNot() started.
+✔ Test observedAndVerifiedNamedResultsAreAutoSelectedOthersAreNot() passed after 0.013 seconds.
+◇ Test namedFilesWithoutATurnWindowAreOnlyOffered() started.
+✔ Test namedFilesWithoutATurnWindowAreOnlyOffered() passed after 0.001 seconds.
+◇ Test continuationKeepsTheRequestAndShowsTheEarlierTask() started.
+✔ Test continuationKeepsTheRequestAndShowsTheEarlierTask() passed after 0.001 seconds.
+✔ Suite Phase93Tests passed after 188.811 seconds.
+✔ Test markAllReadOnlyMarksTheRowsShownAndNextUnreadWalksNewestFirst() passed after 0.056 seconds.
+◇ Test copyWithContextUsesTheResultOpenedFromTheInbox() started.
+✔ Test copyWithContextUsesTheResultOpenedFromTheInbox() passed after 0.030 seconds.
+◇ Test resultsAreNotLoadedInIdleOrOnHome() started.
+✔ Test resultsAreNotLoadedInIdleOrOnHome() passed after 0.029 seconds.
+◇ Test inboxShowsErrorsAndRecovers() started.
+✔ Test inboxShowsErrorsAndRecovers() passed after 0.012 seconds.
+◇ Test aNewerAnswerNeverReplacesTheOneBeingRead() started.
+✔ Test aNewerAnswerNeverReplacesTheOneBeingRead() passed after 0.006 seconds.
+◇ Test pinnedConversationSurvivesOtherAgentsFinishing() started.
+✔ Test pinnedConversationSurvivesOtherAgentsFinishing() passed after 0.021 seconds.
+◇ Test quickSwitcherFindsAndOpensEachKindOfTarget() started.
+✔ Test quickSwitcherFindsAndOpensEachKindOfTarget() passed after 0.025 seconds.
+◇ Test workspaceModeIsRememberedAndByProjectStaysTheDefault() started.
+✔ Test workspaceModeIsRememberedAndByProjectStaysTheDefault() passed after 0.001 seconds.
+◇ Test thousandsOfResultsStayResponsive() started.
+✔ Test thousandsOfResultsStayResponsive() passed after 0.234 seconds.
+◇ Test globalShortcutsAreOffByDefaultAndRegisterOnlyWhenTurnedOn() started.
+✔ Test globalShortcutsAreOffByDefaultAndRegisterOnlyWhenTurnedOn() passed after 0.006 seconds.
+◇ Test openAtLoginIsOffByDefaultAndOnlyForTheInstalledReleaseCopy() started.
+✔ Test openAtLoginIsOffByDefaultAndOnlyForTheInstalledReleaseCopy() passed after 0.002 seconds.
+◇ Test trustSummaryKeepsFactsClaimsAndOpenChecksApart() started.
+✔ Test trustSummaryKeepsFactsClaimsAndOpenChecksApart() passed after 0.001 seconds.
+◇ Test newScreensFitAndLeaveDetailsHeightAlone() started.
+✔ Test newScreensFitAndLeaveDetailsHeightAlone() passed after 8.887 seconds.
+✔ Suite Phase12Tests passed after 198.095 seconds.
+✔ Test run with 98 tests in 21 suites passed after 198.096 seconds.

@@ -1,0 +1,61 @@
+warning: /Users/admin/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
+warning: /Users/admin/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
+Building for debugging...
+[Planning deferred tasks]
+[2 / 12] PromptRelayKit
+[13 / 91]
+[15 / 91]
+[23 / 91]
+[26 / 91]
+[32 / 91]
+[34 / 91]
+[37 / 91]
+[43 / 91]
+[46 / 91]
+[48 / 91]
+[49 / 91]
+[61 / 91]
+[64 / 91]
+[65 / 91]
+[69 / 91]
+[71 / 91]
+[74 / 91]
+[75 / 91]
+[77 / 91]
+[81 / 91] PromptRelayKit
+[86 / 97] PromptRelayKit
+[92 / 99] PromptRelayKit-product
+[92 / 99] PromptRelayApp-product
+[94 / 99] PromptRelayKitTests-product
+[96 / 108]
+[98 / 108]
+[99 / 108] PromptRelayApp-product
+[104 / 110] PromptRelayApp-product
+[105 / 110] PromptRelayKitTests-product
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6VisualTests.swift:115:63: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+113 |         withAnimation(Island.geometry(reduceMotion: false)) { m.taskExpanded = true }
+114 |         for _ in 0..<10 {
+115 |             island.host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+    |                                                               `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+116 |             heights.append(island.presentation.layoutFrames["task.body"]?.height ?? 0)
+117 |         }
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+[108 / 111] PromptRelayKitTests-product
+[109 / 111] PromptRelayKitTests-product
+[110 / 114] PromptRelayKitTests-product
+Build complete! (14,33 secs)
+error: Process '/Applications/Xcode.app/Contents/Developer/usr/bin/xctest -XCTest PromptRelayKitTests.Phase8Tests/testFullReportLinkEvidenceChipAndFooterNeverOverlap,PromptRelayKitTests.Phase8Tests/testTipsAvoidTheMainActionsAndStayInside /Users/admin/Projects/prompt-relay/macos/.build/out/Products/Debug/PromptRelayKitTests.xctest' exited with unexpected signal code 5
+Test Suite 'Selected tests' started at 2026-10-31 22:53:01.685.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-10-31 22:53:01.685.
+Test Suite 'Phase8Tests' started at 2026-10-31 22:53:01.685.
+Test Case '-[PromptRelayKitTests.Phase8Tests testFullReportLinkEvidenceChipAndFooterNeverOverlap]' started.
+PromptRelayKitTests/Phase8Tests.swift:103: Fatal error: Unexpectedly found nil while implicitly unwrapping an Optional value
+Note: Some test targets reported failures:
+  - PromptRelayKitTests (XCTest)

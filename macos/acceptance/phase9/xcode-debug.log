@@ -1,0 +1,851 @@
+Build Prompt Relay
+    Prepare build
+        Compute target dependency graph for package preparation
+            ComputePackagePrebuildTargetDependencyGraph
+        
+        Create build request
+            CreateBuildRequest
+        
+        Send project description to build service
+            SendProjectDescription
+        
+        Create build operation
+            CreateBuildOperation
+        
+        Compute target dependency graph
+            ComputeTargetDependencyGraph
+            note: Building targets in dependency order
+            note: Target dependency graph (3 targets)
+                Target 'Prompt Relay' in project 'PromptRelay'
+                    ➜ Explicit dependency on target 'PromptRelayKit-product' in project 'PromptRelay'
+                Target 'PromptRelayKit-product' in project 'PromptRelay'
+                    ➜ Explicit dependency on target 'PromptRelayKit' in project 'PromptRelay'
+                Target 'PromptRelayKit' in project 'PromptRelay' (no dependencies)
+        
+        
+        Gather provisioning inputs
+            GatherProvisioningInputs
+        
+        Create build description
+            CreateBuildDescription
+        
+        Create build directory $(DERIVED_DATA_DIR)/CompilationCache.noindex
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/CompilationCache.noindex
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/CompilationCache.noindex
+        
+        Create build directory $(DERIVED_DATA_DIR)/ModuleCache.noindex
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
+        
+        Create build directory $(OBJROOT)
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex
+        
+        Create build directory $(OBJROOT)/EagerLinkingTBDs/Debug
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+        
+        Create build directory $(OBJROOT)/ExplicitPrecompiledModules
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/ExplicitPrecompiledModules
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/ExplicitPrecompiledModules
+        
+        Create build directory $(OBJROOT)/PrecompiledHeaders
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PrecompiledHeaders
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PrecompiledHeaders
+        
+        Create build directory $(OBJROOT)/SwiftExplicitPrecompiledModules
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+        
+        Create build directory $(TARGET_BUILD_DIR)
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products
+        
+        Create build directory $(TARGET_BUILD_DIR)/Debug
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug
+        
+        Create build directory $(DERIVED_DATA_DIR)/SDKExplicitPrecompiledModules
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules
+        
+        Build stat cache for /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk
+            ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk /Users/admin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache
+                cd /Users/admin/Projects/prompt-relay/macos
+                /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -o /Users/admin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache
+        
+        Create build directory $(TARGET_BUILD_DIR)/Debug/PackageFrameworks
+            CreateBuildDirectory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-create-build-directory /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks
+        
+        Write all-product-headers.yaml
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelay-6ed153b29659bfbc99e7d3e62b5fdc71-VFS/all-product-headers.yaml
+                cd /Users/admin/Projects/prompt-relay/macos
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelay-6ed153b29659bfbc99e7d3e62b5fdc71-VFS/all-product-headers.yaml
+        
+        Prune stale explicit modules at /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules
+            PruneExplicitPrecompiledModules /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules
+        
+        Prune stale explicit modules at /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/ExplicitPrecompiledModules
+            PruneExplicitPrecompiledModules /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/ExplicitPrecompiledModules
+        
+        Prune stale explicit modules at /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+            PruneExplicitPrecompiledModules /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+        
+    Prepare packages
+    
+    Build target PromptRelayKit
+        Write PromptRelayKit.modulemap
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.modulemap (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.modulemap
+        
+        Copy PromptRelayKit.modulemap
+            Copy /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/GeneratedModuleMaps/PromptRelayKit.modulemap /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.modulemap (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.modulemap /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/GeneratedModuleMaps
+        
+        Write PromptRelayKit_const_extract_protocols.json (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit_const_extract_protocols.json (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit_const_extract_protocols.json
+        
+        Write PromptRelayKit-OutputFileMap.json (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-OutputFileMap.json (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-OutputFileMap.json
+        
+        Write PromptRelayKit.SwiftConstValuesFileList
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.SwiftConstValuesFileList (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.SwiftConstValuesFileList
+        
+        Write PromptRelayKit.SwiftFileList (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.SwiftFileList (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.SwiftFileList
+        
+        Write PromptRelayKit.DependencyStaticMetadataFileList
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.DependencyStaticMetadataFileList (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.DependencyStaticMetadataFileList
+        
+        Write PromptRelayKit.DependencyMetadataFileList
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.DependencyMetadataFileList (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.DependencyMetadataFileList
+        
+        Planning Swift module PromptRelayKit (arm64)
+            SwiftDriver PromptRelayKit normal arm64 com.apple.xcode.tools.swift.compiler (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -parse-as-library -module-name PromptRelayKit -Onone @/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos14.0 -g -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j11 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name macos -emit-const-values -const-gather-protocols-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit_const_extract_protocols.json -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/include -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/DerivedSources-normal/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/DerivedSources/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-Swift.h -working-directory /Users/admin/Projects/prompt-relay/macos -experimental-emit-module-separately -disable-cmo
+        
+        Compiling DetailsViews.swift
+            SwiftCompile normal arm64 Compiling\ DetailsViews.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/DetailsViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile DetailsViews.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/DetailsViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile DetailsViews.swift
+            
+        Compiling IntegrationsView.swift
+            SwiftCompile normal arm64 Compiling\ IntegrationsView.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IntegrationsView.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile IntegrationsView.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IntegrationsView.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile IntegrationsView.swift
+            
+        Emitting module for PromptRelayKit
+            SwiftEmitModule normal arm64 Emitting\ module\ for\ PromptRelayKit (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile
+                SwiftCompile normal arm64 (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+            
+        Compiling ReportStore.swift
+            SwiftCompile normal arm64 Compiling\ ReportStore.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/ReportStore.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile ReportStore.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/ReportStore.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile ReportStore.swift
+            
+        Compiling IslandViews.swift
+            SwiftCompile normal arm64 Compiling\ IslandViews.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift:1840:13: warning: initialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+            1838 | 
+            1839 |     var body: some View {
+            1840 |         let facts = ReportFacts(model: model)
+                 |             `- warning: initialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+            1841 |         let task = model.fullTask
+            1842 |         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+            
+            [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+        
+            Compile IslandViews.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile IslandViews.swift
+                /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift:1839:warning:Initialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it
+            
+            
+        Compiling ResultAttachments.swift
+            SwiftCompile normal arm64 Compiling\ ResultAttachments.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/ResultAttachments.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile ResultAttachments.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/ResultAttachments.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile ResultAttachments.swift
+            
+        Compiling AppModel+Handoff.swift
+            SwiftCompile normal arm64 Compiling\ AppModel+Handoff.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/AppModel+Handoff.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile AppModel+Handoff.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/AppModel+Handoff.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile AppModel+Handoff.swift
+            
+        Compiling Reports.swift
+            SwiftCompile normal arm64 Compiling\ Reports.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Models/Reports.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile Reports.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Models/Reports.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile Reports.swift
+            
+        Discovering Swift tasks after 'Compiling Reports.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling Reports.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Compiling PreviewViews.swift
+            SwiftCompile normal arm64 Compiling\ PreviewViews.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/PreviewViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile PreviewViews.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/PreviewViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile PreviewViews.swift
+            
+        Compiling AppModel.swift
+            SwiftCompile normal arm64 Compiling\ AppModel.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/AppModel.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile AppModel.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/AppModel.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile AppModel.swift
+            
+        Compiling ExportBundle.swift
+            SwiftCompile normal arm64 Compiling\ ExportBundle.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/ExportBundle.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile ExportBundle.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/ExportBundle.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile ExportBundle.swift
+            
+        Compiling EvidenceCheck.swift
+            SwiftCompile normal arm64 Compiling\ EvidenceCheck.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/EvidenceCheck.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile EvidenceCheck.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/EvidenceCheck.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile EvidenceCheck.swift
+            
+        Compiling ReviewPack.swift
+            SwiftCompile normal arm64 Compiling\ ReviewPack.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/ReviewPack.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile ReviewPack.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/ReviewPack.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile ReviewPack.swift
+            
+        Discovering Swift tasks after 'Compiling ReportStore.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling ReportStore.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Compiling ClipboardViews.swift
+            SwiftCompile normal arm64 Compiling\ ClipboardViews.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/ClipboardViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile ClipboardViews.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/ClipboardViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile ClipboardViews.swift
+            
+        Discovering Swift tasks after 'Compiling IntegrationsView.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling IntegrationsView.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Compiling PreviewSupport.swift
+            SwiftCompile normal arm64 Compiling\ PreviewSupport.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Previews/PreviewSupport.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile PreviewSupport.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Previews/PreviewSupport.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile PreviewSupport.swift
+            
+        Discovering Swift tasks after 'Compiling ResultAttachments.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling ResultAttachments.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Compiling NotchController.swift
+            SwiftCompile normal arm64 Compiling\ NotchController.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/NotchController.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile NotchController.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/NotchController.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile NotchController.swift
+            
+        Discovering Swift tasks after 'Compiling ReviewPack.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling ReviewPack.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Compiling Components.swift
+            SwiftCompile normal arm64 Compiling\ Components.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/UI/Components.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile Components.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/UI/Components.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile Components.swift
+            
+        Discovering Swift tasks after 'Compiling ExportBundle.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling ExportBundle.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Compiling FullTask.swift
+            SwiftCompile normal arm64 Compiling\ FullTask.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/FullTask.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile FullTask.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/FullTask.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile FullTask.swift
+            
+        Discovering Swift tasks after 'Compiling AppModel+Handoff.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling AppModel+Handoff.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Compiling ClipboardImageHistory.swift
+            SwiftCompile normal arm64 Compiling\ ClipboardImageHistory.swift /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/ClipboardImageHistory.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+            Compile ClipboardImageHistory.swift
+                SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/ClipboardImageHistory.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                    cd /Users/admin/Projects/prompt-relay/macos
+                    builtin-SwiftPerFileCompile ClipboardImageHistory.swift
+            
+        Discovering Swift tasks after 'Compiling PreviewSupport.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling PreviewSupport.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Compiling EvidenceCheck.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling EvidenceCheck.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Compiling PreviewViews.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling PreviewViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Compiling ClipboardImageHistory.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling ClipboardImageHistory.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Compiling Components.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling Components.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Emitting module for PromptRelayKit'
+            SwiftDriverJobDiscovery normal arm64 Emitting module for PromptRelayKit (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Unblock downstream dependents of PromptRelayKit (arm64)
+            SwiftDriver\ Compilation\ Requirements PromptRelayKit normal arm64 com.apple.xcode.tools.swift.compiler (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -parse-as-library -module-name PromptRelayKit -Onone @/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos14.0 -g -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j11 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name macos -emit-const-values -const-gather-protocols-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit_const_extract_protocols.json -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/include -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/DerivedSources-normal/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/DerivedSources/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-Swift.h -working-directory /Users/admin/Projects/prompt-relay/macos -experimental-emit-module-separately -disable-cmo
+        
+        Merge Objective-C generated interface headers
+            SwiftMergeGeneratedHeaders /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/GeneratedModuleMaps/PromptRelayKit-Swift.h /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-Swift.h (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-swiftHeaderTool -arch arm64 /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-Swift.h -o /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/GeneratedModuleMaps/PromptRelayKit-Swift.h
+        
+        Copy PromptRelayKit.swiftmodule (arm64)
+            Copy /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.swiftmodule/arm64-apple-macos.swiftmodule /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftmodule (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftmodule /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.swiftmodule/arm64-apple-macos.swiftmodule
+        
+        Copy PromptRelayKit.swiftdoc (arm64)
+            Copy /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.swiftmodule/arm64-apple-macos.swiftdoc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftdoc (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftdoc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.swiftmodule/arm64-apple-macos.swiftdoc
+        
+        Copy PromptRelayKit.abi.json (arm64)
+            Copy /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.swiftmodule/arm64-apple-macos.abi.json /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.abi.json (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.abi.json /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.swiftmodule/arm64-apple-macos.abi.json
+        
+        Copy PromptRelayKit.swiftsourceinfo (arm64)
+            Copy /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftsourceinfo (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftsourceinfo /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+        
+        Discovering Swift tasks after 'Compiling ClipboardViews.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling ClipboardViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Compiling NotchController.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling NotchController.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Compiling FullTask.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling FullTask.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Compiling AppModel.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling AppModel.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Compiling DetailsViews.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling DetailsViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Discovering Swift tasks after 'Compiling IslandViews.swift'
+            SwiftDriverJobDiscovery normal arm64 Compiling IslandViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+        
+        Compile PromptRelayKit (arm64)
+            SwiftDriver\ Compilation PromptRelayKit normal arm64 com.apple.xcode.tools.swift.compiler (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -parse-as-library -module-name PromptRelayKit -Onone @/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos14.0 -g -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j11 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name macos -emit-const-values -const-gather-protocols-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit_const_extract_protocols.json -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/include -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/DerivedSources-normal/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/DerivedSources/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit-Swift.h -working-directory /Users/admin/Projects/prompt-relay/macos -experimental-emit-module-separately -disable-cmo
+        
+        Compile CommandRunner.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Core/CommandRunner.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile CommandRunner.swift
+        
+        Compile CoreClient.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Core/CoreClient.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile CoreClient.swift
+        
+        Compile CoreLocator.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Core/CoreLocator.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile CoreLocator.swift
+        
+        Compile APIModels.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Models/APIModels.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile APIModels.swift
+        
+        Compile AgentSource.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Models/AgentSource.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile AgentSource.swift
+        
+        Compile CaptureHealthView.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/CaptureHealthView.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile CaptureHealthView.swift
+        
+        Compile EvidenceViews.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/EvidenceViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile EvidenceViews.swift
+        
+        Compile FailureViews.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/FailureViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile FailureViews.swift
+        
+        Compile HotKey.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/HotKey.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile HotKey.swift
+        
+        Compile IslandSettingsView.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandSettingsView.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile IslandSettingsView.swift
+        
+        Compile IslandTooltips.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandTooltips.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile IslandTooltips.swift
+        
+        Compile Mascot.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/Mascot.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile Mascot.swift
+        
+        Compile NotchCoordinator.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/NotchCoordinator.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile NotchCoordinator.swift
+        
+        Compile NotchGeometry.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/NotchGeometry.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile NotchGeometry.swift
+        
+        Compile NotchInteraction.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/NotchInteraction.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile NotchInteraction.swift
+        
+        Compile NotchSettings.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/NotchSettings.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile NotchSettings.swift
+        
+        Compile NotchViews.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/NotchViews.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile NotchViews.swift
+        
+        Compile PointerFollower.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/PointerFollower.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile PointerFollower.swift
+        
+        Compile RelayLife.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/RelayLife.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile RelayLife.swift
+        
+        Compile RelayMotion.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/RelayMotion.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile RelayMotion.swift
+        
+        Compile CharacterCount.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/CharacterCount.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile CharacterCount.swift
+        
+        Compile CommandDiagnostics.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/CommandDiagnostics.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile CommandDiagnostics.swift
+        
+        Compile FailureInspector.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/FailureInspector.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile FailureInspector.swift
+        
+        Compile Formatting.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/Formatting.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile Formatting.swift
+        
+        Compile ImportAnalysis.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/ImportAnalysis.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile ImportAnalysis.swift
+        
+        Compile LoadState.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/LoadState.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile LoadState.swift
+        
+        Compile SmartContext.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/SmartContext.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile SmartContext.swift
+        
+        Compile AppBuild.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/AppBuild.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile AppBuild.swift
+        
+        Compile ClipboardService.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/ClipboardService.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile ClipboardService.swift
+        
+        Compile ReadyNotifier.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/ReadyNotifier.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile ReadyNotifier.swift
+        
+        Compile SecretScanner.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/SecretScanner.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile SecretScanner.swift
+        
+        Compile StoreWatcher.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Services/StoreWatcher.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile StoreWatcher.swift
+        
+        Compile Labels.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/UI/Labels.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile Labels.swift
+        
+        Compile Markdown.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/UI/Markdown.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile Markdown.swift
+        
+        Compile SurfaceActions.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/UI/SurfaceActions.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile SurfaceActions.swift
+        
+        Compile Themes.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/UI/Themes.swift (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                builtin-SwiftPerFileCompile Themes.swift
+        
+        Write PromptRelayKit.LinkFileList (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.LinkFileList (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.LinkFileList
+        
+        Link PromptRelayKit.o (arm64)
+            Ld /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.o normal (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -r -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -O0 -Xlinker -no_warn_duplicate_libraries -F/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.LinkFileList -nostdlib -Xlinker -object_path_lto -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit_lto.o -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.swiftmodule -o /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.o
+        
+        Extract app intents metadata
+            ExtractAppIntentsMetadata (in target 'PromptRelayKit' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Package.swift')
+                cd /Users/admin/Projects/prompt-relay/macos
+                /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name PromptRelayKit --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk --xcode-version 27A9275 --platform-family macOS --deployment-target 14.0 --bundle-identifier macos.PromptRelayKit --output /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.appintents --target-triple arm64-apple-macos14.0 --binary-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PromptRelayKit.o --dependency-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit_dependency_info.dat --stringsdata-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.SwiftFileList --metadata-file-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.DependencyMetadataFileList --static-metadata-file-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/PromptRelayKit.DependencyStaticMetadataFileList --swift-const-vals-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelayKit-t.build/Objects-normal/arm64/PromptRelayKit.SwiftConstValuesFileList --force --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+            2026-11-03 19:53:21.649 appintentsmetadataprocessor[18872:8406741] Starting appintentsmetadataprocessor export
+            2026-11-03 19:53:21.700 appintentsmetadataprocessor[18872:8406741] Extracted no relevant App Intents symbols, skipping writing output
+        
+        
+    Build target Prompt Relay
+        note: Run script build phase 'Embed Python Core' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+    
+        Create directory Contents
+            MkDir /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /bin/mkdir -p /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents
+        
+        Create directory MacOS
+            MkDir /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /bin/mkdir -p /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS
+        
+        Write Entitlements.plist
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources/Entitlements.plist (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources/Entitlements.plist
+        
+        Write Prompt Relay.SwiftFileList (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.SwiftFileList (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.SwiftFileList
+        
+        Write Prompt Relay-OutputFileMap.json (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay-OutputFileMap.json (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay-OutputFileMap.json
+        
+        Write Prompt Relay_const_extract_protocols.json (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay_const_extract_protocols.json (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay_const_extract_protocols.json
+        
+        Write Prompt Relay-generated-files.hmap
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-generated-files.hmap (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-generated-files.hmap
+        
+        Write Prompt Relay-own-target-headers.hmap
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-own-target-headers.hmap (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-own-target-headers.hmap
+        
+        Write Prompt Relay-all-non-framework-target-headers.hmap
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-all-non-framework-target-headers.hmap (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-all-non-framework-target-headers.hmap
+        
+        Write Prompt Relay-project-headers.hmap
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-project-headers.hmap (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-project-headers.hmap
+        
+        Write Prompt Relay.hmap
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.hmap (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.hmap
+        
+        Write Prompt Relay-all-target-headers.hmap
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-all-target-headers.hmap (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-all-target-headers.hmap
+        
+        Create directory Prompt Relay.app
+            MkDir /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /bin/mkdir -p /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app
+        
+        Process product packaging
+            ProcessProductPackaging "" /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.app.xcent (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                
+                Entitlements:
+                
+                {
+                "com.apple.security.get-task-allow" = 1;
+            }
+                
+                builtin-productPackagingUtility -entitlements -format xml -o /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.app.xcent
+        
+        Generate DER entitlements
+            ProcessProductPackagingDER /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.app.xcent /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.app.xcent.der (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /usr/bin/derq query -f xml -i /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.app.xcent -o /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.app.xcent.der --raw
+        
+        Planning Swift module Prompt_Relay (arm64)
+            SwiftDriver Prompt\ Relay normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Prompt_Relay -Onone @/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos14.0 -g -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -F /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks -F /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -c -j11 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay_const_extract_protocols.json -Xcc -iquote -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-generated-files.hmap -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-own-target-headers.hmap -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelay-6ed153b29659bfbc99e7d3e62b5fdc71-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-project-headers.hmap -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/include -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources-normal/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay-Swift.h -working-directory /Users/admin/Projects/prompt-relay/macos/Xcode -experimental-emit-module-separately -disable-cmo
+        
+        Emitting module for Prompt_Relay
+            SwiftEmitModule normal arm64 Emitting\ module\ for\ Prompt_Relay (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+            Compile
+                SwiftCompile normal arm64 (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                    cd /Users/admin/Projects/prompt-relay/macos/Xcode
+            
+        Compile Prompt Relay (arm64)
+            SwiftDriver\ Compilation Prompt\ Relay normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Prompt_Relay -Onone @/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos14.0 -g -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -F /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks -F /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -c -j11 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay_const_extract_protocols.json -Xcc -iquote -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-generated-files.hmap -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-own-target-headers.hmap -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelay-6ed153b29659bfbc99e7d3e62b5fdc71-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-project-headers.hmap -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/include -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources-normal/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay-Swift.h -working-directory /Users/admin/Projects/prompt-relay/macos/Xcode -experimental-emit-module-separately -disable-cmo
+        
+        Compile main.swift
+            SwiftCompile normal arm64 /Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayApp/main.swift (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-SwiftPerFileCompile main.swift
+        
+        Write Prompt Relay.DependencyMetadataFileList
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.DependencyMetadataFileList (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.DependencyMetadataFileList
+        
+        Write Prompt Relay.DependencyStaticMetadataFileList
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.DependencyStaticMetadataFileList (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.DependencyStaticMetadataFileList
+        
+        Discovering Swift tasks after 'Emitting module for Prompt_Relay'
+            SwiftDriverJobDiscovery normal arm64 Emitting module for Prompt_Relay (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+        
+        Unblock downstream dependents of Prompt Relay (arm64)
+            SwiftDriver\ Compilation\ Requirements Prompt\ Relay normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Prompt_Relay -Onone @/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos14.0 -g -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -F /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks -F /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -c -j11 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/admin/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /Users/admin/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay_const_extract_protocols.json -Xcc -iquote -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-generated-files.hmap -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-own-target-headers.hmap -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/PromptRelay-6ed153b29659bfbc99e7d3e62b5fdc71-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-project-headers.hmap -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/include -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources-normal/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources/arm64 -Xcc -I/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay-Swift.h -working-directory /Users/admin/Projects/prompt-relay/macos/Xcode -experimental-emit-module-separately -disable-cmo
+        
+        Copy Prompt_Relay.swiftsourceinfo (arm64)
+            Copy /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt_Relay.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftsourceinfo (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftsourceinfo /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt_Relay.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+        
+        Copy Prompt_Relay.abi.json (arm64)
+            Copy /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt_Relay.swiftmodule/arm64-apple-macos.abi.json /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.abi.json (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.abi.json /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt_Relay.swiftmodule/arm64-apple-macos.abi.json
+        
+        Write Script-AB0000000000000000000602.sh
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Script-AB0000000000000000000602.sh (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Script-AB0000000000000000000602.sh
+        
+        Copy Prompt_Relay.swiftdoc (arm64)
+            Copy /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt_Relay.swiftmodule/arm64-apple-macos.swiftdoc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftdoc (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftdoc /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt_Relay.swiftmodule/arm64-apple-macos.swiftdoc
+        
+        Copy Prompt_Relay.swiftmodule (arm64)
+            Copy /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt_Relay.swiftmodule/arm64-apple-macos.swiftmodule /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftmodule (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftmodule /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt_Relay.swiftmodule/arm64-apple-macos.swiftmodule
+        
+        Merge Objective-C generated interface headers
+            SwiftMergeGeneratedHeaders /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources/Prompt_Relay-Swift.h /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay-Swift.h (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-swiftHeaderTool -arch arm64 /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay-Swift.h -o /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/DerivedSources/Prompt_Relay-Swift.h
+        
+        Write Prompt Relay-DebugDylibPath-normal-arm64.txt (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-DebugDylibPath-normal-arm64.txt (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-DebugDylibPath-normal-arm64.txt
+        
+        Write Prompt Relay-DebugDylibInstallName-normal-arm64.txt (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-DebugDylibInstallName-normal-arm64.txt (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-DebugDylibInstallName-normal-arm64.txt
+        
+        Write Prompt Relay.LinkFileList (arm64)
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.LinkFileList (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.LinkFileList
+        
+        Link __preview.dylib (arm64)
+            Ld /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/__preview.dylib normal (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -F/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks -F/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -install_name @rpath/Prompt\ Relay.debug.dylib -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay_dependency_info.dat -Xlinker -no_adhoc_codesign -o /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/__preview.dylib
+        
+        Process Info.plist
+            ProcessInfoPlistFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/Info.plist /Users/admin/Projects/prompt-relay/macos/Xcode/Info.plist (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-infoPlistUtility /Users/admin/Projects/prompt-relay/macos/Xcode/Info.plist -producttype com.apple.product-type.application -genpkginfo /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/PkgInfo -expandbuildsettings -platform macosx -o /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/Info.plist
+        
+        Link Prompt Relay.debug.dylib (arm64)
+            Ld /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay.debug.dylib normal (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -F/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks -F/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -filelist /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.LinkFileList -install_name @rpath/Prompt\ Relay.debug.dylib -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path -Xlinker -rpath -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt_Relay.swiftmodule -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -Xlinker -no_adhoc_codesign -o /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay.debug.dylib
+        
+        Write Prompt Relay.SwiftConstValuesFileList
+            WriteAuxiliaryFile /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.SwiftConstValuesFileList (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                write-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.SwiftConstValuesFileList
+        
+        Create stub executor file list (arm64)
+            ConstructStubExecutorLinkFileList /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-ExecutorLinkFileList-normal-arm64.txt (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                construct-stub-executor-link-file-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-ExecutorLinkFileList-normal-arm64.txt
+            note: Using stub executor library with Swift entry point. (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+        
+        
+        Link Prompt Relay (arm64)
+            Ld /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay normal (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -F/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks -F/Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @loader_path -Xlinker -rpath -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/../Frameworks -rdynamic -Xlinker -no_deduplicate -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay-ExecutorLinkFileList-normal-arm64.txt /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay.debug.dylib -Xlinker -no_adhoc_codesign -o /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay
+        
+        Run custom shell script 'Embed Python Core'
+            PhaseScriptExecution Embed\ Python\ Core /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Script-AB0000000000000000000602.sh (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /bin/sh -c /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\\\ Relay.build/Script-AB0000000000000000000602.sh
+        
+        Copy Swift standard libraries into Prompt Relay.app
+            CopySwiftLibs /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay.debug.dylib --scan-folder /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/Frameworks --scan-folder /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/PlugIns --scan-folder /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/Library/SystemExtensions --scan-folder /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/Extensions --platform macosx --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+        
+        Extract app intents metadata
+            ExtractAppIntentsMetadata (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name Prompt_Relay --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk --xcode-version 27A9275 --platform-family macOS --deployment-target 14.0 --bundle-identifier io.github.banderos14.PromptRelay.debug --output /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/Resources --target-triple arm64-apple-macos14.0 --binary-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay --dependency-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay_dependency_info.dat --stringsdata-file /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.SwiftFileList --metadata-file-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.DependencyMetadataFileList --static-metadata-file-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.DependencyStaticMetadataFileList --swift-const-vals-list /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Objects-normal/arm64/Prompt\ Relay.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+            2026-11-03 19:53:22.129 appintentsmetadataprocessor[18884:8406865] Starting appintentsmetadataprocessor export
+            2026-11-03 19:53:22.130 appintentsmetadataprocessor[18884:8406865] warning: Metadata extraction skipped, no AppIntents.framework dependency found
+        
+        
+        Sign Prompt Relay.debug.dylib
+            CodeSign /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay.debug.dylib (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                
+                Signing Identity:     "Sign to Run Locally"
+                
+                /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/Prompt\ Relay.debug.dylib
+        
+        Sign __preview.dylib
+            CodeSign /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/__preview.dylib (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                
+                Signing Identity:     "Sign to Run Locally"
+                
+                /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app/Contents/MacOS/__preview.dylib
+        
+        Sign Prompt Relay.app
+            CodeSign /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                
+                Signing Identity:     "Sign to Run Locally"
+                
+                /usr/bin/codesign --force --sign - --entitlements /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/PromptRelay.build/Debug/Prompt\ Relay.build/Prompt\ Relay.app.xcent --timestamp\=none --generate-entitlement-der /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app
+        
+        Register execution policy exception for Prompt Relay.app
+            RegisterExecutionPolicyException /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-RegisterExecutionPolicyException /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app
+        
+        Validate Prompt Relay.app
+            Validate /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-validationUtility /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+        
+        Touch Prompt Relay.app
+            Touch /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                /usr/bin/touch -c /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app
+        
+        Register Prompt Relay.app
+            RegisterWithLaunchServices /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app (in target 'Prompt Relay' from project 'PromptRelay' at path '/Users/admin/Projects/prompt-relay/macos/Xcode/PromptRelay.xcodeproj')
+                cd /Users/admin/Projects/prompt-relay/macos/Xcode
+                builtin-lsregisterurl --record-path /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Intermediates.noindex/XCBuildData/registered-launchservices.txt -- /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /Users/admin/Library/Developer/Xcode/DerivedData/PromptRelay-cbijvubtlonxzjdmjxovhonokisa/Build/Products/Debug/Prompt\ Relay.app
+        
+** BUILD SUCCEEDED **

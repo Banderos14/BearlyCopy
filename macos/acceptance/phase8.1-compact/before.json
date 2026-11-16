@@ -1,0 +1,50 @@
+[
+  {
+    "answerHeight" : 106,
+    "bottomSpace" : 38,
+    "footerBottom" : 262,
+    "height" : 268,
+    "panel" : 300,
+    "surface" : "details"
+  },
+  {
+    "answerHeight" : 15,
+    "bottomSpace" : 46,
+    "footerBottom" : 155,
+    "height" : 268,
+    "panel" : 201,
+    "surface" : "peek"
+  },
+  {
+    "answerHeight" : 138,
+    "bottomSpace" : 46,
+    "footerBottom" : 327,
+    "height" : 341,
+    "panel" : 373,
+    "surface" : "details"
+  },
+  {
+    "answerHeight" : 15,
+    "bottomSpace" : 46,
+    "footerBottom" : 155,
+    "height" : 341,
+    "panel" : 201,
+    "surface" : "peek"
+  },
+  {
+    "answerHeight" : 182.56,
+    "bottomSpace" : 46,
+    "footerBottom" : 434,
+    "height" : 448,
+    "panel" : 480,
+    "surface" : "details"
+  },
+  {
+    "answerHeight" : 15,
+    "bottomSpace" : 46,
+    "footerBottom" : 155,
+    "height" : 448,
+    "panel" : 201,
+    "surface" : "peek"
+  }
+]

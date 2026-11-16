@@ -1,0 +1,126 @@
+Building for debugging...
+[1 / 1]
+[2 / 12] PromptRelayKit
+[10 / 20] PromptRelayKit
+[15 / 26] PromptRelayKit
+[16 / 31] PromptRelayKit
+[18 / 31] PromptRelayKit
+[19 / 31] PromptRelayKit
+[21 / 31] PromptRelayKit
+[26 / 37] PromptRelayKit
+/Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift:1840:13: warning: initialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+1838 | 
+1839 |     var body: some View {
+1840 |         let facts = ReportFacts(model: model)
+     |             `- warning: initialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+1841 |         let task = model.fullTask
+1842 |         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[31 / 38] PromptRelayKit-product
+[31 / 38] PromptRelayApp-product
+[33 / 38] PromptRelayKitTests-product
+[44 / 50] PromptRelayKitTests-product
+[45 / 52] PromptRelayApp-product
+[46 / 52] PromptRelayKitTests-product
+[50 / 53] PromptRelayKitTests-product
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6Tests.swift:243:69: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+241 |         let host = NSHostingView(rootView: view)
+242 |         host.frame = NSRect(x: 0, y: 0, width: 400, height: 600)
+243 |         for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+    |                                                                     `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+244 |         let scroll = try XCTUnwrap(frames["task.body"], "the expanded task scrolls")
+245 |         XCTAssertLessThanOrEqual(scroll.height, TaskCard.expandedHeight + 0.5, "80 lines never grow the card past its limit")
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6VisualTests.swift:115:63: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+113 |         withAnimation(Island.geometry(reduceMotion: false)) { m.taskExpanded = true }
+114 |         for _ in 0..<10 {
+115 |             island.host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+    |                                                               `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+116 |             heights.append(island.presentation.layoutFrames["task.body"]?.height ?? 0)
+117 |         }
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6PolishTests.swift:190:26: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+188 |         for _ in 0..<12 {
+189 |             island.host.layoutSubtreeIfNeeded()
+190 |             RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+    |                          `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+191 |             heights.append(island.presentation.layoutFrames["response.scroll"]?.height ?? 0)
+192 |         }
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+[52 / 56] PromptRelayKitTests-product
+[56 / 56] PromptRelayApp-product
+Build complete! (10,44 secs)
+Test Suite 'Selected tests' started at 2026-11-03 19:50:37.201.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-11-03 19:50:37.202.
+Test Suite 'IslandLayoutTests' started at 2026-11-03 19:50:37.202.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testTheResponseIsReadBackFromTheReviewPackExactly]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testTheResponseIsReadBackFromTheReviewPackExactly]' passed (0.047 seconds).
+Test Suite 'IslandLayoutTests' passed at 2026-11-03 19:50:37.249.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.047 (0.047) seconds
+Test Suite 'ReportStoreTests' started at 2026-11-03 19:50:37.249.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testAttachmentsAreCopiedCheckedAndRemovedWithTheirImport]' started.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testAttachmentsAreCopiedCheckedAndRemovedWithTheirImport]' passed (0.012 seconds).
+Test Case '-[PromptRelayKitTests.ReportStoreTests testImportedReviewPackIsHonestAndComplete]' started.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testImportedReviewPackIsHonestAndComplete]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.ReportStoreTests testImportKeepsTextExactlyDeduplicatesAndIsPrivate]' started.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testImportKeepsTextExactlyDeduplicatesAndIsPrivate]' passed (0.007 seconds).
+Test Case '-[PromptRelayKitTests.ReportStoreTests testSecretScannerMatchesTheCore]' started.
+Test Case '-[PromptRelayKitTests.ReportStoreTests testSecretScannerMatchesTheCore]' passed (0.135 seconds).
+Test Suite 'ReportStoreTests' passed at 2026-11-03 19:50:37.405.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.156 (0.156) seconds
+Test Suite 'RequestOriginTests' started at 2026-11-03 19:50:37.405.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testAutomatedTurnShowsTheEarlierUserRequest]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testAutomatedTurnShowsTheEarlierUserRequest]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testAutomatedTurnWithoutEarlierRequestShowsNone]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testAutomatedTurnWithoutEarlierRequestShowsNone]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testDisplayDropsAutomatedBlocksButKeepsTheText]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testDisplayDropsAutomatedBlocksButKeepsTheText]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testFailedCommandCountDecodes]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testFailedCommandCountDecodes]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testNamedFileIsNotClaimedAsConfirmed]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testNamedFileIsNotClaimedAsConfirmed]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.RequestOriginTests testUserAndOlderCoreKeepTheRequest]' started.
+Test Case '-[PromptRelayKitTests.RequestOriginTests testUserAndOlderCoreKeepTheRequest]' passed (0.000 seconds).
+Test Suite 'RequestOriginTests' passed at 2026-11-03 19:50:37.407.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'PromptRelayKitTests.xctest' passed at 2026-11-03 19:50:37.407.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.205 (0.206) seconds
+Test Suite 'Selected tests' passed at 2026-11-03 19:50:37.407.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.205 (0.206) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase9Tests started.
+◇ Test automaticallyPreparesFiveAndPreservesUserSelection() started.
+✔ Test automaticallyPreparesFiveAndPreservesUserSelection() passed after 0.029 seconds.
+◇ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() started.
+✔ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() passed after 0.003 seconds.
+◇ Test snapshotAndQuickPeekHandoffUseSameSelection() started.
+✔ Test snapshotAndQuickPeekHandoffUseSameSelection() passed after 0.028 seconds.
+◇ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() started.
+✔ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() passed after 0.002 seconds.
+✔ Suite Phase9Tests passed after 0.064 seconds.
+✔ Test run with 4 tests in 1 suite passed after 0.064 seconds.

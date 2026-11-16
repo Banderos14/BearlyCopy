@@ -1,0 +1,16 @@
+{
+  "installed": true,
+  "config_toml_unchanged": true,
+  "events": [
+    "PostToolUse",
+    "Stop",
+    "UserPromptSubmit"
+  ],
+  "timeout_seconds": 5,
+  "file_permissions": "0o600",
+  "target_previously_existed": false,
+  "trust_verified": false,
+  "codex_sessions": 0,
+  "codex_xcode_sessions": 0,
+  "real_xcode_capture_verified": false
+}

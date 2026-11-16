@@ -135,7 +135,7 @@ final class Phase151Tests: XCTestCase {
         let c = cmd("swift test | tee test.log", kind: "test", exit: 0)
         XCTAssertEqual(HandoffContentsCard.commands(counts([c]), captureOn: true, detail: detail([c])), "1 unclear")
         let facts = PeekContent.facts(observed: counts([c]), summary: AppModel.MaterialSummary(), detail: detail([c])).map(\.text)
-        XCTAssertTrue(facts.contains("1 result unclear"), "\(facts)")
+        XCTAssertTrue(facts.contains("1 result to double-check"), "\(facts)")
         XCTAssertFalse(facts.contains { $0.contains("completed") }, "never “completed” for an unattributable exit 0: \(facts)")
         // Without per-command detail the aggregate wording is unchanged.
         let aggregate = PeekContent.facts(observed: counts([c]), summary: AppModel.MaterialSummary()).map(\.text)

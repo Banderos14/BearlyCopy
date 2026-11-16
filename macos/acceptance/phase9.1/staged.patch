@@ -1,0 +1,228 @@
+diff --git a/docs/STATUS.md b/docs/STATUS.md
+index 05483b1..35492b8 100644
+--- a/docs/STATUS.md
++++ b/docs/STATUS.md
+@@ -1,5 +1,11 @@
+ # Status
+ 
++## 2026-11-04 — Phase 9.1 acceptance checkpoint
++
++Phase 9 implementation is committed through `1686384`. Phase 9.1 confirms the active Xcode CODEX_HOME, absent Relay hook configuration and zero recorded Codex sessions. Preview succeeded; owner consent to profile changes and real hook trust/session delivery remain pending. Real Xcode and CLI capture are **not verified**. Integration status UI now distinguishes installed adapter, hook definitions and recorded events. Relevant Swift tests, Python regressions and Debug/Release builds pass; interactive live acceptance remains open. See [Phase 9.1](../macos/PHASE9.1.md) and [Phase 9](../macos/PHASE9.md). No Phase 10 work.
++
++## Earlier status (retained)
++
+ Last updated: 2026-10-31, local Mac session (Phase 8 committed on the branch, owner validation pending),
+ branch `claude/loving-mccarthy-ossw3q`.
+ 
+diff --git a/macos/PHASE9.1.md b/macos/PHASE9.1.md
+new file mode 100644
+index 0000000..43eef08
+--- /dev/null
++++ b/macos/PHASE9.1.md
+@@ -0,0 +1,56 @@
++# Phase 9.1 — real Codex acceptance checkpoint
++
++2026-11-04. Starting HEAD: 168638482d40ec0d14672a644205d5b6655cc8fc.
++Branch: claude/loving-mccarthy-ossw3q. Only untracked acceptance/ existed at start.
++
++## Observed on this Mac
++
++- The current agent's CODEX_HOME equals `~/Library/Developer/Xcode/CodingAssistant/codex`.
++- That profile has config.toml, but no hooks.json and no inline hooks table.
++- Neither features.hooks nor its deprecated codex_hooks alias is explicitly set there. No managed-only setting is explicitly set in that file. This does not rule out other policy layers or launch overrides.
++- Installed Xcode Codex executable reports 0.153.1.
++- configure-codex.py preview completed successfully; no --apply was run.
++- Read-only session metadata from the real Prompt Relay store contains eight legacy Claude sessions and zero Codex sessions. No prompt/answer text was printed.
++- User consent to create the Xcode-profile hooks.json was requested with the exact command and three events. Until consent arrives, profile writes and live acceptance remain pending.
++
++## Proposed configuration, not applied
++
++Target: `~/Library/Developer/Xcode/CodingAssistant/codex/hooks.json`.
++Events: UserPromptSubmit, PostToolUse, Stop. Each command has timeout 5 seconds:
++
++```text
++env PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=xcode /bin/sh /Users/admin/Projects/prompt-relay/plugin/hooks/run-hook
++```
++
++Only this file is proposed. Existing config.toml, credentials, other hooks and stored history remain untouched. The helper preserves existing hooks and creates a backup if the target exists by the time of application. Capture is still opt-in per project. This configuration is profile-wide, which is why explicit owner consent is required.
++
++## Trust and acceptance boundary
++
++[Official Codex hook documentation](https://learn.chatgpt.com/docs/hooks) requires review/trust of the exact non-managed hook definition. Discovery via hooks/list is separate from trust and delivery. CLI offers `/hooks`; the documentation also describes Review hooks for the Codex desktop app. That is not evidence that Xcode exposes the same UI.
++
++After approving configuration, the owner must check whether Xcode offers hook review when starting a fresh session in a disposable project. If it does not, report that exact limitation; do not bypass trust or edit trust records directly. No real Xcode or CLI event has been obtained in this checkpoint. Neither client is accepted yet, and Xcode is not declared unsupported merely because configuration has not been enabled.
++
++Next real test: enable capture for one disposable project through Prompt Relay, start a new Xcode Codex session there, and request a Markdown report, a small PNG, an exit-zero command and a controlled exit-7 command. Name both files in the final answer. Check provider/host, native IDs and the complete prompt/answer against the real captured result. Only files with observed origin qualify for auto-selection; shell-generated files without that evidence remain manual candidates. Then verify History, Project & Session, unread/pinned behavior, Quick Peek Copy with Context, deselection and handoff persistence across closing/restarting the app. Do not restart an existing user session automatically.
++
++CLI acceptance must use a separate session and record host CLI; it cannot establish Xcode success. The safe currently available alternative remains Import AI Result with user-supplied Codex/Xcode provenance.
++
++## Implemented change
++
++Settings → Integrations now separates the bundled source adapter, Xcode hooks.json definition count, unverified trust, and recorded hook events. CLI history cannot satisfy the Xcode event indicator. Missing/partial/unreadable definitions require action. No state says Connected based on a file. Inline/plugin configurations and runtime policy are explicitly outside this narrow file inspection. Test Connection refreshes this evidence and performs the existing Core check without an AI task.
++
++Regression tests verify absent, malformed, complete and CLI-only definitions. Complete definitions still say trust not verified. Existing Phase 9 provider/attachment tests and Phase 8.1/8.2 unread/handoff tests run unchanged. No capture, attachment selection, clipboard, correlation or Claude adapter behavior was changed.
++
++## Verification
++
++- 13 relevant Swift Testing tests passed, zero failures, no skipped tests in this selected run. This is not a new full Swift suite run.
++- Debug: Xcode BuildProject succeeded.
++- Release: xcodebuild succeeded with separate DerivedData and signing disabled.
++- Python 3.14 and 3.9: each passed 171 existing tests (1 skipped) plus 12 integration tests.
++- git diff --check passed.
++- Live Xcode capture: not verified; no real events received.
++- Live CLI capture: not verified; no real events received.
++- New UI rendered/compiled, but interactive owner acceptance remains pending.
++
++Local logs: acceptance/phase9.1/ (not committed). No push, merge, reset, clean, UI scraping, private database access, credentials copying, synthetic events in real storage, or system clipboard changes.
++
++Disposable owner test project prepared at `acceptance/phase9.1/xcode-smoke/Package.swift`; paste `SMOKE-PROMPT.md` in a new Xcode Codex conversation only after configuration, hook trust and project capture have been enabled. The scaffold has not been run as a live agent task.
+diff --git a/macos/Sources/PromptRelayKit/Models/CodexHookConfiguration.swift b/macos/Sources/PromptRelayKit/Models/CodexHookConfiguration.swift
+new file mode 100644
+index 0000000..a264b81
+--- /dev/null
++++ b/macos/Sources/PromptRelayKit/Models/CodexHookConfiguration.swift
+@@ -0,0 +1,43 @@
++import Foundation
++
++/// Configuration evidence only. Reading a definition cannot establish client
++/// trust, runtime availability, or delivery of a real Xcode event.
++struct CodexHookConfiguration: Equatable {
++    enum State: Equatable { case absent, partial(Int), defined, unreadable }
++    let state: State
++
++    static var xcodeURL: URL {
++        FileManager.default.homeDirectoryForCurrentUser
++            .appendingPathComponent("Library/Developer/Xcode/CodingAssistant/codex/hooks.json")
++    }
++
++    static func inspect(at url: URL) -> Self {
++        guard FileManager.default.fileExists(atPath: url.path) else { return Self(state: .absent) }
++        do {
++            let data = try Data(contentsOf: url)
++            guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
++                  let hooks = object["hooks"] as? [String: Any] else { return Self(state: .unreadable) }
++            let count = ["UserPromptSubmit", "PostToolUse", "Stop"].filter { event in
++                guard let groups = hooks[event] as? [[String: Any]] else { return false }
++                return groups.contains { group in
++                    (group["hooks"] as? [[String: Any]] ?? []).contains { hook in
++                        guard hook["type"] as? String == "command", let command = hook["command"] as? String else { return false }
++                        return command.contains("PROMPT_RELAY_PROVIDER=codex")
++                            && command.contains("PROMPT_RELAY_HOST=xcode")
++                            && command.contains("/plugin/hooks/run-hook")
++                    }
++                }
++            }.count
++            return Self(state: count == 3 ? .defined : .partial(count))
++        } catch { return Self(state: .unreadable) }
++    }
++
++    var summary: String {
++        switch state {
++        case .absent: return "Xcode hooks.json: absent · setup required"
++        case .partial(let count): return "Xcode hooks.json: \(count)/3 Relay event definitions · review required"
++        case .defined: return "Xcode hooks.json: 3/3 Relay event definitions · trust not verified"
++        case .unreadable: return "Xcode hooks.json: unreadable or invalid · review required"
++        }
++    }
++}
+diff --git a/macos/Sources/PromptRelayKit/Notch/IntegrationsView.swift b/macos/Sources/PromptRelayKit/Notch/IntegrationsView.swift
+index 00eb56a..bd0c80c 100644
+--- a/macos/Sources/PromptRelayKit/Notch/IntegrationsView.swift
++++ b/macos/Sources/PromptRelayKit/Notch/IntegrationsView.swift
+@@ -16,6 +16,7 @@ struct ProviderFilterPicker: View {
+ struct IntegrationsView: View {
+     let model: AppModel
+     @State private var diagnostic: String?
++    @State private var xcodeConfiguration = CodexHookConfiguration(state: .absent)
+     var body: some View {
+         VStack(alignment: .leading, spacing: 8) {
+             Caption("Integrations")
+@@ -23,6 +24,10 @@ struct IntegrationsView: View {
+                 IntegrationStatusRow(model: model, provider: .claudeCode)
+                 Hairline()
+                 IntegrationStatusRow(model: model, provider: .codex)
++                Text(xcodeConfiguration.summary)
++                    .font(.system(size: 11)).foregroundStyle(Island.secondary).padding(.horizontal, 12)
++                Text("Only hooks.json definitions are inspected. Inline/plugin hooks, client trust and policy may differ; automatic capture remains unverified until a real Xcode session delivers events.")
++                    .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
+                 Hairline()
+                 VStack(alignment: .leading, spacing: 6) {
+                     Toggle("Auto-select result attachments", isOn: Binding(
+@@ -31,6 +36,7 @@ struct IntegrationsView: View {
+                         .font(.system(size: 11)).foregroundStyle(Island.tertiary)
+                     Button("Test Connection") {
+                         Task {
++                            xcodeConfiguration = .inspect(at: CodexHookConfiguration.xcodeURL)
+                             diagnostic = await model.testIntegrationConnection()
+                         }
+                     }.buttonStyle(IslandPillStyle(prominent: false))
+@@ -38,6 +44,7 @@ struct IntegrationsView: View {
+                 }.padding(12)
+             }
+         }
++        .task { xcodeConfiguration = .inspect(at: CodexHookConfiguration.xcodeURL) }
+     }
+ }
+ 
+@@ -50,13 +57,23 @@ struct IntegrationStatusRow: View {
+             HStack {
+                 Text(provider.title).font(.system(size: 12.5, weight: .semibold))
+                 Spacer()
+-                Text(sessions.isEmpty ? "Not connected" : "Limited · events received")
++                Text(sessions.isEmpty ? "Action required" : "Recorded events")
++                    .font(.system(size: 11)).foregroundStyle(Island.secondary)
++            }
++            Text("Source adapter: installed in Prompt Relay")
++                .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
++            if sessions.isEmpty {
++                Text("No recorded hook events. Setup and a real session are required.")
+                     .font(.system(size: 11)).foregroundStyle(Island.secondary)
+             }
+             if let latest = sessions.first {
+                 Text("\(latest.sourceLabel) · last event \(Wording.relative(latest.lastEventAt))")
+                     .font(.system(size: 11)).foregroundStyle(Island.secondary)
+             }
++            if provider == .codex, !sessions.contains(where: { $0.source?.environment == .xcode }) {
++                Text("Xcode: no recorded events; CLI history does not verify Xcode capture.")
++                    .font(.system(size: 11)).foregroundStyle(Island.secondary)
++            }
+             if let source = sessions.first?.source {
+                 Text("Source capabilities: " + source.capabilities.joined(separator: ", "))
+                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary)
+diff --git a/macos/Tests/PromptRelayKitTests/Phase91Tests.swift b/macos/Tests/PromptRelayKitTests/Phase91Tests.swift
+new file mode 100644
+index 0000000..22b927c
+--- /dev/null
++++ b/macos/Tests/PromptRelayKitTests/Phase91Tests.swift
+@@ -0,0 +1,31 @@
++import Foundation
++import Testing
++@testable import PromptRelayKit
++
++struct Phase91Tests {
++    @Test func definitionsAreNotConnectionEvidence() throws {
++        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
++        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
++        defer { try? FileManager.default.removeItem(at: root) }
++        let file = root.appendingPathComponent("hooks.json")
++        #expect(CodexHookConfiguration.inspect(at: file).state == .absent)
++        let command = "env PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=xcode /bin/sh /repo/plugin/hooks/run-hook"
++        let group: [[String: Any]] = [["hooks": [["type": "command", "command": command]]]]
++        let hooks = Dictionary(uniqueKeysWithValues: ["UserPromptSubmit", "PostToolUse", "Stop"].map { ($0, group) })
++        try JSONSerialization.data(withJSONObject: ["hooks": hooks]).write(to: file)
++        let result = CodexHookConfiguration.inspect(at: file)
++        #expect(result.state == .defined)
++        #expect(result.summary.contains("trust not verified"))
++        #expect(!result.summary.contains("Connected"))
++    }
++
++    @Test func foreignAndCLIConfigurationsDoNotProveXcode() throws {
++        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
++        defer { try? FileManager.default.removeItem(at: file) }
++        let command = "env PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=terminal /bin/sh /repo/plugin/hooks/run-hook"
++        try JSONSerialization.data(withJSONObject: ["hooks": ["Stop": [["hooks": [["type": "command", "command": command]]]]]]).write(to: file)
++        #expect(CodexHookConfiguration.inspect(at: file).state == .partial(0))
++        try Data("invalid".utf8).write(to: file)
++        #expect(CodexHookConfiguration.inspect(at: file).state == .unreadable)
++    }
++}

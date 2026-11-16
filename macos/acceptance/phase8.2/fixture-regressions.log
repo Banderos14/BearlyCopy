@@ -1,0 +1,25 @@
+Building for debugging...
+[1 / 1]
+[2 / 13] PromptRelayKit
+[5 / 16] PromptRelayKit
+[14 / 19] PromptRelayKit-product
+[14 / 19] PromptRelayKitTests-product
+[17 / 22] PromptRelayKitTests-product
+[22 / 26] PromptRelayKitTests-product
+Build complete! (4,21 secs)
+Test Suite 'Selected tests' started at 2026-11-03 09:53:43.305.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-11-03 09:53:43.305.
+Test Suite 'FollowLatestTests' started at 2026-11-03 09:53:43.305.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testNewAnswerIsFollowedUnlessTheUserBrowsesElsewhere]' started.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testNewAnswerIsFollowedUnlessTheUserBrowsesElsewhere]' passed (0.054 seconds).
+Test Suite 'FollowLatestTests' passed at 2026-11-03 09:53:43.359.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+Test Suite 'IslandNavigationTests' started at 2026-11-03 09:53:43.359.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testNewAnswerMarksItsProjectAndParentFolders]' started.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testNewAnswerMarksItsProjectAndParentFolders]' passed (0.006 seconds).
+Test Suite 'IslandNavigationTests' passed at 2026-11-03 09:53:43.365.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'PromptRelayKitTests.xctest' passed at 2026-11-03 09:53:43.365.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.059 (0.060) seconds
+Test Suite 'Selected tests' passed at 2026-11-03 09:53:43.365.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.059 (0.060) seconds

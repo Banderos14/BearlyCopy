@@ -1,0 +1,45 @@
+Building for debugging...
+[1 / 2] PromptRelayKit
+[2 / 13] PromptRelayKit
+[5 / 16] PromptRelayKit
+[9 / 20] PromptRelayKit
+[14 / 19] PromptRelayKitTests-product
+[18 / 23] PromptRelayKitTests-product
+[23 / 26] PromptRelayKitTests-product
+[25 / 29] PromptRelayKitTests-product
+Build complete! (5,36 secs)
+Test Suite 'Selected tests' started at 2026-11-02 18:03:44.591.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-11-02 18:03:44.591.
+Test Suite 'Phase6PolishTests' started at 2026-11-02 18:03:44.591.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testTooltipsAppearAfterTheDelaySwitchAtOnceAndNeverLinger]' started.
+Test Case '-[PromptRelayKitTests.Phase6PolishTests testTooltipsAppearAfterTheDelaySwitchAtOnceAndNeverLinger]' passed (0.878 seconds).
+Test Suite 'Phase6PolishTests' passed at 2026-11-02 18:03:45.470.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.878 (0.878) seconds
+Test Suite 'Phase8Tests' started at 2026-11-02 18:03:45.470.
+Test Case '-[PromptRelayKitTests.Phase8Tests testWrappedTipEndsWhereItsLongestLineEnds]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testWrappedTipEndsWhereItsLongestLineEnds]' passed (0.467 seconds).
+Test Suite 'Phase8Tests' passed at 2026-11-02 18:03:45.937.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.467 (0.467) seconds
+Test Suite 'TooltipWidthTests' started at 2026-11-02 18:03:45.937.
+Test Case '-[PromptRelayKitTests.TooltipWidthTests testTipIsAsWideAsItsTextAndWrapsAtTheMaximum]' started.
+Test Case '-[PromptRelayKitTests.TooltipWidthTests testTipIsAsWideAsItsTextAndWrapsAtTheMaximum]' passed (0.445 seconds).
+Test Suite 'TooltipWidthTests' passed at 2026-11-02 18:03:46.382.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.445 (0.445) seconds
+Test Suite 'PromptRelayKitTests.xctest' passed at 2026-11-02 18:03:46.382.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 1.790 (1.791) seconds
+Test Suite 'Selected tests' passed at 2026-11-02 18:03:46.382.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 1.790 (1.792) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase81Tests started.
+◇ Suite CompactHelpTests started.
+◇ Test helpNeverCoversContent() started.
+◇ Test rapidSwitchingAndDismissal() started.
+✔ Test helpNeverCoversContent() passed after 58.559 seconds.
+✔ Suite Phase81Tests passed after 58.559 seconds.
+✔ Test rapidSwitchingAndDismissal() passed after 59.231 seconds.
+◇ Test layoutStates() started.
+✔ Test layoutStates() passed after 37.839 seconds.
+✔ Suite CompactHelpTests passed after 97.071 seconds.
+✔ Test run with 3 tests in 2 suites passed after 97.071 seconds.

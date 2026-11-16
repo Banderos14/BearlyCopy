@@ -1,0 +1,104 @@
+Building for debugging...
+[Planning deferred tasks]
+[1 / 15] PromptRelayKit
+[5 / 21] PromptRelayKit
+[12 / 28] PromptRelayKit
+[17 / 28] PromptRelayKit
+[27 / 39] PromptRelayKit
+[28 / 39] PromptRelayKit
+[34 / 41] PromptRelayApp-product
+[36 / 43] PromptRelayApp-product
+[47 / 55] PromptRelayKitTests-product
+[48 / 55] PromptRelayKitTests-product
+[52 / 55] PromptRelayKitTests-product
+[54 / 57] PromptRelayKitTests-product
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6PolishTests.swift:190:26: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+188 |         for _ in 0..<12 {
+189 |             island.host.layoutSubtreeIfNeeded()
+190 |             RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+    |                          `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+191 |             heights.append(island.presentation.layoutFrames["response.scroll"]?.height ?? 0)
+192 |         }
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6Tests.swift:243:69: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+241 |         let host = NSHostingView(rootView: view)
+242 |         host.frame = NSRect(x: 0, y: 0, width: 400, height: 600)
+243 |         for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+    |                                                                     `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+244 |         let scroll = try XCTUnwrap(frames["task.body"], "the expanded task scrolls")
+245 |         XCTAssertLessThanOrEqual(scroll.height, TaskCard.expandedHeight + 0.5, "80 lines never grow the card past its limit")
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6VisualTests.swift:115:63: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+113 |         withAnimation(Island.geometry(reduceMotion: false)) { m.taskExpanded = true }
+114 |         for _ in 0..<10 {
+115 |             island.host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+    |                                                               `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+116 |             heights.append(island.presentation.layoutFrames["task.body"]?.height ?? 0)
+117 |         }
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+[56 / 60] PromptRelayKitTests-product
+Build complete! (10,37 secs)
+Test Suite 'Selected tests' started at 2026-11-03 09:42:29.125.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-11-03 09:42:29.127.
+Test Suite 'NotchInteractionTests' started at 2026-11-03 09:42:29.127.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testClickOrShortcutOpensFocusedAndOnlyEscapeOrFocusLossCloses]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testClickOrShortcutOpensFocusedAndOnlyEscapeOrFocusLossCloses]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testHoverOpensAfterDwellAndClosesAfterGrace]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/NotchTests.swift:66: error: -[PromptRelayKitTests.NotchInteractionTests testHoverOpensAfterDwellAndClosesAfterGrace] : XCTAssertEqual failed: ("compact") is not equal to ("expanded(focused: false)")
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testHoverOpensAfterDwellAndClosesAfterGrace]' failed (0.215 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testPinnedPanelStaysOpenUntilUnpinned]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testPinnedPanelStaysOpenUntilUnpinned]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testQuickPassDoesNotOpenAndReturningCancelsClose]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testQuickPassDoesNotOpenAndReturningCancelsClose]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testRapidRepeatedHoverKeepsAtMostOneTimer]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testRapidRepeatedHoverKeepsAtMostOneTimer]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testTransitionsAreReported]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testTransitionsAreReported]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testUnavailableHidesAndCancelsEverything]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testUnavailableHidesAndCancelsEverything]' passed (0.000 seconds).
+Test Suite 'NotchInteractionTests' failed at 2026-11-03 09:42:29.346.
+	 Executed 7 tests, with 1 failure (0 unexpected) in 0.218 (0.219) seconds
+Test Suite 'Phase6VisualTests' started at 2026-11-03 09:42:29.346.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testPreviewShowsExactlyWhatIsCopiedAndBelongsToOneAnswer]' started.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testPreviewShowsExactlyWhatIsCopiedAndBelongsToOneAnswer]' passed (0.069 seconds).
+Test Suite 'Phase6VisualTests' passed at 2026-11-03 09:42:29.415.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.069 (0.069) seconds
+Test Suite 'PromptRelayKitTests.xctest' failed at 2026-11-03 09:42:29.415.
+	 Executed 8 tests, with 1 failure (0 unexpected) in 0.287 (0.288) seconds
+Test Suite 'Selected tests' failed at 2026-11-03 09:42:29.415.
+	 Executed 8 tests, with 1 failure (0 unexpected) in 0.287 (0.290) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase82Tests started.
+◇ Test pointerLifecycle() started.
+✔ Test pointerLifecycle() passed after 0.001 seconds.
+◇ Test clipboardAndDynamicHelp() started.
+✔ Test clipboardAndDynamicHelp() passed after 32.475 seconds.
+✔ Suite Phase82Tests passed after 32.475 seconds.
+✔ Test run with 2 tests in 1 suite passed after 32.475 seconds.
+Note: Some test targets reported failures:
+  - PromptRelayKitTests (XCTest)

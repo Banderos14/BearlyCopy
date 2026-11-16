@@ -1,0 +1,44 @@
+Building for debugging...
+[2 / 11] PromptRelayKit
+[7 / 16] PromptRelayKit
+[12 / 22] PromptRelayKit
+[17 / 24] PromptRelayKit-product
+[17 / 24] PromptRelayApp-product
+[19 / 24] PromptRelayKitTests-product
+[22 / 25] PromptRelayApp-product
+[23 / 27] PromptRelayApp-product
+[28 / 30] PromptRelayKitTests-product
+Build complete! (5,27 secs)
+Test Suite 'Selected tests' started at 2026-10-31 22:55:21.777.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-10-31 22:55:21.778.
+Test Suite 'Phase8Tests' started at 2026-10-31 22:55:21.778.
+Test Case '-[PromptRelayKitTests.Phase8Tests testBlankTipIsNeverShown]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testBlankTipIsNeverShown]' passed (0.941 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testFullReportLinkEvidenceChipAndFooterNeverOverlap]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase8Tests.swift:126: error: -[PromptRelayKitTests.Phase8Tests testFullReportLinkEvidenceChipAndFooterNeverOverlap] : XCTAssertLessThanOrEqual failed: ("227.0") is greater than ("226.0") - the Answer card ends above the footer (268.0)
+Test Case '-[PromptRelayKitTests.Phase8Tests testFullReportLinkEvidenceChipAndFooterNeverOverlap]' failed (4.506 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testTipsAvoidTheMainActionsAndStayInside]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testTipsAvoidTheMainActionsAndStayInside]' passed (30.510 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testWrappedTipEndsWhereItsLongestLineEnds]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testWrappedTipEndsWhereItsLongestLineEnds]' passed (0.448 seconds).
+Test Suite 'Phase8Tests' failed at 2026-10-31 22:55:58.183.
+	 Executed 4 tests, with 1 failure (0 unexpected) in 36.405 (36.405) seconds
+Test Suite 'TooltipWidthTests' started at 2026-10-31 22:55:58.183.
+Test Case '-[PromptRelayKitTests.TooltipWidthTests testTipIsAsWideAsItsTextAndWrapsAtTheMaximum]' started.
+Test Case '-[PromptRelayKitTests.TooltipWidthTests testTipIsAsWideAsItsTextAndWrapsAtTheMaximum]' passed (0.445 seconds).
+Test Suite 'TooltipWidthTests' passed at 2026-10-31 22:55:58.629.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.445 (0.446) seconds
+Test Suite 'PromptRelayKitTests.xctest' failed at 2026-10-31 22:55:58.629.
+	 Executed 5 tests, with 1 failure (0 unexpected) in 36.850 (36.851) seconds
+Test Suite 'Selected tests' failed at 2026-10-31 22:55:58.629.
+	 Executed 5 tests, with 1 failure (0 unexpected) in 36.850 (36.852) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase81Tests started.
+◇ Test helpNeverCoversContent() started.
+✔ Test helpNeverCoversContent() passed after 29.788 seconds.
+✔ Suite Phase81Tests passed after 29.788 seconds.
+✔ Test run with 1 test in 1 suite passed after 29.788 seconds.
+Note: Some test targets reported failures:
+  - PromptRelayKitTests (XCTest)

@@ -1,0 +1,82 @@
+Building for debugging...
+[1 / 6] PromptRelayKitTests-product
+[2 / 7] PromptRelayKitTests-product
+[5 / 10] PromptRelayKitTests-product
+[8 / 11] PromptRelayKitTests-product
+[10 / 14] PromptRelayKitTests-product
+Build complete! (1,97 secs)
+Test Suite 'Selected tests' started at 2026-11-02 18:05:42.523.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-11-02 18:05:42.523.
+Test Suite 'IslandLayoutTests' started at 2026-11-02 18:05:42.523.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testContentKeepsItsDistanceFromTheIslandOutline]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testContentKeepsItsDistanceFromTheIslandOutline]' passed (2.349 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testMetricsAdaptToTheDisplay]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testMetricsAdaptToTheDisplay]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testQuickPeekKeepsTheSameRules]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testQuickPeekKeepsTheSameRules]' passed (0.537 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testSeveralImagesStayInsideTheAttachmentsCardAndDetailsStillFits]' started.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testSeveralImagesStayInsideTheAttachmentsCardAndDetailsStillFits]' passed (3.475 seconds).
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testStepTwoBarAndCopyLineFitInsideDetails]' started.
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testStepTwoBarAndCopyLineFitInsideDetails]' passed (3.366 seconds).
+Test Suite 'IslandLayoutTests' passed at 2026-11-02 18:05:52.252.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 9.728 (9.729) seconds
+Test Suite 'Phase6VisualTests' started at 2026-11-02 18:05:52.252.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testOpeningAnAttachmentChangesNothingAndShowsItsText]' started.
+Test Case '-[PromptRelayKitTests.Phase6VisualTests testOpeningAnAttachmentChangesNothingAndShowsItsText]' passed (0.012 seconds).
+Test Suite 'Phase6VisualTests' passed at 2026-11-02 18:05:52.265.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.012 (0.013) seconds
+Test Suite 'Phase71Tests' started at 2026-11-02 18:05:52.265.
+Test Case '-[PromptRelayKitTests.Phase71Tests testWidestStepTwoFitsQuickPeekAndDetails]' started.
+Test Case '-[PromptRelayKitTests.Phase71Tests testWidestStepTwoFitsQuickPeekAndDetails]' passed (2.304 seconds).
+Test Suite 'Phase71Tests' passed at 2026-11-02 18:05:54.569.
+	 Executed 1 test, with 0 failures (0 unexpected) in 2.304 (2.305) seconds
+Test Suite 'Phase8Tests' started at 2026-11-02 18:05:54.569.
+Test Case '-[PromptRelayKitTests.Phase8Tests testFullReportLinkEvidenceChipAndFooterNeverOverlap]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testFullReportLinkEvidenceChipAndFooterNeverOverlap]' passed (4.345 seconds).
+Test Case '-[PromptRelayKitTests.Phase8Tests testTipsAvoidTheMainActionsAndStayInside]' started.
+Test Case '-[PromptRelayKitTests.Phase8Tests testTipsAvoidTheMainActionsAndStayInside]' passed (30.559 seconds).
+Test Suite 'Phase8Tests' passed at 2026-11-02 18:06:29.474.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 34.904 (34.905) seconds
+Test Suite 'PromptRelayKitTests.xctest' passed at 2026-11-02 18:06:29.474.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 46.949 (46.951) seconds
+Test Suite 'Selected tests' passed at 2026-11-02 18:06:29.474.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 46.949 (46.952) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase81Tests started.
+◇ Suite CompactHelpTests started.
+◇ Test rapidSwitchingAndDismissal() started.
+◇ Test helpNeverCoversContent() started.
+✔ Test helpNeverCoversContent() passed after 64.946 seconds.
+✔ Suite Phase81Tests passed after 64.946 seconds.
+✘ Test rapidSwitchingAndDismissal() recorded an issue at CompactHelpTests.swift:16:9: Expectation failed: tips.tip?.owner == first
+↳ tips.tip?.owner == first → false
+↳   tips.tip?.owner → nil
+↳   first → 630860B5-2433-4C2C-B0A4-052D5E3108E6
+✘ Test rapidSwitchingAndDismissal() recorded an issue at CompactHelpTests.swift:19:9: Expectation failed: tips.tip?.owner == first
+↳ tips.tip?.owner == first → false
+↳   tips.tip?.owner → nil
+↳   first → 630860B5-2433-4C2C-B0A4-052D5E3108E6
+✘ Test rapidSwitchingAndDismissal() recorded an issue at CompactHelpTests.swift:21:9: Expectation failed: tips.tip?.owner == second
+↳ tips.tip?.owner == second → false
+↳   tips.tip?.owner → nil
+↳   second → C2F12FEA-B65F-4C3D-81B2-3E3DD83679A5
+✘ Test rapidSwitchingAndDismissal() recorded an issue at CompactHelpTests.swift:23:9: Expectation failed: tips.tip?.owner == second
+↳ The old dismissal must not hide the new owner
+↳ tips.tip?.owner == second → false
+↳   tips.tip?.owner → nil
+↳   second → C2F12FEA-B65F-4C3D-81B2-3E3DD83679A5
+✘ Test rapidSwitchingAndDismissal() failed after 65.593 seconds with 4 issues.
+◇ Test layoutStates() started.
+✔ Test layoutStates() passed after 44.006 seconds.
+✘ Suite CompactHelpTests failed after 109.600 seconds with 4 issues.
+✘ Test run with 3 tests in 2 suites failed after 109.600 seconds with 4 issues.
+Note: Some test targets reported failures:
+  - PromptRelayKitTests (Swift Testing)

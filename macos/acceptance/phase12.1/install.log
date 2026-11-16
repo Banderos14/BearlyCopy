@@ -1,0 +1,21 @@
+== swift build (release)
+Building for production...
+Build complete! (0,17 secs)
+macos/build/Prompt Relay.app: replacing existing signature
+== built macos/build/Prompt Relay.app (version 0.4.1, ad-hoc signed)
+== install with: scripts/install-local.sh (or --dry-run first)
+
+== plan
+New build:  0.4.1 · commit 0dffa80 · built 2026-11-06T06:10:17Z
+   verified: signature, version 0.4.1 = Core 0.4.1, Core digest 6c3c71a149be…
+Installed:  0.4.0 · commit e75cdd5 · built 2026-11-05T22:26:51Z
+Running:    Release 2877    Debug (Xcode) 55979 
+Keeps:      history, settings and integrations (/Users/admin/Library/Application Support/PromptRelay, app preferences, Claude/Codex config) — untouched
+Backup to:  /Users/admin/Library/Application Support/PromptRelay-AppBackups/
+Then:       install to /Users/admin/Applications/Prompt Relay.app, open it, check one copy runs
+Undo:       scripts/install-local.sh --rollback
+== asking Prompt Relay (PID 2877 ) to quit
+== previous app kept: /Users/admin/Library/Application Support/PromptRelay-AppBackups/Prompt Relay 0.4.0-e75cdd5-20261106-071019.app
+== installed /Users/admin/Applications/Prompt Relay.app
+== running: one Release copy, PID 62216 , from /Users/admin/Applications/Prompt Relay.app
+note: the Debug build from Xcode is running too (PID 55979 ); the Release app steps aside at the notch while it runs. Stop it in Xcode to use the installed app.

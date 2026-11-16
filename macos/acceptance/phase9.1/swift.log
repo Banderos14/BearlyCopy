@@ -1,0 +1,102 @@
+Building for debugging...
+[Planning deferred tasks]
+[1 / 1]
+[8 / 33] PromptRelayKit
+[11 / 36] PromptRelayKit
+[12 / 37] PromptRelayKit
+[17 / 34] PromptRelayKit
+[19 / 35] PromptRelayApp-product
+[23 / 36] PromptRelayApp-product
+[25 / 38] PromptRelayApp-product
+[36 / 50] PromptRelayKitTests-product
+[37 / 50] PromptRelayKitTests-product
+[41 / 49] PromptRelayKitTests-product
+[44 / 50] PromptRelayKitTests-product
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6PolishTests.swift:190:26: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+188 |         for _ in 0..<12 {
+189 |             island.host.layoutSubtreeIfNeeded()
+190 |             RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+    |                          `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+191 |             heights.append(island.presentation.layoutFrames["response.scroll"]?.height ?? 0)
+192 |         }
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6Tests.swift:243:69: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+241 |         let host = NSHostingView(rootView: view)
+242 |         host.frame = NSRect(x: 0, y: 0, width: 400, height: 600)
+243 |         for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+    |                                                                     `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+244 |         let scroll = try XCTUnwrap(frames["task.body"], "the expanded task scrolls")
+245 |         XCTAssertLessThanOrEqual(scroll.height, TaskCard.expandedHeight + 0.5, "80 lines never grow the card past its limit")
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6VisualTests.swift:115:63: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+113 |         withAnimation(Island.geometry(reduceMotion: false)) { m.taskExpanded = true }
+114 |         for _ in 0..<10 {
+115 |             island.host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+    |                                                               `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+116 |             heights.append(island.presentation.layoutFrames["task.body"]?.height ?? 0)
+117 |         }
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+[46 / 50] PromptRelayKitTests-product
+[50 / 50] PromptRelayApp-product
+Build complete! (8,71 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase9Tests started.
+◇ Suite Phase91Tests started.
+◇ Suite Phase82Tests started.
+◇ Suite Phase81ReadyTests started.
+◇ Test foreignAndCLIConfigurationsDoNotProveXcode() started.
+◇ Test readingOneSessionPreservesOtherUnreadAcrossRestartAndNewPrompt() started.
+◇ Test diagnosticFactsAndTaskExcerpt() started.
+◇ Test automaticallyPreparesFiveAndPreservesUserSelection() started.
+◇ Test definitionsAreNotConnectionEvidence() started.
+✔ Test definitionsAreNotConnectionEvidence() passed after 0.001 seconds.
+✔ Test foreignAndCLIConfigurationsDoNotProveXcode() passed after 0.001 seconds.
+✔ Suite Phase91Tests passed after 0.001 seconds.
+✔ Test diagnosticFactsAndTaskExcerpt() passed after 0.035 seconds.
+✔ Test automaticallyPreparesFiveAndPreservesUserSelection() passed after 0.035 seconds.
+◇ Test exactPreviewAndPersistentTransfer() started.
+◇ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() started.
+✔ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() passed after 0.055 seconds.
+◇ Test snapshotAndQuickPeekHandoffUseSameSelection() started.
+✔ Test exactPreviewAndPersistentTransfer() passed after 0.525 seconds.
+◇ Test pointerLifecycle() started.
+✔ Test snapshotAndQuickPeekHandoffUseSameSelection() passed after 0.481 seconds.
+◇ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() started.
+✔ Test pointerLifecycle() passed after 0.013 seconds.
+◇ Test clipboardAndDynamicHelp() started.
+✔ Test clipboardAndDynamicHelp() passed after 32.100 seconds.
+✔ Suite Phase82Tests passed after 32.675 seconds.
+✔ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() passed after 32.135 seconds.
+✔ Suite Phase9Tests passed after 32.708 seconds.
+✔ Test readingOneSessionPreservesOtherUnreadAcrossRestartAndNewPrompt() passed after 32.708 seconds.
+◇ Test openingNewestTurnLeavesEarlierTurnUnreadInSameSession() started.
+✔ Test openingNewestTurnLeavesEarlierTurnUnreadInSameSession() passed after 0.009 seconds.
+◇ Test pinnedSessionDoesNotAcknowledgeAnUnopenedAnswer() started.
+✔ Test pinnedSessionDoesNotAcknowledgeAnUnopenedAnswer() passed after 0.005 seconds.
+✔ Suite Phase81ReadyTests passed after 32.723 seconds.
+✔ Test run with 13 tests in 4 suites passed after 32.723 seconds.

@@ -963,7 +963,7 @@ struct PeekContent: View {
             let passed = main.filter { FailureBreakdown.stageResult($0) == .passed }.count
             let unclear = b.testsUnclear + b.buildsUnclear + main.filter { $0.exitCode == 0 && FailureBreakdown.stageResult($0) == .unclear }.count
             if failed > 0 { out.append(Fact(text: Labels.failedCommands(failed), tint: Island.error)) }
-            if unclear > 0 { out.append(Fact(text: "\(unclear) result\(unclear == 1 ? "" : "s") unclear", tint: Island.warning)) }
+            if unclear > 0 { out.append(Fact(text: "\(unclear) result\(unclear == 1 ? "" : "s") to double-check", tint: Island.warning)) }
             if b.likelyNotAnError > 0 { out.append(Fact(text: "\(b.likelyNotAnError) likely not an error", tint: Island.tertiary)) }
             if passed > 0 { out.append(Fact(text: Labels.completedCommands(passed), tint: Island.success)) }
             if o.filesChanged > 0 { out.append(Fact(text: Labels.filesChanged(o.filesChanged), tint: Island.secondary)) }

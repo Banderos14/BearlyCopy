@@ -1,0 +1,1078 @@
+diff --git a/macos/Sources/PromptRelayKit/Notch/ClipboardViews.swift b/macos/Sources/PromptRelayKit/Notch/ClipboardViews.swift
+index 7276db0..c4f348c 100644
+--- a/macos/Sources/PromptRelayKit/Notch/ClipboardViews.swift
++++ b/macos/Sources/PromptRelayKit/Notch/ClipboardViews.swift
+@@ -19,7 +19,7 @@ struct ClipboardView: View {
+                     ForEach(AppModel.ClipboardTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                 }
+                 .pickerStyle(.segmented).labelsHidden().frame(width: 180)
+-                .islandHelp("Text: your copies in Prompt Relay · Images: images you copied anywhere")
++                .islandHelp("Your recent copied text and images")
+                 Spacer(minLength: 0)
+                 Text(model.clipboardTab == .text ? "Last \(AppModel.copyHistoryLimit) copies made here"
+                      : "Last \(ClipboardImageHistory.limit) images · kept 24 h on this Mac")
+@@ -86,14 +86,14 @@ struct ClipboardTextList: View {
+             }
+             .buttonStyle(IslandRowStyle())
+             .disabled(!available)
+-            .islandHelp("Open this report · \(record.characters.formatted()) characters copied")
++            .islandHelp("Open this report")
+             let copied = model.isCopied(record.kind == .response ? AppModel.answerToken(record.ref) : AppModel.reviewToken(record.ref))
+             Button { Task { await model.copyAgain(record) } } label: {
+                 Label(copied ? Labels.copied : "Copy Again", systemImage: copied ? "checkmark" : "doc.on.doc")
+             }
+             .buttonStyle(IslandPillStyle(prominent: false))
+             .disabled(!available)
+-            .islandHelp("Copy the same thing again, read fresh from its source")
++            .islandHelp("Copy this item again")
+             Button { model.removeCopyRecord(record) } label: {
+                 Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).frame(width: 22, height: 22).contentShape(Rectangle())
+             }
+@@ -166,7 +166,7 @@ struct ClipboardImagesPane: View {
+                 Label(copied ? Labels.copied : "Copy\(suffix)", systemImage: copied ? "checkmark" : "doc.on.doc")
+             }
+             .buttonStyle(IslandPillStyle(prominent: true)).disabled(n == 0)
+-            .islandHelp("Put the chosen images on the clipboard as files (readable names), like ⌘C in Finder")
++            .islandHelp("Copy selected images as files")
+             FileDragButton(title: "Drag\(suffix)", help: "Drag the chosen images into another app, such as ChatGPT or Gemini") {
+                 history.exportFiles(selected)
+             }
+@@ -178,8 +178,8 @@ struct ClipboardImagesPane: View {
+             }
+             .buttonStyle(IslandPillStyle(prominent: false))
+             .disabled(n == 0 || model.currentRef == nil)
+-            .islandHelp(attachTarget.map { "Attach the chosen images to: \($0). Nothing is attached without this click." }
+-                        ?? "No answer is selected: open one in Details first, then come back")
++            .islandHelp(attachTarget.map { _ in "Attach selected images to this answer" }
++                        ?? "Select an answer before attaching images")
+             Spacer(minLength: 0)
+             Menu {
+                 Button(n > 0 ? "Remove \(n == 1 ? "Image" : "\(n) Images")" : "Remove") {
+@@ -197,7 +197,7 @@ struct ClipboardImagesPane: View {
+             }
+             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+             .accessibilityLabel("Remove images")
+-            .islandHelp("Remove the chosen images, clear all, or turn the history off")
++            .islandHelp("Manage image history")
+         }
+         .islandFrame("clipboard.actions")
+     }
+diff --git a/macos/Sources/PromptRelayKit/Notch/DetailsViews.swift b/macos/Sources/PromptRelayKit/Notch/DetailsViews.swift
+index 86338ee..e7408a7 100644
+--- a/macos/Sources/PromptRelayKit/Notch/DetailsViews.swift
++++ b/macos/Sources/PromptRelayKit/Notch/DetailsViews.swift
+@@ -255,7 +255,7 @@ struct NewElsewhereChip: View {
+                 .background(Capsule().fill(Island.accent.opacity(0.14)))
+             }
+             .buttonStyle(.plain)
+-            .islandHelp("Another session finished. Open its answer; this one stays in History.")
++            .islandHelp("Open the new answer")
+             Button { model.dismissNewAnswerElsewhere() } label: {
+                 Image(systemName: "xmark").font(.system(size: 8, weight: .bold)).foregroundStyle(Island.tertiary)
+                     .frame(width: 16, height: 16).contentShape(Rectangle())
+@@ -309,14 +309,14 @@ struct NavigationIcons: View {
+ 
+     var body: some View {
+         HStack(spacing: 2) {
+-            IconLink(symbol: "tray.full", label: "History", help: "Every captured and imported report") {
++            IconLink(symbol: "tray.full", label: "History", help: "Browse previous tasks and answers") {
+                 model.navigate(to: .history)
+             }
+             IconLink(symbol: "doc.on.clipboard", label: "Clipboard",
+-                     help: "Your last copies and copied images") {
++                     help: "Your recent copied text and images") {
+                 model.navigate(to: .clipboard)
+             }
+-            IconLink(symbol: "gearshape", label: "Settings", help: "Settings (⌘,)", badge: !AppBuild.otherBuildsRunning().isEmpty) {
++            IconLink(symbol: "gearshape", label: "Settings", help: "Customize Prompt Relay", badge: !AppBuild.otherBuildsRunning().isEmpty) {
+                 model.navigate(to: .settings)
+             }
+             .keyboardShortcut(",", modifiers: .command)
+@@ -332,7 +332,7 @@ struct NavigationIcons: View {
+             }
+             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+             .accessibilityLabel("More")
+-            .islandHelp("\(Labels.importAIResult), Export Bundle, Quit")
++            .islandHelp("Import, export, or quit")
+         }
+         .foregroundStyle(Island.secondary)
+     }
+@@ -417,7 +417,7 @@ struct HandoffContentsCard: View {
+                     if row.opensActivity {
+                         Button { model.navigate(to: .activity) } label: { label(row) }
+                             .buttonStyle(.plain)
+-                            .islandHelp("Open the commands, exit codes and durations")
++                            .islandHelp("Inspect recorded commands")
+                     } else {
+                         label(row)
+                     }
+@@ -469,7 +469,7 @@ struct HandoffContentsCard: View {
+         .buttonStyle(.plain)
+         .disabled(model.currentRef == nil)
+         .accessibilityLabel("Preview full context")
+-        .islandHelp("The exact text Copy with Context copies")
++        .islandHelp("Preview exactly what will be copied")
+     }
+ 
+     struct Row: Equatable {
+@@ -606,7 +606,7 @@ struct AttachmentsCard: View {
+                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                 .disabled(model.reportStore == nil || ref == nil || model.isPresentingSystemDialog)
+                 .accessibilityLabel("Add attachments")
+-                .islandHelp("Add documents, PDFs or images to this report (copied as snapshots)")
++                .islandHelp("Attach files to this answer")
+             }
+             BoundedScroll(minHeight: 34) {
+                 VStack(alignment: .leading, spacing: 3) {
+@@ -653,7 +653,7 @@ struct SelectBox: View {
+         }
+         .buttonStyle(.plain)
+         .accessibilityLabel(selected ? "Included in the hand-off" : "Not included")
+-        .islandHelp(selected ? "Included in Copy with Context and handed over as a file" : "Not included")
++        .islandHelp(selected ? "Included in the file transfer" : "Not included")
+     }
+ }
+ 
+@@ -696,7 +696,7 @@ struct AttachmentRow: View {
+         .padding(.horizontal, 3)
+         .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(attachment.isSelected ? Island.selected : .clear))
+         .onDrag { model.dragFile(for: attachment).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
+-        .islandHelp("Click to preview · " + (attachment.originalPath.map { "\(attachment.provenance) · \($0)" } ?? attachment.provenance))
++        .islandHelp("Preview this attachment")
+     }
+ }
+ 
+@@ -739,11 +739,10 @@ struct SuggestionRow: View {
+             Button("Add") { model.accept(suggestion) }
+                 .buttonStyle(.plain).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Island.accent)
+                 .disabled(!(suggestion.exists || suggestion.kind == .mockup))
+-                .islandHelp(suggestion.kind == .mockup ? "Keep it as a mockup: its declared states are listed; images are added by you"
+-                      : "Copy a snapshot of this file into Prompt Relay")
++                .islandHelp(suggestion.kind == .mockup ? "Add this mockup"
++                      : "Attach a copy of this file")
+         }
+         .frame(height: 30)
+-        .islandHelp(suggestion.path ?? suggestion.title)
+     }
+ }
+ 
+@@ -769,7 +768,7 @@ struct MockupRow: View {
+             .buttonStyle(.plain).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Island.secondary)
+         }
+         .frame(height: 30)
+-        .islandHelp("Visual mockup — review required. \(material.provenance)")
++        .islandHelp("Review this mockup")
+     }
+ }
+ 
+@@ -869,7 +868,7 @@ struct HandoffFooter: View {
+         if !model.handoffSelectionChanged, model.handoffTextReplaced || step.resumed, compact {
+             IconLink(symbol: model.isCopied(AppModel.reviewToken(step.ref)) ? "checkmark" : "text.badge.checkmark",
+                      label: "Copy Text Again",
+-                     help: "Copy Text Again: the same package text (\(step.characters.formatted()) characters, not rebuilt)") {
++                     help: "Copy the same text again") {
+                 model.copyHandoffTextAgain()
+             }
+             .foregroundStyle(model.handoffTextReplaced ? Island.warning : Island.secondary)
+@@ -878,7 +877,7 @@ struct HandoffFooter: View {
+                 Label(model.isCopied(AppModel.reviewToken(step.ref)) ? Labels.copied : "Copy Text Again", systemImage: "text.badge.checkmark")
+             }
+             .buttonStyle(IslandPillStyle(prominent: model.handoffTextReplaced))
+-            .islandHelp("Put the same package text on the clipboard again (\(step.characters.formatted()) characters, not rebuilt)")
++            .islandHelp("Copy the same text again")
+         }
+     }
+ 
+@@ -889,14 +888,14 @@ struct HandoffFooter: View {
+                 Label(Labels.copyWithContext + " Again", systemImage: "arrow.clockwise")
+             }
+             .buttonStyle(IslandPillStyle(prominent: true))
+-            .islandHelp("Copy the text again with the files chosen now")
++            .islandHelp("Update the copied text with selected files")
+         } else {
+             Button { model.copyHandoffFiles() } label: {
+                 Label(filesCopied ? Labels.copied : (step.fileCount == 1 ? "Copy File" : "Copy \(step.fileCount) Files"),
+                       systemImage: filesCopied ? "checkmark" : "doc.on.doc")
+             }
+             .buttonStyle(IslandPillStyle(prominent: true))
+-            .islandHelp("Put the files on the clipboard, like ⌘C in Finder")
++            .islandHelp("Copy the selected files")
+             FileDragButton(title: step.fileCount == 1 ? "Drag" : "Drag \(step.fileCount)",
+                            help: "Drag the files into ChatGPT, Gemini or another app") { model.handoffFileURLs() }
+             IconLink(symbol: "folder", label: "Show in Finder", help: "Show the files in Finder") { model.revealHandoffFiles() }
+@@ -906,7 +905,7 @@ struct HandoffFooter: View {
+     private var done: some View {
+         Button("Done") { model.endHandoff() }
+             .buttonStyle(IslandPillStyle(prominent: false))
+-            .islandHelp("Finish this transfer. Closing the island does not; the clipboard keeps what you copied")
++            .islandHelp("Finish this transfer")
+     }
+ 
+     private var filesCopied: Bool { model.isCopied(AppModel.handoffToken) }
+@@ -1062,7 +1061,7 @@ struct CommandRow: View {
+         .padding(.horizontal, 10).padding(.vertical, 7)
+         .contentShape(Rectangle())
+         .onTapGesture { if command.outputTail != nil { expanded.toggle() } }
+-        .islandHelp(command.command ?? "Command text withheld (\(command.commandWithheld ?? "unavailable")); only its exit code was kept")
++        .islandHelp(command.command == nil ? "Command hidden to protect sensitive data" : "Recorded command and result")
+     }
+ 
+     @ViewBuilder private var result: some View {
+@@ -1294,7 +1293,7 @@ struct StateCard: View {
+         }
+         .padding(6)
+         .background(RoundedRectangle(cornerRadius: 9).fill(Island.cardRaised))
+-        .islandHelp(state.summary ?? state.title)
++        .islandHelp("Preview this mockup state")
+     }
+ 
+     private var statusText: String {
+diff --git a/macos/Sources/PromptRelayKit/Notch/EvidenceViews.swift b/macos/Sources/PromptRelayKit/Notch/EvidenceViews.swift
+index e7e7155..4899773 100644
+--- a/macos/Sources/PromptRelayKit/Notch/EvidenceViews.swift
++++ b/macos/Sources/PromptRelayKit/Notch/EvidenceViews.swift
+@@ -23,7 +23,7 @@ struct EvidenceChip: View {
+             }
+             .buttonStyle(.plain)
+             .accessibilityLabel("Evidence Check: \(evidence.summary)")
+-            .islandHelp("What this Mac observed, kept apart from what the answer claims")
++            .islandHelp("Compare observed work with the answer")
+             .islandFrame("response.evidence")
+         }
+     }
+@@ -51,7 +51,7 @@ struct CompletenessLine: View {
+                 .contentShape(Rectangle())
+             }
+             .buttonStyle(.plain)
+-            .islandHelp("Artifact Completeness: what was declared, captured, chosen and missing")
++            .islandHelp("See which files and images are missing")
+             .islandFrame("attachments.completeness")
+         }
+     }
+diff --git a/macos/Sources/PromptRelayKit/Notch/IslandTooltips.swift b/macos/Sources/PromptRelayKit/Notch/IslandTooltips.swift
+index ddd6d97..c5d869c 100644
+--- a/macos/Sources/PromptRelayKit/Notch/IslandTooltips.swift
++++ b/macos/Sources/PromptRelayKit/Notch/IslandTooltips.swift
+@@ -5,7 +5,8 @@ import SwiftUI
+ // panel of an accessory app, so over Quick Peek they never showed and in
+ // Details only after a click had activated the app — "sometimes yes,
+ // sometimes no" (Phase 6 audit). One tip at a time, after 180 ms; moving to
+-// a neighbour while one is shown switches at once; gone on leaving, on
++// a neighbour while one is shown switches at once; a 120 ms exit grace
++// bridges the gap. Cleared on
+ // clicking and when the island closes or changes view. No window of its
+ // own, so nothing can stay behind; never hit-testable, so it never covers
+ // an action.
+@@ -21,24 +22,32 @@ final class IslandTooltips {
+     }
+ 
+     static let delay: UInt64 = 180_000_000
++    static let exitDelay: UInt64 = 120_000_000
++    static func animation(reduceMotion: Bool) -> Animation? {
++        reduceMotion ? nil : .easeOut(duration: 0.14)
++    }
+ 
+     private(set) var tip: Tip?
+     /// Every control with a tip and where it is now. A tip is placed clear
+-    /// of the other controls (Phase 8: tips covered Copy Answer and the
+-    /// footer icons); layout tests read it too.
++    /// of content in the bottom inset; layout tests read these anchors too.
+     @ObservationIgnored var controls: [UUID: (text: String, anchor: CGRect)] = [:]
+     #if DEBUG
+     /// Shows a tip at once (layout tests).
+-    func show(_ owner: UUID, text: String, anchor: CGRect) { pending?.cancel(); tip = Tip(owner: owner, text: text, anchor: anchor) }
++    func show(_ owner: UUID, text: String, anchor: CGRect) {
++        pending?.cancel(); dismissal?.cancel()
++        tip = Self.isBlank(text) ? nil : Tip(owner: owner, text: text, anchor: anchor)
++    }
+     #endif
+     @ObservationIgnored private var pending: Task<Void, Never>?
+     @ObservationIgnored private var pendingOwner: UUID?
++    @ObservationIgnored private var dismissal: Task<Void, Never>?
+ 
+     func enter(_ owner: UUID, text: String, anchor: CGRect) {
+         // An empty tip is only its black background: the small black box
+         // over Observed Work's file list (Phase 8, a withheld command's row).
+         guard !Self.isBlank(text) else { leave(owner); return }
+         pending?.cancel()
++        dismissal?.cancel()
+         let next = Tip(owner: owner, text: text, anchor: anchor)
+         if tip != nil { tip = next; return }   // already reading tips: switch at once
+         pendingOwner = owner
+@@ -56,15 +65,24 @@ final class IslandTooltips {
+         self.tip = Tip(owner: owner, text: tip.text, anchor: anchor)
+     }
+ 
+-    func leave(_ owner: UUID) {
++    func leave(_ owner: UUID, immediately: Bool = false) {
+         if pendingOwner == owner { pending?.cancel(); pendingOwner = nil }
+-        if tip?.owner == owner { tip = nil }
++        guard tip?.owner == owner else { return }
++        dismissal?.cancel()
++        if immediately { tip = nil; return }
++        // Bridge the small gap between neighbouring controls without a blank frame.
++        dismissal = Task { [weak self] in
++            try? await Task.sleep(nanoseconds: Self.exitDelay)
++            guard !Task.isCancelled, self?.tip?.owner == owner else { return }
++            self?.tip = nil
++        }
+     }
+ 
+     static func isBlank(_ text: String) -> Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+ 
+     func hideAll() {
+         pending?.cancel()
++        dismissal?.cancel()
+         pendingOwner = nil
+         tip = nil
+     }
+@@ -87,6 +105,7 @@ struct IslandHelp: ViewModifier {
+     @State private var owner = UUID()
+     @State private var frame: CGRect = .zero
+     @FocusState private var focused: Bool
++    @State private var hovered = false
+ 
+     func body(content: Content) -> some View {
+         if let tips, !IslandTooltips.isBlank(text) {
+@@ -97,16 +116,17 @@ struct IslandHelp: ViewModifier {
+                     tips.controls[owner] = (text, $0)
+                 }
+                 .onHover { inside in
+-                    if inside { tips.enter(owner, text: text, anchor: frame) } else { tips.leave(owner) }
++                    hovered = inside
++                    if inside { tips.enter(owner, text: text, anchor: frame) } else if !focused { tips.leave(owner) }
+                 }
+                 // Keyboard: the tip of the focused control (Full Keyboard Access).
+                 .focused($focused)
+                 .onChange(of: focused) { _, now in
+-                    if now { tips.enter(owner, text: text, anchor: frame) } else { tips.leave(owner) }
++                    if now { tips.enter(owner, text: text, anchor: frame) } else if !hovered { tips.leave(owner) }
+                 }
+-                .simultaneousGesture(TapGesture().onEnded { tips.leave(owner) })
++                .simultaneousGesture(TapGesture().onEnded { tips.leave(owner, immediately: true) })
+                 .onDisappear {
+-                    tips.leave(owner)
++                    tips.leave(owner, immediately: true)
+                     tips.controls[owner] = nil
+                 }
+                 .accessibilityHint(text)
+@@ -123,51 +143,41 @@ extension View {
+     func islandHelp(_ text: String) -> some View { modifier(IslandHelp(text: text)) }
+ }
+ 
+-/// The one visible tip, placed from its *measured* size inside the part of
+-/// the island that is really black: below the camera band, inside the
+-/// flared top sides and clear of the rounded bottom corners. Below the
+-/// control, above it when there is no room below, never over it. Phase 7:
+-/// the earlier version clamped to the island's bounding rectangle and
+-/// placed the tip with alignment guides, so a wrapped tip near a corner
+-/// could sit on the transparent corner of the window (cut by the island's
+-/// clip) and a first, unmeasured frame could flash in the wrong place.
++/// One measured help label, sharing the island's normal bottom inset. Only
++/// a second line needs additional space; that space comes from the content
++/// budget, not a taller panel. The clip follows the same layout animation as
++/// the inset, so text cannot draw over controls during a height transition.
+ struct IslandTooltipOverlay: View {
+     let tips: IslandTooltips
+     let size: CGSize
+-    /// Height of the camera band at the top of the island.
+     var band: CGFloat = 32
+-    /// Long text wraps; the tip never grows wider than this.
++    var helpArea: CGRect? = nil
++    var onMeasure: ((CGFloat) -> Void)? = nil
+     static let maxWidth: CGFloat = 200
+-    @State private var measured: CGSize?
+-    @State private var measuredOwner: UUID?
+ 
+     var body: some View {
+         Color.clear
+             .frame(width: size.width, height: size.height)
+             .overlay(alignment: .topLeading) {
+                 if let tip = tips.tip {
+-                    let wrap = min(Self.maxWidth, TipPlacement.safeArea(island: size, band: band).width)
+-                    let ready = measuredOwner == tip.owner ? measured : nil
+-                    let others = tips.controls.filter { $0.key != tip.owner }.map(\.value.anchor)
+-                    let frame = ready.map { TipPlacement.frame(anchor: tip.anchor, tip: $0, island: size, band: band, avoid: others) }
+-                    // As wide as its text (like inline-block), wrapping at
+-                    // `wrap`. Phase 7.1: `.frame(maxWidth:)` took the whole
+-                    // maximum, so "Back (Esc)" sat in a 208-pt box.
+-                    TipTextLayout(maxWidth: wrap - 14) {
+-                        Text(tip.text)
++                    let width = helpArea?.width ?? min(Self.maxWidth, TipPlacement.safeArea(island: size, band: band).width)
++                    TipTextLayout(maxWidth: width - (helpArea == nil ? 14 : 0), balancesLines: helpArea == nil) {
++                        Text(verbatim: tip.text)
+                             .font(.system(size: 10.5))
+                             .foregroundStyle(Island.primary.opacity(0.92))
++                            .lineLimit(2)
+                             .multilineTextAlignment(.leading)
+                     }
+-                    .padding(.horizontal, 7).padding(.vertical, 4)
+-                        .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.black.opacity(0.82)))
+-                        .onGeometryChange(for: CGSize.self, of: { $0.size }) { measured = $0; measuredOwner = tip.owner }
+-                        .islandFrame("tooltip")
+-                        .offset(x: frame?.minX ?? 0, y: frame?.minY ?? 0)
+-                        // Drawn only once measured, so no frame shows in a wrong place.
+-                        .opacity(frame == nil ? 0 : 1)
+-                        .id(tip.owner)
+-                        .transition(.opacity)
++                    .padding(.horizontal, helpArea == nil ? 7 : 0)
++                    .padding(.vertical, helpArea == nil ? 4 : 0)
++                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { onMeasure?($0) }
++                    .frame(height: helpArea?.height, alignment: .topLeading)
++                    .clipped()
++                    .islandFrame("tooltip")
++                    .offset(x: helpArea?.minX ?? TipPlacement.sideInset,
++                            y: helpArea?.minY ?? size.height - 44)
++                    // Keep identity when switching owners: no overlapping fading labels.
++                    .transition(.identity)
+                 }
+             }
+             .allowsHitTesting(false)
+@@ -182,6 +192,7 @@ struct IslandTooltipOverlay: View {
+ /// tip kept the whole maximum, with an empty strip on the right).
+ struct TipTextLayout: Layout {
+     let maxWidth: CGFloat
++    var balancesLines = true
+ 
+     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+         guard let child = subviews.first else { return .zero }
+@@ -189,6 +200,7 @@ struct TipTextLayout: Layout {
+         let ideal = child.sizeThatFits(.unspecified).width
+         guard ideal > maxWidth else { return CGSize(width: ideal, height: height(ideal)) }
+         let target = height(maxWidth)
++        if !balancesLines { return CGSize(width: maxWidth, height: target) }
+         var low = maxWidth / 2, high = maxWidth
+         while high - low > 1 {
+             let mid = ((low + high) / 2).rounded(.up)
+diff --git a/macos/Sources/PromptRelayKit/Notch/IslandViews.swift b/macos/Sources/PromptRelayKit/Notch/IslandViews.swift
+index b49fc05..ee27659 100644
+--- a/macos/Sources/PromptRelayKit/Notch/IslandViews.swift
++++ b/macos/Sources/PromptRelayKit/Notch/IslandViews.swift
+@@ -145,15 +145,21 @@ struct IslandMetrics: Equatable {
+     var leading: CGFloat { edge + inset }
+ 
+     @MainActor static func of(_ p: NotchPresentation) -> IslandMetrics {
+-        make(width: p.islandWidth, maxContentHeight: p.maxContentHeight, floating: p.isFloating, peek: p.surface == .peek)
++        var metrics = make(width: p.islandWidth, maxContentHeight: p.maxContentHeight, floating: p.isFloating, peek: p.surface == .peek)
++        metrics.bottom = max(metrics.bottom, p.helpTextHeight + 7)
++        return metrics
+     }
+ 
+     static func make(width: CGFloat, maxContentHeight: CGFloat, floating: Bool, peek: Bool) -> IslandMetrics {
+         let edge = floating ? 0 : NotchRootView.expandedTopRadius
+-        if peek { return IslandMetrics(edge: edge, inset: 20, top: 4, bottom: 18, spacing: 10) }
++        if peek { return IslandMetrics(edge: edge, inset: 20, top: 4, bottom: 20, spacing: 10) }
++        if maxContentHeight < 300 {
++            return IslandMetrics(edge: edge, inset: width >= 520 ? 24 : 22, top: 0,
++                                 bottom: 20, spacing: 4, compact: true)
++        }
+         let roomy = maxContentHeight >= 460
+         return IslandMetrics(edge: edge, inset: width >= 520 ? 24 : 22, top: roomy ? 6 : 4,
+-                             bottom: roomy ? 22 : 18, spacing: roomy ? 12 : 10, compact: !roomy)
++                             bottom: 20, spacing: roomy ? 12 : 10, compact: !roomy)
+     }
+ }
+ 
+@@ -419,12 +425,12 @@ struct SourceLine: View {
+             if facts.source == .localClaudeCode, let project = model.selectedProject, !project.captureEnabled {
+                 Text("· capture off")
+                     .foregroundStyle(Island.warning)
+-                    .islandHelp("New answers from this project are not recorded. Turn capture on in Projects.")
++                    .islandHelp("Enable capture to save new answers")
+             }
+             if model.selectedImport == nil, let turn = model.selectedTurn, turn.status == .stopReceivedBackgroundTasksPending {
+                 // A fact about the Stop, not about now: the work may have ended since.
+                 Text("· background work at Stop").foregroundStyle(Island.warning)
+-                    .islandHelp("When Claude stopped, background tasks were still running. Monitors (such as an artifact's live updates) are not counted.")
++                    .islandHelp("Background work was still running when the answer arrived")
+             }
+         }
+         .font(.system(size: 11.5))
+@@ -467,7 +473,7 @@ struct TaskCard: View {
+                 .buttonStyle(.plain)
+                 .foregroundStyle(Island.secondary)
+                 .accessibilityLabel(Labels.viewFullTask)
+-                .islandHelp("\(Labels.viewFullTask): the whole request, Formatted or Markdown Source")
++                .islandHelp("Read the complete original request")
+             }
+         }
+         .islandCard()
+@@ -503,7 +509,7 @@ struct TaskCard: View {
+                     .buttonStyle(.plain)
+                     .foregroundStyle(Island.secondary)
+                     .accessibilityLabel(Labels.viewFullTask)
+-                    .islandHelp("\(Labels.viewFullTask): the whole request on its own screen, Formatted or Markdown Source")
++                    .islandHelp("Read the complete original request")
+                 }
+                 if canExpand {
+                     Button { withAnimation(Island.geometry(reduceMotion: reduceMotion)) { expanded.toggle() } } label: {
+@@ -516,7 +522,7 @@ struct TaskCard: View {
+                     .buttonStyle(.plain)
+                     .foregroundStyle(Island.secondary)
+                     .accessibilityLabel(expanded ? "Show less of the task" : "Show the whole task")
+-                    .islandHelp(expanded ? "Collapse the task" : "Show the whole task; it scrolls inside this card")
++                    .islandHelp(expanded ? "Collapse the task" : "Read more of the request")
+                 }
+             }
+             switch facts.task {
+@@ -668,7 +674,7 @@ struct ResponseCard: View {
+         .buttonStyle(.plain)
+         .islandFrame("response.full")
+         .accessibilityLabel("View Full Report")
+-        .islandHelp("The complete answer, Formatted or Markdown Source")
++        .islandHelp("Read the complete answer")
+     }
+ }
+ 
+@@ -760,7 +766,9 @@ struct PeekContent: View {
+             } trailing: {
+                 if let at = facts.at { Text(Wording.relative(at)).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.tertiary) }
+             }
+-            VStack(alignment: .leading, spacing: Island.Space.m) {
++            // Keep the compact panel height: a second help line borrows only
++            // inter-row spacing, preserving the task, answer and action heights.
++            VStack(alignment: .leading, spacing: max(2, Island.Space.m - max(0, presentation.helpTextHeight - 13) / 3)) {
+                 if facts.source == nil {
+                     HStack(alignment: .center) {
+                         Text(model.projects.value?.isEmpty == true ? "Click to choose a project to capture." : "No answer yet.")
+@@ -866,7 +874,7 @@ struct PeekContent: View {
+                         // "1 failed command" opens Failure Inspector (Observed Work).
+                         Button { model.navigate(to: .activity); interaction.focus() } label: { Tag(fact.text, tint: fact.tint) }
+                             .buttonStyle(.plain)
+-                            .islandHelp("Which command, its exit code and the last lines it printed")
++                            .islandHelp("Inspect this command’s result")
+                     } else {
+                         Tag(fact.text, tint: fact.tint)
+                     }
+@@ -932,7 +940,7 @@ struct PeekContent: View {
+         .buttonStyle(.plain)
+         .foregroundStyle(Island.primary)
+         .accessibilityLabel("Details")
+-        .islandHelp("The whole answer, observed work, attachments and settings")
++        .islandHelp("Open the answer and project context")
+     }
+ 
+     private var expandButton: some View {
+@@ -945,7 +953,7 @@ struct PeekContent: View {
+         .buttonStyle(.plain)
+         .foregroundStyle(Island.primary)
+         .accessibilityLabel("Expand Prompt Relay")
+-        .islandHelp("Show the task, the full report, history and settings")
++        .islandHelp("Open the full report")
+     }
+ }
+ 
+@@ -1276,7 +1284,7 @@ struct ProjectRowView: View {
+                 }
+             }
+             .buttonStyle(IslandRowStyle())
+-            .islandHelp(row.path)
++            .islandHelp("Choose this project")
+             .contextMenu {
+                 if row.isAddedOnly { Button("Remove from List") { model.removeAddedProject(row.path) } }
+             }
+@@ -1426,7 +1434,7 @@ struct HistoryView: View {
+         }
+         .buttonStyle(IslandRowStyle())
+         .padding(.horizontal, 2)
+-        .islandHelp(session.sessionID ?? session.sessionKey)
++        .islandHelp("Open this session")
+         .accessibilityLabel("\(Wording.sessionTitle(session)), \(open ? "expanded" : "collapsed")")
+         .accessibilityHint(open ? "Collapse" : "Show its answers")
+     }
+@@ -1551,7 +1559,7 @@ struct ImportView: View {
+                     Button("Import") { save(analysis) }
+                         .buttonStyle(IslandPillStyle(prominent: true))
+                         .disabled(text.isEmpty)
+-                        .islandHelp("Save it as imported by you; it then appears in History, Full Report, Copy Answer and Copy with Context")
++                        .islandHelp("Save this imported answer")
+                     if case .failed(let message) = outcome {
+                         Text(message).font(.system(size: 11)).foregroundStyle(Island.error)
+                     }
+@@ -1586,7 +1594,7 @@ struct ImportView: View {
+                 if !text.isEmpty {
+                     Button(showAll ? "Short Preview" : "Full Text") { showAll.toggle() }.buttonStyle(.plain)
+                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
+-                        .islandHelp("The whole pasted text, exactly, scrolling inside this card")
++                        .islandHelp("Read the full pasted answer")
+                     Button("Clear") { text = "" }.buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
+                 }
+             }
+@@ -1637,7 +1645,7 @@ struct ImportView: View {
+             Label(title, systemImage: "wand.and.stars").font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
+         }
+         .buttonStyle(.plain)
+-        .islandHelp("A suggestion from the text's own structure; nothing is used until you click")
++        .islandHelp("Use this suggestion")
+     }
+ 
+     /// Manual: choose a local project. Suggest from Report: only projects an
+@@ -1810,7 +1818,7 @@ struct ReaderModePicker: View {
+         .labelsHidden()
+         .controlSize(.small)
+         .fixedSize()
+-        .islandHelp("Formatted renders the Markdown; Markdown Source shows the exact characters, markup included. Both copy the same original.")
++        .islandHelp("Switch between formatted text and Markdown")
+     }
+ }
+ 
+@@ -1862,7 +1870,7 @@ struct TaskReaderView: View {
+                     }
+                     .buttonStyle(IslandPillStyle(prominent: true))
+                     .disabled(!task.canCopy)
+-                    .islandHelp(task.canCopy ? "Copy the request exactly as it was stored, every character"
++                    .islandHelp(task.canCopy ? "Copy the original request"
+                                              : "Claude Code wrote this message, not you: there is no original task to copy")
+                     Spacer(minLength: 0)
+                 }
+diff --git a/macos/Sources/PromptRelayKit/Notch/NotchController.swift b/macos/Sources/PromptRelayKit/Notch/NotchController.swift
+index 493a3b6..408f35b 100644
+--- a/macos/Sources/PromptRelayKit/Notch/NotchController.swift
++++ b/macos/Sources/PromptRelayKit/Notch/NotchController.swift
+@@ -28,6 +28,8 @@ public final class NotchPresentation {
+     /// Height the expanded content needs (measured by the view); the island
+     /// and its window follow it, so there is never empty space below.
+     public internal(set) var contentHeight: CGFloat = NotchLayout.minContentHeight
++    /// Measured help text; only its overflow beyond the normal inset consumes content space.
++    var helpTextHeight: CGFloat = 0
+     /// Tallest content on the active display; lists and long text scroll inside it.
+     public internal(set) var maxContentHeight: CGFloat = 388
+     /// No notch on the display: the island floats below the menu bar.
+diff --git a/macos/Sources/PromptRelayKit/Notch/NotchViews.swift b/macos/Sources/PromptRelayKit/Notch/NotchViews.swift
+index 17309ce..f491d41 100644
+--- a/macos/Sources/PromptRelayKit/Notch/NotchViews.swift
++++ b/macos/Sources/PromptRelayKit/Notch/NotchViews.swift
+@@ -122,7 +122,19 @@ public struct NotchRootView: View {
+                 compactContent
+                     .transition(.opacity.animation(.easeOut(duration: 0.1)))
+             }
+-            if expanded { IslandTooltipOverlay(tips: tips, size: islandSize, band: presentation.notchSize.height) }
++            if expanded {
++                let metrics = IslandMetrics.of(presentation)
++                IslandTooltipOverlay(tips: tips, size: islandSize, band: presentation.notchSize.height,
++                                     helpArea: CGRect(x: metrics.leading,
++                                                      y: islandSize.height - 6 - presentation.helpTextHeight,
++                                                      width: islandSize.width - 2 * metrics.leading,
++                                                      height: presentation.helpTextHeight),
++                                     onMeasure: { presentation.helpTextHeight = $0 })
++            }
++        }
++        .animation(IslandTooltips.animation(reduceMotion: presentation.reduceMotion), value: presentation.helpTextHeight)
++        .onChange(of: tips.tip == nil) { _, hidden in
++            if hidden { presentation.helpTextHeight = 0 }
+         }
+         .environment(\.islandTooltips, tips)
+         // A theme change redraws the island with the new roles.
+@@ -199,11 +211,14 @@ public struct NotchRootView: View {
+         }
+         .frame(width: presentation.islandWidth, alignment: .top)
+         // The whole height budget is offered; the content takes what it needs.
+-        .modifier(BudgetModifier(maxHeight: presentation.notchSize.height + presentation.maxContentHeight))
++        .modifier(BudgetModifier(maxHeight: tips.tip == nil ? presentation.notchSize.height + presentation.maxContentHeight : islandSize.height))
++        .frame(height: tips.tip == nil ? nil : islandSize.height, alignment: .top)
+         .environment(\.islandReduceMotion, presentation.reduceMotion)
+         // Read after layout; the window follows on the next display pass.
+         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { h in
+-            presentation.reportContentHeight(h - presentation.notchSize.height)
++            if tips.tip == nil, presentation.helpTextHeight == 0 {
++                presentation.reportContentHeight(h - presentation.notchSize.height)
++            }
+         }
+         .foregroundStyle(.white)
+     }
+diff --git a/macos/Sources/PromptRelayKit/Notch/PreviewViews.swift b/macos/Sources/PromptRelayKit/Notch/PreviewViews.swift
+index 43cd72b..eeee583 100644
+--- a/macos/Sources/PromptRelayKit/Notch/PreviewViews.swift
++++ b/macos/Sources/PromptRelayKit/Notch/PreviewViews.swift
+@@ -91,7 +91,7 @@ struct PackagePreviewView: View {
+         .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+         .disabled(sections.isEmpty)
+         .accessibilityLabel("Go to a section")
+-        .islandHelp("Go to a section of this text: request, answer, evidence, files, Git, attachments, limitations")
++        .islandHelp("Jump to a section")
+     }
+ 
+     private func footer(_ pack: AppModel.BuiltPack) -> some View {
+@@ -101,7 +101,7 @@ struct PackagePreviewView: View {
+                 Label(copied ? Labels.copied : Labels.copyWithContext, systemImage: copied ? "checkmark" : "checklist")
+             }
+             .buttonStyle(IslandPillStyle(prominent: true))
+-            .islandHelp("Copy this text; then hand over the chosen files")
++            .islandHelp("Copy this preview and transfer the files")
+             Text(pack.attachmentIDs.isEmpty ? "No files chosen" : "\(pack.attachmentIDs.count) chosen file\(pack.attachmentIDs.count == 1 ? "" : "s") follow after the text")
+                 .font(.system(size: 11)).foregroundStyle(Island.tertiary).lineLimit(1)
+             Spacer(minLength: 0)
+@@ -149,13 +149,16 @@ struct AttachmentPreviewView: View {
+                     .lineLimit(1).truncationMode(.middle)
+                 Text("\(ReviewPack.type(a)) · \(ReviewPack.size(a.byteCount)) · \(a.effectiveSource.label)")
+                     .font(.system(size: 10.5)).foregroundStyle(Island.tertiary).lineLimit(1)
++                Text(a.originalPath.map { "\(a.provenance) · \($0)" } ?? a.provenance)
++                    .font(.system(size: 10)).foregroundStyle(Island.tertiary)
++                    .lineLimit(2).textSelection(.enabled)
+             }
+             Spacer(minLength: 4)
+             Button { model.copyAttachmentFiles([a]) } label: {
+                 Label(copied ? Labels.copied : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+             }
+             .buttonStyle(IslandPillStyle(prominent: false)).disabled(url == nil)
+-            .islandHelp("Put the file on the clipboard, like ⌘C in Finder")
++            .islandHelp("Copy this file")
+             FileDragButton(title: "Drag", help: "Drag the file into another app") { model.dragFile(for: a).map { [$0] } ?? [] }
+             IconLink(symbol: "folder", label: "Show in Finder", help: "Show the file in Finder") { model.revealAttachmentsForHandoff([a]) }
+         }
+diff --git a/macos/Sources/PromptRelayKit/Presentation/AppModel.swift b/macos/Sources/PromptRelayKit/Presentation/AppModel.swift
+index 89c7e22..bd8648a 100644
+--- a/macos/Sources/PromptRelayKit/Presentation/AppModel.swift
++++ b/macos/Sources/PromptRelayKit/Presentation/AppModel.swift
+@@ -71,7 +71,16 @@ public final class AppModel {
+ 
+     public private(set) var readyAnswer: ReadyAnswer?
+     /// A newer answer arrived since the user last opened a surface.
+-    public private(set) var hasUnseenAnswer = false
++    public var hasUnseenAnswer: Bool { !unseenAnswers.isEmpty }
++    private var finishedAnswers: [ReadyAnswer] = []
++    private var unseenAnswers: [ReadyAnswer] {
++        finishedAnswers.filter { answer in
++            guard let baseline = lastSeenAt, Self.isNewer(answer.at, than: baseline) else { return false }
++            let key = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex).key
++            // Later background events can change lastEventAt without creating a report.
++            return seenAnswers[key] == nil
++        }
++    }
+     /// Load `readyAnswer` on every refresh (one extra Core call per refresh;
+     /// refreshes happen only when history changes). On by default: the app
+     /// opens on the newest answer across all captured projects.
+@@ -106,6 +115,7 @@ public final class AppModel {
+ 
+     public static let pollSeconds = 30
+     static let lastSeenKey = "answers.lastSeenAt"
++    static let seenAnswersKey = "answers.seenReports"
+     let stateDefaults: UserDefaults?
+ 
+     private let core: CoreProviding
+@@ -132,6 +142,7 @@ public final class AppModel {
+         self.stateDefaults = stateDefaults
+         self.reportStore = reportStore
+         lastSeenAt = stateDefaults?.string(forKey: Self.lastSeenKey)
++        seenAnswers = stateDefaults?.dictionary(forKey: Self.seenAnswersKey) as? [String: String] ?? [:]
+         handoffs = reportStore.map(Self.loadHandoffs) ?? [:]
+         imports = reportStore?.imports() ?? []
+         copyHistory = Self.decode([CopyRecord].self, stateDefaults?.data(forKey: Self.copiesKey)) ?? []
+@@ -234,6 +245,9 @@ public final class AppModel {
+     private var lastSeenAt: String? {
+         didSet { stateDefaults?.set(lastSeenAt, forKey: Self.lastSeenKey) }
+     }
++    private var seenAnswers: [String: String] {
++        didSet { stateDefaults?.set(seenAnswers, forKey: Self.seenAnswersKey) }
++    }
+     private var lastAnnouncedAt: String?
+ 
+     /// The live app: the CLI adapter, the general pasteboard, the default data dir.
+@@ -468,6 +482,7 @@ public final class AppModel {
+         if let shown = detail.value, shown.session.sessionKey == key, shown.turn.index == index,
+            shown.turn.finalResponse?.receivedAt == turn.finalResponse?.receivedAt,
+            shown.turn.responseEventCount == turn.responseEventCount, !detail.isLoading {
++            if visibleSurfaces > 0 { acknowledgeReadyAnswer() }
+             return
+         }
+         generation += 1
+@@ -478,6 +493,7 @@ public final class AppModel {
+             guard token == generation else { return }
+             detail = .loaded(result.data)
+             detailWarnings = result.warnings
++            if visibleSurfaces > 0 { acknowledgeReadyAnswer() }
+         } catch {
+             guard token == generation else { return }
+             detail = .failed(Self.coreError(error), previous: nil)
+@@ -490,7 +506,8 @@ public final class AppModel {
+         allSessions = result.data.sessions.sorted {
+             (Wording.date($0.lastEventAt) ?? .distantPast) > (Wording.date($1.lastEventAt) ?? .distantPast)
+         }
+-        guard let answer = await newestFinishedAnswer(in: allSessions) else {
++        finishedAnswers = await latestFinishedAnswers(in: allSessions)
++        guard let answer = finishedAnswers.first else {
+             readyAnswer = nil
+             return
+         }
+@@ -509,8 +526,7 @@ public final class AppModel {
+             lastSeenAt = at
+             return
+         }
+-        if Self.isNewer(at, than: seen) {
+-            hasUnseenAnswer = true
++        if Self.isNewer(at, than: seen), unseenAnswers.contains(answer) {
+             if lastAnnouncedAt != at {
+                 lastAnnouncedAt = at
+                 onNewAnswer?(answer)
+@@ -518,18 +534,14 @@ public final class AppModel {
+         }
+     }
+ 
+-    /// The newest answer Claude finished, across sessions (newest first).
+-    /// A session whose last turn is a new prompt still waiting for Claude
+-    /// keeps its previous answer: sending the next prompt must not make the
+-    /// island jump to an older answer from another project. Only such a
+-    /// session costs one `turns` call (cached while it is unchanged).
+-    private func newestFinishedAnswer(in sessions: [SessionSummary]) async -> ReadyAnswer? {
++    /// Finished reports, newest first. A waiting prompt retains the preceding
++    /// answer. Changed sessions with several turns also load earlier unread
++    /// reports; these reads use the existing cache while the session is unchanged.
++    private func latestFinishedAnswers(in sessions: [SessionSummary]) async -> [ReadyAnswer] {
+         func finished(_ status: TurnStatus) -> Bool { status == .stopReceived || status == .stopReceivedBackgroundTasksPending }
+-        var best: ReadyAnswer?
++        var answers: [ReadyAnswer] = []
+         for session in sessions {
+             guard let last = session.lastTurn, let lastAt = session.lastEventAt else { continue }
+-            // Sorted newest first: nothing in this or later sessions can be newer.
+-            if let best, !Self.isNewer(lastAt, than: best.at) { break }
+             var candidate: ReadyAnswer?
+             if finished(last.status) {
+                 candidate = ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
+@@ -542,9 +554,21 @@ public final class AppModel {
+                                         projectName: Wording.projectName(session.project), turnIndex: turn.index,
+                                         status: turn.status, at: at)
+             }
+-            if let candidate, best.map({ Self.isNewer(candidate.at, than: $0.at) }) ?? true { best = candidate }
++            if let candidate {
++                answers.append(candidate)
++                // Several reports can arrive before the island opens. Keep
++                // earlier unread turns too, using the existing session cache.
++                if let baseline = lastSeenAt, Self.isNewer(lastAt, than: baseline), candidate.turnIndex > 1 {
++                    for turn in await cachedTurns(session) where turn.index < candidate.turnIndex && finished(turn.status) {
++                        guard let at = turn.finalResponse?.receivedAt, Self.isNewer(at, than: baseline) else { continue }
++                        answers.append(ReadyAnswer(sessionKey: session.sessionKey, projectPath: session.project.path,
++                                                   projectName: Wording.projectName(session.project), turnIndex: turn.index,
++                                                   status: turn.status, at: at))
++                    }
++                }
++            }
+         }
+-        return best
++        return answers.sorted { Self.isNewer($0.at, than: $1.at) }
+     }
+ 
+     static func isNewer(_ a: String, than b: String) -> Bool {
+@@ -572,16 +596,11 @@ public final class AppModel {
+     static let workingWindow: TimeInterval = 20 * 60
+ 
+     public var readyIndicator: ReadyIndicator {
+-        if hasUnseenAnswer, let answer = readyAnswer {
+-            let seen = lastSeenAt
+-            let others = allSessions.filter { s in
+-                guard s.sessionKey != answer.sessionKey, let last = s.lastTurn, let at = s.lastEventAt else { return false }
+-                let finished = last.status == .stopReceived || last.status == .stopReceivedBackgroundTasksPending
+-                return finished && (seen.map { Self.isNewer(at, than: $0) } ?? false)
+-            }
++        let unseen = unseenAnswers
++        if let answer = unseen.first {
+             let turns = answer.sessionKey == selectedSessionKey ? turns.value : turnCache[answer.sessionKey]?.turns
+             let automated = turns?.first { $0.index == answer.turnIndex }?.requestOrigin == .automated
+-            return .ready(sessions: 1 + others.count, automated: automated,
++            return .ready(sessions: Set(unseen.map(\.sessionKey)).count, automated: automated,
+                           backgroundPending: answer.status == .stopReceivedBackgroundTasksPending)
+         }
+         let now = Date()
+@@ -592,23 +611,29 @@ public final class AppModel {
+         return working.isEmpty ? .none : .working(sessions: working.count)
+     }
+ 
+-    /// The user looked at the newest answer (opened the notch or a window).
++    /// Acknowledge only the selected report. The launch/migration baseline
++    /// stays fixed: viewing one session must not mark another session seen.
+     public func acknowledgeReadyAnswer() {
+-        hasUnseenAnswer = false
+-        if let at = readyAnswer?.at { lastSeenAt = at }
++        guard selectedImportID == nil,
++              let answer = finishedAnswers.first(where: {
++                  $0.sessionKey == selectedSessionKey && $0.turnIndex == selectedTurnIndex
++              }) else { return }
++        let key = ReportRef.local(sessionKey: answer.sessionKey, turn: answer.turnIndex).key
++        if seenAnswers[key] == nil { seenAnswers[key] = answer.at }
+     }
+ 
+-    /// Select the newest ready answer in every list, then load it.
++    /// Open the newest unseen answer, respecting a pinned session. Only
++    /// acknowledge after the requested report actually loaded successfully.
+     public func revealReadyAnswer() async {
+-        guard let answer = readyAnswer else { return }
+-        acknowledgeReadyAnswer()
+-        // A pinned session stays: the other session's answer waits behind the chip.
++        guard let answer = unseenAnswers.first ?? readyAnswer else { return }
+         if sessionPinned, answer.sessionKey != selectedSessionKey { return }
+         followsLatest = true
+         lastFollowedAt = answer.at
+         select(answer)
+         if sessionPinned { pinnedAt = answer.at; saveSelection() }
+         await loadSessions()
++        if let shown = detail.value, shown.session.sessionKey == answer.sessionKey,
++           shown.turn.index == answer.turnIndex { acknowledgeReadyAnswer() }
+     }
+ 
+     /// The "New in …" chip: open the other session's newest answer and pin it.
+@@ -621,7 +646,11 @@ public final class AppModel {
+         pinnedAt = answer.at
+         pinSelection()
+         route = .home
+-        Task { await loadSessions() }
++        Task {
++            await loadSessions()
++            if let shown = detail.value, shown.session.sessionKey == answer.sessionKey,
++               shown.turn.index == answer.turnIndex { acknowledgeReadyAnswer() }
++        }
+     }
+ 
+     public func dismissNewAnswerElsewhere() {
+@@ -821,8 +850,10 @@ public final class AppModel {
+ 
+     /// The newest unseen answer belongs to this project (or a folder inside it).
+     public func hasNewAnswer(inProject path: String?) -> Bool {
+-        guard hasUnseenAnswer, let path, let answerPath = readyAnswer?.projectPath else { return false }
+-        return Self.path(answerPath, isInside: path)
++        guard let path else { return false }
++        return unseenAnswers.contains { answer in
++            answer.projectPath.map { Self.path($0, isInside: path) } ?? false
++        }
+     }
+ 
+     static func path(_ path: String, isInside root: String) -> Bool {
+diff --git a/macos/Sources/PromptRelayKit/UI/Labels.swift b/macos/Sources/PromptRelayKit/UI/Labels.swift
+index 2d4b717..6057339 100644
+--- a/macos/Sources/PromptRelayKit/UI/Labels.swift
++++ b/macos/Sources/PromptRelayKit/UI/Labels.swift
+@@ -9,15 +9,13 @@ enum Labels {
+     static let copyWithContext = "Copy with Context"
+     static let copied = "Copied!"
+ 
+-    static let copyAnswerHelp = "Only Claude's answer, exactly as written · ⇧⌘C"
+-    static let copyWithContextHelp = "Answer, request, commands, files, Git and chosen attachments as Markdown · ⌥⌘C"
++    static let copyAnswerHelp = "Copy the original answer"
++    static let copyWithContextHelp = "Copy the answer with project context"
+ 
+     /// Phase 7 (was "Import Saved Result"): one finished result from another
+     /// AI, pasted by the user. Nothing is captured automatically through it.
+     static let importAIResult = "Import AI Result"
+-    static let importAIResultHelp = "Paste one finished result from Claude Cloud, ChatGPT, Gemini or another AI: "
+-        + "its request, its answer and the files you attach. Saved as imported by you, never as captured by a local hook; "
+-        + "no other app or session is read."
++    static let importAIResultHelp = "Import an answer from another AI"
+     static let markdownSource = "Markdown Source"
+     static let viewFullTask = "View Full Task"
+     static let copyOriginalTask = "Copy Original Task"
+diff --git a/macos/Tests/PromptRelayKitTests/NotchControllerTests.swift b/macos/Tests/PromptRelayKitTests/NotchControllerTests.swift
+index f7e1ecf..38616f6 100644
+--- a/macos/Tests/PromptRelayKitTests/NotchControllerTests.swift
++++ b/macos/Tests/PromptRelayKitTests/NotchControllerTests.swift
+@@ -721,6 +721,12 @@ final class ReadyAnswerTests: XCTestCase {
+ 
+         let core = FakeCore(projects: [project("/a", sessions: 1, last: "2026-10-29T10:00:00.000000Z"),
+                                        project("/b", sessions: 1, last: "2026-10-29T09:00:00.000000Z")])
++        core.showResult = { [weak core] key, index in
++            guard let core, let session = try? core.session(key) else {
++                return .failure(.api(code: "not_found", message: "test session missing"))
++            }
++            return .success(CoreResult(data: ShowData(session: session, turn: turn(index, text: "answer")), warnings: []))
++        }
+         core.sessionsByProject["/a"] = [sessionSummary("a1", project: "/a", last: "2026-10-29T10:00:00.000000Z")]
+         core.sessionsByProject["/b"] = [sessionSummary("b1", project: "/b", last: "2026-10-29T09:00:00.000000Z")]
+         // Answer times consistent with the sessions' last events.
+diff --git a/macos/Tests/PromptRelayKitTests/Phase6PolishTests.swift b/macos/Tests/PromptRelayKitTests/Phase6PolishTests.swift
+index 4ea3543..7d08552 100644
+--- a/macos/Tests/PromptRelayKitTests/Phase6PolishTests.swift
++++ b/macos/Tests/PromptRelayKitTests/Phase6PolishTests.swift
+@@ -131,7 +131,7 @@ final class Phase6PolishTests: XCTestCase {
+         XCTAssertEqual(tips.tip?.text, "History", "after about 180 ms")
+         tips.leave(a)
+         tips.enter(b, text: "Settings", anchor: .zero)
+-        XCTAssertNil(tips.tip, "leaving hides it; the next one waits again")
++        XCTAssertEqual(tips.tip?.text, "Settings", "crossing the gap switches without hiding")
+         try await Task.sleep(nanoseconds: 260_000_000)
+         tips.enter(a, text: "History", anchor: .zero)
+         XCTAssertEqual(tips.tip?.text, "History", "moving straight to a neighbour switches without a new delay")
+diff --git a/macos/Tests/PromptRelayKitTests/Phase71Tests.swift b/macos/Tests/PromptRelayKitTests/Phase71Tests.swift
+index 2b8cc07..9ed24f5 100644
+--- a/macos/Tests/PromptRelayKitTests/Phase71Tests.swift
++++ b/macos/Tests/PromptRelayKitTests/Phase71Tests.swift
+@@ -173,13 +173,14 @@ final class TooltipWidthTests: XCTestCase {
+     }
+     nonisolated(unsafe) static var last = CGRect.zero
+ 
+-    /// Fits its text; long text wraps inside the maximum, never truncated.
++    /// Fits its text; long text wraps to at most two lines, then truncates.
+     func testTipIsAsWideAsItsTextAndWrapsAtTheMaximum() {
+         let short = measure("Back (Esc)")
+         XCTAssertLessThan(short.width, 90, "short tip hugs its text")
+         let long = measure("Copy with Context: Claude's full answer plus your request, the commands Prompt Relay saw, changed files, Git status and the chosen attachments, as Markdown for another assistant")
+         XCTAssertLessThanOrEqual(long.width, IslandTooltipOverlay.maxWidth + 0.5)
+-        XCTAssertGreaterThan(long.height, short.height * 2.5, "long text wraps onto several lines")
++        XCTAssertGreaterThan(long.height, short.height, "long text wraps")
++        XCTAssertLessThanOrEqual(long.height, 34, "help is capped at two lines plus its inset")
+     }
+ }
+ 
+diff --git a/macos/Tests/PromptRelayKitTests/Phase8Tests.swift b/macos/Tests/PromptRelayKitTests/Phase8Tests.swift
+index 74ab40b..995e82e 100644
+--- a/macos/Tests/PromptRelayKitTests/Phase8Tests.swift
++++ b/macos/Tests/PromptRelayKitTests/Phase8Tests.swift
+@@ -145,7 +145,7 @@ final class Phase8Tests: XCTestCase {
+                 island.settle()
+                 let size = CGSize(width: island.width, height: island.height)
+                 let safe = TipPlacement.safeArea(island: size, band: 32)
+-                let prefixes = [Labels.copyAnswerHelp, Labels.copyWithContextHelp, "Every captured", "Your last copies"]
++                let prefixes = [Labels.copyAnswerHelp, Labels.copyWithContextHelp, "Browse previous", "Your recent copied"]
+                 let actions = island.tips.controls.filter { entry in prefixes.contains { entry.value.text.hasPrefix($0) } }
+                 XCTAssertGreaterThanOrEqual(actions.count, 2, "\(surface): the copies are registered")
+                 for (owner, control) in island.tips.controls where safe.intersects(control.anchor) {
+@@ -177,7 +177,7 @@ final class Phase8Tests: XCTestCase {
+             for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+             return last.size
+         }
+-        let one = measure("Every captured and imported report")
++        let one = measure("Copy the original answer")
+         XCTAssertLessThan(one.height, 22, "a short tip is one line")
+         // Just over the maximum: two balanced lines, not one full line and a stub.
+         let two = measure("Answer, request, commands, files, Git and chosen attachments as Markdown")
+@@ -200,7 +200,7 @@ final class Phase8Tests: XCTestCase {
+         defer { island.close() }
+         XCTAssertFalse(island.tips.controls.isEmpty)
+         XCTAssertTrue(island.tips.controls.values.allSatisfy { !IslandTooltips.isBlank($0.text) }, "no control registers a blank tip")
+-        XCTAssertTrue(island.tips.controls.values.contains { $0.text.hasPrefix("Command text withheld") }, "the withheld row says why")
++        XCTAssertTrue(island.tips.controls.values.contains { $0.text.hasPrefix("Command hidden") }, "the withheld row says why")
+     }
+ 
+     // MARK: Failure Inspector
+@@ -331,6 +331,12 @@ final class Phase8Tests: XCTestCase {
+     func testReadyIndicatorStates() async throws {
+         let t0 = iso(Date().addingTimeInterval(-3600))
+         let core = FakeCore(projects: [project("/a", sessions: 2, last: t0)])
++        core.showResult = { [weak core] key, index in
++            guard let core, let session = try? core.session(key) else {
++                return .failure(.api(code: "not_found", message: "test session missing"))
++            }
++            return .success(CoreResult(data: ShowData(session: session, turn: turn(index, text: "answer")), warnings: []))
++        }
+         core.sessionsByProject["/a"] = [sessionSummary("s1", project: "/a", last: t0)]
+         core.turnsBySession["s1"] = [turn(1, request: "first")]
+         let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
+@@ -364,8 +370,12 @@ final class Phase8Tests: XCTestCase {
+ 
+         // Opening the island: seen.
+         await m.revealReadyAnswer()
+-        XCTAssertEqual(m.readyIndicator, .none)
++        XCTAssertEqual(m.readyIndicator, .ready(sessions: 1, automated: false, backgroundPending: false),
++                       "opening s2 leaves s1 unread")
+         XCTAssertEqual(m.selectedSessionKey, "s2", "the newest answer's session is opened")
++        await m.revealReadyAnswer()
++        XCTAssertEqual(m.selectedSessionKey, "s1")
++        XCTAssertEqual(m.readyIndicator, .none)
+     }
+ 
+     func testReadyIndicatorMarksATurnClaudeCodeStartedItself() async throws {
+@@ -499,7 +509,7 @@ final class Phase8Tests: XCTestCase {
+         for (name, maxContent) in [("details-448", CGFloat(448)), ("details-341", 341)] {
+             let island = IslandHost(model: m, maxContentHeight: maxContent)
+             try island.png("\(dir)/p8-\(name).png")
+-            for (tip, prefix) in [("full", "The complete answer"), ("copy", Labels.copyAnswerHelp), ("history", "Every captured")] {
++            for (tip, prefix) in [("full", "Read the complete answer"), ("copy", Labels.copyAnswerHelp), ("history", "Browse previous")] {
+                 _ = try showTip(island, prefix)
+                 try island.png("\(dir)/p8-\(name)-tip-\(tip).png")
+                 island.tips.hideAll()

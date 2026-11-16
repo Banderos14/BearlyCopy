@@ -1,0 +1,33 @@
+== swift build (release)
+Building for production...
+[2 / 9]
+[3 / 10] PromptRelayKit
+[5 / 16]
+[6 / 16]
+[9 / 16]
+/Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift:1917:13: [1;33mwarning: [1;39minitialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1915 |[0;0m 
+[0;36m1916 |[0;0m     var body: some View {
+[0;36m1917 |[0;0m         let facts = ReportFacts(model: model)
+     [0;36m|[0;0m             `- [1;33mwarning: [1;39minitialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1918 |[0;0m         let task = model.fullTask
+[0;36m1919 |[0;0m         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[10 / 16] PromptRelayKit
+Build complete! (38,05 secs)
+macos/build/Prompt Relay.app: replacing existing signature
+== built macos/build/Prompt Relay.app (version 0.4.0, ad-hoc signed)
+== install with: scripts/install-local.sh (or --dry-run first)
+
+== plan
+New build:  0.4.0 · commit 7db1e4b · built 2026-11-05T22:17:19Z
+   verified: signature, version 0.4.0 = Core 0.4.0, Core digest 5719914b6b6a…
+Installed:  0.3.0 · commit 3287bc3 · built 2026-11-05T20:11:38Z
+Running:    Release 9710    Debug (Xcode) 55979 
+Keeps:      history, settings and integrations (/Users/admin/Library/Application Support/PromptRelay, app preferences, Claude/Codex config) — untouched
+Backup to:  /Users/admin/Library/Application Support/PromptRelay-AppBackups/
+Then:       install to /Users/admin/Applications/Prompt Relay.app, open it, check one copy runs
+Undo:       scripts/install-local.sh --rollback
+
+Dry run: nothing changed.

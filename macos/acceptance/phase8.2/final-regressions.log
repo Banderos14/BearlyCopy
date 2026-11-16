@@ -1,0 +1,95 @@
+Building for debugging...
+[1 / 2] PromptRelayKit
+[2 / 13] PromptRelayKit
+[5 / 16] PromptRelayKit
+[9 / 20] PromptRelayKit
+[13 / 24] PromptRelayKit
+[18 / 25] PromptRelayApp-product
+[20 / 25] PromptRelayKitTests-product
+[30 / 35] PromptRelayApp-product
+[31 / 37] PromptRelayApp-product
+[32 / 37] PromptRelayKitTests-product
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6Tests.swift:243:69: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+241 |         let host = NSHostingView(rootView: view)
+242 |         host.frame = NSRect(x: 0, y: 0, width: 400, height: 600)
+243 |         for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+    |                                                                     `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+244 |         let scroll = try XCTUnwrap(frames["task.body"], "the expanded task scrolls")
+245 |         XCTAssertLessThanOrEqual(scroll.height, TaskCard.expandedHeight + 0.5, "80 lines never grow the card past its limit")
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+[35 / 38] PromptRelayKitTests-product
+[37 / 41] PromptRelayKitTests-product
+Build complete! (6,33 secs)
+Test Suite 'Selected tests' started at 2026-11-03 09:51:38.166.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-11-03 09:51:38.167.
+Test Suite 'FollowLatestTests' started at 2026-11-03 09:51:38.167.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testNewAnswerIsFollowedUnlessTheUserBrowsesElsewhere]' started.
+Test Case '-[PromptRelayKitTests.FollowLatestTests testNewAnswerIsFollowedUnlessTheUserBrowsesElsewhere]' passed (0.054 seconds).
+Test Suite 'FollowLatestTests' passed at 2026-11-03 09:51:38.221.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+Test Suite 'IslandLayoutTests' started at 2026-11-03 09:51:38.221.
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testStepTwoBarAndCopyLineFitInsideDetails]' started.
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+sandbox_extension_consume failed: 1 (Operation not permitted)
+Test Case '-[PromptRelayKitTests.IslandLayoutTests testStepTwoBarAndCopyLineFitInsideDetails]' passed (3.468 seconds).
+Test Suite 'IslandLayoutTests' passed at 2026-11-03 09:51:41.689.
+	 Executed 1 test, with 0 failures (0 unexpected) in 3.468 (3.468) seconds
+Test Suite 'IslandNavigationTests' started at 2026-11-03 09:51:41.689.
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testNewAnswerMarksItsProjectAndParentFolders]' started.
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/IslandTests.swift:126: error: -[PromptRelayKitTests.IslandNavigationTests testNewAnswerMarksItsProjectAndParentFolders] : XCTAssertFalse failed
+Test Case '-[PromptRelayKitTests.IslandNavigationTests testNewAnswerMarksItsProjectAndParentFolders]' failed (0.185 seconds).
+Test Suite 'IslandNavigationTests' failed at 2026-11-03 09:51:41.875.
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.185 (0.185) seconds
+Test Suite 'NotchControllerTests' started at 2026-11-03 09:51:41.875.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testHoverOpensQuickPeekAndAClickOpensTheIslandOnHome]' started.
+Test Case '-[PromptRelayKitTests.NotchControllerTests testHoverOpensQuickPeekAndAClickOpensTheIslandOnHome]' passed (1.911 seconds).
+Test Suite 'NotchControllerTests' passed at 2026-11-03 09:51:43.786.
+	 Executed 1 test, with 0 failures (0 unexpected) in 1.911 (1.911) seconds
+Test Suite 'NotchInteractionTests' started at 2026-11-03 09:51:43.786.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testClickOrShortcutOpensFocusedAndOnlyEscapeOrFocusLossCloses]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testClickOrShortcutOpensFocusedAndOnlyEscapeOrFocusLossCloses]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testHoverOpensAfterDwellAndClosesAfterGrace]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testHoverOpensAfterDwellAndClosesAfterGrace]' passed (0.001 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testPinnedPanelStaysOpenUntilUnpinned]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testPinnedPanelStaysOpenUntilUnpinned]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testQuickPassDoesNotOpenAndReturningCancelsClose]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testQuickPassDoesNotOpenAndReturningCancelsClose]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testRapidRepeatedHoverKeepsAtMostOneTimer]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testRapidRepeatedHoverKeepsAtMostOneTimer]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testTransitionsAreReported]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testTransitionsAreReported]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testUnavailableHidesAndCancelsEverything]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testUnavailableHidesAndCancelsEverything]' passed (0.000 seconds).
+Test Suite 'NotchInteractionTests' passed at 2026-11-03 09:51:43.788.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'PromptRelayKitTests.xctest' failed at 2026-11-03 09:51:43.788.
+	 Executed 11 tests, with 1 failure (0 unexpected) in 5.620 (5.621) seconds
+Test Suite 'Selected tests' failed at 2026-11-03 09:51:43.788.
+	 Executed 11 tests, with 1 failure (0 unexpected) in 5.620 (5.622) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase82Tests started.
+◇ Test diagnosticFactsAndTaskExcerpt() started.
+✔ Test diagnosticFactsAndTaskExcerpt() passed after 0.001 seconds.
+◇ Test exactPreviewAndPersistentTransfer() started.
+✔ Test exactPreviewAndPersistentTransfer() passed after 2.687 seconds.
+◇ Test pointerLifecycle() started.
+✔ Test pointerLifecycle() passed after 0.009 seconds.
+◇ Test clipboardAndDynamicHelp() started.
+✔ Test clipboardAndDynamicHelp() passed after 43.296 seconds.
+✔ Suite Phase82Tests passed after 45.994 seconds.
+✔ Test run with 4 tests in 1 suite passed after 45.994 seconds.
+Note: Some test targets reported failures:
+  - PromptRelayKitTests (XCTest)

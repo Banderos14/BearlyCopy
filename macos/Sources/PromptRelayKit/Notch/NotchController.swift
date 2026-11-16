@@ -96,8 +96,11 @@ public final class NotchPresentation {
         return max(80, maxContentHeight - chrome - m.top - m.bottom)
     }
 
+    /// Opening and closing the island: 240 ms, eased at both ends (it was a
+    /// 200 ms ease-out that read as abrupt when the pointer left).
+    static let toggleDuration: Double = 0.24
     var animation: Animation? {
-        reduceMotion ? nil : .easeOut(duration: 0.2)
+        reduceMotion ? nil : .easeInOut(duration: Self.toggleDuration)
     }
 
     /// The island taking a new height while open (another answer, a card
@@ -634,7 +637,7 @@ public final class NotchController {
                     self.placePanel(for: .compact)
                 }
                 collapseWork = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0 : 0.2), execute: work)
+                DispatchQueue.main.asyncAfter(deadline: .now() + (presentation.reduceMotion ? 0 : NotchPresentation.toggleDuration), execute: work)
             } else {
                 placePanel(for: .compact)
             }

@@ -1,0 +1,36 @@
+== swift build (release)
+Building for production...
+[2 / 9]
+[3 / 10] PromptRelayKit
+[5 / 16]
+[6 / 16]
+[9 / 16]
+/Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift:1893:13: [1;33mwarning: [1;39minitialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1891 |[0;0m 
+[0;36m1892 |[0;0m     var body: some View {
+[0;36m1893 |[0;0m         let facts = ReportFacts(model: model)
+     [0;36m|[0;0m             `- [1;33mwarning: [1;39minitialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1894 |[0;0m         let task = model.fullTask
+[0;36m1895 |[0;0m         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+
+/Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Presentation/AppModel.swift:688:47: [1;33mwarning: [1;39mmain actor-isolated static property 'backgroundWaitLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+ [0;36m683 |[0;0m     /// without a continuation. Long test runs fit; a forgotten server does
+ [0;36m684 |[0;0m     /// not keep the island waiting forever.
+ [0;36m685 |[0;0m     static let backgroundWaitLimit: TimeInterval = 2 * 60 * 60
+     [0;36m|[0;0m                `- [1;39mnote: [1;39mstatic property declared here[0;0m
+ [0;36m686 |[0;0m     nonisolated static func waitExpired(_ at: String?, now: Date = Date()) -> Bool {
+ [0;36m687 |[0;0m         guard let date = Wording.date(at) else { return true }
+ [0;36m688 |[0;0m         return now.timeIntervalSince(date) >= backgroundWaitLimit
+     [0;36m|[0;0m                                               `- [1;33mwarning: [1;39mmain actor-isolated static property 'backgroundWaitLimit' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+ [0;36m689 |[0;0m     }
+ [0;36m690 |[0;0m 
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[10 / 16] PromptRelayKit
+[16 / 19] PromptRelayApp-product
+[17 / 20] PromptRelayApp-product
+[19 / 20] PromptRelayApp-product
+[20 / 20] PromptRelayApp-product
+Build complete! (38,73 secs)
+macos/build/Prompt Relay.app: replacing existing signature
+== built macos/build/Prompt Relay.app (version 0.3.0, ad-hoc signed)

@@ -1,0 +1,133 @@
+warning: /Users/admin/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
+warning: /Users/admin/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
+warning: /Users/admin/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
+warning: 'macos': failed storing manifest for 'macos' in cache: attempt to write a readonly database
+Building for debugging...
+[Planning deferred tasks]
+[8 / 33] PromptRelayKit
+/Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Models/CodexDeliveryStatus.swift:41:40: warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+39 |             let complete = latest.lastTurn?.status == .stopReceived || latest.lastTurn?.status == .stopReceivedBackgroundTasksPending
+40 |             lines.append(complete ? "Latest turn: Stop received (answer availability is shown in History)" : "Latest turn: waiting for Stop; final answer not confirmed")
+41 |             lines.append("Workspace: \(latest.project.path)")
+   |                                        |              |- note: provide a default value to avoid this warning
+   |                                        |              `- note: use 'String(describing:)' to silence this warning
+   |                                        `- warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+42 |         } else {
+43 |             lines.append("After reviewing hooks, start a new Xcode Codex conversation in a capture-enabled workspace")
+[13 / 38] PromptRelayKit
+[23 / 49] PromptRelayKit
+[24 / 49] PromptRelayKit
+[29 / 46] PromptRelayKit
+/Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift:1840:13: warning: initialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+1838 | 
+1839 |     var body: some View {
+1840 |         let facts = ReportFacts(model: model)
+     |             `- warning: initialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+1841 |         let task = model.fullTask
+1842 |         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[35 / 48] PromptRelayKitTests-product
+[35 / 48] PromptRelayApp-product
+[37 / 50] PromptRelayApp-product
+[48 / 62] PromptRelayKitTests-product
+[49 / 62] PromptRelayKitTests-product
+[50 / 62] PromptRelayKitTests-product
+[56 / 62] PromptRelayApp-product
+[56 / 62] PromptRelayKitTests-product
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6PolishTests.swift:190:26: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+188 |         for _ in 0..<12 {
+189 |             island.host.layoutSubtreeIfNeeded()
+190 |             RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+    |                          `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+191 |             heights.append(island.presentation.layoutFrames["response.scroll"]?.height ?? 0)
+192 |         }
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6Tests.swift:243:69: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+241 |         let host = NSHostingView(rootView: view)
+242 |         host.frame = NSRect(x: 0, y: 0, width: 400, height: 600)
+243 |         for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+    |                                                                     `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+244 |         let scroll = try XCTUnwrap(frames["task.body"], "the expanded task scrolls")
+245 |         XCTAssertLessThanOrEqual(scroll.height, TaskCard.expandedHeight + 0.5, "80 lines never grow the card past its limit")
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6VisualTests.swift:115:63: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+113 |         withAnimation(Island.geometry(reduceMotion: false)) { m.taskExpanded = true }
+114 |         for _ in 0..<10 {
+115 |             island.host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+    |                                                               `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+116 |             heights.append(island.presentation.layoutFrames["task.body"]?.height ?? 0)
+117 |         }
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+[58 / 62] PromptRelayKitTests-product
+Build complete! (11,85 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase91Tests started.
+◇ Suite Phase92Tests started.
+◇ Suite Phase9Tests started.
+◇ Test definitionsAreNotConnectionEvidence() started.
+◇ Test foreignAndCLIConfigurationsDoNotProveXcode() started.
+◇ Test connectionCheckPublishesFreshSessions() started.
+◇ Test diagnosticsSeparateExecutionFromStorageAndSupportOldCore() started.
+◇ Test automaticallyPreparesFiveAndPreservesUserSelection() started.
+✔ Test foreignAndCLIConfigurationsDoNotProveXcode() passed after 0.001 seconds.
+✔ Test definitionsAreNotConnectionEvidence() passed after 0.001 seconds.
+✔ Suite Phase91Tests passed after 0.001 seconds.
+✘ Test automaticallyPreparesFiveAndPreservesUserSelection() recorded an issue at Phase9Tests.swift:36:9: Expectation failed: try store.prepareResults(data) == 5
+↳ try store.prepareResults(data) == 5 → <not evaluated>
+✘ Test automaticallyPreparesFiveAndPreservesUserSelection() recorded an issue at Phase9Tests.swift:38:9: Expectation failed: attachments.count == 5 && attachments.allSatisfy(\.isSelected)
+↳ attachments.count == 5 && attachments.allSatisfy(\.isSelected) → false
+↳   attachments.count == 5 → false
+↳   attachments.allSatisfy(\.isSelected) → <not evaluated>
+✘ Test automaticallyPreparesFiveAndPreservesUserSelection() recorded an issue at Phase9Tests.swift:42:9: Expectation failed: store.attachments(for: ref).filter(\.isSelected).count == 4
+↳ store.attachments(for: ref).filter(\.isSelected).count == 4 → false
+↳   store.attachments(for: ref).filter(\.isSelected).count → 2
+✘ Test automaticallyPreparesFiveAndPreservesUserSelection() recorded an issue at Phase9Tests.swift:45:9: Expectation failed: restarted.attachments(for: ref).filter(\.isSelected).count == 4
+↳ restarted.attachments(for: ref).filter(\.isSelected).count == 4 → false
+↳   restarted.attachments(for: ref).filter(\.isSelected).count → 2
+✘ Test automaticallyPreparesFiveAndPreservesUserSelection() recorded an issue at Phase9Tests.swift:48:9: Expectation failed: restarted.attachments(for: ref).count == 4
+↳ restarted.attachments(for: ref).count == 4 → false
+↳   restarted.attachments(for: ref).count → 2
+✔ Test diagnosticsSeparateExecutionFromStorageAndSupportOldCore() passed after 0.125 seconds.
+✘ Test automaticallyPreparesFiveAndPreservesUserSelection() failed after 0.124 seconds with 5 issues.
+◇ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() started.
+✔ Test connectionCheckPublishesFreshSessions() passed after 0.125 seconds.
+✔ Suite Phase92Tests passed after 0.125 seconds.
+✔ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() passed after 0.003 seconds.
+◇ Test snapshotAndQuickPeekHandoffUseSameSelection() started.
+✘ Test snapshotAndQuickPeekHandoffUseSameSelection() recorded an issue at Phase9Tests.swift:86:9: Expectation failed: model.attachments(for: ref).count == 5
+↳ model.attachments(for: ref).count == 5 → false
+↳   model.attachments(for: ref).count → 3
+✘ Test snapshotAndQuickPeekHandoffUseSameSelection() recorded an issue at Phase9Tests.swift:69:6: Caught error: .unsupported("clip1.png")
+✘ Test snapshotAndQuickPeekHandoffUseSameSelection() failed after 0.012 seconds with 2 issues.
+◇ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() started.
+✔ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() passed after 0.002 seconds.
+✘ Suite Phase9Tests failed after 0.143 seconds with 7 issues.
+✘ Test run with 8 tests in 3 suites failed after 0.143 seconds with 7 issues.
+Note: Some test targets reported failures:
+  - PromptRelayKitTests (Swift Testing)

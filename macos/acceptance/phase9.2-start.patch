@@ -1,0 +1,22 @@
+diff --git a/macos/acceptance/phase9.1/xcode-smoke/REPORT.md b/macos/acceptance/phase9.1/xcode-smoke/REPORT.md
+new file mode 100644
+index 0000000..4d222f2
+--- /dev/null
++++ b/macos/acceptance/phase9.1/xcode-smoke/REPORT.md
+@@ -0,0 +1,16 @@
++# PROMPT-RELAY-XCODE-91
++
++Commands ran in the disposable `xcode-smoke` project through this Xcode Codex session.
++
++| Command | Actual exit status | Actual result |
++| --- | --- | --- |
++| `swift build` | 1 | Failed during manifest compilation: `sandbox-exec: sandbox_apply: Operation not permitted`. SwiftPM also warned that user-level configuration, security, and cache directories were inaccessible or unwritable. Build success was not established. |
++| `sh -c 'exit 7'` | 7 | Deliberate diagnostic returned the requested status with no output. This is intentional, not an unexpected defect. |
++
++Created `preview.png`: a local 160 × 96 RGB PNG (325 bytes), with amber and blue bars on a dark background, encoded using Python's standard library. Amber represents the build result; blue represents the deliberate diagnostic.
++
++REPORT.md was created using the apply_patch file-editing tool after XcodeWrite reported an unsupported directory insertion mode.
++
++No global settings or credentials were modified. No Prompt Relay calls or manual hook payload submissions were made. Any capture is handled by the actual Xcode Codex integration; capture delivery was not independently verified.
++
++PROMPT-RELAY-XCODE-91-DONE

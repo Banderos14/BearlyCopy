@@ -1,0 +1,39 @@
+Building for debugging...
+[Planning deferred tasks]
+[1 / 1]
+[2 / 12] PromptRelayKit
+[4 / 14] PromptRelayKit
+[13 / 20] PromptRelayKitTests-product
+[13 / 20] PromptRelayApp-product
+[15 / 20] PromptRelayKitTests-product
+[18 / 21] PromptRelayApp-product
+[19 / 23] PromptRelayApp-product
+[20 / 23] PromptRelayKitTests-product
+[26 / 26] PromptRelayApp-product
+Build complete! (19,75 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase91Tests started.
+◇ Suite Phase92Tests started.
+◇ Suite Phase9Tests started.
+◇ Test definitionsAreNotConnectionEvidence() started.
+◇ Test diagnosticsSeparateExecutionFromStorageAndSupportOldCore() started.
+◇ Test foreignAndCLIConfigurationsDoNotProveXcode() started.
+◇ Test connectionCheckPublishesFreshSessions() started.
+◇ Test automaticallyPreparesFiveAndPreservesUserSelection() started.
+✔ Test definitionsAreNotConnectionEvidence() passed after 0.001 seconds.
+✔ Test foreignAndCLIConfigurationsDoNotProveXcode() passed after 0.001 seconds.
+✔ Suite Phase91Tests passed after 0.001 seconds.
+✔ Test diagnosticsSeparateExecutionFromStorageAndSupportOldCore() passed after 0.003 seconds.
+✔ Test connectionCheckPublishesFreshSessions() passed after 0.028 seconds.
+✔ Suite Phase92Tests passed after 0.028 seconds.
+✔ Test automaticallyPreparesFiveAndPreservesUserSelection() passed after 0.028 seconds.
+◇ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() started.
+✔ Test sensitiveUnavailableSymlinkAndOutsidePathsAreRejected() passed after 0.003 seconds.
+◇ Test snapshotAndQuickPeekHandoffUseSameSelection() started.
+✔ Test snapshotAndQuickPeekHandoffUseSameSelection() passed after 0.026 seconds.
+◇ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() started.
+✔ Test bothAgentsShareHistoryWithoutSwitchingPinnedSession() passed after 0.002 seconds.
+✔ Suite Phase9Tests passed after 0.060 seconds.
+✔ Test run with 8 tests in 3 suites passed after 0.060 seconds.

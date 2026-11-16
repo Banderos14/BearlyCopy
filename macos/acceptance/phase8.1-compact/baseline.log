@@ -1,0 +1,15 @@
+Building for debugging...
+[Planning deferred tasks]
+[1 / 1]
+[6 / 17] PromptRelayKitTests-product
+[8 / 19] PromptRelayKitTests-product
+[14 / 18] PromptRelayKitTests-product
+Build complete! (2,47 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite CompactHelpTests started.
+◇ Test layoutStates() started.
+✔ Test layoutStates() passed after 3.366 seconds.
+✔ Suite CompactHelpTests passed after 3.367 seconds.
+✔ Test run with 1 test in 1 suite passed after 3.367 seconds.

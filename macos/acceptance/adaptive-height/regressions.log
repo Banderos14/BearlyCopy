@@ -1,0 +1,119 @@
+Building for debugging...
+[1 / 3]
+[2 / 4] PromptRelayKit
+[3 / 5] PromptRelayKit
+[11 / 14] PromptRelayKit
+[15 / 18] PromptRelayKit
+/Users/admin/Projects/prompt-relay/macos/Sources/PromptRelayKit/Notch/IslandViews.swift:1841:13: warning: initialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+1839 | 
+1840 |     var body: some View {
+1841 |         let facts = ReportFacts(model: model)
+     |             `- warning: initialization of immutable value 'facts' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+1842 |         let task = model.fullTask
+1843 |         VStack(alignment: .leading, spacing: IslandMetrics.of(presentation).spacing) {
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[17 / 18] PromptRelayKit
+[18 / 20] PromptRelayApp-product
+[20 / 22] PromptRelayApp-product
+[22 / 22] PromptRelayApp-product
+[25 / 30] PromptRelayKitTests-product
+[36 / 41] PromptRelayKitTests-product
+[40 / 43] PromptRelayKitTests-product
+/Users/admin/Projects/prompt-relay/macos/Tests/PromptRelayKitTests/Phase6Tests.swift:243:69: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+241 |         let host = NSHostingView(rootView: view)
+242 |         host.frame = NSRect(x: 0, y: 0, width: 400, height: 600)
+243 |         for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+    |                                                                     `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+244 |         let scroll = try XCTUnwrap(frames["task.body"], "the expanded task scrolls")
+245 |         XCTAssertLessThanOrEqual(scroll.height, TaskCard.expandedHeight + 0.5, "80 lines never grow the card past its limit")
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:125:1: note: 'run(until:)' declared here
+123 | ///
+124 | /// If no input sources or timers are attached to the run loop, this method exits immediately; otherwise, it runs the receiver in the ``RunLoop/Mode/default`` mode by repeatedly invoking ``RunLoop/run(mode:before:)`` until the specified expiration date.
+125 | - (void)runUntilDate:(NSDate *)limitDate NS_SWIFT_UNAVAILABLE_FROM_ASYNC("run(until:) cannot be used from async contexts.");
+    | `- note: 'run(until:)' declared here
+126 | 
+127 | /// Runs the loop once, blocking for input in the specified mode until a given date.
+[42 / 46] PromptRelayKitTests-product
+Build complete! (9,50 secs)
+Test Suite 'Selected tests' started at 2026-11-05 08:39:56.179.
+Test Suite 'PromptRelayKitTests.xctest' started at 2026-11-05 08:39:56.181.
+Test Suite 'NotchGeometryTests' started at 2026-11-05 08:39:56.181.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testDisplayChoice]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testDisplayChoice]' passed (0.002 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testDisplayWithoutNotchHasNoLayout]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testDisplayWithoutNotchHasNoLayout]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testExpandedFrameFollowsContentAndStaysAnchored]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testExpandedFrameFollowsContentAndStaysAnchored]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testLayoutFollowsTheDisplayWhereverItIsArranged]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testLayoutFollowsTheDisplayWhereverItIsArranged]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testNotchRectAndFrames]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testNotchRectAndFrames]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testShortDisplaysCapTheIslandAndFloatingHangsBelowTheMenuBar]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testShortDisplaysCapTheIslandAndFloatingHangsBelowTheMenuBar]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testSmallOrScaledDisplayKeepsThePanelOnScreen]' started.
+Test Case '-[PromptRelayKitTests.NotchGeometryTests testSmallOrScaledDisplayKeepsThePanelOnScreen]' passed (0.000 seconds).
+Test Suite 'NotchGeometryTests' passed at 2026-11-05 08:39:56.184.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'NotchInteractionTests' started at 2026-11-05 08:39:56.184.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testClickOrShortcutOpensFocusedAndOnlyEscapeOrFocusLossCloses]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testClickOrShortcutOpensFocusedAndOnlyEscapeOrFocusLossCloses]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testHoverOpensAfterDwellAndClosesAfterGrace]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testHoverOpensAfterDwellAndClosesAfterGrace]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testPinnedPanelStaysOpenUntilUnpinned]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testPinnedPanelStaysOpenUntilUnpinned]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testQuickPassDoesNotOpenAndReturningCancelsClose]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testQuickPassDoesNotOpenAndReturningCancelsClose]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testRapidRepeatedHoverKeepsAtMostOneTimer]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testRapidRepeatedHoverKeepsAtMostOneTimer]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testTransitionsAreReported]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testTransitionsAreReported]' passed (0.000 seconds).
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testUnavailableHidesAndCancelsEverything]' started.
+Test Case '-[PromptRelayKitTests.NotchInteractionTests testUnavailableHidesAndCancelsEverything]' passed (0.000 seconds).
+Test Suite 'NotchInteractionTests' passed at 2026-11-05 08:39:56.185.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'PromptRelayKitTests.xctest' passed at 2026-11-05 08:39:56.185.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'Selected tests' passed at 2026-11-05 08:39:56.185.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 0.004 (0.006) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Phase82Tests started.
+◇ Suite Phase81ReadyTests started.
+◇ Suite Phase81Tests started.
+◇ Test diagnosticFactsAndTaskExcerpt() started.
+◇ Suite AdaptiveIslandHeightTests started.
+◇ Test helpNeverCoversContent() started.
+◇ Suite CompactHelpTests started.
+◇ Test readingOneSessionPreservesOtherUnreadAcrossRestartAndNewPrompt() started.
+◇ Test rapidSwitchingAndDismissal() started.
+◇ Test severalBlocksAndScreenLimit() started.
+✔ Test diagnosticFactsAndTaskExcerpt() passed after 0.054 seconds.
+◇ Test exactPreviewAndPersistentTransfer() started.
+✔ Test helpNeverCoversContent() passed after 63.525 seconds.
+✔ Suite Phase81Tests passed after 63.525 seconds.
+✔ Test severalBlocksAndScreenLimit() passed after 74.159 seconds.
+◇ Test heightReportsConvergeAndFramesKeepTopAndCenter() started.
+✔ Test heightReportsConvergeAndFramesKeepTopAndCenter() passed after 0.110 seconds.
+◇ Test bannersAndDismissal() started.
+✔ Test bannersAndDismissal() passed after 53.771 seconds.
+✔ Suite AdaptiveIslandHeightTests passed after 128.041 seconds.
+✔ Test readingOneSessionPreservesOtherUnreadAcrossRestartAndNewPrompt() passed after 128.246 seconds.
+◇ Test openingNewestTurnLeavesEarlierTurnUnreadInSameSession() started.
+✔ Test openingNewestTurnLeavesEarlierTurnUnreadInSameSession() passed after 0.009 seconds.
+◇ Test pinnedSessionDoesNotAcknowledgeAnUnopenedAnswer() started.
+✔ Test exactPreviewAndPersistentTransfer() passed after 128.273 seconds.
+◇ Test pointerLifecycle() started.
+✔ Test pointerLifecycle() passed after 0.007 seconds.
+◇ Test clipboardAndDynamicHelp() started.
+✔ Test pinnedSessionDoesNotAcknowledgeAnUnopenedAnswer() passed after 0.083 seconds.
+✔ Suite Phase81ReadyTests passed after 128.340 seconds.
+✔ Test clipboardAndDynamicHelp() passed after 33.136 seconds.
+✔ Suite Phase82Tests passed after 161.472 seconds.
+✔ Test rapidSwitchingAndDismissal() passed after 161.787 seconds.
+◇ Test layoutStates() started.
+✔ Test layoutStates() passed after 34.317 seconds.
+✔ Suite CompactHelpTests passed after 196.105 seconds.
+✔ Test run with 13 tests in 5 suites passed after 196.105 seconds.
