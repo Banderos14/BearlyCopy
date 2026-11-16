@@ -875,6 +875,7 @@ struct PeekContent: View {
             if let turn = model.selectedTurn, model.selectedImport == nil,
                let (position, count) = AnswerStepper.position(model, turn: turn.index), count > 1 {
                 Text("\(position)/\(count)").font(.system(size: 11).monospacedDigit()).foregroundStyle(Island.tertiary)
+                    .lineLimit(1).fixedSize()
                     .accessibilityLabel("Answer \(position) of \(count)")
             }
             let (label, tint) = status
@@ -1137,8 +1138,9 @@ struct AnswerStepper: View {
                     if turn.requestOrigin == .automated {
                         Image(systemName: "gearshape.2").font(.system(size: 8.5)).islandHelp("Claude Code started this turn itself")
                     }
-                    Text("\(position)/\(count)").font(.system(size: 11).monospacedDigit())
+                    Text("\(position)/\(count)").font(.system(size: 11).monospacedDigit()).lineLimit(1).fixedSize()
                 }
+                .layoutPriority(1)
                 .foregroundStyle(Island.tertiary)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Answer \(position) of \(count)")

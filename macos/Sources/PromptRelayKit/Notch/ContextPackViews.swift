@@ -447,6 +447,8 @@ struct PackBar: View {
                 Text("\(model.packRefs.count) chosen for a Context Pack").font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(Island.primary)
                 Spacer(minLength: 4)
+                Button("Clear") { model.clearPack() }.buttonStyle(.plain).foregroundStyle(Island.tertiary)
+                    .font(.system(size: 11.5, weight: .medium)).islandHelp("Remove all chosen results")
                 Button("Create Context Pack") { model.openContextPack() }.buttonStyle(IslandPillStyle(prominent: true))
             }
             .islandFrame("inbox.pack")
