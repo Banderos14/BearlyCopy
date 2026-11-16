@@ -163,7 +163,8 @@ struct InboxRow: View {
             Button(model.isPinned(result.ref) ? "Unpin" : "Pin") { model.togglePin(result.ref) }
             Button(model.isInPack(result.ref) ? "Remove from Context Pack" : "Add to Context Pack") { model.togglePack(result.ref) }
         }
-        PackToggle(model: model, ref: result.ref).padding(.top, 4)
+        // The + on every row is gone (clutter for a rarely used tool); Add to Context Pack
+        // stays in the row's context menu and the ⋯ menu.
         }
     }
 
