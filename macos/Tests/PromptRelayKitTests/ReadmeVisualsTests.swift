@@ -21,27 +21,51 @@ extension Phase6VisualTests {
     All 42 tests pass (`npm test`). I also wrote a short note for the release: `release-notes.md`.
     """
 
-    /// A believable settings-page picture for the attachment (no green square).
+    /// A believable app screenshot for the attachment: a settings page with a sidebar and
+    /// Dark mode switched on (drawn, so the README images never contain real data).
     static func settingsMockPNG() -> Data {
-        let size = NSSize(width: 960, height: 600)
+        let size = NSSize(width: 1200, height: 760)
+        let accent = NSColor(calibratedRed: 0.36, green: 0.52, blue: 0.98, alpha: 1)
         let image = NSImage(size: size, flipped: false) { rect in
-            NSGradient(colors: [NSColor(calibratedRed: 0.10, green: 0.11, blue: 0.14, alpha: 1),
-                                NSColor(calibratedRed: 0.16, green: 0.17, blue: 0.22, alpha: 1)])!.draw(in: rect, angle: -90)
-            func card(_ r: NSRect, _ fill: NSColor) { fill.setFill(); NSBezierPath(roundedRect: r, xRadius: 14, yRadius: 14).fill() }
-            card(NSRect(x: 60, y: 120, width: 840, height: 400), NSColor(white: 1, alpha: 0.07))
-            let title = NSAttributedString(string: "Settings", attributes: [.font: NSFont.systemFont(ofSize: 34, weight: .bold), .foregroundColor: NSColor.white])
-            title.draw(at: NSPoint(x: 90, y: 456))
-            let rows = ["Appearance", "Dark mode", "Notifications", "Language"]
-            for (i, row) in rows.enumerated() {
-                let y = CGFloat(400 - i * 78)
-                NSAttributedString(string: row, attributes: [.font: NSFont.systemFont(ofSize: 22, weight: row == "Dark mode" ? .semibold : .medium),
-                                                              .foregroundColor: NSColor(white: row == "Dark mode" ? 1 : 0.9, alpha: 1)])
-                    .draw(at: NSPoint(x: 100, y: y))
-                card(NSRect(x: 100, y: y - 20, width: 760, height: 1), NSColor(white: 1, alpha: 0.12))
-                if row == "Dark mode" {
-                    card(NSRect(x: 760, y: y - 8, width: 100, height: 48), NSColor(calibratedRed: 0.85, green: 0.65, blue: 0.42, alpha: 1))
-                    NSColor.white.setFill(); NSBezierPath(ovalIn: NSRect(x: 812, y: y - 2, width: 36, height: 36)).fill()
-                }
+            func fill(_ r: NSRect, _ c: NSColor, _ radius: CGFloat = 0) { c.setFill(); NSBezierPath(roundedRect: r, xRadius: radius, yRadius: radius).fill() }
+            func text(_ t: String, _ p: NSPoint, _ size: CGFloat, _ weight: NSFont.Weight = .regular, _ c: NSColor = .white) {
+                NSAttributedString(string: t, attributes: [.font: NSFont.systemFont(ofSize: size, weight: weight), .foregroundColor: c]).draw(at: p)
+            }
+            fill(rect, NSColor(calibratedRed: 0.07, green: 0.08, blue: 0.11, alpha: 1))
+            // window bar
+            fill(NSRect(x: 0, y: 712, width: 1200, height: 48), NSColor(white: 1, alpha: 0.05))
+            for (i, c) in [NSColor.systemRed, .systemYellow, .systemGreen].enumerated() { fill(NSRect(x: 22 + CGFloat(i) * 26, y: 726, width: 16, height: 16), c, 8) }
+            text("Acme Web — Settings", NSPoint(x: 500, y: 722), 18, .medium, NSColor(white: 1, alpha: 0.6))
+            // sidebar
+            fill(NSRect(x: 0, y: 0, width: 260, height: 712), NSColor(white: 1, alpha: 0.035))
+            for (i, item) in ["Profile", "Appearance", "Notifications", "Security", "Billing"].enumerated() {
+                let y = CGFloat(630 - i * 62)
+                if item == "Appearance" { fill(NSRect(x: 16, y: y - 12, width: 228, height: 48), accent.withAlphaComponent(0.22), 12) }
+                fill(NSRect(x: 36, y: y + 2, width: 20, height: 20), item == "Appearance" ? accent : NSColor(white: 1, alpha: 0.25), 6)
+                text(item, NSPoint(x: 72, y: y), 21, item == "Appearance" ? .semibold : .regular, item == "Appearance" ? .white : NSColor(white: 1, alpha: 0.7))
+            }
+            // content
+            text("Appearance", NSPoint(x: 310, y: 640), 38, .bold)
+            text("Choose how Acme looks on this device.", NSPoint(x: 310, y: 604), 20, .regular, NSColor(white: 1, alpha: 0.55))
+            func row(_ y: CGFloat, _ title: String, _ sub: String, on: Bool) {
+                fill(NSRect(x: 310, y: y, width: 840, height: 92), NSColor(white: 1, alpha: 0.06), 16)
+                text(title, NSPoint(x: 340, y: y + 50), 24, .semibold)
+                text(sub, NSPoint(x: 340, y: y + 20), 18, .regular, NSColor(white: 1, alpha: 0.55))
+                fill(NSRect(x: 1048, y: y + 28, width: 76, height: 40), on ? accent : NSColor(white: 1, alpha: 0.2), 20)
+                fill(NSRect(x: on ? 1088 : 1052, y: y + 32, width: 32, height: 32), .white, 16)
+            }
+            row(470, "Dark mode", "Use a dark color scheme across the app", on: true)
+            row(360, "Follow system", "Switch automatically with macOS", on: false)
+            row(250, "Reduce motion", "Fewer animations", on: false)
+            // theme preview cards
+            for (i, (name, dark)) in [("Light", false), ("Dark", true)].enumerated() {
+                let x = CGFloat(310 + i * 230)
+                fill(NSRect(x: x, y: 48, width: 210, height: 160), dark ? NSColor(calibratedRed: 0.12, green: 0.13, blue: 0.18, alpha: 1) : NSColor(white: 0.95, alpha: 1), 16)
+                fill(NSRect(x: x + 16, y: 150, width: 90, height: 12), dark ? NSColor(white: 1, alpha: 0.5) : NSColor(white: 0.2, alpha: 0.5), 6)
+                fill(NSRect(x: x + 16, y: 120, width: 140, height: 10), dark ? NSColor(white: 1, alpha: 0.25) : NSColor(white: 0.2, alpha: 0.25), 5)
+                fill(NSRect(x: x + 16, y: 28 + 60, width: 60, height: 26), accent, 8)
+                text(name, NSPoint(x: x + 16, y: 60), 18, .medium, dark ? .white : NSColor(white: 0.2, alpha: 1))
+                if dark { NSColor.white.withAlphaComponent(0.9).setStroke(); let b = NSBezierPath(roundedRect: NSRect(x: x, y: 48, width: 210, height: 160), xRadius: 16, yRadius: 16); b.lineWidth = 3; accent.setStroke(); b.stroke() }
             }
             return true
         }

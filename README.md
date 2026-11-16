@@ -27,12 +27,9 @@ Prompt Relay sits between your AI coding agent and the next chat you want to
 paste into. It never talks to the agent itself; it just keeps what the agent
 already said.
 
-```mermaid
-flowchart LR
-  A["1 · Your agent<br/>Claude Code, Codex"] --> B["2 · Prompt Relay<br/>keeps the answer, verbatim"]
-  B --> C["3 · Copy"]
-  C --> D["4 · Paste anywhere<br/>ChatGPT, Claude, a teammate"]
-```
+<p align="center">
+  <img src="docs/images/readme/how-it-works.png" width="900" alt="Your agent, then Prompt Relay keeps the answer, then Copy, then paste anywhere">
+</p>
 
 1. **Work as usual** in Claude Code or Codex.
 2. When the agent finishes, Prompt Relay saves the final answer exactly as written, with the request, the project and the files it wrote. Everything stays on your Mac.
