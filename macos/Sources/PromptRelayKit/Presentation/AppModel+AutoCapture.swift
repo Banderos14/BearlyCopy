@@ -106,6 +106,8 @@ extension AppModel {
         autoLinkedRunning.insert(session.sessionKey)
         Task { @MainActor [weak self] in
             guard let self, let window = await self.windowCapture.frontmostWindow() else { return }
+            // The switches may have changed while the window list was read.
+            guard self.autoCaptureFinalWindow, self.autoLinkWindowEnabled else { self.windowCapture.forget(window); return }
             for old in self.autoCaptureBindings where old.key == key && old.sessionKey == session.sessionKey {
                 self.unlink(old, forgetWindow: old.window.handle != window.handle)
             }
