@@ -5,6 +5,10 @@ import Foundation
 /// explains; it changes no setting and reads nothing.
 extension AppModel {
     static let tourSeenKey = "tour.seen"
+    /// How many times the tour has been shown by itself (a second chance if the
+    /// first one closed because the pointer or focus left the island).
+    static let tourShownKey = "tour.shown"
+    static let tourAutoShowLimit = 2
 
     public struct TourPage: Equatable, Identifiable, Sendable {
         public let id: Int
@@ -40,7 +44,8 @@ extension AppModel {
     /// The tour was finished or skipped once; it is not shown by itself again.
     public var tourSeen: Bool {
         _ = tourVersion
-        return stateDefaults?.bool(forKey: Self.tourSeenKey) ?? false
+        if stateDefaults?.bool(forKey: Self.tourSeenKey) ?? false { return true }
+        return ((stateDefaults?.object(forKey: Self.tourShownKey) as? Int) ?? 0) >= Self.tourAutoShowLimit
     }
 
     /// The first-launch tour: only where the choice can be remembered (the
@@ -58,7 +63,9 @@ extension AppModel {
     /// the person leaves with the island's own Back.
     public func markTourSeen() {
         guard !tourSeen else { return }
-        stateDefaults?.set(true, forKey: Self.tourSeenKey)
+        // Shown by itself at most twice: a first launch whose island closed
+        // at once (focus left it) gets one more chance; Done or Skip ends it.
+        stateDefaults?.set(((stateDefaults?.object(forKey: Self.tourShownKey) as? Int) ?? 0) + 1, forKey: Self.tourShownKey)
         tourVersion += 1
     }
 
