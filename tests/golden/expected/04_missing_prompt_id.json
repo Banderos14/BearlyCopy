@@ -1,0 +1,251 @@
+{
+  "show": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "answered_count": 2,
+          "claude_code_title": null,
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "answered_at": "2026-01-01T00:00:03.000000Z",
+            "completion": "answer",
+            "index": 2,
+            "status": "stop_received"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "running": false,
+          "session_id": "sess-min",
+          "session_key": "sess-min",
+          "title": "q1",
+          "turn_count": 2
+        },
+        "turn": {
+          "background_tasks": {
+            "count": null,
+            "reported": false,
+            "watchers": null
+          },
+          "candidate_request_turns": [],
+          "completion": "answer",
+          "earlier_user_request": null,
+          "error": null,
+          "final_response": {
+            "char_count": 2,
+            "preview": "a2",
+            "prompt_id": null,
+            "received_at": "2026-01-01T00:00:03.000000Z",
+            "text": "a2",
+            "truncated": false,
+            "utf8_bytes": 2
+          },
+          "index": 2,
+          "link": "sequence",
+          "notification_count": 0,
+          "observed": {
+            "background_started": 0,
+            "commands_nonzero": 0,
+            "files_changed": 0,
+            "runs_exit_zero": 0,
+            "runs_nonzero": 0,
+            "runs_unknown": 0,
+            "tool_events": 0
+          },
+          "observed_detail": {
+            "artifacts": [],
+            "commands": [],
+            "files_changed": [],
+            "notifications": 0,
+            "shown_files": []
+          },
+          "request": {
+            "char_count": 2,
+            "display_preview": "q2",
+            "preview": "q2",
+            "prompt_id": null,
+            "received_at": "2026-01-01T00:00:02.000000Z",
+            "text": "q2",
+            "truncated": false,
+            "utf8_bytes": 2
+          },
+          "request_origin": "user",
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "answered_count": 2,
+          "claude_code_title": null,
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "answered_at": "2026-01-01T00:00:03.000000Z",
+            "completion": "answer",
+            "index": 2,
+            "status": "stop_received"
+          },
+          "logical_project": {
+            "basis": "enabled_project",
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "running": false,
+          "session_id": "sess-min",
+          "session_key": "sess-min",
+          "title": "q1",
+          "turn_count": 2
+        },
+        "turns": [
+          {
+            "background_tasks": {
+              "count": null,
+              "reported": false,
+              "watchers": null
+            },
+            "candidate_request_turns": [],
+            "completion": "answer",
+            "earlier_user_request": null,
+            "error": null,
+            "final_response": {
+              "char_count": 2,
+              "preview": "a1",
+              "prompt_id": null,
+              "received_at": "2026-01-01T00:00:01.000000Z",
+              "truncated": false,
+              "utf8_bytes": 2
+            },
+            "index": 1,
+            "link": "sequence",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "commands_nonzero": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
+            "request": {
+              "char_count": 2,
+              "display_preview": "q1",
+              "preview": "q1",
+              "prompt_id": null,
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 2
+            },
+            "request_origin": "user",
+            "response_event_count": 1,
+            "status": "stop_received"
+          },
+          {
+            "background_tasks": {
+              "count": null,
+              "reported": false,
+              "watchers": null
+            },
+            "candidate_request_turns": [],
+            "completion": "answer",
+            "earlier_user_request": null,
+            "error": null,
+            "final_response": {
+              "char_count": 2,
+              "preview": "a2",
+              "prompt_id": null,
+              "received_at": "2026-01-01T00:00:03.000000Z",
+              "truncated": false,
+              "utf8_bytes": 2
+            },
+            "index": 2,
+            "link": "sequence",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "commands_nonzero": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
+            "request": {
+              "char_count": 2,
+              "display_preview": "q2",
+              "preview": "q2",
+              "prompt_id": null,
+              "received_at": "2026-01-01T00:00:02.000000Z",
+              "truncated": false,
+              "utf8_bytes": 2
+            },
+            "request_origin": "user",
+            "response_event_count": 1,
+            "status": "stop_received"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

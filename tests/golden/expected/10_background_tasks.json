@@ -1,0 +1,366 @@
+{
+  "show": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "answered_count": 2,
+          "claude_code_title": "factorial",
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "answered_at": "2026-01-01T00:00:03.000000Z",
+            "completion": "answer",
+            "index": 2,
+            "status": "stop_received"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "running": false,
+          "session_id": "doc-sess",
+          "session_key": "doc-sess",
+          "title": "Write a function to calculate the factorial of a number",
+          "turn_count": 2
+        },
+        "turn": {
+          "background_tasks": {
+            "count": null,
+            "reported": false,
+            "watchers": null
+          },
+          "candidate_request_turns": [],
+          "completion": "answer",
+          "earlier_user_request": null,
+          "error": null,
+          "final_response": {
+            "char_count": 5,
+            "preview": "Done.",
+            "prompt_id": "doc-2",
+            "received_at": "2026-01-01T00:00:03.000000Z",
+            "text": "Done.",
+            "truncated": false,
+            "utf8_bytes": 5
+          },
+          "index": 2,
+          "link": "prompt_id",
+          "notification_count": 0,
+          "observed": {
+            "background_started": 0,
+            "commands_nonzero": 0,
+            "files_changed": 0,
+            "runs_exit_zero": 0,
+            "runs_nonzero": 0,
+            "runs_unknown": 0,
+            "tool_events": 0
+          },
+          "observed_detail": {
+            "artifacts": [],
+            "commands": [],
+            "files_changed": [],
+            "notifications": 0,
+            "shown_files": []
+          },
+          "request": {
+            "char_count": 6,
+            "display_preview": "second",
+            "preview": "second",
+            "prompt_id": "doc-2",
+            "received_at": "2026-01-01T00:00:02.000000Z",
+            "text": "second",
+            "truncated": false,
+            "utf8_bytes": 6
+          },
+          "request_origin": "user",
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show_turn_1": {
+    "argv": [
+      "show",
+      "--session",
+      "doc-sess",
+      "--turn",
+      "1"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "answered_count": 2,
+          "claude_code_title": "factorial",
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "answered_at": "2026-01-01T00:00:03.000000Z",
+            "completion": "answer",
+            "index": 2,
+            "status": "stop_received"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "running": false,
+          "session_id": "doc-sess",
+          "session_key": "doc-sess",
+          "title": "Write a function to calculate the factorial of a number",
+          "turn_count": 2
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 1,
+            "reported": true,
+            "watchers": 0
+          },
+          "candidate_request_turns": [],
+          "completion": "answer_background_running",
+          "continued_in_turn": 2,
+          "earlier_user_request": null,
+          "error": null,
+          "final_response": {
+            "char_count": 51,
+            "preview": "I've completed the refactoring. Here's a summary...",
+            "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+            "received_at": "2026-01-01T00:00:01.000000Z",
+            "text": "I've completed the refactoring. Here's a summary...",
+            "truncated": false,
+            "utf8_bytes": 51
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "notification_count": 0,
+          "observed": {
+            "background_started": 0,
+            "commands_nonzero": 0,
+            "files_changed": 0,
+            "runs_exit_zero": 0,
+            "runs_nonzero": 0,
+            "runs_unknown": 0,
+            "tool_events": 0
+          },
+          "observed_detail": {
+            "artifacts": [],
+            "commands": [],
+            "files_changed": [],
+            "notifications": 0,
+            "shown_files": []
+          },
+          "request": {
+            "char_count": 55,
+            "display_preview": "Write a function to calculate the factorial of a number",
+            "preview": "Write a function to calculate the factorial of a number",
+            "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "text": "Write a function to calculate the factorial of a number",
+            "truncated": false,
+            "utf8_bytes": 55
+          },
+          "request_origin": "user",
+          "response_event_count": 1,
+          "status": "stop_received_background_tasks_pending"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": [
+        {
+          "code": "background_tasks_pending",
+          "message": "background tasks were still running when Claude stopped; the work may not be finished"
+        }
+      ]
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "answered_count": 2,
+          "claude_code_title": "factorial",
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 4,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "answered_at": "2026-01-01T00:00:03.000000Z",
+            "completion": "answer",
+            "index": 2,
+            "status": "stop_received"
+          },
+          "logical_project": {
+            "basis": "enabled_project",
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "running": false,
+          "session_id": "doc-sess",
+          "session_key": "doc-sess",
+          "title": "Write a function to calculate the factorial of a number",
+          "turn_count": 2
+        },
+        "turns": [
+          {
+            "background_tasks": {
+              "count": 1,
+              "reported": true,
+              "watchers": 0
+            },
+            "candidate_request_turns": [],
+            "completion": "answer_background_running",
+            "continued_in_turn": 2,
+            "earlier_user_request": null,
+            "error": null,
+            "final_response": {
+              "char_count": 51,
+              "preview": "I've completed the refactoring. Here's a summary...",
+              "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+              "received_at": "2026-01-01T00:00:01.000000Z",
+              "truncated": false,
+              "utf8_bytes": 51
+            },
+            "index": 1,
+            "link": "prompt_id",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "commands_nonzero": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
+            "request": {
+              "char_count": 55,
+              "display_preview": "Write a function to calculate the factorial of a number",
+              "preview": "Write a function to calculate the factorial of a number",
+              "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 55
+            },
+            "request_origin": "user",
+            "response_event_count": 1,
+            "status": "stop_received_background_tasks_pending"
+          },
+          {
+            "background_tasks": {
+              "count": null,
+              "reported": false,
+              "watchers": null
+            },
+            "candidate_request_turns": [],
+            "completion": "answer",
+            "earlier_user_request": null,
+            "error": null,
+            "final_response": {
+              "char_count": 5,
+              "preview": "Done.",
+              "prompt_id": "doc-2",
+              "received_at": "2026-01-01T00:00:03.000000Z",
+              "truncated": false,
+              "utf8_bytes": 5
+            },
+            "index": 2,
+            "link": "prompt_id",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "commands_nonzero": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
+            "request": {
+              "char_count": 6,
+              "display_preview": "second",
+              "preview": "second",
+              "prompt_id": "doc-2",
+              "received_at": "2026-01-01T00:00:02.000000Z",
+              "truncated": false,
+              "utf8_bytes": 6
+            },
+            "request_origin": "user",
+            "response_event_count": 1,
+            "status": "stop_received"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

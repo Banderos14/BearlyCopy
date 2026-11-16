@@ -1,0 +1,74 @@
+#!/bin/sh
+# Prompt Relay plugin hook launcher (POSIX sh, run as: /bin/sh run-hook).
+#
+# Finds a Python 3.9+ without assuming one on PATH (Claude Desktop starts
+# hooks with a minimal PATH) and without running macOS's /usr/bin/python3
+# install stub, then execs the handler. Contract: never writes stdout,
+# always exits 0, reads stdin only through the handler, no network.
+#
+# Order: 1. the interpreter pinned in <data dir>/python-path (written by
+# `prompt-relay enable` or `pin-python`), 2. well-known locations,
+# 3. /usr/bin/python3 only when the Xcode Command Line Tools are installed.
+# Every candidate, the pinned one included, must answer a version check, so
+# a pin that went stale (Homebrew upgrade) falls back instead of failing.
+
+# Keep the caller's PATH order, but make sure the basic tools are reachable
+# even when the hook starts with an empty or minimal PATH.
+PATH="${PATH:+$PATH:}/usr/bin:/bin"
+export PATH
+
+fail() {
+    printf 'prompt-relay: %s\n' "$1" >&2
+    cat >/dev/null 2>&1   # drain stdin so Claude Code's write never blocks
+    exit 0
+}
+
+case $0 in
+    */*) dir=${0%/*} ;;
+    *) dir=. ;;
+esac
+here=$(CDPATH= cd -- "$dir" 2>/dev/null && pwd -P) || fail "launcher_path_unresolved"
+entry="$here/prompt_relay_hook.py"
+[ -f "$entry" ] || fail "launcher_entry_missing"
+
+if [ -n "${PROMPT_RELAY_HOME:-}" ]; then
+    data_dir=$PROMPT_RELAY_HOME
+elif [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+    data_dir="$HOME/Library/Application Support/PromptRelay"
+else
+    data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/prompt-relay"
+fi
+
+supported() {
+    [ -n "$1" ] && [ -x "$1" ] && [ ! -d "$1" ] &&
+        "$1" -I -S -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1
+}
+
+python=""
+pin="$data_dir/python-path"
+if [ -f "$pin" ] && [ -O "$pin" ]; then
+    IFS= read -r candidate < "$pin" || candidate=""
+    case $candidate in
+        /*) supported "$candidate" && python=$candidate ;;
+    esac
+fi
+
+if [ -z "$python" ]; then
+    if [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+        for candidate in /opt/homebrew/bin/python3 /usr/local/bin/python3 \
+                /Library/Frameworks/Python.framework/Versions/Current/bin/python3; do
+            if supported "$candidate"; then python=$candidate; break; fi
+        done
+        if [ -z "$python" ] && /usr/bin/xcode-select -p >/dev/null 2>&1 && supported /usr/bin/python3; then
+            python=/usr/bin/python3
+        fi
+    else
+        candidate=$(command -v python3 2>/dev/null) && supported "$candidate" && python=$candidate
+    fi
+fi
+
+[ -n "$python" ] || fail "no_python_3_9"
+
+PROMPT_RELAY_VIA=plugin
+export PROMPT_RELAY_VIA
+exec "$python" -I -S "$entry"

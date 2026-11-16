@@ -1,0 +1,168 @@
+{
+  "sessions": {
+    "argv": [
+      "sessions"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "sessions",
+      "data": {
+        "project_filter": null,
+        "sessions": [
+          {
+            "answered_count": 0,
+            "claude_code_title": null,
+            "cwds": [
+              "__PROJECT_A__"
+            ],
+            "event_count": 1,
+            "first_event_at": "2026-01-01T00:00:00.000000Z",
+            "integrity": {
+              "corrupt_lines": 0,
+              "foreign_lines": 0,
+              "unsupported_lines": 0
+            },
+            "last_event_at": "2026-01-01T00:00:00.000000Z",
+            "last_turn": {
+              "completion": "working",
+              "index": 1,
+              "status": "awaiting_response"
+            },
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "profile": {
+              "basis": "default_home",
+              "default": true,
+              "hint": "~/.claude",
+              "id": "cc-default",
+              "provider": "claude_code"
+            },
+            "project": {
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "running": false,
+            "session_id": "d8365e27-9b63-41ae-b93a-008c5687f834",
+            "session_key": "d8365e27-9b63-41ae-b93a-008c5687f834",
+            "title": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python…",
+            "turn_count": 1
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 3,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": null,
+      "error": {
+        "code": "not_found",
+        "message": "no response has been captured yet for the selection"
+      },
+      "ok": false,
+      "warnings": []
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "answered_count": 0,
+          "claude_code_title": null,
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 1,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:00.000000Z",
+          "last_turn": {
+            "completion": "working",
+            "index": 1,
+            "status": "awaiting_response"
+          },
+          "logical_project": {
+            "basis": "enabled_project",
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "running": false,
+          "session_id": "d8365e27-9b63-41ae-b93a-008c5687f834",
+          "session_key": "d8365e27-9b63-41ae-b93a-008c5687f834",
+          "title": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python…",
+          "turn_count": 1
+        },
+        "turns": [
+          {
+            "background_tasks": null,
+            "candidate_request_turns": [],
+            "completion": "working",
+            "earlier_user_request": null,
+            "error": null,
+            "final_response": null,
+            "index": 1,
+            "link": "none",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "commands_nonzero": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
+            "request": {
+              "char_count": 105,
+              "display_preview": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python code block that prints 1.",
+              "preview": "Reply with exactly this and nothing else: \"Привет, мир! 🚀\" followed by a python code block that prints 1.",
+              "prompt_id": "6e338ad9-ac6a-43f4-bd36-6fc5a026e136",
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 117
+            },
+            "request_origin": "user",
+            "response_event_count": 0,
+            "status": "awaiting_response"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

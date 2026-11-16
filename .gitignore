@@ -1,0 +1,42 @@
+# Prompt Relay stores captured data outside the repository
+# (~/Library/Application Support/PromptRelay). These patterns are a second
+# line of defence so captured text can never be committed by accident.
+*.jsonl
+.prompt-relay/
+prompt-relay-data/
+handler.log*
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+
+# Claude Code local (per-user) settings
+.claude/settings.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# Swift / Xcode (future macOS app)
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# OS / editors
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Local acceptance artefacts (screenshots, logs) never go to the repository
+macos/acceptance/

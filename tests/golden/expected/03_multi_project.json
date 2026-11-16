@@ -1,0 +1,437 @@
+{
+  "projects": {
+    "argv": [
+      "projects"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "projects",
+      "data": {
+        "projects": [
+          {
+            "capture_enabled": true,
+            "excluded": false,
+            "explicitly_enabled": true,
+            "last_event_at": "2026-01-01T00:00:03.000000Z",
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "name": "project-a",
+            "path": "__PROJECT_A__",
+            "session_count": 1
+          },
+          {
+            "capture_enabled": true,
+            "excluded": false,
+            "explicitly_enabled": true,
+            "last_event_at": "2026-01-01T00:00:02.000000Z",
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
+            "name": "project-b",
+            "path": "__PROJECT_B__",
+            "session_count": 1
+          }
+        ],
+        "settings": {
+          "automatic_deletion": false,
+          "capture": {
+            "enabled_projects": [
+              "__PROJECT_A__",
+              "__PROJECT_B__"
+            ],
+            "excluded_projects": [],
+            "minimum_plugin_version": "0.8.0",
+            "mode": "selected",
+            "resume_mode": null
+          },
+          "retention_days": null
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "sessions": {
+    "argv": [
+      "sessions"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "sessions",
+      "data": {
+        "project_filter": null,
+        "sessions": [
+          {
+            "answered_count": 1,
+            "claude_code_title": null,
+            "cwds": [
+              "__PROJECT_A__"
+            ],
+            "event_count": 2,
+            "first_event_at": "2026-01-01T00:00:00.000000Z",
+            "integrity": {
+              "corrupt_lines": 0,
+              "foreign_lines": 0,
+              "unsupported_lines": 0
+            },
+            "last_event_at": "2026-01-01T00:00:03.000000Z",
+            "last_turn": {
+              "answered_at": "2026-01-01T00:00:03.000000Z",
+              "completion": "answer",
+              "index": 1,
+              "status": "stop_received"
+            },
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "profile": {
+              "basis": "default_home",
+              "default": true,
+              "hint": "~/.claude",
+              "id": "cc-default",
+              "provider": "claude_code"
+            },
+            "project": {
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "running": false,
+            "session_id": "sess-a",
+            "session_key": "sess-a",
+            "title": "A request",
+            "turn_count": 1
+          },
+          {
+            "answered_count": 1,
+            "claude_code_title": null,
+            "cwds": [
+              "__PROJECT_B__"
+            ],
+            "event_count": 2,
+            "first_event_at": "2026-01-01T00:00:01.000000Z",
+            "integrity": {
+              "corrupt_lines": 0,
+              "foreign_lines": 0,
+              "unsupported_lines": 0
+            },
+            "last_event_at": "2026-01-01T00:00:02.000000Z",
+            "last_turn": {
+              "answered_at": "2026-01-01T00:00:02.000000Z",
+              "completion": "answer",
+              "index": 1,
+              "status": "stop_received"
+            },
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
+            "profile": {
+              "basis": "default_home",
+              "default": true,
+              "hint": "~/.claude",
+              "id": "cc-default",
+              "provider": "claude_code"
+            },
+            "project": {
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
+            "running": false,
+            "session_id": "sess-b",
+            "session_key": "sess-b",
+            "title": "B request",
+            "turn_count": 1
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "sessions_b": {
+    "argv": [
+      "sessions",
+      "--project",
+      "__PROJECT_B__"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "sessions",
+      "data": {
+        "project_filter": "__PROJECT_B__",
+        "sessions": [
+          {
+            "answered_count": 1,
+            "claude_code_title": null,
+            "cwds": [
+              "__PROJECT_B__"
+            ],
+            "event_count": 2,
+            "first_event_at": "2026-01-01T00:00:01.000000Z",
+            "integrity": {
+              "corrupt_lines": 0,
+              "foreign_lines": 0,
+              "unsupported_lines": 0
+            },
+            "last_event_at": "2026-01-01T00:00:02.000000Z",
+            "last_turn": {
+              "answered_at": "2026-01-01T00:00:02.000000Z",
+              "completion": "answer",
+              "index": 1,
+              "status": "stop_received"
+            },
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
+            "profile": {
+              "basis": "default_home",
+              "default": true,
+              "hint": "~/.claude",
+              "id": "cc-default",
+              "provider": "claude_code"
+            },
+            "project": {
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
+            "running": false,
+            "session_id": "sess-b",
+            "session_key": "sess-b",
+            "title": "B request",
+            "turn_count": 1
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show_a": {
+    "argv": [
+      "show",
+      "--project",
+      "__PROJECT_A__"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "answered_count": 1,
+          "claude_code_title": null,
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:03.000000Z",
+          "last_turn": {
+            "answered_at": "2026-01-01T00:00:03.000000Z",
+            "completion": "answer",
+            "index": 1,
+            "status": "stop_received"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "running": false,
+          "session_id": "sess-a",
+          "session_key": "sess-a",
+          "title": "A request",
+          "turn_count": 1
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true,
+            "watchers": 0
+          },
+          "candidate_request_turns": [],
+          "completion": "answer",
+          "earlier_user_request": null,
+          "error": null,
+          "final_response": {
+            "char_count": 8,
+            "preview": "A answer",
+            "prompt_id": "pa",
+            "received_at": "2026-01-01T00:00:03.000000Z",
+            "text": "A answer",
+            "truncated": false,
+            "utf8_bytes": 8
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "notification_count": 0,
+          "observed": {
+            "background_started": 0,
+            "commands_nonzero": 0,
+            "files_changed": 0,
+            "runs_exit_zero": 0,
+            "runs_nonzero": 0,
+            "runs_unknown": 0,
+            "tool_events": 0
+          },
+          "observed_detail": {
+            "artifacts": [],
+            "commands": [],
+            "files_changed": [],
+            "notifications": 0,
+            "shown_files": []
+          },
+          "request": {
+            "char_count": 9,
+            "display_preview": "A request",
+            "preview": "A request",
+            "prompt_id": "pa",
+            "received_at": "2026-01-01T00:00:00.000000Z",
+            "text": "A request",
+            "truncated": false,
+            "utf8_bytes": 9
+          },
+          "request_origin": "user",
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show_b": {
+    "argv": [
+      "show",
+      "--project",
+      "__PROJECT_B__"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": {
+        "session": {
+          "answered_count": 1,
+          "claude_code_title": null,
+          "cwds": [
+            "__PROJECT_B__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:01.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:02.000000Z",
+          "last_turn": {
+            "answered_at": "2026-01-01T00:00:02.000000Z",
+            "completion": "answer",
+            "index": 1,
+            "status": "stop_received"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
+          "project": {
+            "name": "project-b",
+            "path": "__PROJECT_B__"
+          },
+          "running": false,
+          "session_id": "sess-b",
+          "session_key": "sess-b",
+          "title": "B request",
+          "turn_count": 1
+        },
+        "turn": {
+          "background_tasks": {
+            "count": 0,
+            "reported": true,
+            "watchers": 0
+          },
+          "candidate_request_turns": [],
+          "completion": "answer",
+          "earlier_user_request": null,
+          "error": null,
+          "final_response": {
+            "char_count": 8,
+            "preview": "B answer",
+            "prompt_id": "pb",
+            "received_at": "2026-01-01T00:00:02.000000Z",
+            "text": "B answer",
+            "truncated": false,
+            "utf8_bytes": 8
+          },
+          "index": 1,
+          "link": "prompt_id",
+          "notification_count": 0,
+          "observed": {
+            "background_started": 0,
+            "commands_nonzero": 0,
+            "files_changed": 0,
+            "runs_exit_zero": 0,
+            "runs_nonzero": 0,
+            "runs_unknown": 0,
+            "tool_events": 0
+          },
+          "observed_detail": {
+            "artifacts": [],
+            "commands": [],
+            "files_changed": [],
+            "notifications": 0,
+            "shown_files": []
+          },
+          "request": {
+            "char_count": 9,
+            "display_preview": "B request",
+            "preview": "B request",
+            "prompt_id": "pb",
+            "received_at": "2026-01-01T00:00:01.000000Z",
+            "text": "B request",
+            "truncated": false,
+            "utf8_bytes": 9
+          },
+          "request_origin": "user",
+          "response_event_count": 1,
+          "status": "stop_received"
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}

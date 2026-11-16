@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened Runtime with no exceptions (Phase 11, ADR-020).
+  Prompt Relay is not sandboxed (it reads the Core's data dir and starts the
+  user's Python), loads no plug-ins, uses no JIT and sends no Apple Events,
+  so no com.apple.security.cs.* exception is requested. ScreenCaptureKit
+  needs no entitlement outside the App Sandbox; macOS asks the user.
+-->
+<plist version="1.0">
+<dict/>
+</plist>

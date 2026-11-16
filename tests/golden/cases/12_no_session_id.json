@@ -1,0 +1,27 @@
+{
+  "description": "Events without session_id are never linked to each other.",
+  "events": [
+    {
+      "payload": {
+        "hook_event_name": "UserPromptSubmit",
+        "cwd": "__PROJECT_A__",
+        "prompt": "question from X"
+      }
+    },
+    {
+      "payload": {
+        "hook_event_name": "Stop",
+        "cwd": "__PROJECT_A__",
+        "last_assistant_message": "answer from Y"
+      }
+    }
+  ],
+  "queries": {
+    "sessions": [
+      "sessions"
+    ],
+    "turns": [
+      "turns"
+    ]
+  }
+}

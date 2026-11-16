@@ -1,0 +1,21 @@
+{
+  "description": "No captured data: empty lists, not errors; show reports not_found.",
+  "events": [],
+  "queries": {
+    "projects": [
+      "projects"
+    ],
+    "sessions": [
+      "sessions"
+    ],
+    "turns": [
+      "turns"
+    ],
+    "show": [
+      "show"
+    ],
+    "retention": [
+      "retention"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "session_id": "doc-sess",
+  "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+  "cwd": "__PROJECT_A__",
+  "hook_event_name": "StopFailure",
+  "error": "unknown"
+}

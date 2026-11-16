@@ -1,0 +1,21 @@
+{
+  "description": "Stop with an empty last_assistant_message: a final response with empty text.",
+  "events": [
+    {
+      "fixture": "prompt_basic.json",
+      "project": "A"
+    },
+    {
+      "fixture": "stop_empty.json",
+      "project": "A"
+    }
+  ],
+  "queries": {
+    "turns": [
+      "turns"
+    ],
+    "show": [
+      "show"
+    ]
+  }
+}

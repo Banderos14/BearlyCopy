@@ -1,0 +1,34 @@
+{
+  "description": "Two prompts without prompt_id, then one Stop: the response is not assigned to either prompt.",
+  "events": [
+    {
+      "fixture": "prompt_minimal.json",
+      "project": "A",
+      "override": {
+        "prompt": "first"
+      }
+    },
+    {
+      "fixture": "prompt_minimal.json",
+      "project": "A",
+      "override": {
+        "prompt": "second"
+      }
+    },
+    {
+      "fixture": "stop_minimal.json",
+      "project": "A",
+      "override": {
+        "last_assistant_message": "which one?"
+      }
+    }
+  ],
+  "queries": {
+    "turns": [
+      "turns"
+    ],
+    "show": [
+      "show"
+    ]
+  }
+}

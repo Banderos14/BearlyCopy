@@ -1,0 +1,2528 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Banderos14/prompt-relay/docs/api/api-v1.schema.json",
+  "title": "Prompt Relay CLI JSON API, version 1",
+  "description": "Envelope written by every `prompt-relay <command> --json`. `data` follows $defs/<command>_data (see docs/JSON_API.md §3). Closed for the producer; consumers must ignore unknown fields and unknown enum values.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "command",
+    "ok",
+    "data",
+    "error",
+    "warnings"
+  ],
+  "properties": {
+    "api_version": {
+      "const": 1
+    },
+    "command": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "data": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/error"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/warning"
+      }
+    }
+  },
+  "x-command-data": {
+    "projects": "projects_data",
+    "sessions": "sessions_data",
+    "turns": "turns_data",
+    "show": "show_data",
+    "context": "context_data",
+    "delete": "plan_data",
+    "prune": "plan_data",
+    "retention": "retention_data",
+    "doctor": "doctor_data",
+    "results": "results_data",
+    "context-pack": "context_pack_data",
+    "capture": "capture_data"
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$"
+    },
+    "timestamp_or_null": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "usage_error",
+            "not_found",
+            "ambiguous_selection",
+            "no_final_response",
+            "confirmation_required",
+            "active_session",
+            "unsafe_path",
+            "storage_error",
+            "config_error",
+            "internal_error"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "project_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "awaiting_response",
+        "no_matched_response",
+        "stop_received",
+        "stop_received_background_tasks_pending",
+        "stop_received_without_text",
+        "api_error"
+      ]
+    },
+    "link": {
+      "enum": [
+        "prompt_id",
+        "sequence",
+        "ambiguous",
+        "none"
+      ]
+    },
+    "session_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cwds",
+        "event_count",
+        "first_event_at",
+        "integrity",
+        "last_event_at",
+        "last_turn",
+        "project",
+        "session_id",
+        "session_key",
+        "turn_count"
+      ],
+      "properties": {
+        "session_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "session_key": {
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/project_ref"
+        },
+        "first_event_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "last_event_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "turn_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cwds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_turn": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "index",
+                "status"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "status": {
+                  "$ref": "#/$defs/status"
+                },
+                "answered_at": {
+                  "$ref": "#/$defs/timestamp"
+                },
+                "completion": {
+                  "type": "string",
+                  "description": "Phase 9.4: answer | answer_background_running | waiting_background | intermediate | working | no_text | api_error | unknown. Stop only means the agent stopped; readers accept unknown values."
+                },
+                "continued_in_turn": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Phase 9.4: the later turn of this session that followed a Stop with work in flight."
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "corrupt_lines",
+            "foreign_lines",
+            "unsupported_lines"
+          ],
+          "properties": {
+            "corrupt_lines": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unsupported_lines": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "foreign_lines": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "claude_code_title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "answered_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "object",
+          "required": [
+            "provider",
+            "host",
+            "capabilities",
+            "capture"
+          ],
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "native_session_id": {
+              "type": "string"
+            },
+            "installation_id": {
+              "type": "string"
+            },
+            "capture": {
+              "type": "string"
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "logical_project": {
+          "$ref": "#/$defs/logical_project"
+        },
+        "profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "native_session_id": {
+          "type": "string",
+          "description": "Phase 12: the agent's own session id when the stored key was scoped to a non-default profile."
+        },
+        "attention": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "kind",
+            "since",
+            "subagent"
+          ],
+          "description": "Phase 12.1: the agent waits for the person (needs-input signal not yet followed by activity). Absent otherwise. Never an answer.",
+          "properties": {
+            "state": {
+              "type": "string",
+              "description": "needs_input"
+            },
+            "kind": {
+              "type": "string",
+              "description": "question | plan_approval | permission | elicitation | input (readers accept unknown values)"
+            },
+            "since": {
+              "$ref": "#/$defs/timestamp_or_null"
+            },
+            "subagent": {
+              "type": "boolean"
+            },
+            "last_signal_at": {
+              "$ref": "#/$defs/timestamp_or_null",
+              "description": "Phase 12.1: newest signal of this wait (repeats re-confirm it). Readers judge how certain a long wait still is; the Core never ends a wait by time."
+            }
+          }
+        }
+      }
+    },
+    "text_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "char_count",
+        "preview",
+        "prompt_id",
+        "received_at",
+        "truncated",
+        "utf8_bytes"
+      ],
+      "properties": {
+        "preview": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "char_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "display_preview": {
+          "description": "Requests only (Phase 5.11): the start of the request without automated blocks and paste wrappers, for display; null when nothing else remains.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "text_full": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "char_count",
+        "preview",
+        "prompt_id",
+        "received_at",
+        "text",
+        "truncated",
+        "utf8_bytes"
+      ],
+      "properties": {
+        "preview": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "char_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "text": {
+          "type": "string"
+        },
+        "display_preview": {
+          "description": "Requests only (Phase 5.11): the start of the request without automated blocks and paste wrappers, for display; null when nothing else remains.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "turn_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "background_tasks",
+        "candidate_request_turns",
+        "error",
+        "final_response",
+        "index",
+        "link",
+        "request",
+        "response_event_count",
+        "status"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "link": {
+          "$ref": "#/$defs/link"
+        },
+        "request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text_summary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "final_response": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text_summary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "response_event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "background_tasks": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "count",
+                "reported"
+              ],
+              "properties": {
+                "reported": {
+                  "type": "boolean"
+                },
+                "count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "watchers": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "details",
+                "message",
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "details": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_request_turns": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "notification_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observed": {
+          "$ref": "#/$defs/observed_counts"
+        },
+        "request_origin": {
+          "description": "Where the request came from (Phase 5.11): user, user_pasted, automated (a turn Claude Code started itself) or unknown. Read from the text's structure; null without a request.",
+          "anyOf": [
+            {
+              "enum": [
+                "user",
+                "user_pasted",
+                "automated",
+                "unknown"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "earlier_user_request": {
+          "description": "For an automated turn: the latest earlier request from the user in the same session; else null.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/earlier_text_summary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "native_turn_id": {
+          "type": "string"
+        },
+        "continues_request": {
+          "description": "Phase 9.3, optional: for a short continuation request (such as \"continue\"), the latest earlier substantive request of the same session, offered as labelled context; the turn's own request stays verbatim.",
+          "$ref": "#/$defs/earlier_text_summary"
+        },
+        "completion": {
+          "type": "string",
+          "description": "Phase 9.4: answer | answer_background_running | waiting_background | intermediate | working | no_text | api_error | unknown. Stop only means the agent stopped; readers accept unknown values."
+        },
+        "continued_in_turn": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Phase 9.4: the later turn of this session that followed a Stop with work in flight."
+        }
+      }
+    },
+    "turn_full": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "background_tasks",
+        "candidate_request_turns",
+        "error",
+        "final_response",
+        "index",
+        "link",
+        "request",
+        "response_event_count",
+        "status"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "link": {
+          "$ref": "#/$defs/link"
+        },
+        "request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text_full"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "final_response": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text_full"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "response_event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "background_tasks": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "count",
+                "reported"
+              ],
+              "properties": {
+                "reported": {
+                  "type": "boolean"
+                },
+                "count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "watchers": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "details",
+                "message",
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "details": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_request_turns": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "notification_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observed": {
+          "$ref": "#/$defs/observed_counts"
+        },
+        "observed_detail": {
+          "$ref": "#/$defs/observed_detail"
+        },
+        "request_origin": {
+          "description": "Where the request came from (Phase 5.11): user, user_pasted, automated (a turn Claude Code started itself) or unknown. Read from the text's structure; null without a request.",
+          "anyOf": [
+            {
+              "enum": [
+                "user",
+                "user_pasted",
+                "automated",
+                "unknown"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "earlier_user_request": {
+          "description": "For an automated turn: the latest earlier request from the user in the same session; else null.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/earlier_text_full"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "native_turn_id": {
+          "type": "string"
+        },
+        "continues_request": {
+          "description": "Phase 9.3, optional: for a short continuation request (such as \"continue\"), the latest earlier substantive request of the same session, offered as labelled context; the turn's own request stays verbatim.",
+          "$ref": "#/$defs/earlier_text_full"
+        },
+        "completion": {
+          "type": "string",
+          "description": "Phase 9.4: answer | answer_background_running | waiting_background | intermediate | working | no_text | api_error | unknown. Stop only means the agent stopped; readers accept unknown values."
+        },
+        "continued_in_turn": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Phase 9.4: the later turn of this session that followed a Stop with work in flight."
+        },
+        "work_chain": {
+          "type": "object",
+          "description": "Phase 9.4, show only: earlier intermediate turns of this session continued by this one; their observed files and the request time that started the task.",
+          "properties": {
+            "from_turn": {
+              "type": "integer"
+            },
+            "turns": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "started_at": {
+              "$ref": "#/$defs/timestamp_or_null"
+            },
+            "files_changed": {
+              "type": "array"
+            },
+            "shown_files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "automatic_deletion",
+        "retention_days"
+      ],
+      "properties": {
+        "retention_days": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "automatic_deletion": {
+          "const": false
+        },
+        "capture": {
+          "$ref": "#/$defs/capture_data"
+        }
+      }
+    },
+    "projects_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projects",
+        "settings"
+      ],
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "capture_enabled",
+              "explicitly_enabled",
+              "last_event_at",
+              "name",
+              "path",
+              "session_count"
+            ],
+            "properties": {
+              "path": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "capture_enabled": {
+                "type": "boolean"
+              },
+              "explicitly_enabled": {
+                "type": "boolean"
+              },
+              "session_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "last_event_at": {
+                "$ref": "#/$defs/timestamp_or_null"
+              },
+              "logical_project": {
+                "$ref": "#/$defs/logical_project"
+              },
+              "excluded": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "settings": {
+          "$ref": "#/$defs/settings"
+        }
+      }
+    },
+    "sessions_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_filter",
+        "sessions"
+      ],
+      "properties": {
+        "project_filter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sessions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/session_summary"
+          }
+        }
+      }
+    },
+    "turns_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "turns"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/session_summary"
+        },
+        "turns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/turn_summary"
+          }
+        }
+      }
+    },
+    "show_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "turn"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/session_summary"
+        },
+        "turn": {
+          "$ref": "#/$defs/turn_full"
+        }
+      }
+    },
+    "context_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exported_at",
+        "git",
+        "sensitive_findings",
+        "session",
+        "text",
+        "turn"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/session_summary"
+        },
+        "turn": {
+          "$ref": "#/$defs/turn_summary"
+        },
+        "exported_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "text": {
+          "type": "string"
+        },
+        "sensitive_findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "line",
+              "section"
+            ],
+            "properties": {
+              "section": {
+                "enum": [
+                  "request",
+                  "response"
+                ]
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "kind": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "git": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "available",
+            "branch",
+            "changed_file_count",
+            "changed_files_truncated",
+            "head",
+            "reason"
+          ],
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "branch": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "head": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "changed_file_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "changed_files_truncated": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "plan_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_grace_minutes",
+        "criteria",
+        "cutoff",
+        "dry_run",
+        "items",
+        "now",
+        "operation",
+        "summary"
+      ],
+      "properties": {
+        "operation": {
+          "enum": [
+            "prune",
+            "delete"
+          ]
+        },
+        "dry_run": {
+          "type": "boolean"
+        },
+        "criteria": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "all",
+            "force_active",
+            "older_than_days",
+            "session"
+          ],
+          "properties": {
+            "older_than_days": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "session": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "all": {
+              "type": "boolean"
+            },
+            "force_active": {
+              "type": "boolean"
+            }
+          }
+        },
+        "now": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "cutoff": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "active_grace_minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "action",
+              "bytes",
+              "last_activity_at",
+              "project",
+              "reason",
+              "session_id",
+              "session_key",
+              "turn_count"
+            ],
+            "properties": {
+              "session_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "session_key": {
+                "type": "string"
+              },
+              "project": {
+                "$ref": "#/$defs/project_ref"
+              },
+              "last_activity_at": {
+                "$ref": "#/$defs/timestamp"
+              },
+              "turn_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "action": {
+                "enum": [
+                  "would_delete",
+                  "deleted",
+                  "skipped_active",
+                  "skipped_changed",
+                  "skipped_unsafe",
+                  "vanished",
+                  "failed"
+                ]
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bytes_freed",
+            "deleted",
+            "failed",
+            "matched",
+            "skipped",
+            "would_delete"
+          ],
+          "properties": {
+            "matched": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "would_delete": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "deleted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "skipped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bytes_freed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "retention_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "automatic_deletion",
+        "retention_days"
+      ],
+      "properties": {
+        "retention_days": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "automatic_deletion": {
+          "const": false
+        }
+      }
+    },
+    "doctor_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capture",
+        "configuration",
+        "core",
+        "findings",
+        "observed",
+        "storage",
+        "unverified"
+      ],
+      "properties": {
+        "core": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "api_version",
+            "pinned_python",
+            "prompt_relay_version",
+            "python"
+          ],
+          "properties": {
+            "prompt_relay_version": {
+              "type": "string"
+            },
+            "api_version": {
+              "const": 1
+            },
+            "python": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "executable",
+                "supported",
+                "version"
+              ],
+              "properties": {
+                "executable": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                },
+                "supported": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "pinned_python": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "state"
+              ],
+              "properties": {
+                "path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "enum": [
+                    "ok",
+                    "not_set",
+                    "missing",
+                    "not_executable",
+                    "invalid"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "data_dir",
+            "exists",
+            "session_files",
+            "writable"
+          ],
+          "properties": {
+            "data_dir": {
+              "type": "string"
+            },
+            "exists": {
+              "type": "boolean"
+            },
+            "writable": {
+              "type": "boolean"
+            },
+            "session_files": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "capture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "config_error",
+            "enabled_projects",
+            "project"
+          ],
+          "properties": {
+            "config_error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "enabled_projects": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "project": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "capture_enabled",
+                    "path"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "capture_enabled": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mode": {
+              "enum": [
+                "selected",
+                "global",
+                "paused",
+                null
+              ]
+            },
+            "excluded_projects": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "configuration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "plugin",
+            "settings"
+          ],
+          "properties": {
+            "plugin": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "file",
+                "records",
+                "state"
+              ],
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "records": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "install_path",
+                      "launcher_found",
+                      "manifest_found",
+                      "scope",
+                      "version"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "scope": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "version": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "install_path": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "manifest_found": {
+                        "type": "boolean"
+                      },
+                      "launcher_found": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "settings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "enabled_plugins",
+                  "file",
+                  "foreign_hooks",
+                  "prompt_relay_hooks",
+                  "scope",
+                  "state"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "enum": [
+                      "user",
+                      "project",
+                      "local"
+                    ]
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "prompt_relay_hooks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "event"
+                      ],
+                      "properties": {
+                        "event": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "foreign_hooks": {
+                    "type": "object"
+                  },
+                  "enabled_plugins": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "observed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "by_via",
+            "lines_scanned",
+            "log_file",
+            "outcomes",
+            "state"
+          ],
+          "properties": {
+            "log_file": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "lines_scanned": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "by_via": {
+              "type": "object"
+            },
+            "by_source": {
+              "type": "object"
+            },
+            "outcomes": {
+              "type": "object"
+            }
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "level",
+              "message"
+            ],
+            "properties": {
+              "level": {
+                "enum": [
+                  "ok",
+                  "warning",
+                  "error"
+                ]
+              },
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "unverified": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "observed_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool_events",
+        "runs_exit_zero",
+        "runs_nonzero",
+        "runs_unknown",
+        "files_changed",
+        "background_started"
+      ],
+      "properties": {
+        "tool_events": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runs_exit_zero": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runs_nonzero": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runs_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "files_changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "background_started": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "commands_nonzero": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Shell commands of any kind that exited non-zero (Phase 5.11)."
+        }
+      }
+    },
+    "observed_detail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commands",
+        "files_changed",
+        "shown_files",
+        "artifacts",
+        "notifications"
+      ],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "at",
+              "command",
+              "command_withheld",
+              "kind",
+              "outcome",
+              "exit_code",
+              "duration_ms",
+              "compound",
+              "background",
+              "agent_type",
+              "after_stop",
+              "output_tail",
+              "tail_withheld"
+            ],
+            "properties": {
+              "at": {
+                "type": "string"
+              },
+              "command": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "command_withheld": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "outcome": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "exit_code": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "duration_ms": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "compound": {
+                "type": "boolean"
+              },
+              "background": {
+                "type": "boolean"
+              },
+              "agent_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "after_stop": {
+                "type": "boolean"
+              },
+              "output_tail": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "tail_withheld": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "files_changed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "tools",
+              "count"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "tools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "shown_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "notifications": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "earlier_text_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "char_count",
+        "preview",
+        "prompt_id",
+        "received_at",
+        "truncated",
+        "utf8_bytes",
+        "turn"
+      ],
+      "properties": {
+        "preview": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "char_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "display_preview": {
+          "description": "Requests only (Phase 5.11): the start of the request without automated blocks and paste wrappers, for display; null when nothing else remains.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "A request from an earlier turn of the same session, with that turn's number."
+    },
+    "earlier_text_full": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "char_count",
+        "preview",
+        "prompt_id",
+        "received_at",
+        "text",
+        "truncated",
+        "utf8_bytes",
+        "turn"
+      ],
+      "properties": {
+        "preview": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "char_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "received_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "text": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "display_preview": {
+          "description": "Requests only (Phase 5.11): the start of the request without automated blocks and paste wrappers, for display; null when nothing else remains.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "A request from an earlier turn of the same session, with that turn's number."
+    },
+    "logical_project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "name",
+        "basis"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string",
+          "description": "enabled_project | git_root | workspace | directory (Phase 9.3); readers accept unknown values"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "provider",
+        "basis",
+        "default"
+      ],
+      "description": "Phase 12: the local agent profile = the agent's configuration home (CLAUDE_CONFIG_DIR / CODEX_HOME). Never an account; credentials are never read. Absent for older Claude Code records (Unassigned).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "cc-default | cx-default | cc-<16 hex> | cx-<16 hex>"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string",
+          "description": "config_dir | default_home | installation"
+        },
+        "default": {
+          "type": "boolean"
+        },
+        "hint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "~/<folder> under the home folder, else the last path component; never a user name"
+        }
+      }
+    },
+    "result_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_key",
+        "turn",
+        "answered_at",
+        "status",
+        "completion",
+        "conversation",
+        "project",
+        "request",
+        "response",
+        "observed"
+      ],
+      "properties": {
+        "session_key": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "answered_at": {
+          "$ref": "#/$defs/timestamp_or_null"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "completion": {
+          "type": "string"
+        },
+        "continued_in_turn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "conversation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "session_id"
+          ],
+          "properties": {
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "session_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "source": {
+          "type": "object",
+          "required": [
+            "provider",
+            "host",
+            "capabilities",
+            "capture"
+          ],
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "native_session_id": {
+              "type": "string"
+            },
+            "installation_id": {
+              "type": "string"
+            },
+            "capture": {
+              "type": "string"
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "native_session_id": {
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/project_ref"
+        },
+        "logical_project": {
+          "$ref": "#/$defs/logical_project"
+        },
+        "request": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "turn",
+                "own",
+                "display_preview",
+                "char_count"
+              ],
+              "properties": {
+                "turn": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "own": {
+                  "type": "boolean"
+                },
+                "display_preview": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "char_count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          ]
+        },
+        "response": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preview",
+            "truncated",
+            "char_count"
+          ],
+          "properties": {
+            "preview": {
+              "type": "string"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "char_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "observed": {
+          "$ref": "#/$defs/observed_counts"
+        }
+      }
+    },
+    "results_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_filter",
+        "provider_filter",
+        "profile_filter",
+        "total",
+        "limit",
+        "results"
+      ],
+      "description": "Phase 12: final results of every session, newest answer first.",
+      "properties": {
+        "project_filter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_filter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "profile_filter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/result_summary"
+          }
+        }
+      }
+    },
+    "context_pack_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Phase 13 (context-pack): several results in one hand-off. `results[].section` is one result's Markdown body (Copy with Context one heading level deeper); `text` is the whole pack (docs/CONTEXT_PACK.md). The format is versioned on its own (`format_version`).",
+      "required": [
+        "exported_at",
+        "format",
+        "format_version",
+        "manifest",
+        "results",
+        "text",
+        "warnings"
+      ],
+      "properties": {
+        "format": {
+          "const": "prompt-relay-context-pack"
+        },
+        "format_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "exported_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "text": {
+          "type": "string",
+          "description": "The whole pack; empty when external slots are present (the app composes it)."
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entry",
+              "manifest",
+              "position",
+              "result_id",
+              "section",
+              "sensitive_findings",
+              "session_key",
+              "turn",
+              "warnings"
+            ],
+            "properties": {
+              "session_key": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "result_id": {
+                "type": "string",
+                "pattern": "^r-[0-9a-f]{16}$"
+              },
+              "entry": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "agent",
+                  "answered_at",
+                  "host",
+                  "profile",
+                  "project",
+                  "provider",
+                  "title"
+                ],
+                "properties": {
+                  "agent": {
+                    "type": "string"
+                  },
+                  "answered_at": {
+                    "type": "string"
+                  },
+                  "host": {
+                    "type": "string"
+                  },
+                  "profile": {
+                    "type": "string"
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              },
+              "section": {
+                "type": "string"
+              },
+              "sensitive_findings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "line",
+                    "section"
+                  ],
+                  "properties": {
+                    "section": {
+                      "enum": [
+                        "request",
+                        "response"
+                      ]
+                    },
+                    "line": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "kind": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "position": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Place in the pack, counting external slots (imports the app fills)."
+              },
+              "manifest": {
+                "$ref": "#/$defs/context_pack_result_manifest"
+              }
+            }
+          }
+        },
+        "manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ai_service_used",
+            "format",
+            "format_version",
+            "limits",
+            "markdown_characters",
+            "prepared_at",
+            "prepared_by",
+            "result_count",
+            "results",
+            "review_instructions",
+            "warnings"
+          ],
+          "properties": {
+            "format": {
+              "const": "prompt-relay-context-pack"
+            },
+            "format_version": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "prepared_at": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "prepared_by": {
+              "type": "string"
+            },
+            "ai_service_used": {
+              "const": false
+            },
+            "result_count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/context_pack_result_manifest"
+              }
+            },
+            "review_instructions": {
+              "type": "object"
+            },
+            "markdown_characters": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "limits": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "context_pack_result_manifest": {
+      "type": "object",
+      "description": "Phase 13: facts about one result for the manifest: no paths, session ids or text.",
+      "required": [
+        "position",
+        "result_id",
+        "kind",
+        "provider",
+        "profile",
+        "host",
+        "project",
+        "turn",
+        "status",
+        "request",
+        "response",
+        "observed",
+        "attachments"
+      ],
+      "properties": {
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "result_id": {
+          "type": "string",
+          "pattern": "^r-[0-9a-f]{16}$"
+        },
+        "kind": {
+          "enum": [
+            "local_capture",
+            "user_import"
+          ]
+        },
+        "provider": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "string"
+        },
+        "profile_recorded": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "answered_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "completion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "link": {
+          "type": "string"
+        },
+        "request": {
+          "type": "object"
+        },
+        "response": {
+          "type": "object"
+        },
+        "observed": {
+          "type": "object"
+        },
+        "attachments": {
+          "type": "array"
+        }
+      }
+    },
+    "capture_data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "excluded_projects",
+        "enabled_projects",
+        "resume_mode",
+        "minimum_plugin_version"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "selected",
+            "global",
+            "paused"
+          ]
+        },
+        "excluded_projects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabled_projects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resume_mode": {
+          "enum": [
+            "selected",
+            "global",
+            null
+          ]
+        },
+        "minimum_plugin_version": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

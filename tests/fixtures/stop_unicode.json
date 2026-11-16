@@ -1,0 +1,8 @@
+{
+  "session_id": "sess-a",
+  "prompt_id": "11111111-1111-4111-8111-111111111111",
+  "cwd": "__PROJECT_A__",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "Готово! Всё работает ✅\nEnglish line.\nEmoji: 👩🏽‍💻 🇺🇦 🚀\nSpecial: <>&\"' \\ $HOME `$(rm -rf /)` %s {0} \t tab\r\nCRLF line\nZero-width:​| RTL: שלום | CJK: 日本語 | NUL:\u0000| combining: é\n   trailing spaces   \n\n\n",
+  "background_tasks": []
+}

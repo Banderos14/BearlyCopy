@@ -1,0 +1,129 @@
+{
+  "projects": {
+    "argv": [
+      "projects"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "projects",
+      "data": {
+        "projects": [
+          {
+            "capture_enabled": true,
+            "excluded": false,
+            "explicitly_enabled": true,
+            "last_event_at": null,
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "name": "project-a",
+            "path": "__PROJECT_A__",
+            "session_count": 0
+          },
+          {
+            "capture_enabled": true,
+            "excluded": false,
+            "explicitly_enabled": true,
+            "last_event_at": null,
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-b",
+              "path": "__PROJECT_B__"
+            },
+            "name": "project-b",
+            "path": "__PROJECT_B__",
+            "session_count": 0
+          }
+        ],
+        "settings": {
+          "automatic_deletion": false,
+          "capture": {
+            "enabled_projects": [
+              "__PROJECT_A__",
+              "__PROJECT_B__"
+            ],
+            "excluded_projects": [],
+            "minimum_plugin_version": "0.8.0",
+            "mode": "selected",
+            "resume_mode": null
+          },
+          "retention_days": null
+        }
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "retention": {
+    "argv": [
+      "retention"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "retention",
+      "data": {
+        "automatic_deletion": false,
+        "retention_days": null
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "sessions": {
+    "argv": [
+      "sessions"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "sessions",
+      "data": {
+        "project_filter": null,
+        "sessions": []
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "show": {
+    "argv": [
+      "show"
+    ],
+    "exit_code": 3,
+    "response": {
+      "api_version": 1,
+      "command": "show",
+      "data": null,
+      "error": {
+        "code": "not_found",
+        "message": "no captured sessions match the selection"
+      },
+      "ok": false,
+      "warnings": []
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 3,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": null,
+      "error": {
+        "code": "not_found",
+        "message": "no captured sessions match the selection"
+      },
+      "ok": false,
+      "warnings": []
+    }
+  }
+}

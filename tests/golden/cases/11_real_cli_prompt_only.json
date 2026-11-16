@@ -1,0 +1,20 @@
+{
+  "description": "Redacted real CLI 2.1.268 UserPromptSubmit whose request failed before any Stop: awaiting_response.",
+  "events": [
+    {
+      "fixture": "real_cli_user_prompt_submit_1.json",
+      "project": "A"
+    }
+  ],
+  "queries": {
+    "sessions": [
+      "sessions"
+    ],
+    "turns": [
+      "turns"
+    ],
+    "show": [
+      "show"
+    ]
+  }
+}

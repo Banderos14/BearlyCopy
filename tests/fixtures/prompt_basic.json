@@ -1,0 +1,9 @@
+{
+  "session_id": "sess-a",
+  "prompt_id": "11111111-1111-4111-8111-111111111111",
+  "transcript_path": "/Users/dev/.claude/projects/-a/sess-a.jsonl",
+  "cwd": "__PROJECT_A__",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Add input validation to the signup form and run the tests."
+}

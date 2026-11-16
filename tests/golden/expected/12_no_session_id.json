@@ -1,0 +1,188 @@
+{
+  "sessions": {
+    "argv": [
+      "sessions"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "sessions",
+      "data": {
+        "project_filter": null,
+        "sessions": [
+          {
+            "answered_count": 1,
+            "claude_code_title": null,
+            "cwds": [
+              "__PROJECT_A__"
+            ],
+            "event_count": 2,
+            "first_event_at": "2026-01-01T00:00:00.000000Z",
+            "integrity": {
+              "corrupt_lines": 0,
+              "foreign_lines": 0,
+              "unsupported_lines": 0
+            },
+            "last_event_at": "2026-01-01T00:00:01.000000Z",
+            "last_turn": {
+              "answered_at": "2026-01-01T00:00:01.000000Z",
+              "completion": "answer",
+              "index": 2,
+              "status": "stop_received"
+            },
+            "logical_project": {
+              "basis": "enabled_project",
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "profile": {
+              "basis": "default_home",
+              "default": true,
+              "hint": "~/.claude",
+              "id": "cc-default",
+              "provider": "claude_code"
+            },
+            "project": {
+              "name": "project-a",
+              "path": "__PROJECT_A__"
+            },
+            "running": false,
+            "session_id": null,
+            "session_key": "_no-session",
+            "title": "question from X",
+            "turn_count": 2
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  },
+  "turns": {
+    "argv": [
+      "turns"
+    ],
+    "exit_code": 0,
+    "response": {
+      "api_version": 1,
+      "command": "turns",
+      "data": {
+        "session": {
+          "answered_count": 1,
+          "claude_code_title": null,
+          "cwds": [
+            "__PROJECT_A__"
+          ],
+          "event_count": 2,
+          "first_event_at": "2026-01-01T00:00:00.000000Z",
+          "integrity": {
+            "corrupt_lines": 0,
+            "foreign_lines": 0,
+            "unsupported_lines": 0
+          },
+          "last_event_at": "2026-01-01T00:00:01.000000Z",
+          "last_turn": {
+            "answered_at": "2026-01-01T00:00:01.000000Z",
+            "completion": "answer",
+            "index": 2,
+            "status": "stop_received"
+          },
+          "logical_project": {
+            "basis": "enabled_project",
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "profile": {
+            "basis": "default_home",
+            "default": true,
+            "hint": "~/.claude",
+            "id": "cc-default",
+            "provider": "claude_code"
+          },
+          "project": {
+            "name": "project-a",
+            "path": "__PROJECT_A__"
+          },
+          "running": false,
+          "session_id": null,
+          "session_key": "_no-session",
+          "title": "question from X",
+          "turn_count": 2
+        },
+        "turns": [
+          {
+            "background_tasks": null,
+            "candidate_request_turns": [],
+            "completion": "unknown",
+            "earlier_user_request": null,
+            "error": null,
+            "final_response": null,
+            "index": 1,
+            "link": "none",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "commands_nonzero": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
+            "request": {
+              "char_count": 15,
+              "display_preview": "question from X",
+              "preview": "question from X",
+              "prompt_id": null,
+              "received_at": "2026-01-01T00:00:00.000000Z",
+              "truncated": false,
+              "utf8_bytes": 15
+            },
+            "request_origin": "user",
+            "response_event_count": 0,
+            "status": "no_matched_response"
+          },
+          {
+            "background_tasks": {
+              "count": null,
+              "reported": false,
+              "watchers": null
+            },
+            "candidate_request_turns": [],
+            "completion": "answer",
+            "earlier_user_request": null,
+            "error": null,
+            "final_response": {
+              "char_count": 13,
+              "preview": "answer from Y",
+              "prompt_id": null,
+              "received_at": "2026-01-01T00:00:01.000000Z",
+              "truncated": false,
+              "utf8_bytes": 13
+            },
+            "index": 2,
+            "link": "none",
+            "notification_count": 0,
+            "observed": {
+              "background_started": 0,
+              "commands_nonzero": 0,
+              "files_changed": 0,
+              "runs_exit_zero": 0,
+              "runs_nonzero": 0,
+              "runs_unknown": 0,
+              "tool_events": 0
+            },
+            "request": null,
+            "request_origin": null,
+            "response_event_count": 1,
+            "status": "stop_received"
+          }
+        ]
+      },
+      "error": null,
+      "ok": true,
+      "warnings": []
+    }
+  }
+}
