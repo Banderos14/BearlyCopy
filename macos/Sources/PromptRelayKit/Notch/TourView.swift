@@ -20,11 +20,17 @@ struct TourView: View {
                     .accessibilityLabel("Skip the tour")
             }
             HStack(alignment: .center, spacing: 16) {
-                Image(systemName: page.symbol)
-                    .font(.system(size: 34, weight: .medium)).foregroundStyle(Island.accent)
-                    .frame(width: 76, height: 76)
-                    .background(RoundedRectangle(cornerRadius: Island.cardRadius).fill(Island.card))
-                    .accessibilityHidden(true)
+                Group {
+                    if page.symbol == AppModel.tourBearSymbol {
+                        MascotView(state: presentation.mascot, size: 52, reduceMotion: presentation.reduceMotion)
+                    } else {
+                        Image(systemName: page.symbol)
+                            .font(.system(size: 34, weight: .medium)).foregroundStyle(Island.accent)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .frame(width: 76, height: 76)
+                .background(RoundedRectangle(cornerRadius: Island.cardRadius).fill(Island.card))
                 VStack(alignment: .leading, spacing: 5) {
                     Text(page.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Island.primary)
                         .fixedSize(horizontal: false, vertical: true)

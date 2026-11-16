@@ -37,6 +37,26 @@ final class Phase19TourTests: XCTestCase {
         XCTAssertEqual(Set(pages.map(\.title)).count, 9, "no repeated page")
     }
 
+    func testTheBearIsOnTheWelcomeAndTheBearPage() {
+        let bearPages = AppModel.tourPages.filter { $0.symbol == AppModel.tourBearSymbol }.map(\.id)
+        XCTAssertEqual(bearPages, [0, 7], "Relay, not a smiley, on the welcome page and on the page about the bear")
+    }
+
+    func testScreenshotModeMapsToTheTwoSwitchesAndBack() async {
+        let m = await model()
+        m.screenshotMode = .automatic
+        XCTAssertTrue(m.autoCaptureFinalWindow); XCTAssertTrue(m.autoLinkWindowEnabled)
+        XCTAssertEqual(m.screenshotMode, .automatic)
+        m.screenshotMode = .manual
+        XCTAssertTrue(m.autoCaptureFinalWindow); XCTAssertFalse(m.autoLinkWindowEnabled)
+        XCTAssertEqual(m.screenshotMode, .manual)
+        m.screenshotMode = .off
+        XCTAssertFalse(m.autoCaptureFinalWindow)
+        XCTAssertEqual(m.screenshotMode, .off)
+        m.screenshotMode = .automatic
+        XCTAssertEqual(m.screenshotMode, .automatic, "back to Automatic")
+    }
+
     func testBackAndNextStayInsideTheTour() async {
         let m = await model()
         m.startTour()
