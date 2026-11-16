@@ -121,20 +121,24 @@ you paste it. Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Install (macOS 14+, Apple Silicon)
 
+### Easiest: one line in Terminal
+
+Open **Terminal** (⌘ Space, type *Terminal*), paste this line, press Return. It downloads the latest release, checks it, installs **Prompt Relay** into `~/Applications` and opens it. **No security warning appears.**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Banderos14/prompt-relay/main/scripts/install.sh | bash
+```
+
+It verifies the download's SHA-256 and that the app is signed by the author's Apple team, and changes no security setting. You can read the short script first: [scripts/install.sh](scripts/install.sh). Then the app shows a short **Quick Tour** and **Set Up** (it shows the exact commands to connect Claude Code and how to undo them). Send any prompt in Claude Code — the answer appears at the notch.
+
+### Or download the DMG
+
 <p align="center">
   <a href="https://github.com/Banderos14/prompt-relay/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-Prompt%20Relay.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
 </p>
 
-1. **Download** `Prompt-Relay-0.9.2.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
-2. **First launch — allow it once.** The build is signed but **not notarized** (that needs a paid Apple Developer ID), so macOS says *"Prompt Relay" Not Opened*. On current macOS right-click → Open no longer works. Do this instead:
-   - Click **Done** in the warning, open **System Settings → Privacy & Security**, scroll to **Security**, click **Open Anyway** next to *Prompt Relay*, then **Open** and confirm with your password or Touch ID.
-   - Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/Prompt Relay.app"` and open the app again.
-3. **Quick Tour, then Set Up**: the app shows a short tour, then **Set Up** with the exact commands to connect Claude Code (and how to undo them). Send any prompt in Claude Code — the answer appears at the notch.
-
-**No warning at all (one line in Terminal).** Files downloaded by `curl` are not quarantined, so this installs the latest release straight into `~/Applications` and opens it. It verifies the SHA-256 and that the app is signed by the author's Apple team first, and changes no security setting; read [scripts/install.sh](scripts/install.sh) before you run it:
-```bash
-curl -fsSL https://raw.githubusercontent.com/Banderos14/prompt-relay/main/scripts/install.sh | bash
-```
+1. Download `Prompt-Relay-0.9.2.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
+2. The build is signed but **not notarized** (that needs a paid Apple Developer ID), so macOS says *"Prompt Relay" Not Opened*. Click **Done**, open **System Settings → Privacy & Security**, scroll to **Security**, click **Open Anyway** next to *Prompt Relay*, then **Open**. (On current macOS right-click → Open no longer works.) Or run once in Terminal: `xattr -dr com.apple.quarantine "/Applications/Prompt Relay.app"`.
 
 Prefer the terminal? Connect Claude Code by hand:
 ```bash
