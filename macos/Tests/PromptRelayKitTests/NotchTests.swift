@@ -155,6 +155,22 @@ func externalScreen(id: UInt32 = 2, origin: CGPoint = CGPoint(x: -1920, y: 0)) -
 }
 
 final class NotchGeometryTests: XCTestCase {
+    /// Regression (owner's screenshot): a bare ear is black and hid the menu-bar
+    /// items next to the notch (a menu-bar manager's arrow on the right, an icon
+    /// left of the bear). Only ears with content are drawn.
+    func testOnlyEarsWithContentCoverTheMenuBar() throws {
+        let layout = try XCTUnwrap(NotchLayout(screen: builtInScreen()))
+        let notch = layout.notch, ear = NotchLayout.earWidth
+        let bearOnly = layout.compactFrame(left: true, right: false)
+        XCTAssertEqual(bearOnly.minX, notch.minX - ear)
+        XCTAssertEqual(bearOnly.maxX, notch.maxX, "nothing to the right of the notch while idle")
+        let activityOnly = layout.compactFrame(left: false, right: true)
+        XCTAssertEqual(activityOnly.minX, notch.minX)
+        XCTAssertEqual(activityOnly.maxX, notch.maxX + ear)
+        XCTAssertEqual(layout.compactFrame(left: true, right: true), layout.compact)
+        XCTAssertEqual(layout.compactFrame(left: false, right: false), notch)
+    }
+
     func testNotchRectAndFrames() throws {
         let screen = builtInScreen()
         XCTAssertEqual(screen.notchRect, CGRect(x: 663.5, y: 950, width: 185, height: 32))

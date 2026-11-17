@@ -637,7 +637,8 @@ final class NotchControllerTests: XCTestCase {
         let controller = makeController()
         controller.start()
         await model.refreshNow()
-        assertFrame(controller.panelFrame, controller.layout?.compact, "the bear needs the ears")
+        assertFrame(controller.panelFrame, controller.layout?.compactFrame(left: true, right: false),
+                    "the bear needs its own ear only; the right side of the menu bar stays free")
         XCTAssertTrue(controller.presentation.showsMascot)
         XCTAssertTrue(controller.isBlinkLoopRunning, "blinks while the resting island is on screen")
 

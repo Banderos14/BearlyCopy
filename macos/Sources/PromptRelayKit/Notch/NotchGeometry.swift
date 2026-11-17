@@ -188,6 +188,19 @@ public struct NotchLayout: Equatable, Sendable {
     /// Size of the expanded island itself (without the shadow margin).
     public var expandedIslandWidth: CGFloat { expanded.width - Self.shadowInset * 2 }
 
+    /// The resting island with only the ears that have something to show:
+    /// the bear's ear on the left, the activity ear on the right. A bare ear
+    /// is black and would hide the menu-bar items macOS puts next to the
+    /// notch (a menu-bar manager's arrow, another app's icon). Without a
+    /// notch (floating pill) both ears stay.
+    public func compactFrame(left: Bool, right: Bool) -> CGRect {
+        guard !isFloating else { return compact }
+        var frame = notch
+        if left { frame.origin.x -= Self.earWidth; frame.size.width += Self.earWidth }
+        if right { frame.size.width += Self.earWidth }
+        return frame
+    }
+
     /// Extra height is measured visible content (banners, handoff and help),
     /// not a permanent allowance. The work area's bottom remains a hard cap.
     public func expandedFrame(contentHeight: CGFloat, peek: Bool = false, extraHeight: CGFloat = 0) -> CGRect {

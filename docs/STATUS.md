@@ -1,5 +1,17 @@
 # Status
 
+## 2026-11-17 — Narrow ears: the resting island covers only what it shows (not released, no version bump)
+
+Owner's screenshot: the black right ear hid the arrow of a menu-bar manager
+(`»`) right of the notch, and the bear's ear hid an item left of it. The
+resting island now draws only the ears with content: left for the bear (or
+the "new answer" bubble), right only while an activity or ready indicator is
+shown; the floating pill is unchanged. `NotchLayout.compactFrame(left:right:)`,
+regression test `testOnlyEarsWithContentCoverTheMenuBar`. XCTest 389/0 (18
+skips), Swift Testing 177, `scripts/check.sh` OK. Not checked on the live
+screen. The bear's own 38 pt ear on the left still covers items next to the
+notch (a smaller bear needs a new pose budget). Release 0.9.4 not built.
+
 ## 2026-11-17 — 0.9.3: install and tour fixes
 
 One-line Terminal installer (`scripts/install.sh`, signer-pinned, no quarantine warning) is the primary install path; DMG steps corrected for macOS 15+ (Open Anyway). The Quick Tour is shown by itself at most twice (a first launch whose island closed at once gets a second chance); Done or Skip ends it. Plugin/app/Core 0.9.3.
