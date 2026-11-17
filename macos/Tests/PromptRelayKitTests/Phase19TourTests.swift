@@ -39,7 +39,7 @@ final class Phase19TourTests: XCTestCase {
 
     func testTheBearIsOnTheWelcomeAndTheBearPage() {
         let bearPages = AppModel.tourPages.filter { $0.symbol == AppModel.tourBearSymbol }.map(\.id)
-        XCTAssertEqual(bearPages, [0, 7], "Relay, not a smiley, on the welcome page and on the page about the bear")
+        XCTAssertEqual(bearPages, [0, 7], "Bearly, not a smiley, on the welcome page and on the page about the bear")
     }
 
     func testScreenshotModeMapsToTheTwoSwitchesAndBack() async {

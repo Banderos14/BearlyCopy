@@ -1180,7 +1180,7 @@ public final class AppModel {
     /// Called synchronously when a dialog opens or closes, before it shows,
     /// so the island is out of the way first (set by `NotchController`).
     @ObservationIgnored var onSystemDialog: ((Bool) -> Void)?
-    /// The user pressed Done on a hand-off (Relay's satisfied reaction).
+    /// The user pressed Done on a hand-off (Bearly's satisfied reaction).
     @ObservationIgnored public var onHandoffDone: (() -> Void)?
     /// Shows the system file picker; calls back with the chosen files, or
     /// nil for Cancel or Esc. Replaceable in tests.

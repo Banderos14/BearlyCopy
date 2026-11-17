@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// Relay's own small life at rest (Phase 7.1): now and then a glance, a look
+/// Bearly's own small life at rest (Phase 7.1): now and then a glance, a look
 /// around, a curious tilt or a smile, and a sleepy face after a long quiet
 /// time. One timer at a time, scheduled far apart; nothing runs between
 /// beats, so idle costs no CPU. The user always wins: pointer movement and
@@ -60,7 +60,7 @@ final class RelayLife {
     }
 
     /// The pointer moved, an answer arrived, something was copied: idle
-    /// beats yield to it, and a sleepy Relay wakes up.
+    /// beats yield to it, and a sleepy Bearly wakes up.
     func activity() {
         lastActivity = now()
         if phase != .idle {

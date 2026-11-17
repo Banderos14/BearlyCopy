@@ -47,7 +47,7 @@ public enum AppBuild {
         public init(pid: Int32, bundleID: String, launched: Date?) { self.pid = pid; self.bundleID = bundleID; self.launched = launched }
     }
 
-    /// The copies this one steps aside for at the notch, so only one Relay is
+    /// The copies this one steps aside for at the notch, so only one Bearly is
     /// ever on screen (Phase 7.1: two Debug runs and an installed build drew
     /// two or three bears; only Release → Debug used to step aside). A
     /// Release build yields to any Debug build; within one bundle ID the

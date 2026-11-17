@@ -22,7 +22,7 @@ public final class NotchSettings {
         }
     }
 
-    /// How lively Relay is (Phase 7.1).
+    /// How lively Bearly is (Phase 7.1).
     public enum RelayMotion: String, CaseIterable, Identifiable, Sendable {
         /// Calm, natural movement: small head turns, rare idle moments.
         case subtle
@@ -75,7 +75,7 @@ public final class NotchSettings {
     /// When another notch app (Coucou) is running, do not compete for the
     /// notch: no hover target there; ⌃⌥⌘P and the menu-bar item still open it.
     public var yieldToOtherNotchApps: Bool { didSet { defaults.set(yieldToOtherNotchApps, forKey: Key.yield) } }
-    /// Relay the bear beside the notch (on by default; Settings → Appearance).
+    /// Bearly the bear beside the notch (on by default; Settings → Appearance).
     public var mascotEnabled: Bool { didSet { defaults.set(mascotEnabled, forKey: Key.mascot) } }
     /// The island's colors (Settings → Appearance). Warm Cocoa by default;
     /// Soft Spectrum, Material Calm and Classic stay available.
@@ -87,7 +87,7 @@ public final class NotchSettings {
     public var relayIdle: Bool { didSet { defaults.set(relayIdle, forKey: Key.relayIdle) } }
     /// The eyes and head follow the pointer near the island.
     public var relayFollowsPointer: Bool { didSet { defaults.set(relayFollowsPointer, forKey: Key.relayFollows) } }
-    /// On a display without a notch, Relay rests in a small pill under the
+    /// On a display without a notch, Bearly rests in a small pill under the
     /// menu bar (hover opens Quick Peek). Off: nothing rests there.
     public var relayWithoutNotch: Bool { didSet { defaults.set(relayWithoutNotch, forKey: Key.relayWithoutNotch) } }
     /// The built-in display's camera housing as last seen, so the island stays

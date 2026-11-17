@@ -3,7 +3,7 @@ import SwiftUI
 import XCTest
 @testable import PromptRelayKit
 
-/// Phase 7.2: Relay's frame-rate independent motion, full context only,
+/// Phase 7.2: Bearly's frame-rate independent motion, full context only,
 /// the Copy with Context header.
 @MainActor
 final class RelayMotionTests: XCTestCase {
@@ -24,7 +24,7 @@ final class RelayMotionTests: XCTestCase {
         return out
     }
 
-    /// ProMotion or not, Relay moves the same way in time.
+    /// ProMotion or not, Bearly moves the same way in time.
     func testSpeedDoesNotDependOnTheRefreshRate() {
         let times = [0.1, 0.2, 0.35, 0.5]
         let at60 = trace(hz: 60, at: times), at120 = trace(hz: 120, at: times)
@@ -100,13 +100,13 @@ final class RelayMotionTests: XCTestCase {
     }
 }
 
-/// Opt-in: renders Relay's poses through the real layers (what the screen
+/// Opt-in: renders Bearly's poses through the real layers (what the screen
 /// shows) for docs/images/phase72-relay/. Not a check of live motion.
 @MainActor
 final class RelayLayerPoseRenderTests: XCTestCase {
     func testRenderPosesThroughLayers() throws {
         guard let dir = ProcessInfo.processInfo.environment["PROMPT_RELAY_SNAPSHOT_DIR"] else {
-            throw XCTSkip("set PROMPT_RELAY_SNAPSHOT_DIR to render Relay's poses")
+            throw XCTSkip("set PROMPT_RELAY_SNAPSHOT_DIR to render Bearly's poses")
         }
         let poses: [(CGPoint, MascotState.Mood, MascotState.Expression)] = [
             (.zero, .idle, .none), (CGPoint(x: -1, y: 0), .idle, .none), (CGPoint(x: 1, y: 0), .idle, .none),

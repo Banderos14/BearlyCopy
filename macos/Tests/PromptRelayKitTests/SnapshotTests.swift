@@ -47,7 +47,7 @@ final class SnapshotTests: XCTestCase {
         let prefix = live ? "live" : "demo"
         let settings = NotchSettings(defaults: TestDefaults.named("PromptRelaySnapshots-\(UUID().uuidString)")!)
 
-        // Resting (with Relay the bear), with a new answer, and Quick Peek.
+        // Resting (with Bearly the bear), with a new answer, and Quick Peek.
         for (name, expanded, indicator) in [("resting", false, false), ("resting-new", false, true), ("peek", true, false)] {
             let p = presentation(expanded: expanded, surface: .peek, indicator: indicator)
             let interaction = NotchInteraction(scheduler: MainQueueScheduler())

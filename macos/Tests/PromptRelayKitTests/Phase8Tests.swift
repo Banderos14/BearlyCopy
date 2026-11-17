@@ -250,25 +250,25 @@ final class Phase8Tests: XCTestCase {
         XCTAssertEqual(FailureInspector.tool("cd a && swift test --filter X"), "swift test")
     }
 
-    // MARK: Living Relay 2.0
+    // MARK: Living Bearly 2.0
 
     /// Phase 8 P0: vertical movement anywhere on the screen moves the look.
     /// Before, `tanh(dy/160)` was ≥ 0.96 for any pointer 300 pt or more
-    /// below Relay, so up and down did almost nothing.
+    /// below Bearly, so up and down did almost nothing.
     func testVerticalPointerMovementMovesTheLookAcrossTheScreen() {
         let x: CGFloat = 300
-        let ys: [CGFloat] = [-20, 50, 150, 300, 500, 800, 1100]   // down from Relay
+        let ys: [CGFloat] = [-20, 50, 150, 300, 500, 800, 1100]   // down from Bearly
         let looks = ys.map { NotchController.gaze(dx: x, dy: $0) }
         for (a, b) in zip(looks, looks.dropFirst()) {
             XCTAssertGreaterThan(b.y, a.y + 0.02, "lower pointer, lower look: \(a) → \(b)")
         }
-        XCTAssertLessThan(looks[0].y, -0.2, "pointer up at the menu bar: Relay looks up")
-        XCTAssertGreaterThan(looks.last!.y, 0.85, "pointer low on the screen: Relay looks down")
+        XCTAssertLessThan(looks[0].y, -0.2, "pointer up at the menu bar: Bearly looks up")
+        XCTAssertGreaterThan(looks.last!.y, 0.85, "pointer low on the screen: Bearly looks down")
         // The old per-axis mapping for comparison: almost flat below 300 pt.
         let old = ys.map { tanh($0 / 160) }
         XCTAssertLessThan(old[6] - old[3], 0.06)
         XCTAssertGreaterThan(looks[6].y - looks[3].y, 0.25)
-        // Continuous: no jump anywhere along a sweep, also near Relay itself.
+        // Continuous: no jump anywhere along a sweep, also near Bearly itself.
         var last = NotchController.gaze(dx: -400, dy: -10)
         for i in 1...800 {
             let p = NotchController.gaze(dx: -400 + CGFloat(i), dy: -10 + CGFloat(i) * 0.4)
@@ -470,8 +470,8 @@ final class Phase8Tests: XCTestCase {
 
     // MARK: Renders (opt-in): PROMPT_RELAY_VISUALS=<dir>
 
-    /// Relay (the real layer tree) looking toward nine pointer positions on a
-    /// 1512 × 982 screen with Relay at the top, Phase 8 mapping vs the old one.
+    /// Bearly (the real layer tree) looking toward nine pointer positions on a
+    /// 1512 × 982 screen with Bearly at the top, Phase 8 mapping vs the old one.
     func testRenderRelayPointerSheet() throws {
         guard let dir = ProcessInfo.processInfo.environment["PROMPT_RELAY_VISUALS"] else {
             throw XCTSkip("set PROMPT_RELAY_VISUALS=<dir> to write the Phase 8 renders")

@@ -1,6 +1,6 @@
 import AppKit
 
-/// Mouse-moved events from anywhere on screen, for Relay's gaze.
+/// Mouse-moved events from anywhere on screen, for Bearly's gaze.
 @MainActor
 public protocol PointerEvents: AnyObject {
     /// Starts delivering the pointer position (global AppKit coordinates).

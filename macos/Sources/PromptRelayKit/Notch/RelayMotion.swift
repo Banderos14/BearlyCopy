@@ -1,11 +1,11 @@
 import CoreGraphics
 import Foundation
 
-/// Relay's motion, frame-rate independent (Phase 7.2).
+/// Bearly's motion, frame-rate independent (Phase 7.2).
 ///
 /// Before: a 30 Hz main-queue timer eased the gaze and head and published
 /// them as observed state, so each change re-ran SwiftUI; with the pointer
-/// throttled to 30 Hz and "publish only visible changes", Relay redrew about
+/// throttled to 30 Hz and "publish only visible changes", Bearly redrew about
 /// 12 times a second while following the pointer (measured), on a timer not
 /// aligned to the display.
 ///
@@ -13,14 +13,14 @@ import Foundation
 /// inside `TimelineView(.animation)`, once per display frame (capped near
 /// 60 fps, also on ProMotion). Every step uses the real time since the last
 /// frame, in sub-steps of at most 1/240 s, so the speed is the same at 60 and
-/// 120 Hz and a late frame does not make Relay jump or freeze. When
+/// 120 Hz and a late frame does not make Bearly jump or freeze. When
 /// everything has settled the view pauses its timeline: at rest nothing is
 /// computed or drawn. Techniques adapted from Coucou (MIT, © 2026 Louis
 /// Raillé): frame-rate independent exponential smoothing
 /// `x += (t − x)·(1 − b^dt)`, time-based tweens with easing for the blink
 /// (fast close, softer open, now and then a double blink), and a spring
 /// driven by the head's velocity for secondary motion (here: the ears). No
-/// Coucou artwork, character or animation is used; Relay is drawn as before.
+/// Coucou artwork, character or animation is used; Bearly is drawn as before.
 @MainActor
 final class RelayMotion {
     /// Display frames are asked for at most this often (≈ 60 fps; 10 % short
@@ -66,7 +66,7 @@ final class RelayMotion {
         case cheer, worry
         /// Phase 8: a small nod when a new answer arrives.
         case nod
-        /// Phase 8: the pointer came onto Relay: a tiny lift, ears up.
+        /// Phase 8: the pointer came onto Bearly: a tiny lift, ears up.
         case perk
     }
 
@@ -80,7 +80,7 @@ final class RelayMotion {
         var amounts: Amounts
         /// The idle tilt, degrees.
         var roll: Double = 0
-        /// Reaction: 0 = none. `lift` up in points of a 28-pt Relay, `shake` −1…1,
+        /// Reaction: 0 = none. `lift` up in points of a 28-pt Bearly, `shake` −1…1,
         /// `squint` 0…1 (happy closed eyes), `scale` around 1.
         var lift: CGFloat = 0
         var shake: Double = 0
@@ -189,7 +189,7 @@ final class RelayMotion {
         isSettled = true
     }
 
-    /// Everything back to neutral at once (Reduce Motion, Relay off).
+    /// Everything back to neutral at once (Reduce Motion, Bearly off).
     func reset() {
         lookTarget = .zero; gaze = .zero; head = .zero; headVelocity = .zero; headRelaxed = false
         earLag = 0; earVelocity = 0

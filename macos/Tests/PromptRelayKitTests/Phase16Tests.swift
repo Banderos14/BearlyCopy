@@ -4,7 +4,7 @@ import ImageIO
 import Testing
 @testable import PromptRelayKit
 
-/// Phase 16: the daily-driver release — the Relay bear app icon in every
+/// Phase 16: the daily-driver release — the Bearly bear app icon in every
 /// build path, attachments that are never silently "not attached", and one
 /// writer at a time for the attachment index across running copies (S8).
 @Suite(.serialized)
@@ -27,7 +27,7 @@ struct Phase16IconTests {
         // Outside the rounded tile: transparent (macOS draws the icon's own shadow area).
         #expect(pixel(image, 4, 4)[3] == 0)
         #expect(pixel(image, 1019, 1019)[3] == 0)
-        // The bear's head (fur) at the centre-left cheek and its muzzle below the nose: Relay's own colours.
+        // The bear's head (fur) at the centre-left cheek and its muzzle below the nose: Bearly's own colours.
         let fur = pixel(image, 300, 560)
         #expect(abs(fur[0] - 204) < 12 && abs(fur[1] - 158) < 12 && abs(fur[2] - 115) < 12, "fur \(fur)")
         let muzzle = pixel(image, 420, 640)
