@@ -64,6 +64,14 @@ public final class NotchPresentation {
     public internal(set) var breathes = false
     /// The resting island has ears: a new answer, or the mascot.
     var hasEars: Bool { showsIndicator || showsMascot }
+    /// Left ear: the bear, or the "new answer" bubble when the bear is off.
+    var hasLeftEar: Bool {
+        if showsMascot { return true }
+        if case .ready = indicator { return true }
+        return false
+    }
+    /// Right ear: only while there is activity or an unseen answer to show.
+    var hasRightEar: Bool { showsIndicator }
     var onContentHeight: ((CGFloat) -> Void)?
     #if DEBUG
     /// Frames reported by `islandFrame(_:)`, for layout tests.
@@ -519,7 +527,8 @@ public final class NotchController {
 
     private func compactFrame() -> CGRect? {
         guard let layout else { return nil }
-        return presentation.hasEars ? layout.compact : layout.notch
+        guard presentation.hasEars else { return layout.notch }
+        return layout.compactFrame(left: presentation.hasLeftEar, right: presentation.hasRightEar)
     }
 
     private func placePanel(for phase: NotchInteraction.Phase) {
