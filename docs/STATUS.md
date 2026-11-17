@@ -1,5 +1,9 @@
 # Status
 
+## 2026-11-17 — 0.9.4: the notch no longer hides menu-bar items
+
+The right ear shows only while Claude works or an answer is new (it hid a menu-bar manager's `»`); Prompt Relay's plain menu-bar icon is hidden while the bear is at the notch. Other apps' icons are not moved (macOS cannot reserve menu-bar room). Plugin/app/Core 0.9.4. Built with the owner's Apple Development certificate, not notarized. Live behaviour: owner.
+
 ## 2026-11-17 — Plain menu-bar icon steps aside while the bear is at the notch
 
 Owner's screenshot: the bear lay over Prompt Relay's own white menu-bar icon.
