@@ -5,7 +5,7 @@ import ServiceManagement
 /// (`SMAppService.mainApp`, macOS 13+). Off by default; only the user turns
 /// it on, and turning it off unregisters the same item. macOS starts one
 /// copy of the app at login; opening it again only brings that copy forward
-/// (LaunchServices; Prompt Relay never starts a second instance itself).
+/// (LaunchServices; BearlyCopy never starts a second instance itself).
 ///
 /// Offered only for the installed Release copy (`~/Applications` or
 /// `/Applications`): registering a Debug build from Xcode's DerivedData
@@ -64,7 +64,7 @@ public final class LoginItemController {
         if isDebugBuild { return "Available in the installed app, not in a Debug build from Xcode." }
         let path = bundleURL.standardizedFileURL.resolvingSymlinksInPath().path
         let known = installed.map { $0.standardizedFileURL.resolvingSymlinksInPath().path }
-        guard known.contains(path) else { return "Install Prompt Relay in Applications first (scripts/install-local.sh)." }
+        guard known.contains(path) else { return "Install BearlyCopy in Applications first (scripts/install-local.sh)." }
         return nil
     }
 
@@ -81,11 +81,11 @@ public final class LoginItemController {
             if on { try service.register() } else { try service.unregister() }
             message = nil
         } catch {
-            message = on ? "macOS did not add Prompt Relay to login items (\(error.localizedDescription))."
+            message = on ? "macOS did not add BearlyCopy to login items (\(error.localizedDescription))."
                          : "macOS did not remove the login item (\(error.localizedDescription))."
         }
         refresh()
-        if status == .requiresApproval { message = "Allow Prompt Relay in System Settings → General → Login Items." }
+        if status == .requiresApproval { message = "Allow BearlyCopy in System Settings → General → Login Items." }
     }
 
     public func openSystemSettings() { service.openSystemSettings() }

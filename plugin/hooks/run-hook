@@ -1,5 +1,5 @@
 #!/bin/sh
-# Prompt Relay plugin hook launcher (POSIX sh, run as: /bin/sh run-hook).
+# BearlyCopy plugin hook launcher (POSIX sh, run as: /bin/sh run-hook).
 #
 # Finds a Python 3.9+ without assuming one on PATH (Claude Desktop starts
 # hooks with a minimal PATH) and without running macOS's /usr/bin/python3

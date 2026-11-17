@@ -16,7 +16,7 @@ public enum ReportStoreError: Error, Equatable, Sendable {
     case damagedImage(String)
     case writeFailed
     case removeFailed
-    /// Not an image, a PDF or a UTF-8 text document Prompt Relay keeps.
+    /// Not an image, a PDF or a UTF-8 text document BearlyCopy keeps.
     case unsupported(String)
     /// Phase 16: a text document over `maxDocumentBytes` (was reported as "unsupported").
     case documentTooLarge(String)
@@ -24,7 +24,7 @@ public enum ReportStoreError: Error, Equatable, Sendable {
     case lockUnavailable
 }
 
-/// Prompt Relay's own data, next to the Core's but separate from it:
+/// BearlyCopy's own data, next to the Core's but separate from it:
 /// `<data dir>/app/imports/<id>.json` for imported reports and
 /// `<data dir>/app/attachments/` for images the user added. The Core never
 /// reads these; the app never writes the Core's `events/`.
@@ -54,7 +54,7 @@ public final class ReportStore {
     /// Phase 10: window snapshots live in this process's memory only. They are
     /// listed, selected and handed off like any attachment, but are never
     /// written to the attachments folder, the index, the hand-off folder or
-    /// any other file by Prompt Relay, and are gone when the app quits.
+    /// any other file by BearlyCopy, and are gone when the app quits.
     /// Bounded by count, total bytes and age; the oldest go first.
     public struct EphemeralLimits: Equatable, Sendable {
         public var maxCount: Int
@@ -425,7 +425,7 @@ public final class ReportStore {
         case .agentObserved: return "Observed in this turn; added by you"
         case .agentResult: return "Observed result file; automatically prepared from this turn"
         case .namedVerified: return "Named in the answer and changed during this turn (local file time); automatically prepared. Not proof the agent created it"
-        case .windowCapture: return "Auto screenshot: a still image of the window you linked to this agent, taken by Prompt Relay after this final answer arrived (it may not show the answer's last lines)"
+        case .windowCapture: return "Auto screenshot: a still image of the window you linked to this agent, taken by BearlyCopy after this final answer arrived (it may not show the answer's last lines)"
         case .windowSnapshot: return "Still image of the window you picked in the macOS picker"
         }
     }

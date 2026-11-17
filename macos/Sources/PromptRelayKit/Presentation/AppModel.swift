@@ -251,7 +251,7 @@ public final class AppModel {
     public var autoSelectResultAttachments: Bool = true {
         didSet { stateDefaults?.set(autoSelectResultAttachments, forKey: "attachments.autoSelectResults") }
     }
-    /// Phase 17: files Prompt Relay prepared are ticked for Copy with
+    /// Phase 17: files BearlyCopy prepared are ticked for Copy with
     /// Context and drag (on by default). Off: prepared, listed, unticked.
     public var autoSelectPreparedAttachments: Bool = true {
         didSet { stateDefaults?.set(autoSelectPreparedAttachments, forKey: Self.autoSelectPreparedKey) }
@@ -985,7 +985,7 @@ public final class AppModel {
 
     /// "Jump to Latest": open the newest answer of any agent. With "Stay on
     /// the session I choose" on, its session becomes the pinned one (the
-    /// user chose it); otherwise Prompt Relay follows Latest again.
+    /// user chose it); otherwise BearlyCopy follows Latest again.
     public func jumpToLatest() {
         guard let answer = readyAnswer else { return }
         elsewhereAcknowledgedAt = answer.at
@@ -1194,7 +1194,7 @@ public final class AppModel {
     /// Phase 14.1: Screen Recording authorization, read-only; replaceable in tests.
     @ObservationIgnored public lazy var screenRecordingPermission: ScreenRecordingPermissionChecking = LiveScreenRecordingPermission()
     /// Phase 14.1: quits this process (Settings → About already has its own
-    /// quit action for other builds; this is "Quit Prompt Relay" after a
+    /// quit action for other builds; this is "Quit BearlyCopy" after a
     /// permission grant that needs a restart to take effect). Replaceable in
     /// tests — never call `NSApp.terminate` from a test.
     @ObservationIgnored public var quitApp: @MainActor () -> Void = { NSApp.terminate(nil) }
@@ -1260,7 +1260,7 @@ public final class AppModel {
         didSet { stateDefaults?.set(autoLinkWindowEnabled, forKey: Self.autoLinkKey) }
     }
     /// Phase 14: windows linked to agents (memory only: window identity does
-    /// not survive a restart of Prompt Relay or of the agent's app).
+    /// not survive a restart of BearlyCopy or of the agent's app).
     public internal(set) var autoCaptureBindings: [WindowBinding] = []
     /// What happened to each answer's auto screenshot (report key).
     public internal(set) var autoCaptureStatuses: [String: AutoCaptureStatus] = [:]
@@ -1867,7 +1867,7 @@ public final class AppModel {
         return dragFile(for: attachment).flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider()
     }
 
-    /// Images the user chose in the file picker, copied into Prompt Relay's
+    /// Images the user chose in the file picker, copied into BearlyCopy's
     /// private folder for the current report. Nothing else is read.
     public func addAttachments(_ urls: [URL]) {
         guard let ref = currentRef else { return }
@@ -1893,14 +1893,14 @@ public final class AppModel {
         case .notAnImage(let name): return "\(name) is not an image"
         case .tooLarge(let name): return "\(name) is larger than 50 MB"
         case .documentTooLarge(let name): return "\(name) is a text document larger than 1 MB"
-        case .lockUnavailable: return "\(file) was not saved: Prompt Relay's folder is busy or not writable. Try again"
+        case .lockUnavailable: return "\(file) was not saved: BearlyCopy's folder is busy or not writable. Try again"
         case .noPermission(let name): return "\(name) could not be read: no permission"
         case .damagedImage(let name): return "\(name) is damaged or not a readable image"
         case .unreadable(let name): return "\(name) could not be read"
-        case .writeFailed: return "\(file) could not be saved in Prompt Relay's folder"
+        case .writeFailed: return "\(file) could not be saved in BearlyCopy's folder"
         case .removeFailed: return "The image could not be removed"
         case .empty: return "\(file) is empty"
-        case .unsupported(let name): return "\(name) is not a document, PDF or image Prompt Relay can keep"
+        case .unsupported(let name): return "\(name) is not a document, PDF or image BearlyCopy can keep"
         }
     }
 
@@ -1971,7 +1971,7 @@ public final class AppModel {
     func handoffFiles(_ attachments: [ReportAttachment]) -> [URL] {
         guard let store = reportStore else { return [] }
         do { return try store.handoffFiles(for: attachments) } catch {
-            attachmentMessage = "Prompt Relay could not prepare the files."
+            attachmentMessage = "BearlyCopy could not prepare the files."
             return []
         }
     }
@@ -1996,7 +1996,7 @@ public final class AppModel {
 
     static let copiesKey = "copies.recent"
     public static let copyHistoryLimit = 5
-    /// The last copies made in Prompt Relay, newest first. References only.
+    /// The last copies made in BearlyCopy, newest first. References only.
     public private(set) var copyHistory: [CopyRecord] = [] {
         didSet { stateDefaults?.set(try? JSONEncoder().encode(copyHistory), forKey: Self.copiesKey) }
     }
@@ -2027,7 +2027,7 @@ public final class AppModel {
     /// Copies the same thing again, fetched fresh from its source.
     public func copyAgain(_ record: CopyRecord) async {
         guard isAvailable(record.ref) else {
-            finishCopy(.failed("This report is no longer in Prompt Relay's history."))
+            finishCopy(.failed("This report is no longer in BearlyCopy's history."))
             return
         }
         switch record.kind {
@@ -2289,7 +2289,7 @@ public final class AppModel {
         switch ref {
         case .imported(let id):
             guard let text = imports.first(where: { $0.id == id })?.text, !text.isEmpty else {
-                finishCopy(.failed("This report is no longer in Prompt Relay's history."))
+                finishCopy(.failed("This report is no longer in BearlyCopy's history."))
                 return nil
             }
             return text
@@ -2389,7 +2389,7 @@ public final class AppModel {
         switch ref {
         case .imported(let id):
             guard let report = imports.first(where: { $0.id == id }) else {
-                return .failure(PackFailure(message: "This report is no longer in Prompt Relay's history."))
+                return .failure(PackFailure(message: "This report is no longer in BearlyCopy's history."))
             }
             let text = ReviewPack.render(imported: report, attachments: attached, exportedAt: builtAt,
                                          materials: selectedMaterials, names: names)
@@ -2618,7 +2618,7 @@ public enum LiveFilePicker {
             panel.prompt = "Export Here"
             panel.message = "Choose a folder. A new folder with the package, the chosen files and a manifest is created inside it."
         }
-        // Prompt Relay is an agent app whose island is a non-activating
+        // BearlyCopy is an agent app whose island is a non-activating
         // panel: the click on 📎 did not make it the active app. The dialog
         // needs an active app to get the keyboard; activating in response to
         // that click is allowed under cooperative activation.

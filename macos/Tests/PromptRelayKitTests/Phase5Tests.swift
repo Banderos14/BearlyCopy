@@ -185,7 +185,7 @@ final class TypedAttachmentTests: XCTestCase {
     }
 
     func mockup(states: [String]) throws -> ReportMaterial {
-        try store.addMaterial(ReportMaterial(id: "m1", reportKey: ref.key, kind: .mockup, title: "Prompt Relay Phase 5 Island",
+        try store.addMaterial(ReportMaterial(id: "m1", reportKey: ref.key, kind: .mockup, title: "BearlyCopy Phase 5 Island",
                                              url: "https://claude.ai/artifact/abc", audience: "owner", sourcePath: "…/scratchpad/island.html",
                                              version: nil, addedAt: "t", provenance: "Published by Claude in this turn (Artifact tool)",
                                              selected: true,
@@ -223,15 +223,15 @@ final class TypedAttachmentTests: XCTestCase {
         let doc = try store.addFile(from: try file("PHASE5_PROPOSAL.md", Data("# Plan".utf8)), to: ref, source: .claude,
                                     displayPath: "docs/PHASE5_PROPOSAL.md")
         let files = store.attachments(for: ref)
-        let names = Dictionary(uniqueKeysWithValues: [(m.states[0].attachmentID!, "prompt-relay-phase-5-island-01-resting.png"),
-                                                      (m.states[1].attachmentID!, "prompt-relay-phase-5-island-02-quick-peek.png")])
+        let names = Dictionary(uniqueKeysWithValues: [(m.states[0].attachmentID!, "bearlycopy-phase-5-island-01-resting.png"),
+                                                      (m.states[1].attachmentID!, "bearlycopy-phase-5-island-02-quick-peek.png")])
         let section = ReviewPack.attachmentsSection(files, materials: [m], names: names)
         XCTAssertTrue(section.hasPrefix("## Attachments (3 files, sent separately)"), section)
         XCTAssertTrue(section.contains("part of this review only if they are attached"), "never claims they were sent")
         XCTAssertTrue(section.contains("- PHASE5_PROPOSAL.md (docs/PHASE5_PROPOSAL.md) — MD"))
         XCTAssertTrue(section.contains("Visual mockup, review required"))
         XCTAssertTrue(section.contains("private; you probably cannot open it"), "a private link is not presented as available")
-        XCTAssertTrue(section.contains("| 1 | prompt-relay-phase-5-island-01-resting.png | Resting | resting state | gaze sliders |"))
+        XCTAssertTrue(section.contains("| 1 | bearlycopy-phase-5-island-01-resting.png | Resting | resting state | gaze sliders |"))
         XCTAssertTrue(section.contains("state \"Details\": known by name only; no image"))
         XCTAssertTrue(section.contains("state \"Clipboard\": excluded by you"))
         XCTAssertTrue(section.contains("cannot be judged from still images"))
@@ -250,11 +250,11 @@ final class TypedAttachmentTests: XCTestCase {
         let ordered = model.handoffAttachments(for: ref)
         let names = model.handoffNames(for: ref)
         XCTAssertEqual(ordered.map { names[$0.id] ?? $0.originalFilename },
-                       ["PLAN.md", "prompt-relay-phase-5-island-01-resting.png", "prompt-relay-phase-5-island-02-quick-peek.png", "shot.png"],
+                       ["PLAN.md", "bearlycopy-phase-5-island-01-resting.png", "bearlycopy-phase-5-island-02-quick-peek.png", "shot.png"],
                        "documents, then states in order, then images")
         let urls = try store.handoffFiles(for: ordered, names: names)
-        XCTAssertEqual(urls.map(\.lastPathComponent), ["PLAN.md", "prompt-relay-phase-5-island-01-resting.png",
-                                                       "prompt-relay-phase-5-island-02-quick-peek.png", "shot.png"])
+        XCTAssertEqual(urls.map(\.lastPathComponent), ["PLAN.md", "bearlycopy-phase-5-island-01-resting.png",
+                                                       "bearlycopy-phase-5-island-02-quick-peek.png", "shot.png"])
     }
 
     func testDeclaredStatesAreReadAsJSONOnly() throws {
@@ -369,7 +369,7 @@ final class ClipboardImageHistoryTests: XCTestCase {
         XCTAssertTrue(history.items.isEmpty, "concealed items (password managers) are skipped")
         put(TypedAttachmentTests.png(.systemPink), extra: ClipboardImageHistory.ownType)
         history.poll()
-        XCTAssertTrue(history.items.isEmpty, "Prompt Relay's own copies are skipped")
+        XCTAssertTrue(history.items.isEmpty, "BearlyCopy's own copies are skipped")
         put(TypedAttachmentTests.png(.systemGreen))
         history.poll()
         XCTAssertEqual(history.items.count, 1)

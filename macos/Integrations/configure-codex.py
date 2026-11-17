@@ -55,7 +55,7 @@ def main():
         temp.unlink()
         raise RuntimeError('Configuration changed since preview; retry')
     os.replace(temp, target)
-    print('Saved. Capture still requires enabling this project in Prompt Relay. Disable with --disable --apply.')
+    print('Saved. Capture still requires enabling this project in BearlyCopy. Disable with --disable --apply.')
 
 
 if __name__ == '__main__':

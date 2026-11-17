@@ -1,5 +1,5 @@
 // swift-tools-version:5.10
-// Prompt Relay native macOS app (Phase 3A).
+// BearlyCopy native macOS app (Phase 3A).
 //
 // PromptRelayKit holds everything reusable: JSON API v1 models, the Core CLI
 // adapter, clipboard and store-watching services, the presentation model and

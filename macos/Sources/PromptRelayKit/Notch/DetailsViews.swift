@@ -136,7 +136,7 @@ struct DetailsView: View {
         let facts = ReportFacts(model: model)
         VStack(alignment: .leading, spacing: layout.metrics.spacing) {
             if let error = model.projects.error, model.projects.value == nil, model.selectedImport == nil {
-                MessageCard(title: "Prompt Relay can't read its history", detail: error.detail,
+                MessageCard(title: "BearlyCopy can't read its history", detail: error.detail,
                             symbol: "exclamationmark.triangle", tint: Island.warning,
                             action: ("Diagnostics", { model.navigate(to: .settings) }))
                 DetailsFooter(model: model, actions: actions, blocked: true, showsCopies: false)
@@ -166,7 +166,7 @@ struct DetailsView: View {
     @ViewBuilder
     private var emptyState: some View {
         if model.projects.value?.isEmpty == true {
-            MessageCard(title: "Set up Prompt Relay",
+            MessageCard(title: "Set up BearlyCopy",
                         detail: "Connect Claude Code or Codex and choose a project. Nothing is captured until you do.",
                         symbol: "folder.badge.plus", tint: Island.accent,
                         action: ("Set Up", { model.navigate(to: .setup) }))
@@ -270,7 +270,7 @@ struct SessionHeader: View {
 
     private var projectTitle: String {
         if let report = model.selectedImport { return report.projectName ?? "Cloud import" }
-        return model.selectedProject.map(Wording.projectName) ?? "Prompt Relay"
+        return model.selectedProject.map(Wording.projectName) ?? "BearlyCopy"
     }
 
     private var sessionTitle: String? {
@@ -362,7 +362,7 @@ struct NavigationIcons: View {
                      help: "Your recent copied text and images") {
                 model.navigate(to: .clipboard)
             }
-            IconLink(symbol: "gearshape", label: "Settings", help: "Customize Prompt Relay", badge: !AppBuild.otherBuildsRunning().isEmpty) {
+            IconLink(symbol: "gearshape", label: "Settings", help: "Customize BearlyCopy", badge: !AppBuild.otherBuildsRunning().isEmpty) {
                 model.navigate(to: .settings)
             }
             .keyboardShortcut(",", modifiers: .command)
@@ -377,7 +377,7 @@ struct NavigationIcons: View {
                 Button("Handoff History…") { model.navigate(to: .handoffHistory) }
                     .disabled(model.handoffHistory.isEmpty)
                 Divider()
-                Button("Quit Prompt Relay") { actions.quit() }
+                Button("Quit BearlyCopy") { actions.quit() }
             } label: {
                 Image(systemName: "ellipsis").font(.system(size: 12, weight: .semibold))
                     .frame(width: 26, height: 26).contentShape(Rectangle())
@@ -565,7 +565,7 @@ struct HandoffContentsCard: View {
         let what: String
         /// Where its data comes from.
         let source: String
-        /// What Prompt Relay itself read or checked on this Mac.
+        /// What BearlyCopy itself read or checked on this Mac.
         let checked: String
         /// What it does not know.
         let unknown: String
@@ -593,7 +593,7 @@ struct HandoffContentsCard: View {
         if model.selectedImport != nil {
             rows.append(Row(symbol: "terminal", title: "Commands", detail: "not available", explanation: Explanation(
                 what: "Commands the assistant ran.",
-                source: "None: an imported result comes from a place Prompt Relay could not watch.",
+                source: "None: an imported result comes from a place BearlyCopy could not watch.",
                 checked: "Nothing.",
                 unknown: "Which commands ran, and with what result.")))
         } else if let turn = model.selectedTurn {
@@ -628,9 +628,9 @@ struct HandoffContentsCard: View {
         let n = model.handoffAttachments(for: model.currentRef).count
         rows.append(Row(symbol: "paperclip", title: "Attachments", detail: n == 0 ? "none chosen" : "\(n) chosen", explanation: Explanation(
             what: n == 0 ? "Files you choose below are named in the text and handed over after it." : "The chosen files: named in the text, handed over after it as files.",
-            source: "Snapshots you added, stored by Prompt Relay (not the live files).",
+            source: "Snapshots you added, stored by BearlyCopy (not the live files).",
             checked: "That each snapshot exists when the package is built; a missing one is reported, not skipped silently.",
-            unknown: "Whether the other assistant received them: Prompt Relay cannot see another app.")))
+            unknown: "Whether the other assistant received them: BearlyCopy cannot see another app.")))
         return rows
     }
 
@@ -791,7 +791,7 @@ struct AutoCaptureStatusLine: View {
                     .islandFrame("autocapture.permission.actions")
                 } else if status.offersRestartRecovery {
                     HStack(spacing: 10) {
-                        Button("Quit Prompt Relay") { model.quitApp() }
+                        Button("Quit BearlyCopy") { model.quitApp() }
                         checkAgainButton
                     }
                     .buttonStyle(.plain).font(.system(size: 11, weight: .medium)).foregroundStyle(Island.accent)
@@ -918,7 +918,7 @@ struct AttachmentRow: View {
         .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(attachment.isSelected ? Island.selected : .clear))
         .onDrag { model.dragProvider(for: attachment) }
         .islandHelp(memory ? (attachment.effectiveSource == .windowCapture
-                              ? "Auto screenshot taken by Prompt Relay, kept in memory only — not a file the agent made"
+                              ? "Auto screenshot taken by BearlyCopy, kept in memory only — not a file the agent made"
                               : "Window snapshot kept in memory only — not saved as a file") : "Preview this attachment")
     }
 }
@@ -1012,7 +1012,7 @@ struct LinkRow: View {
             Image(systemName: "link").font(.system(size: 11)).foregroundStyle(Island.secondary).frame(width: 24)
             VStack(alignment: .leading, spacing: 0) {
                 Text(material.title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary).lineLimit(1)
-                Text(material.isPrivateLink ? "Private link: the reviewer cannot open it" : "Link, not opened by Prompt Relay")
+                Text(material.isPrivateLink ? "Private link: the reviewer cannot open it" : "Link, not opened by BearlyCopy")
                     .font(.system(size: 11)).foregroundStyle(material.isPrivateLink ? Island.warning : Island.tertiary).lineLimit(1)
             }
             Spacer(minLength: 0)
@@ -1322,8 +1322,8 @@ struct ActivityView: View {
             } else {
                 MessageCard(title: "No work observed for this answer",
                             detail: model.selectedImport != nil
-                                ? "Imported reports come from cloud sessions that Prompt Relay cannot observe."
-                                : "Tool events need the Prompt Relay plugin 0.3.0 or later with capture on. Answers captured before that have none.",
+                                ? "Imported reports come from cloud sessions that BearlyCopy cannot observe."
+                                : "Tool events need the BearlyCopy plugin 0.3.0 or later with capture on. Answers captured before that have none.",
                             symbol: "terminal", tint: Island.secondary, action: nil)
             }
         }

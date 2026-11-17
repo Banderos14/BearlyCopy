@@ -3,7 +3,7 @@ import SwiftUI
 import XCTest
 @testable import PromptRelayKit
 
-/// Phase 14.2: three real bugs the owner hit using Prompt Relay itself.
+/// Phase 14.2: three real bugs the owner hit using BearlyCopy itself.
 ///
 /// 1. "4 not verified" never moved after two manual checks: the Answer
 ///    chip's count was `EvidenceCheck`'s own fixed list of unverified claims

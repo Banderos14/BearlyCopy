@@ -1,4 +1,4 @@
-# Installing Prompt Relay
+# Installing BearlyCopy
 
 Two audiences, two workflows. Users never need Xcode.
 
@@ -8,7 +8,7 @@ Two audiences, two workflows. Users never need Xcode.
   from macOS 14). Developed and tested on macOS 27 / Apple Silicon.
 - Python 3.9 or newer, from any of: Xcode Command Line Tools
   (`xcode-select --install`), Homebrew (`brew install python`), or
-  python.org. Prompt Relay never triggers the Command Line Tools installer by
+  python.org. BearlyCopy never triggers the Command Line Tools installer by
   itself; if no Python is found, Setup and Settings → Diagnostics say so
   (ADR-019).
 - Claude Code and/or Codex, if you want answers captured automatically.
@@ -17,15 +17,15 @@ Two audiences, two workflows. Users never need Xcode.
 
 When a signed and notarized release exists:
 
-1. Download `Prompt-Relay-<version>.dmg` from the GitHub Releases page and
+1. Download `BearlyCopy-<version>.dmg` from the GitHub Releases page and
    check its SHA-256 against the `.sha256` file next to it.
-2. Open the DMG and drag **Prompt Relay** to **Applications**.
+2. Open the DMG and drag **BearlyCopy** to **Applications**.
 3. Open it. It lives in the menu bar and at the notch.
 4. Follow **Set Up** (opens from the empty island, or Settings → Agents &
    Projects → Set Up Agents): connect an agent, enable a project, send any
    prompt, and wait for "Connected — events observed".
 
-Updating: quit Prompt Relay, replace the app, open it again. History and
+Updating: quit BearlyCopy, replace the app, open it again. History and
 settings are kept (they live outside the app). There is no automatic
 updater.
 
@@ -37,7 +37,7 @@ and the Codex hooks with `configure-codex.py … --disable --apply`.
 ## For developers (from a checkout)
 
 ```bash
-git clone https://github.com/Banderos14/prompt-relay && cd prompt-relay
+git clone https://github.com/Banderos14/BearlyCopy && cd prompt-relay
 scripts/check.sh                       # Python Core tests
 (cd macos && swift test)               # Swift tests
 scripts/install-local.sh --dry-run     # build + verify + show the plan; changes nothing
@@ -49,12 +49,12 @@ scripts/install-local.sh               # same, then asks, installs to ~/Applicat
 | Step | What happens |
 |---|---|
 | Source | prints the branch, commit and subject it builds from; never pulls or downloads |
-| Build | `scripts/build-macos-app.sh` → `macos/build/Prompt Relay.app` (Release, ad-hoc signed, or `--sign "Apple Development"`). A failed build changes nothing |
+| Build | `scripts/build-macos-app.sh` → `macos/build/BearlyCopy.app` (Release, ad-hoc signed, or `--sign "Apple Development"`). A failed build changes nothing |
 | Source | `--no-build`: the build must be from `HEAD`, or from an earlier commit when nothing the app is built from (`macos/Sources`, `macos/Resources`, `macos/Package.swift`, `bin`, `plugin`, the build scripts) changed since and the checkout is clean there |
 | Verify | Release bundle id (a Debug build is refused); signature; app version = bundled Core version; Core digest = recorded digest = this checkout; recorded commit = `HEAD`; the bear icon is bundled and named in Info.plist |
 | Smoke test | runs the **bundled** Core with a temporary data folder: a request and an answer (Cyrillic, emoji, a code fence, 3000 characters) must come back verbatim; your history is not touched |
 | Plan | new build, installed build (version, commit, signing), running copies, stray old copies in Applications, backup location, undo command |
-| Ask | `[y/N]` (or `--yes`). A running Debug build ("Prompt Relay Dev") would keep the notch: asked separately whether to quit it (`--quit-debug`) |
+| Ask | `[y/N]` (or `--yes`). A running Debug build ("BearlyCopy Dev") would keep the notch: asked separately whether to quit it (`--quit-debug`) |
 | Quit | asks running copies to quit normally (like Quit in the menu) and waits 15 s; if one does not quit, stops and says how to quit it — never kills |
 | Stage | copies the new app next to the installed one and verifies the copy — **before** anything is quit. A failed copy changes nothing |
 | Install | moves the old app to `~/Library/Application Support/PromptRelay-AppBackups/` (named with version, commit and the time it was replaced) and the copy in place. If that move fails, the old app is put back (and reopened if it had been running). Registers the app with Launch Services (Finder, Spotlight, Launchpad, icon) |
@@ -66,15 +66,15 @@ Other commands:
 scripts/install-local.sh --status         # installed build vs checkout, running copies, stray old copies
 scripts/install-local.sh --rollback       # restore the most recently replaced version (asks; current app becomes a backup; no backup is deleted)
 scripts/install-local.sh --list-backups
-scripts/install-local.sh --tidy           # move old copies (e.g. "Prompt Relay.before-….app") out of Applications into the backups (asks)
+scripts/install-local.sh --tidy           # move old copies (e.g. "BearlyCopy.before-….app") out of Applications into the backups (asks)
 scripts/install-local.sh --system         # install into /Applications instead of ~/Applications (admin account)
 ```
 
-Or double-click **`scripts/Update Prompt Relay.command`** in Finder: it shows
+Or double-click **`scripts/Update BearlyCopy.command`** in Finder: it shows
 `--status`, asks, then runs the same installer (which asks again before
 replacing anything).
 
-**Where it installs.** `~/Applications/Prompt Relay.app` — your own
+**Where it installs.** `~/Applications/BearlyCopy.app` — your own
 Applications folder: no administrator password, found by Spotlight and
 Launchpad, shown in Finder under your home folder → Applications (add it to
 the Finder sidebar if you like). `--system` installs in `/Applications`
@@ -105,7 +105,7 @@ looking at, its commit, and whether the installed app is older.
 |---|---|---|
 | "Python 3.9 or newer: Not found" | No Python, or only the CLT stub | Install one (see Requirements), then Check Again |
 | Agent shows **Configuration required** | Plugin or hooks not installed | Setup → Copy Commands, run them, Check Again |
-| Codex shows **Trust required** | Hooks defined, never run | Open Codex, review Prompt Relay's hooks in `/hooks` (or accept on next start) |
+| Codex shows **Trust required** | Hooks defined, never run | Open Codex, review BearlyCopy's hooks in `/hooks` (or accept on next start) |
 | **Capture disabled** | No project enabled, or the event came from a folder that is off | Setup → Choose Project… |
 | **Waiting for first event** forever | Agent session started before setup | Start a new session in an enabled project |
 | About: "the app in ~/Applications is …" | You are running the Xcode build; the installed app is older | `scripts/install-local.sh` |

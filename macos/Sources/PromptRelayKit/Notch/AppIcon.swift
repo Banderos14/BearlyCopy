@@ -4,7 +4,7 @@ import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Phase 16: Prompt Relay's application icon (Finder, Applications,
+/// Phase 16: BearlyCopy's application icon (Finder, Applications,
 /// Launchpad, Spotlight, Privacy & Security lists) and its menu-bar mark.
 ///
 /// Drawn from Relay's own vector geometry — `MascotView.shapes`, the same
@@ -140,7 +140,7 @@ public enum AppIcon {
 
     /// Relay's silhouette as a template image for the menu bar (ears and
     /// head; eyes and nose cut out), so the menu-bar item is recognisably
-    /// Prompt Relay in light and dark menu bars.
+    /// BearlyCopy in light and dark menu bars.
     public static func menuBarImage(points: CGFloat = 18) -> NSImage {
         let image = NSImage(size: NSSize(width: points, height: points), flipped: true) { rect in
             guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
@@ -162,7 +162,7 @@ public enum AppIcon {
             return true
         }
         image.isTemplate = true
-        image.accessibilityDescription = "Prompt Relay"
+        image.accessibilityDescription = "BearlyCopy"
         return image
     }
 }

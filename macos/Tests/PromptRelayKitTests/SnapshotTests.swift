@@ -81,7 +81,7 @@ final class SnapshotTests: XCTestCase {
             try TypedAttachmentTests.png(.systemTeal).write(to: png)
             try store.addFile(from: png, to: report.ref, source: .clipboard)
             var mockup = try store.addMaterial(ReportMaterial(
-                id: "m", reportKey: report.ref.key, kind: .mockup, title: "Prompt Relay Phase 5 Island",
+                id: "m", reportKey: report.ref.key, kind: .mockup, title: "BearlyCopy Phase 5 Island",
                 url: "https://claude.ai/artifact/x", audience: "owner", sourcePath: "…/scratchpad/phase5-island.html", version: nil,
                 addedAt: "t", provenance: "Published by Claude in this turn (Artifact tool)", selected: true,
                 states: ["Resting", "Quick Peek", "Details", "Project and session", "Observed work", "Transfer", "Clipboard images"]

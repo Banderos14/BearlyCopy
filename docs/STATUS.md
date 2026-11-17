@@ -1,5 +1,9 @@
 # Status
 
+## 2026-11-17 — Renamed to BearlyCopy (0.9.5)
+
+The product name is now **BearlyCopy** (bear + barely): app bundle `BearlyCopy.app`, window and menu texts, README, docs, release asset names (`BearlyCopy-<v>.zip/.dmg`, `BearlyCopy-macOS.*`), repository `Banderos14/BearlyCopy` (GitHub redirects the old name). Deliberately **unchanged**: bundle ID `io.github.banderos14.PromptRelay`, the Swift/Python module names, the plugin `prompt-relay@prompt-relay`, the `prompt-relay` command, the data folder `~/Library/Application Support/PromptRelay` — renaming these would drop the Screen Recording permission, the plugin binding and the history. Historical docs (`docs/archive`, older STATUS entries) keep the old name. The installer moves a leftover `Prompt Relay.app` into the backups. The mascot is still called Relay in a few texts. README images were not regenerated.
+
 ## 2026-11-17 — 0.9.4: the notch no longer hides menu-bar items
 
 The right ear shows only while Claude works or an answer is new (it hid a menu-bar manager's `»`); Prompt Relay's plain menu-bar icon is hidden while the bear is at the notch. Other apps' icons are not moved (macOS cannot reserve menu-bar room). Plugin/app/Core 0.9.4. Built with the owner's Apple Development certificate, not notarized. Live behaviour: owner.

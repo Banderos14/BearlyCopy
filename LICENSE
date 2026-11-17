@@ -1,13 +1,13 @@
-Prompt Relay Source-Available License (view-only)
+BearlyCopy Source-Available License (view-only)
 
 Copyright (c) 2026 Banderos14. All rights reserved.
 
-This repository is published so that people can read how Prompt Relay is
+This repository is published so that people can read how BearlyCopy is
 built and download the released app. It is NOT open-source software.
 
 You MAY:
   1. View and read the source code and documentation in this repository.
-  2. Download the released Prompt Relay app and use it for your own personal,
+  2. Download the released BearlyCopy app and use it for your own personal,
      non-commercial purposes.
   3. Run the test suites to check the project's claims.
 
@@ -28,7 +28,7 @@ for a particular purpose and non-infringement. The author is not liable for
 any claim, damages or other liability arising from the use of the software.
 
 Third-party names (Claude, Claude Code, Codex, ChatGPT, macOS, Xcode) belong
-to their owners; Prompt Relay is an independent project and is not affiliated
+to their owners; BearlyCopy is an independent project and is not affiliated
 with or endorsed by them.
 
 To ask for permission, open a GitHub issue or contact the author through the

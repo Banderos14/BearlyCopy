@@ -113,7 +113,7 @@ struct ContextPackView: View {
                 .padding(.horizontal, 10).padding(.vertical, 7)
                 .background(RoundedRectangle(cornerRadius: Island.rowRadius, style: .continuous).fill(Island.card))
                 .accessibilityLabel("Review instructions for the receiving AI")
-            Text("Shown in the pack as written by you, apart from the agents' results. Empty: Prompt Relay's standard request, labelled as such.")
+            Text("Shown in the pack as written by you, apart from the agents' results. Empty: BearlyCopy's standard request, labelled as such.")
                 .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -200,7 +200,7 @@ struct PackStepsView: View {
                     .font(.system(size: 11)).foregroundStyle(Island.warning).fixedSize(horizontal: false, vertical: true)
             }
             if pack.temporaryImages > 0 {
-                Text("Window snapshots are in memory only: copied and dragged as image data, never saved as files here. A receiver that needs files gets them only through Export. They are lost when Prompt Relay quits.")
+                Text("Window snapshots are in memory only: copied and dragged as image data, never saved as files here. A receiver that needs files gets them only through Export. They are lost when BearlyCopy quits.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             if model.packAwaitsSensitiveConfirmation {
@@ -267,7 +267,7 @@ struct PackStepsView: View {
         }
         if let at = p.exportedAt { parts.append("Exported \(Wording.clock(at))") }
         if model.packTextReplaced { parts.append("the clipboard no longer holds the text") }
-        return parts.joined(separator: " · ") + ". Delivery not verified: Prompt Relay cannot see what the other app received."
+        return parts.joined(separator: " · ") + ". Delivery not verified: BearlyCopy cannot see what the other app received."
     }
 }
 
@@ -375,7 +375,7 @@ struct HandoffHistoryView: View {
                             symbol: "clock", tint: Island.secondary, action: nil)
             } else {
                 HStack {
-                    Text("Copied, dragged or exported — not “delivered”: Prompt Relay cannot see what another app received.")
+                    Text("Copied, dragged or exported — not “delivered”: BearlyCopy cannot see what another app received.")
                         .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                     Spacer()
                     Button("Clear All") { model.clearHandoffHistory() }.buttonStyle(.plain)

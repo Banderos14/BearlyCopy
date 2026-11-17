@@ -4,7 +4,7 @@ import XCTest
 
 /// Phase 14 with the real Core (Phase 13 fixtures): an auto screenshot goes
 /// into a Context Pack only when it is checked; it is image data held in
-/// memory, labelled as Prompt Relay's screenshot, never as the agent's file.
+/// memory, labelled as BearlyCopy's screenshot, never as the agent's file.
 extension Phase13Tests {
     func testContextPackTakesOnlyCheckedAutoScreenshots() async throws {
         try claude("s1", "p1", "Make the report", "Report done.")

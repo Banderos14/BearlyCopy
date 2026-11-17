@@ -5,7 +5,7 @@ import SwiftUI
 /// Verify Capture → First Result, on one scrolling page. Every step can be
 /// skipped and reopened later (empty Home, Settings → Agents & Projects).
 ///
-/// Prompt Relay changes nothing here by itself: connecting an agent means
+/// BearlyCopy changes nothing here by itself: connecting an agent means
 /// copying the exact commands, which the user runs and can undo; Enable
 /// Project opens the existing capture switches. Status comes from
 /// `AgentFacts`, which reports "Connected" only after a stored event.
@@ -17,7 +17,7 @@ struct SetupView: View {
     @State private var expanded: ConnectionTarget?
 
     static let claudeConnect = """
-    claude plugin marketplace add Banderos14/prompt-relay
+    claude plugin marketplace add Banderos14/BearlyCopy
     claude plugin install prompt-relay@prompt-relay
     """
     static let claudeUndo = "claude plugin uninstall prompt-relay@prompt-relay"
@@ -75,7 +75,7 @@ struct SetupView: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Connect an agent once").font(.system(size: 13, weight: .semibold)).foregroundStyle(Island.primary)
-                Text("Prompt Relay keeps each final answer of Claude Code or Codex on this Mac, ready to copy with its context. Everything stays on this Mac.")
+                Text("BearlyCopy keeps each final answer of Claude Code or Codex on this Mac, ready to copy with its context. Everything stays on this Mac.")
                     .font(.system(size: 11.5)).foregroundStyle(Island.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 6)
@@ -130,7 +130,7 @@ struct SetupView: View {
                 .background(RoundedRectangle(cornerRadius: Island.smallRadius).fill(Island.control))
             Text(target == .claudeCode
                  ? "Changes: Claude Code adds the plugin to your user settings (its own mechanism). Other plugins and hooks stay. Undo: \(undo)"
-                 : "Changes: adds three Prompt Relay hook entries to that hooks.json; other hooks stay; a backup is written first. Undo: \(undo)")
+                 : "Changes: adds three BearlyCopy hook entries to that hooks.json; other hooks stay; a backup is written first. Undo: \(undo)")
                 .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
             HStack(spacing: 6) {
@@ -173,7 +173,7 @@ struct SetupView: View {
                     .font(.system(size: 12.5)).foregroundStyle(Island.primary)
                 Text(connected.isEmpty
                      ? "Send any short prompt to your agent in an enabled project, then Check Again. A configuration file alone does not count."
-                     : "Connected means Prompt Relay stored a real event from that agent.")
+                     : "Connected means BearlyCopy stored a real event from that agent.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 6)

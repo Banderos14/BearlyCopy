@@ -36,7 +36,7 @@ struct IntegrationsView: View {
                 Text("This app: PID \(ProcessInfo.processInfo.processIdentifier) · \(Bundle.main.bundleURL.path)")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).padding(.horizontal, 12)
                 if !AppBuild.otherBuildsRunning().isEmpty {
-                    Text("Another Prompt Relay build is running. An older build may not recognize Codex. Manage running copies in Settings → About.")
+                    Text("Another BearlyCopy build is running. An older build may not recognize Codex. Manage running copies in Settings → About.")
                         .font(.system(size: 11)).foregroundStyle(Island.secondary).padding(.horizontal, 12)
                 }
                 Text("Definitions do not prove trust. Saved Xcode events confirm delivery at the displayed time; Test Connection starts no AI task.")
@@ -79,7 +79,7 @@ struct IntegrationStatusRow: View {
                 Text(sessions.isEmpty ? "Action required" : "Recorded events")
                     .font(.system(size: 11)).foregroundStyle(Island.secondary)
             }
-            Text("Source adapter: installed in Prompt Relay")
+            Text("Source adapter: installed in BearlyCopy")
                 .font(.system(size: 11)).foregroundStyle(Island.tertiary)
             if sessions.isEmpty {
                 Text("No recorded hook events. Setup and a real session are required.")
@@ -101,7 +101,7 @@ struct IntegrationStatusRow: View {
                  ? "Requires reviewed Codex hooks and project capture enabled. Delivery stages above distinguish configuration, execution, storage and the final Stop."
                  : "UserPromptSubmit, Stop, PostToolUse and PostToolUseFailure through the existing Claude Code plugin.")
                 .font(.system(size: 11)).foregroundStyle(Island.tertiary)
-            Text("To stop capture, disable the project in Projects or disable Prompt Relay hooks in the agent. Saved history stays available.")
+            Text("To stop capture, disable the project in Projects or disable BearlyCopy hooks in the agent. Saved history stays available.")
                 .font(.system(size: 11)).foregroundStyle(Island.tertiary)
         }.padding(12)
     }

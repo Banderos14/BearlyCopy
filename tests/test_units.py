@@ -304,7 +304,7 @@ class ExportTests(IsolatedTestCase):
         self.assertEqual(out.returncode, 0)
         text = out.stdout.decode("utf-8")
         self.assertTrue(text.startswith("# Copy with Context:"))
-        self.assertIn("- Source: Claude Code · Unknown · This Mac, captured by the Prompt Relay hooks [Confirmed locally]", text)
+        self.assertIn("- Source: Claude Code · Unknown · This Mac, captured by the BearlyCopy hooks [Confirmed locally]", text)
         self.assertIn("- Host: Unknown (older Claude Code hooks do not record it) [Unavailable]", text)
         self.assertEqual(text.count(report), 1, "the full report, unmodified, once")
         fence = export.fence(report)

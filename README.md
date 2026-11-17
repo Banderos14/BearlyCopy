@@ -1,8 +1,8 @@
-# Prompt Relay
+# BearlyCopy
 
 **The final answer of your AI coding agent, verbatim, one click from any other chat.**
 
-Prompt Relay is a small macOS app that lives at the MacBook notch. When Claude
+BearlyCopy is a small macOS app that lives at the MacBook notch. When Claude
 Code or Codex finishes a task, it keeps the agent's complete final answer —
 exactly as written — together with the request, the project and the files the
 agent verifiably wrote. **Copy Answer** puts the text on your clipboard.
@@ -18,21 +18,21 @@ needed to check the work, every claim labelled *Reported by the agent* or
 
 Planning in one AI and building with another means copying long answers by
 hand: Markdown breaks, conversations get mixed up, and "all tests pass" is
-taken on faith. Prompt Relay copies the exact text and separates what the
+taken on faith. BearlyCopy copies the exact text and separates what the
 agent *claimed* from what was *observed on your Mac*.
 
 ## How it works
 
-Prompt Relay sits between your AI coding agent and the next chat you want to
+BearlyCopy sits between your AI coding agent and the next chat you want to
 paste into. It never talks to the agent itself; it just keeps what the agent
 already said.
 
 <p align="center">
-  <img src="docs/images/readme/how-it-works.png" width="900" alt="Your agent, then Prompt Relay keeps the answer, then Copy, then paste anywhere">
+  <img src="docs/images/readme/how-it-works.png" width="900" alt="Your agent, then BearlyCopy keeps the answer, then Copy, then paste anywhere">
 </p>
 
 1. **Work as usual** in Claude Code or Codex.
-2. When the agent finishes, Prompt Relay saves the final answer exactly as written, with the request, the project and the files it wrote. Everything stays on your Mac.
+2. When the agent finishes, BearlyCopy saves the final answer exactly as written, with the request, the project and the files it wrote. Everything stays on your Mac.
 3. **Hover the notch** to see it, and press **Copy Answer** or **Copy with Context**.
 4. **Paste** it into any other chat or send it to a reviewer.
 
@@ -51,7 +51,7 @@ already said.
 
 **0. First launch.** A short **Quick Tour** (9 pages) explains the basics. Skip it any time; Settings → **Show Quick Tour** opens it again.
 
-**1. Connect your agent (once).** Open Prompt Relay → **Set Up**. It shows the
+**1. Connect your agent (once).** Open BearlyCopy → **Set Up**. It shows the
 exact commands for Claude Code (and Codex) and how to undo them. It says
 *Connected* only after a real event has arrived.
 
@@ -91,7 +91,7 @@ reviewer.
 **6. Screenshots of where the agent worked.** In **Settings → Attachments →
 Final screenshots** pick **Automatic** (recommended), **Manual** or **Off**.
 macOS asks for Screen Recording once. In *Automatic*, when you send a prompt
-Prompt Relay links the window you are working in; when the answer is ready it
+BearlyCopy links the window you are working in; when the answer is ready it
 keeps one still image of that window in memory (never written to disk, never
 sent anywhere) and lists it under Attachments, unticked until you choose to
 include it. If automatic linking ever picks the wrong window or macOS keeps
@@ -123,10 +123,10 @@ you paste it. Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
 
 ### Easiest: one line in Terminal
 
-Open **Terminal** (⌘ Space, type *Terminal*), paste this line, press Return. It downloads the latest release, checks it, installs **Prompt Relay** into `~/Applications` and opens it. **No security warning appears.**
+Open **Terminal** (⌘ Space, type *Terminal*), paste this line, press Return. It downloads the latest release, checks it, installs **BearlyCopy** into `~/Applications` and opens it. **No security warning appears.**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Banderos14/prompt-relay/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Banderos14/BearlyCopy/main/scripts/install.sh | bash
 ```
 
 It verifies the download's SHA-256 and that the app is signed by the author's Apple team, and changes no security setting. You can read the short script first: [scripts/install.sh](scripts/install.sh). Then the app shows a short **Quick Tour** and **Set Up** (it shows the exact commands to connect Claude Code and how to undo them). Send any prompt in Claude Code — the answer appears at the notch.
@@ -134,15 +134,15 @@ It verifies the download's SHA-256 and that the app is signed by the author's Ap
 ### Or download the DMG
 
 <p align="center">
-  <a href="https://github.com/Banderos14/prompt-relay/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-Prompt%20Relay.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
+  <a href="https://github.com/Banderos14/BearlyCopy/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-Prompt%20Relay.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
 </p>
 
-1. Download `Prompt-Relay-0.9.4.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
-2. The build is signed but **not notarized** (that needs a paid Apple Developer ID), so macOS says *"Prompt Relay" Not Opened*. Click **Done**, open **System Settings → Privacy & Security**, scroll to **Security**, click **Open Anyway** next to *Prompt Relay*, then **Open**. (On current macOS right-click → Open no longer works.) Or run once in Terminal: `xattr -dr com.apple.quarantine "/Applications/Prompt Relay.app"`.
+1. Download `BearlyCopy-0.9.5.dmg` from the [latest release](https://github.com/Banderos14/BearlyCopy/releases/latest), open it and drag **BearlyCopy** to **Applications**.
+2. The build is signed but **not notarized** (that needs a paid Apple Developer ID), so macOS says *"BearlyCopy" Not Opened*. Click **Done**, open **System Settings → Privacy & Security**, scroll to **Security**, click **Open Anyway** next to *BearlyCopy*, then **Open**. (On current macOS right-click → Open no longer works.) Or run once in Terminal: `xattr -dr com.apple.quarantine "/Applications/BearlyCopy.app"`.
 
 Prefer the terminal? Connect Claude Code by hand:
 ```bash
-claude plugin marketplace add Banderos14/prompt-relay
+claude plugin marketplace add Banderos14/BearlyCopy
 claude plugin install prompt-relay@prompt-relay
 ```
 

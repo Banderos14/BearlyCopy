@@ -1,7 +1,7 @@
 """Phase 16: scripts/install-local.sh in isolated folders.
 
 Every test installs into temporary "Applications" and backup folders, with a
-made-up bundle id so no real Prompt Relay copy can match, process checks and
+made-up bundle id so no real BearlyCopy copy can match, process checks and
 Launch Services registration switched off, and never launches anything. The
 fake app is a real, ad-hoc signed bundle holding this checkout's Core, so the
 installer's own checks (signature, version, Core digest, icon, the Core smoke
@@ -56,7 +56,7 @@ class InstallLocalTests(unittest.TestCase):
 
     def make_app(self, where: Path, commit: str = "", version: str = "", bundle_id: str = "", icon: bool = True,
                  digest: str = "") -> Path:
-        app = where / "Prompt Relay.app"
+        app = where / "BearlyCopy.app"
         core = app / "Contents" / "Resources" / "core"
         (app / "Contents" / "MacOS").mkdir(parents=True)
         (core / "bin").mkdir(parents=True)
@@ -73,7 +73,7 @@ class InstallLocalTests(unittest.TestCase):
         real_digest = subprocess.run([str(REPO / "scripts" / "core-digest.sh"), str(core)], stdout=subprocess.PIPE,
                                      check=True).stdout.decode().strip()
         info = {
-            "CFBundleIdentifier": bundle_id or self.bundle_id, "CFBundleName": "Prompt Relay",
+            "CFBundleIdentifier": bundle_id or self.bundle_id, "CFBundleName": "BearlyCopy",
             "CFBundleExecutable": "PromptRelay", "CFBundlePackageType": "APPL",
             "CFBundleShortVersionString": version or _version(), "CFBundleVersion": version or _version(),
             "PRGitCommit": commit or _git_head(), "PRGitDirty": "no", "PRBuildDate": "2026-11-08T00:00:00Z",
@@ -100,7 +100,7 @@ class InstallLocalTests(unittest.TestCase):
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
 
     def installed_commit(self) -> str:
-        with open(self.apps / "Prompt Relay.app" / "Contents" / "Info.plist", "rb") as fh:
+        with open(self.apps / "BearlyCopy.app" / "Contents" / "Info.plist", "rb") as fh:
             return plistlib.load(fh)["PRGitCommit"]
 
     def backups_list(self):
@@ -121,7 +121,7 @@ class InstallLocalTests(unittest.TestCase):
 
     def test_fresh_install_then_update_keeps_a_verified_backup(self) -> None:
         old = self.make_app(self.tmp, commit="0ld0ld0")
-        shutil.move(str(old), str(self.apps / "Prompt Relay.app"))
+        shutil.move(str(old), str(self.apps / "BearlyCopy.app"))
         self.built()
         out = self.run_installer("--no-build", "--no-launch", "--yes")
         text = out.stdout.decode()
@@ -132,24 +132,24 @@ class InstallLocalTests(unittest.TestCase):
         self.assertIn("0ld0ld0", backups[0])
         self.assertEqual(oct(self.backups.stat().st_mode & 0o777), "0o700")
         # Nothing half-copied is left next to the app.
-        self.assertEqual([p.name for p in self.apps.iterdir()], ["Prompt Relay.app"])
-        verify = subprocess.run(["codesign", "--verify", "--strict", str(self.apps / "Prompt Relay.app")])
+        self.assertEqual([p.name for p in self.apps.iterdir()], ["BearlyCopy.app"])
+        verify = subprocess.run(["codesign", "--verify", "--strict", str(self.apps / "BearlyCopy.app")])
         self.assertEqual(verify.returncode, 0)
 
     def test_failed_swap_puts_the_old_app_back(self) -> None:
         old = self.make_app(self.tmp, commit="0ld0ld0")
-        shutil.move(str(old), str(self.apps / "Prompt Relay.app"))
+        shutil.move(str(old), str(self.apps / "BearlyCopy.app"))
         self.built()
         out = self.run_installer("--no-build", "--no-launch", "--yes", extra={"PROMPT_RELAY_TEST_FAIL_SWAP": "1"})
         self.assertNotEqual(out.returncode, 0)
         self.assertIn("previous app was put back", out.stdout.decode())
         self.assertEqual(self.installed_commit(), "0ld0ld0")
-        self.assertEqual([p.name for p in self.apps.iterdir()], ["Prompt Relay.app"], "no temporary copy left")
+        self.assertEqual([p.name for p in self.apps.iterdir()], ["BearlyCopy.app"], "no temporary copy left")
         self.assertEqual(self.backups_list(), [], "the old app is installed, not left in the backups")
 
     def _refused(self, reason: str, **kw) -> None:
         old = self.make_app(self.tmp, commit="0ld0ld0")
-        shutil.move(str(old), str(self.apps / "Prompt Relay.app"))
+        shutil.move(str(old), str(self.apps / "BearlyCopy.app"))
         self.built(**kw)
         out = self.run_installer("--no-build", "--no-launch", "--yes")
         text = out.stdout.decode()
@@ -172,7 +172,7 @@ class InstallLocalTests(unittest.TestCase):
 
     def test_refuses_an_app_whose_version_differs_from_its_core(self) -> None:
         old = self.make_app(self.tmp, commit="0ld0ld0")
-        shutil.move(str(old), str(self.apps / "Prompt Relay.app"))
+        shutil.move(str(old), str(self.apps / "BearlyCopy.app"))
         app = self.built()
         with open(app / "Contents" / "Info.plist", "rb") as fh:
             info = plistlib.load(fh)
@@ -187,7 +187,7 @@ class InstallLocalTests(unittest.TestCase):
 
     def test_refuses_a_modified_bundle(self) -> None:
         old = self.make_app(self.tmp, commit="0ld0ld0")
-        shutil.move(str(old), str(self.apps / "Prompt Relay.app"))
+        shutil.move(str(old), str(self.apps / "BearlyCopy.app"))
         app = self.built()
         with open(app / "Contents" / "Resources" / "core" / "plugin" / "prompt_relay" / "__init__.py", "a") as fh:
             fh.write("# tampered\n")
@@ -216,7 +216,7 @@ class InstallLocalTests(unittest.TestCase):
 
     def _installed_old(self) -> None:
         old = self.make_app(self.tmp, commit="0ld0ld0")
-        shutil.move(str(old), str(self.apps / "Prompt Relay.app"))
+        shutil.move(str(old), str(self.apps / "BearlyCopy.app"))
 
     def test_build_failure_changes_nothing(self) -> None:
         self._installed_old()
@@ -233,7 +233,7 @@ class InstallLocalTests(unittest.TestCase):
         self.assertNotEqual(out.returncode, 0)
         self.assertIn("nothing was quit or replaced", out.stdout.decode())
         self.assertEqual(self.installed_commit(), "0ld0ld0")
-        self.assertEqual([p.name for p in self.apps.iterdir()], ["Prompt Relay.app"])
+        self.assertEqual([p.name for p in self.apps.iterdir()], ["BearlyCopy.app"])
         self.assertEqual(self.backups_list(), [])
 
     def test_launch_failure_restores_and_reopens_the_previous_app(self) -> None:
@@ -248,14 +248,14 @@ class InstallLocalTests(unittest.TestCase):
         self.assertEqual(len(backups), 1, backups)
         self.assertIn("(failed launch)", backups[0])
         self.assertIn(_git_head(), backups[0], "the failed new app is kept, not deleted")
-        self.assertEqual([p.name for p in self.apps.iterdir()], ["Prompt Relay.app"])
+        self.assertEqual([p.name for p in self.apps.iterdir()], ["BearlyCopy.app"])
 
     def test_launch_failure_of_a_first_install_says_there_was_nothing_to_restore(self) -> None:
         self.built()
         out = self.run_installer("--no-build", "--yes", extra={"PROMPT_RELAY_TEST_SIMULATE_LAUNCH": "fail"})
         self.assertNotEqual(out.returncode, 0)
         self.assertIn("no previous app to restore", out.stdout.decode())
-        self.assertTrue((self.apps / "Prompt Relay.app").exists())
+        self.assertTrue((self.apps / "BearlyCopy.app").exists())
 
     def test_successful_launch_is_reported_with_the_commit(self) -> None:
         self._installed_old()
@@ -269,11 +269,11 @@ class InstallLocalTests(unittest.TestCase):
         self._installed_old()
         self.backups.mkdir()
         made = {}
-        for name, commit in [("Prompt Relay 0.5.0-aaaaaaa-20261101-100000.app", "aaaaaaa"),
-                             ("Prompt Relay 0.6.0-bbbbbbb-20261107-120000.app", "bbbbbbb"),
-                             ("Prompt Relay 0.4.0-ccccccc-20261103-090000.app", "ccccccc"),
-                             ("Prompt Relay 0.7.0-ddddddd-20261108-130000 (failed launch).app", "ddddddd"),
-                             ("Prompt Relay.before-phase92 (moved 20261109-080000).app", "eeeeeee")]:
+        for name, commit in [("BearlyCopy 0.5.0-aaaaaaa-20261101-100000.app", "aaaaaaa"),
+                             ("BearlyCopy 0.6.0-bbbbbbb-20261107-120000.app", "bbbbbbb"),
+                             ("BearlyCopy 0.4.0-ccccccc-20261103-090000.app", "ccccccc"),
+                             ("BearlyCopy 0.7.0-ddddddd-20261108-130000 (failed launch).app", "ddddddd"),
+                             ("BearlyCopy.before-phase92 (moved 20261109-080000).app", "eeeeeee")]:
             d = self.tmp / ("b-" + commit)
             d.mkdir()
             app = self.make_app(d, commit=commit)
@@ -291,7 +291,7 @@ class InstallLocalTests(unittest.TestCase):
 
     def test_rollback_restores_the_newest_backup_and_keeps_the_current(self) -> None:
         old = self.make_app(self.tmp, commit="0ld0ld0")
-        shutil.move(str(old), str(self.apps / "Prompt Relay.app"))
+        shutil.move(str(old), str(self.apps / "BearlyCopy.app"))
         self.built()
         self.assertEqual(self.run_installer("--no-build", "--no-launch", "--yes").returncode, 0)
         self.assertEqual(self.installed_commit(), _git_head())
@@ -306,19 +306,19 @@ class InstallLocalTests(unittest.TestCase):
         stray_dir = self.tmp / "s"
         stray_dir.mkdir()
         stray = self.make_app(stray_dir, commit="0123456", version="0.2.0")
-        shutil.move(str(stray), str(self.apps / "Prompt Relay.before-phase92.app"))
+        shutil.move(str(stray), str(self.apps / "BearlyCopy.before-phase92.app"))
         status = self.run_installer("--status").stdout.decode()
         self.assertIn("Old copies in Applications", status)
-        self.assertIn("Prompt Relay.before-phase92.app", status)
+        self.assertIn("BearlyCopy.before-phase92.app", status)
         dry = self.run_installer("--tidy", "--dry-run")
         self.assertIn("Dry run: nothing changed.", dry.stdout.decode())
-        self.assertTrue((self.apps / "Prompt Relay.before-phase92.app").exists())
+        self.assertTrue((self.apps / "BearlyCopy.before-phase92.app").exists())
         out = self.run_installer("--tidy", "--yes")
         self.assertEqual(out.returncode, 0, out.stdout.decode())
-        self.assertFalse((self.apps / "Prompt Relay.before-phase92.app").exists())
+        self.assertFalse((self.apps / "BearlyCopy.before-phase92.app").exists())
         moved = self.backups_list()
         self.assertEqual(len(moved), 1)
-        self.assertTrue(moved[0].startswith("Prompt Relay.before-phase92 (moved "), moved)
+        self.assertTrue(moved[0].startswith("BearlyCopy.before-phase92 (moved "), moved)
 
 
 
@@ -371,14 +371,14 @@ class NoBuildSourceRuleTests(unittest.TestCase):
         text = out.stdout.decode()
         self.assertEqual(out.returncode, 0, text)
         self.assertIn("differs only outside the app's sources (docs )", text)
-        self.assertTrue((self.case.apps / "Prompt Relay.app").exists())
+        self.assertTrue((self.case.apps / "BearlyCopy.app").exists())
 
     def test_a_source_change_after_the_build_is_refused(self) -> None:
         self.commit("plugin/prompt_relay/extra.py", "# new\n")
         out = self.install()
         self.assertNotEqual(out.returncode, 0)
         self.assertIn("the app's sources changed since", out.stdout.decode())
-        self.assertFalse((self.case.apps / "Prompt Relay.app").exists())
+        self.assertFalse((self.case.apps / "BearlyCopy.app").exists())
 
     def test_uncommitted_source_changes_are_refused(self) -> None:
         self.commit("docs/NOTES.md", "two\n")

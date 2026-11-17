@@ -8,7 +8,7 @@ public enum ContextDetail: String, CaseIterable, Codable, Sendable {
     /// branch and HEAD, attachments, provenance. Output, routine commands and
     /// the list of uncommitted files are left out, and the package says so.
     case standard
-    /// Everything Prompt Relay has: also command output, git commands and
+    /// Everything BearlyCopy has: also command output, git commands and
     /// the full `git status` list.
     case full
 
@@ -17,7 +17,7 @@ public enum ContextDetail: String, CaseIterable, Codable, Sendable {
     public var help: String {
         switch self {
         case .standard: return "Standard: the request and answer in full, failed commands, tests and builds, changed files, branch and HEAD, attachments. Command output and the uncommitted file list are left out, and the package says so."
-        case .full: return "Full: everything Prompt Relay recorded, including command output, git commands and the full list of uncommitted files."
+        case .full: return "Full: everything BearlyCopy recorded, including command output, git commands and the full list of uncommitted files."
         }
     }
 }

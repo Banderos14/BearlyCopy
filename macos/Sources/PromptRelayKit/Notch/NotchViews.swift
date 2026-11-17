@@ -320,16 +320,16 @@ struct ReadyIndicatorView: View {
 
     static func label(_ indicator: AppModel.ReadyIndicator) -> String {
         switch indicator {
-        case .none: return "Prompt Relay"
-        case .working(let n): return "Prompt Relay: an agent is working" + (n > 1 ? " in \(n) sessions" : "")
-        case .waitingBackground(let n): return "Prompt Relay: waiting for background work"
+        case .none: return "BearlyCopy"
+        case .working(let n): return "BearlyCopy: an agent is working" + (n > 1 ? " in \(n) sessions" : "")
+        case .waitingBackground(let n): return "BearlyCopy: waiting for background work"
             + (n > 1 ? " in \(n) sessions" : "") + ". The answer so far is intermediate."
-        case .attention: return "Prompt Relay: capture needs attention. Open Settings → Advanced."
+        case .attention: return "BearlyCopy: capture needs attention. Open Settings → Advanced."
         case .needsInput(let n, let confirmed):
-            if !confirmed { return "Prompt Relay: an agent asked for input earlier; it is not confirmed that it still waits." }
-            return "Prompt Relay: " + (n > 1 ? "\(n) agents need your input" : "an agent needs your input") + ". Answer in the agent's app."
+            if !confirmed { return "BearlyCopy: an agent asked for input earlier; it is not confirmed that it still waits." }
+            return "BearlyCopy: " + (n > 1 ? "\(n) agents need your input" : "an agent needs your input") + ". Answer in the agent's app."
         case .ready(let n, let automated, let background):
-            return "Prompt Relay: " + (automated ? "an answer to a turn Claude Code started itself" : "a new answer")
+            return "BearlyCopy: " + (automated ? "an answer to a turn Claude Code started itself" : "a new answer")
                 + (background ? ", background work was still running" : "")
                 + (n > 1 ? "; new answers in \(n) sessions" : "") + ". Not yet opened."
         }

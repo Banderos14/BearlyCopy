@@ -167,7 +167,7 @@ class HookStorageTests(IsolatedTestCase):
         self.assertEqual(session["answered_count"], 1)
         self.assertFalse(session["running"])
         self.assertTrue(session["title"].startswith("Background"))
-        self.assertEqual(session["claude_code_title"], "Prompt Relay 5.1 hook payload test")
+        self.assertEqual(session["claude_code_title"], "BearlyCopy 5.1 hook payload test")
 
 
 class SessionTitleTests(unittest.TestCase):

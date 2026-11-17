@@ -1,4 +1,4 @@
-# Prompt Relay stores captured data outside the repository
+# BearlyCopy stores captured data outside the repository
 # (~/Library/Application Support/PromptRelay). These patterns are a second
 # line of defence so captured text can never be committed by accident.
 *.jsonl

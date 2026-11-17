@@ -6,7 +6,7 @@ exactly as captured. Nothing is added, removed or re-encoded.
 Mode B, Copy with Context (formerly Copy for ChatGPT, Review Pack): ``render_context`` builds a
 structured packet for an independent review in ChatGPT. Each fact carries a provenance label:
 
-- Confirmed locally   read by Prompt Relay on this machine (hook metadata
+- Confirmed locally   read by BearlyCopy on this machine (hook metadata
                       recorded by the local handler, read-only git output)
 - Reported by Claude  text written by Claude; not independently checked
 - Not verified        no independent source is connected
@@ -179,7 +179,7 @@ def _observed_section(add, session: Session, turn: c.Turn, level: str = FULL) ->
     commands = detail["commands"]
     add(f"## Observed during this turn [{CONFIRMED}]")
     if not turn.tools:
-        add(f"[{UNAVAILABLE}] No tool events were captured for this turn. They need the Prompt Relay plugin 0.3.0 or "
+        add(f"[{UNAVAILABLE}] No tool events were captured for this turn. They need the BearlyCopy plugin 0.3.0 or "
             "later (PostToolUse / PostToolUseFailure hooks) with capture on for this project.")
         add("")
         return
@@ -281,7 +281,7 @@ def _request_section(add, session: Session, turn: c.Turn) -> None:
     if kind == origin.UNKNOWN:
         add("## Request (source not established)")
         add(f"[{tag}] Request source not established: the text mixes automated message blocks (such as "
-            "system reminders) with other text, so Prompt Relay cannot tell whether the user wrote it.")
+            "system reminders) with other text, so BearlyCopy cannot tell whether the user wrote it.")
         add("")
         add(_block(req))
         add("")
@@ -332,7 +332,7 @@ def _source_section(add, session: Session, turn: c.Turn, project_root: Optional[
     project_name = os.path.basename(project_root.rstrip(os.sep)) if project_root else None
     add("## Source, host and project")
     host = HOST_TITLES.get((source or {}).get("host", "unknown"), "Unknown")
-    add(f"- Source: {provider} · {host} · This Mac, captured by the Prompt Relay hooks [{CONFIRMED}]")
+    add(f"- Source: {provider} · {host} · This Mac, captured by the BearlyCopy hooks [{CONFIRMED}]")
     if source:
         add(f"- Host: {host}" + ("" if host != "Unknown" else " (not recorded by the hook configuration)")
             + f" [{CONFIRMED if host != 'Unknown' else UNAVAILABLE}]")
@@ -409,7 +409,7 @@ def _not_checked_section(add, session: Session) -> None:
     _, provider, agent = provider_names(session)
     add("## Not checked (provenance and verification limits)")
     add(f"- {agent}'s claims of success, passing tests or completed work: [{NOT_VERIFIED}]. Compare them with the "
-        f"observed commands above; Prompt Relay does not interpret {agent}'s text.")
+        f"observed commands above; BearlyCopy does not interpret {agent}'s text.")
     add(f"- CI: no source is connected [{UNAVAILABLE}]")
     add(f"- Completion signal: {provider} Stop hook event, which only means {agent} stopped responding [{CONFIRMED}]")
 
@@ -422,12 +422,12 @@ def render_context(session: Session, turn: c.Turn, git: GitInfo, exported_at: st
     _, provider, agent = provider_names(session)
     add = lines.append
     add(f"# Copy with Context: {provider} result for an independent check")
-    add(f"Exported by Prompt Relay at {exported_at}. No AI service was used.")
+    add(f"Exported by BearlyCopy at {exported_at}. No AI service was used.")
     if detail == STANDARD:
         add("Detail: Standard. The request and the response are complete. Left out: command output, routine and "
             "git commands (counted below) and the list of uncommitted files; Full Context has them.")
     add("")
-    add("Provenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; "
+    add("Provenance labels: [Confirmed locally] = recorded on this machine by BearlyCopy; "
         f"[Reported by {agent}] = {agent}'s own words, not checked; "
         "[Not verified] = no independent source; [Unavailable] = could not be determined.")
     add("")

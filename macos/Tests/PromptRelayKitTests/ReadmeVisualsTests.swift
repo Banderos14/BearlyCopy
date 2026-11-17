@@ -92,9 +92,9 @@ extension Phase6VisualTests {
         }
         let package = """
         # Copy with Context: Claude Code result for review
-        Exported by Prompt Relay. No AI service was used.
+        Exported by BearlyCopy. No AI service was used.
 
-        Provenance labels: [Confirmed locally] = recorded on this Mac by Prompt Relay; [Reported by Claude] = Claude's own words, not checked; [Not verified] = no independent source.
+        Provenance labels: [Confirmed locally] = recorded on this Mac by BearlyCopy; [Reported by Claude] = Claude's own words, not checked; [Not verified] = no independent source.
 
         ## Session
         - Agent: Claude Code · Claude Desktop [Confirmed locally]

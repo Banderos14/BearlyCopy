@@ -107,7 +107,7 @@ def _codex(payload: Dict[str, Any], env: Mapping[str, str]) -> Optional[Dict[str
     common = dict(hook_event_name=event, session_id=key, prompt_id=turn, cwd=cwd)
     if event == 'PermissionRequest':
         # Phase 12.1: Codex is about to ask for approval. Reduced like a
-        # Claude Code signal; Prompt Relay never answers it.
+        # Claude Code signal; BearlyCopy never answers it.
         out = dict(common, reduced=1, signal=signals.NEEDS_INPUT, kind=signals.PERMISSION)
         tool = payload.get('tool_name')
         if isinstance(tool, str) and tool:

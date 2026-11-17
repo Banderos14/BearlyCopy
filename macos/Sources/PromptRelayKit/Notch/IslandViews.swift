@@ -3,7 +3,7 @@ import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
-// The one interface of Prompt Relay, inside the island. Home answers four
+// The one interface of BearlyCopy, inside the island. Home answers four
 // questions at a glance: which project, what was asked, what Claude
 // answered, which button copies it. Projects, Recent Copies, History,
 // Import, Settings and the Full Report open inside the same island and lead
@@ -866,7 +866,7 @@ struct PeekContent: View {
     private var header: some View {
         HStack(spacing: 5) {
             Text(model.selectedImport.map { $0.projectName ?? "Cloud import" }
-                 ?? model.selectedProject.map(Wording.projectName) ?? "Prompt Relay")
+                 ?? model.selectedProject.map(Wording.projectName) ?? "BearlyCopy")
                 .font(.system(size: 13, weight: .semibold)).foregroundStyle(Island.primary)
                 .lineLimit(1).truncationMode(.middle).layoutPriority(1)
             if let session = model.selectedImport == nil ? model.selectedSession.map(Wording.sessionTitle) : "imported report" {
@@ -1038,7 +1038,7 @@ struct PeekContent: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(Island.primary)
-        .accessibilityLabel("Expand Prompt Relay")
+        .accessibilityLabel("Expand BearlyCopy")
         .islandHelp("Open the full report")
     }
 }
@@ -1889,7 +1889,7 @@ struct ImportView: View {
     /// its labels are explained as the original machine's, never trusted here.
     private var packageChoice: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Label("This is a Prompt Relay package (Copy with Context).", systemImage: "shippingbox")
+            Label("This is a BearlyCopy package (Copy with Context).", systemImage: "shippingbox")
                 .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Island.primary)
             Picker("", selection: $asPlainText) {
                 Text("Import as historical context").tag(false)
@@ -2182,7 +2182,7 @@ struct ReaderBody: View {
 
 /// Phase 12.1: "Claude Code · Needs input · Question" in the band of Quick
 /// Peek and Details. A click shows that conversation here; the answer itself
-/// is given in the agent's own app (Prompt Relay never answers).
+/// is given in the agent's own app (BearlyCopy never answers).
 struct NeedsInputStatus: View {
     let model: AppModel
     let line: String

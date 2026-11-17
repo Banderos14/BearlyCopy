@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the latest Debug build of Prompt Relay from THIS checkout, safely.
+# Run the latest Debug build of BearlyCopy from THIS checkout, safely.
 #
 #   scripts/run-latest-debug.sh            dry run: show what runs now and what would happen
 #   scripts/run-latest-debug.sh --build    also build the Debug app (nothing is quit or started)
@@ -9,10 +9,10 @@
 # Safety (Phase 15.2):
 # - Never force-quits (no kill, no -9): it asks a copy to Quit like the menu
 #   does and waits up to 15 s; if it does not quit, it stops and says so.
-# - Never touches ~/Applications/Prompt Relay.app, the Claude Code plugin,
+# - Never touches ~/Applications/BearlyCopy.app, the Claude Code plugin,
 #   your history (~/Library/Application Support/PromptRelay) or System Settings.
 # - The build goes to macos/build/xcode-debug inside this checkout (ignored by Git).
-# - macOS may ask once whether Terminal may control "Prompt Relay" (that is
+# - macOS may ask once whether Terminal may control "BearlyCopy" (that is
 #   how a normal Quit is sent). If you decline, quit it from its menu-bar icon
 #   or Settings → About instead and run --switch again.
 set -euo pipefail
@@ -32,7 +32,7 @@ done
 release_id=io.github.banderos14.PromptRelay
 debug_id=io.github.banderos14.PromptRelay.debug
 derived="macos/build/xcode-debug"
-new_app="$derived/Build/Products/Debug/Prompt Relay.app"
+new_app="$derived/Build/Products/Debug/BearlyCopy.app"
 head=$(git rev-parse --short HEAD)
 branch=$(git rev-parse --abbrev-ref HEAD)
 
@@ -42,7 +42,7 @@ plist() { /usr/libexec/PlistBuddy -c "Print :$2" "$1/Contents/Info.plist" 2>/dev
 running_copies() {
     ps -axo pid=,command= | while read -r pid cmd; do
         case "$cmd" in
-            *"Prompt Relay.app/Contents/MacOS/"*|*"PromptRelay.app/Contents/MacOS/"*) ;;
+            *"BearlyCopy.app/Contents/MacOS/"*|*"PromptRelay.app/Contents/MacOS/"*) ;;
             *) continue ;;
         esac
         app="${cmd%%/Contents/MacOS/*}"
@@ -53,7 +53,7 @@ running_copies() {
 }
 
 echo "== This checkout: branch $branch, commit $head"
-echo "== Prompt Relay copies running now:"
+echo "== BearlyCopy copies running now:"
 copies=$(running_copies)
 if [ -z "$copies" ]; then echo "   none"; else
     printf '%s\n' "$copies" | while IFS=$'\t' read -r kind ver commit pid app; do
@@ -74,7 +74,7 @@ fi
 
 echo "== Building Debug (takes a minute or two)…"
 mkdir -p "$derived"
-if ! xcodebuild -workspace macos/PromptRelay.xcworkspace -scheme "Prompt Relay" -configuration Debug \
+if ! xcodebuild -workspace macos/PromptRelay.xcworkspace -scheme "BearlyCopy" -configuration Debug \
         -derivedDataPath "$derived" build >"$derived.log" 2>&1; then
     echo "Build failed. Nothing was quit or started. Log: $derived.log" >&2
     exit 1
@@ -117,5 +117,5 @@ else
 fi
 echo
 echo "Screenshots: a rebuilt Debug app may count as new for macOS Screen Recording."
-echo "If auto screenshots say Permission required although \"Prompt Relay Dev\" is switched on,"
+echo "If auto screenshots say Permission required although \"BearlyCopy Dev\" is switched on,"
 echo "switch it off and on again in System Settings, then use Check Again (or quit and reopen)."

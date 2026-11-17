@@ -1,4 +1,4 @@
-# Prompt Relay — project summary
+# BearlyCopy — project summary
 
 **What it is.** A local-first macOS utility that captures the final answer
 of AI coding agents (Claude Code, Codex) through their official lifecycle
@@ -8,7 +8,7 @@ MacBook notch as a Dynamic-Island-style panel.
 
 **Problem.** Developers who plan or review in one AI and implement with
 another copy long answers by hand: Markdown breaks, sessions get mixed, and
-"all tests pass" becomes an unverified fact. Prompt Relay copies the exact
+"all tests pass" becomes an unverified fact. BearlyCopy copies the exact
 text and labels what is *Reported by Claude* versus *Confirmed locally*.
 
 **Stack.**

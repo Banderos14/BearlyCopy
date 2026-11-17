@@ -193,7 +193,7 @@ struct AttachmentPreviewView: View {
                 } else { unreadable }
             }
         } else {
-            Text("The file is missing from Prompt Relay's folder.").font(.system(size: 12)).foregroundStyle(Island.warning)
+            Text("The file is missing from BearlyCopy's folder.").font(.system(size: 12)).foregroundStyle(Island.warning)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
@@ -206,7 +206,7 @@ struct AttachmentPreviewView: View {
     /// What a still preview cannot show.
     private func note(_ a: ReportAttachment) -> String? {
         if a.isInMemory {
-            return "Kept in memory only: not saved to disk, gone when Prompt Relay quits. An app you copy or drag it into may keep its own copy."
+            return "Kept in memory only: not saved to disk, gone when BearlyCopy quits. An app you copy or drag it into may keep its own copy."
         }
         let ext = (a.originalFilename as NSString).pathExtension.lowercased()
         if ["html", "htm"].contains(ext) { return "HTML is shown as source text; it is not run here, so its interactive behavior is not checked." }

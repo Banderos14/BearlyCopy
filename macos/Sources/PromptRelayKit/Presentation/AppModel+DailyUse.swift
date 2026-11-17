@@ -142,7 +142,7 @@ extension AppModel {
             case .connectAgents: return "Set Up Agents"
             case .turnOnAttachments: return "Turn On"
             case .followLatest: return "Follow Latest"
-            case .quitToApply: return "Quit Prompt Relay"
+            case .quitToApply: return "Quit BearlyCopy"
             }
         }
     }
@@ -177,7 +177,7 @@ extension AppModel {
 
         # If the version did not change, the marketplace points at an older folder:
         claude plugin marketplace remove prompt-relay
-        claude plugin marketplace add \(checkout ?? "<folder of the Prompt Relay checkout this app was built from>")
+        claude plugin marketplace add \(checkout ?? "<folder of the BearlyCopy checkout this app was built from>")
         claude plugin install prompt-relay@prompt-relay
         """
     }
@@ -197,7 +197,7 @@ extension AppModel {
             checks.append(DailyUseCheck(id: "core", title: "App and Core", level: same && core.python.supported ? .ok : .attention,
                                         detail: !core.python.supported ? "Python \(core.python.version) is too old for the Core."
                                             : same ? "Core \(core.promptRelayVersion)."
-                                            : "This app bundles Core \(bundled ?? "?"), but Core \(core.promptRelayVersion) answers: reinstall Prompt Relay."))
+                                            : "This app bundles Core \(bundled ?? "?"), but Core \(core.promptRelayVersion) answers: reinstall BearlyCopy."))
         } else {
             checks.append(DailyUseCheck(id: "core", title: "App and Core", level: .attention,
                                         detail: doctor.error == nil ? "Checking…" : "The Core could not be asked for its diagnostics."))
@@ -297,17 +297,17 @@ extension AppModel {
             return DailyUseReport(state: .setupIncomplete, summary: failing.detail, action: failing.action, checks: checks)
         }
         if !dailySetupAnswered {
-            return DailyUseReport(state: .setupIncomplete, summary: "One step left: choose what Prompt Relay captures.", action: .openSetup, checks: checks)
+            return DailyUseReport(state: .setupIncomplete, summary: "One step left: choose what BearlyCopy captures.", action: .openSetup, checks: checks)
         }
         if screenshotBlock == .permissionRequired {
             // macOS ties the permission to one build of the app. After an
             // update the switch can look on while it still belongs to the
             // old build — so: off, on, reopen.
-            return DailyUseReport(state: .permissionRequired, summary: "Screenshots need Screen Recording for this version of Prompt Relay.",
+            return DailyUseReport(state: .permissionRequired, summary: "Screenshots need Screen Recording for this version of BearlyCopy.",
                                   action: .openScreenRecordingSettings, checks: checks,
-                                  steps: ["Open the settings and find Prompt Relay (the bear).",
+                                  steps: ["Open the settings and find BearlyCopy (the bear).",
                                           "Turn it off, then on again — even if it already looks on.",
-                                          "Quit Prompt Relay and open it again."],
+                                          "Quit BearlyCopy and open it again."],
                                   secondaryAction: .quitToApply)
         }
         if screenshotBlock == .windowNotLinked {

@@ -20,20 +20,20 @@ public enum CoreError: Error, Equatable, Sendable {
 
     public var title: String {
         switch self {
-        case .cliMissing: return "Prompt Relay Core not found"
+        case .cliMissing: return "BearlyCopy Core not found"
         case .pythonMissing: return "Python 3.9 or newer is needed"
-        case .launchFailed: return "Could not start the Prompt Relay Core"
-        case .timedOut: return "The Prompt Relay Core did not answer in time"
+        case .launchFailed: return "Could not start the BearlyCopy Core"
+        case .timedOut: return "The BearlyCopy Core did not answer in time"
         case .outputTooLarge: return "The answer is too large to load"
-        case .malformedOutput: return "The Prompt Relay Core returned an unreadable answer"
+        case .malformedOutput: return "The BearlyCopy Core returned an unreadable answer"
         case .unsupportedAPIVersion: return "This app is too old for the installed Core"
         case .api(let code, _):
             switch code {
             case "not_found": return "Nothing found"
             case "no_final_response": return "No final response"
             case "storage_error", "unsafe_path": return "History cannot be read"
-            case "config_error": return "Prompt Relay settings are damaged"
-            default: return "Prompt Relay reported an error"
+            case "config_error": return "BearlyCopy settings are damaged"
+            default: return "BearlyCopy reported an error"
             }
         }
     }
@@ -109,7 +109,7 @@ public enum CapturePolicyChange: Equatable, Sendable {
 extension CoreProviding {
     /// Doubles without a `capture` command (a Core before 0.8.0 has none).
     public func setCaptureMode(_ change: CapturePolicyChange) async throws -> CaptureSettings {
-        throw CoreError.api(code: "unsupported", message: "This Core has no capture modes; update Prompt Relay")
+        throw CoreError.api(code: "unsupported", message: "This Core has no capture modes; update BearlyCopy")
     }
 
     /// Doubles (and Previews) without a `results` command: the same list,

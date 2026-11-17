@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Print one SHA-256 over the Prompt Relay Core files in a directory laid out
+# Print one SHA-256 over the BearlyCopy Core files in a directory laid out
 # like the repository (bin/prompt-relay, plugin/prompt_relay/*.py).
 # Usage: scripts/core-digest.sh <dir>     e.g. the repo root, or
-#        scripts/core-digest.sh "Prompt Relay.app/Contents/Resources/core"
+#        scripts/core-digest.sh "BearlyCopy.app/Contents/Resources/core"
 # Same files, same order, same bytes → same digest, wherever they live.
 set -euo pipefail
 root=${1:?usage: core-digest.sh <dir>}

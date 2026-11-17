@@ -1,5 +1,5 @@
 #!/bin/bash
-# Double-click in Finder to update Prompt Relay from THIS checkout (Phase 16).
+# Double-click in Finder to update BearlyCopy from THIS checkout (Phase 16).
 #
 # It runs scripts/install-local.sh, which shows what is installed and what
 # would be installed, asks before changing anything, keeps the old app as a
@@ -7,7 +7,7 @@
 # change any code, and never deletes backups. Close the window to cancel.
 cd "$(dirname "$0")/.." || exit 1
 clear
-echo "Prompt Relay — update from this folder"
+echo "BearlyCopy — update from this folder"
 echo "   $(pwd)"
 echo "   branch $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?'), commit $(git rev-parse --short HEAD 2>/dev/null || echo '?')"
 echo

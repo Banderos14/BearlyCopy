@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build "Prompt Relay.app" (Phase 3A native macOS app) from this checkout.
+# Build "BearlyCopy.app" (Phase 3A native macOS app) from this checkout.
 #
 # Usage: scripts/build-macos-app.sh            build into macos/build/
 #        scripts/build-macos-app.sh --install  build, then install with
@@ -39,7 +39,7 @@ echo "== swift build (release)"
 swift build -c release --package-path macos --product PromptRelayApp
 bin_dir=$(swift build -c release --package-path macos --show-bin-path)
 
-app="macos/build/Prompt Relay.app"
+app="macos/build/BearlyCopy.app"
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/core/bin" "$app/Contents/Resources/core/plugin/prompt_relay"
 cp "$bin_dir/PromptRelayApp" "$app/Contents/MacOS/PromptRelay"
@@ -59,8 +59,8 @@ cat > "$app/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>Prompt Relay</string>
-  <key>CFBundleDisplayName</key><string>Prompt Relay</string>
+  <key>CFBundleName</key><string>BearlyCopy</string>
+  <key>CFBundleDisplayName</key><string>BearlyCopy</string>
   <key>CFBundleIdentifier</key><string>io.github.banderos14.PromptRelay</string>
   <key>PRGitCommit</key><string>${commit}</string>
   <key>PRGitDirty</key><string>${dirty}</string>
@@ -70,7 +70,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleDevelopmentRegion</key><string>en</string>
-  <key>NSHumanReadableCopyright</key><string>Prompt Relay contributors</string>
+  <key>NSHumanReadableCopyright</key><string>BearlyCopy contributors</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${version}</string>
   <key>CFBundleVersion</key><string>${version}</string>

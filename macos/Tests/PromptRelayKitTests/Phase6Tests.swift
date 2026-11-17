@@ -276,7 +276,7 @@ final class Phase6Tests: XCTestCase {
         m.copyClipboardImages(chosen)
         let onBoard = (board.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
         XCTAssertEqual(onBoard.map(\.lastPathComponent), urls.map(\.lastPathComponent), "the three files, in the chosen order")
-        XCTAssertNotNil(board.data(forType: ClipboardImageHistory.ownType), "marked as Prompt Relay's own: never taken back in")
+        XCTAssertNotNil(board.data(forType: ClipboardImageHistory.ownType), "marked as BearlyCopy's own: never taken back in")
         history.clearAll()
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("share").path), "Clear All removes exported copies")
     }

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Build a distributable Prompt Relay for GitHub Releases (Phase 11, ADR-020).
+# Build a distributable BearlyCopy for GitHub Releases (Phase 11, ADR-020).
 #
 #   DEVELOPER_ID="Developer ID Application: Name (TEAMID)" scripts/release-build.sh
 #       universal (arm64 + x86_64) Release, Hardened Runtime, Developer ID
-#       signature with a secure timestamp, then dist/Prompt-Relay-<v>.zip and .dmg
+#       signature with a secure timestamp, then dist/BearlyCopy-<v>.zip and .dmg
 #   scripts/release-build.sh --unsigned-test
 #       the same layout, ad-hoc signed with Hardened Runtime, every file name
 #       marked UNSIGNED-NOT-FOR-RELEASE. For checking the packaging only;
@@ -40,7 +40,7 @@ version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' plugin/prompt_relay/__init__.p
 commit=$(git rev-parse --short HEAD)
 out=dist
 stage="$out/stage"
-app="$stage/Prompt Relay.app"
+app="$stage/BearlyCopy.app"
 rm -rf "$stage"; mkdir -p "$stage"
 
 echo "== swift build (release, universal)"
@@ -62,8 +62,8 @@ cat > "$app/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>Prompt Relay</string>
-  <key>CFBundleDisplayName</key><string>Prompt Relay</string>
+  <key>CFBundleName</key><string>BearlyCopy</string>
+  <key>CFBundleDisplayName</key><string>BearlyCopy</string>
   <key>CFBundleIdentifier</key><string>io.github.banderos14.PromptRelay</string>
   <key>CFBundleExecutable</key><string>PromptRelay</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
@@ -79,7 +79,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSSupportsAutomaticTermination</key><false/>
-  <key>NSHumanReadableCopyright</key><string>Prompt Relay contributors</string>
+  <key>NSHumanReadableCopyright</key><string>BearlyCopy contributors</string>
 </dict>
 </plist>
 PLIST
@@ -96,7 +96,7 @@ sig=$(codesign -d --verbose=2 "$app" 2>&1)
 printf '%s\n' "$sig" | grep -E "^(Identifier|Authority|TeamIdentifier|Timestamp|Runtime Version|CodeDirectory)" || true
 case "$sig" in *"flags="*"runtime"*) ;; *) die "Hardened Runtime flag missing" ;; esac
 
-base="Prompt-Relay-${version}${suffix}"
+base="BearlyCopy-${version}${suffix}"
 zip="$out/$base.zip"
 dmg="$out/$base.dmg"
 rm -f "$zip" "$dmg"
@@ -104,9 +104,9 @@ echo "== zip"
 ditto -c -k --sequesterRsrc --keepParent "$app" "$zip"
 echo "== dmg"
 dmgsrc="$out/dmg-src"; rm -rf "$dmgsrc"; mkdir -p "$dmgsrc"
-ditto "$app" "$dmgsrc/Prompt Relay.app"
+ditto "$app" "$dmgsrc/BearlyCopy.app"
 ln -s /Applications "$dmgsrc/Applications"
-hdiutil create -quiet -volname "Prompt Relay ${version}" -srcfolder "$dmgsrc" -ov -format UDZO "$dmg"
+hdiutil create -quiet -volname "BearlyCopy ${version}" -srcfolder "$dmgsrc" -ov -format UDZO "$dmg"
 rm -rf "$dmgsrc"
 [ "$unsigned" = 1 ] || codesign --force $ts --sign "$identity" "$dmg"
 

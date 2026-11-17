@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "AB0000000000000000000501"
-               BuildableName = "Prompt Relay.app"
-               BlueprintName = "Prompt Relay"
+               BuildableName = "BearlyCopy.app"
+               BlueprintName = "BearlyCopy"
                ReferencedContainer = "container:PromptRelay.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -69,8 +69,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AB0000000000000000000501"
-            BuildableName = "Prompt Relay.app"
-            BlueprintName = "Prompt Relay"
+            BuildableName = "BearlyCopy.app"
+            BlueprintName = "BearlyCopy"
             ReferencedContainer = "container:PromptRelay.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -86,8 +86,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AB0000000000000000000501"
-            BuildableName = "Prompt Relay.app"
-            BlueprintName = "Prompt Relay"
+            BuildableName = "BearlyCopy.app"
+            BlueprintName = "BearlyCopy"
             ReferencedContainer = "container:PromptRelay.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

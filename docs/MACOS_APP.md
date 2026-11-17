@@ -1,4 +1,4 @@
-# Prompt Relay for macOS
+# BearlyCopy for macOS
 
 A native SwiftUI + AppKit app whose whole interface is one island in the
 MacBook notch (floating below the menu bar on displays without one). It
@@ -18,16 +18,16 @@ Requirements: macOS 14 or newer, Xcode (or the Command Line Tools with Swift
 ### In Xcode (development)
 1. Open **`macos/PromptRelay.xcworkspace`** (not the `.xcodeproj`: only the
    workspace shows the package's tests).
-2. Scheme **Prompt Relay**, destination **My Mac**. ⌘R runs the **Debug**
+2. Scheme **BearlyCopy**, destination **My Mac**. ⌘R runs the **Debug**
    build, ⌘U the Swift tests.
 3. Previews: `Sources/PromptRelayKit/Previews/PreviewSupport.swift`
    (Quick Peek, Expanded, compact; sample data, Debug only).
 
 ### Debug and Release: one at a time
 The two builds are different apps to macOS: Debug is
-`io.github.banderos14.PromptRelay.debug`, shown as **Prompt Relay Dev**
+`io.github.banderos14.PromptRelay.debug`, shown as **BearlyCopy Dev**
 with a hammer menu-bar icon; Release is `io.github.banderos14.PromptRelay`,
-"Prompt Relay". They have separate preferences (projects list, notch
+"BearlyCopy". They have separate preferences (projects list, notch
 settings, copy history) but share the history and imports in the data dir.
 On 2026-10-29 both were running at once, which looked like two different
 apps. The safe routine:
@@ -42,10 +42,10 @@ apps. The safe routine:
 
 ### From the command line
 ```bash
-scripts/build-macos-app.sh            # builds macos/build/Prompt Relay.app (SwiftPM, release)
+scripts/build-macos-app.sh            # builds macos/build/BearlyCopy.app (SwiftPM, release)
 scripts/build-macos-app.sh --install  # also copies it to ~/Applications
 swift test --package-path macos       # Swift tests (one opt-in render test is skipped)
-xcodebuild -workspace macos/PromptRelay.xcworkspace -scheme "Prompt Relay" -configuration Release build
+xcodebuild -workspace macos/PromptRelay.xcworkspace -scheme "BearlyCopy" -configuration Release build
 ```
 
 The bundle is ad-hoc signed for local use; it is not notarized and is not a
@@ -57,7 +57,7 @@ leaves `~/Library/Application Support/PromptRelay` untouched.
 | Surface | Role |
 |---|---|
 | Island (notch, or floating) | the interface: resting, Quick Peek on hover (520/560 pt), Details on click / ⌃⌥⌘P (640/680 pt, ≤ 38 % of the display), with Project and Session, Observed Work, Mockup States, Clipboard Images, Recent Copies, History, Import, Settings (Capture inside) and Full Report |
-| Menu-bar item | a small fallback menu: Open Prompt Relay, Recent Copies, History, Import Cloud Report…, Settings…, Quit; each opens the island on that view |
+| Menu-bar item | a small fallback menu: Open BearlyCopy, Recent Copies, History, Import Cloud Report…, Settings…, Quit; each opens the island on that view |
 
 There are no regular windows any more. The Phase 3A main window, menu-bar
 panel and status window and the Phase 3C settings window were removed in
@@ -162,7 +162,7 @@ an import removes its images). A Recent Copy or pin whose report is gone says
 
 Claude Code cloud sessions run on Anthropic-managed VMs ("Use Claude Code in
 the cloud", code.claude.com docs). The hooks installed on this Mac never see
-them, so Prompt Relay cannot capture them automatically. What the docs offer
+them, so BearlyCopy cannot capture them automatically. What the docs offer
 and why it is not used:
 
 - `claude --teleport` pulls a cloud session into a local terminal, but it
@@ -173,7 +173,7 @@ and why it is not used:
 - `claude -p … --cloud <id>` only sends a message to a cloud session; it
   does not return its answers.
 - No documented interface returns a cloud session's final messages to a
-  local tool. Prompt Relay does not read Claude Desktop caches, tokens,
+  local tool. BearlyCopy does not read Claude Desktop caches, tokens,
   cookies or undocumented APIs.
 
 So the supported path is **Import**: copy the report in the cloud session,
@@ -207,7 +207,7 @@ allowed, the displays are awake and no dialog is up.
 *Compared with Coucou* (MIT; read for principles only, no code or art
 taken): Coucou reads `NSEvent.mouseLocation` in a 30 Hz timer and draws its
 mascot every display frame in a `TimelineView` + `Canvas`, pausing while
-the screen sleeps. Prompt Relay is event-driven instead: no timer while the
+the screen sleeps. BearlyCopy is event-driven instead: no timer while the
 pointer is still. A SwiftUI spring on the gaze first redrew the panel at
 the display's full rate (≈ 26 % CPU while moving in the benchmark); the
 30 fps easing costs ≈ 2 %.

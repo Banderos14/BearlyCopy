@@ -131,13 +131,13 @@ public final class LiveScreens: ScreenProviding {
     public var screens: [ScreenDescriptor] { NSScreen.screens.map(ScreenDescriptor.init) }
 }
 
-/// Other apps that draw their own island in the notch. Prompt Relay never
+/// Other apps that draw their own island in the notch. BearlyCopy never
 /// changes them; it only notices that they run.
 @MainActor
 public protocol NotchNeighbors: AnyObject {
     /// Localized names of running apps that use the notch area.
     var running: [String] { get }
-    /// Other Prompt Relay copies that keep the notch instead of this one.
+    /// Other BearlyCopy copies that keep the notch instead of this one.
     var promptRelayCopies: [String] { get }
 }
 
@@ -159,7 +159,7 @@ public final class LiveNotchNeighbors: NotchNeighbors {
         return names
     }
 
-    /// Other Prompt Relay copies this one steps aside for (`AppBuild.yields`),
+    /// Other BearlyCopy copies this one steps aside for (`AppBuild.yields`),
     /// when the user lets the island step aside (on by default).
     public var promptRelayCopies: [String] {
         AppBuild.yields(own: AppBuild.ownCopy, to: AppBuild.runningCopies()).map { AppBuild.name(of: $0.bundleID) + " (PID \($0.pid))" }
@@ -1092,7 +1092,7 @@ final class NotchPanel: NSPanel {
         acceptsMouseMovedEvents = true
         animationBehavior = .none
         appearance = NSAppearance(named: .darkAqua)   // black island: AppKit views inside draw light text
-        setAccessibilityLabel("Prompt Relay")
+        setAccessibilityLabel("BearlyCopy")
     }
 
     override var canBecomeKey: Bool { true }

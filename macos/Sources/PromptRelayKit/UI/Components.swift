@@ -120,7 +120,7 @@ public struct SensitiveContextAlert: ViewModifier {
     static func summary(_ findings: [SensitiveFinding]) -> String {
         let lines = findings.prefix(6).map { "• \($0.kind) — \($0.section), line \($0.line)" }
         let more = findings.count > 6 ? "\n• …and \(findings.count - 6) more" : ""
-        return "Prompt Relay found text that looks like credentials. Review it before pasting it into another chat.\n\n"
+        return "BearlyCopy found text that looks like credentials. Review it before pasting it into another chat.\n\n"
             + lines.joined(separator: "\n") + more
     }
 }

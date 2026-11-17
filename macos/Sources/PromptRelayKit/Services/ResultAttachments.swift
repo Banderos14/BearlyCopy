@@ -51,7 +51,7 @@ enum ResultAttachments {
             case .outsideProject: return "outside this answer's project"
             case .sensitiveName: return "hidden or credential-like name"
             case .secretContent: return "it seems to contain a secret"
-            case .unsupportedType: return "Prompt Relay prepares text, JSON, HTML, PDF and images"
+            case .unsupportedType: return "BearlyCopy prepares text, JSON, HTML, PDF and images"
             case .missing: return "the file is not there"
             case .empty: return "the file is empty"
             case .tooLarge: return "too large"

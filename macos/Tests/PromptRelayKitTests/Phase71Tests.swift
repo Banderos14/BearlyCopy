@@ -177,7 +177,7 @@ final class TooltipWidthTests: XCTestCase {
     func testTipIsAsWideAsItsTextAndWrapsAtTheMaximum() {
         let short = measure("Back (Esc)")
         XCTAssertLessThan(short.width, 90, "short tip hugs its text")
-        let long = measure("Copy with Context: Claude's full answer plus your request, the commands Prompt Relay saw, changed files, Git status and the chosen attachments, as Markdown for another assistant")
+        let long = measure("Copy with Context: Claude's full answer plus your request, the commands BearlyCopy saw, changed files, Git status and the chosen attachments, as Markdown for another assistant")
         XCTAssertLessThanOrEqual(long.width, IslandTooltipOverlay.maxWidth + 0.5)
         XCTAssertGreaterThan(long.height, short.height, "long text wraps")
         // Phase 11: 11-pt text (was 10.5): two lines plus inset are 36 pt.
@@ -334,10 +334,10 @@ final class ImportAnalysisTests: XCTestCase {
     func testOwnPackageIsRecognised() {
         let pack = """
         # Copy with Context: Claude Code result for an independent check
-        Exported by Prompt Relay at 2026-10-31T10:00:00Z. No AI service was used.
+        Exported by BearlyCopy at 2026-10-31T10:00:00Z. No AI service was used.
 
         ## Session
-        - Source: Claude Code on this Mac, captured by the Prompt Relay hooks [Confirmed locally]
+        - Source: Claude Code on this Mac, captured by the BearlyCopy hooks [Confirmed locally]
         - Project: prompt-relay [Confirmed locally]
 
         ## Original user request
@@ -415,7 +415,7 @@ final class ImportFlowTests: XCTestCase {
         XCTAssertNotNil(m.existingImport(text: big), "a repeat is announced before importing")
         guard case .success(let pack) = await m.buildPack(report.ref) else { return XCTFail("pack") }
         XCTAssertTrue(pack.text.contains("Source: Claude Code, imported manually"))
-        XCTAssertTrue(pack.text.contains("itself an earlier Prompt Relay package"))
+        XCTAssertTrue(pack.text.contains("itself an earlier BearlyCopy package"))
         XCTAssertFalse(pack.text.contains("- Source: Claude Code on this Mac, captured"),
                        "the package's own session line stays inside the pasted answer, never as this pack's source")
         // An import written before Phase 7.1 (no assistant, no importedAs).

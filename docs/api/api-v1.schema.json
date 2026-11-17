@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Banderos14/prompt-relay/docs/api/api-v1.schema.json",
-  "title": "Prompt Relay CLI JSON API, version 1",
+  "$id": "https://github.com/Banderos14/BearlyCopy/docs/api/api-v1.schema.json",
+  "title": "BearlyCopy CLI JSON API, version 1",
   "description": "Envelope written by every `prompt-relay <command> --json`. `data` follows $defs/<command>_data (see docs/JSON_API.md §3). Closed for the producer; consumers must ignore unknown fields and unknown enum values.",
   "type": "object",
   "additionalProperties": false,

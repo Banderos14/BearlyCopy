@@ -35,10 +35,10 @@ public enum ReviewPack {
         var lines: [String] = []
         func add(_ s: String = "") { lines.append(s) }
         add("# Copy with Context: AI result for an independent check")
-        add("Exported by Prompt Relay at \(exportedAt). No AI service was used.")
+        add("Exported by BearlyCopy at \(exportedAt). No AI service was used.")
         add()
-        add("Provenance labels: [\(confirmed)] = recorded on this machine by Prompt Relay; "
-            + "[\(userSupplied)] = typed or pasted into Prompt Relay by the user; "
+        add("Provenance labels: [\(confirmed)] = recorded on this machine by BearlyCopy; "
+            + "[\(userSupplied)] = typed or pasted into BearlyCopy by the user; "
             + "[\(reported)] = the agent's own words, not checked; [\(notVerified)] = no independent source; "
             + "[\(unavailable)] = could not be determined.")
         add()
@@ -54,9 +54,9 @@ public enum ReviewPack {
         func add(_ s: String = "") { lines.append(s) }
         add("## Source, host and project")
         add("- Source: \(report.assistantTitle ?? "an AI assistant (not specified)"), imported manually (imported by you): the user pasted this report "
-            + "into Prompt Relay. Prompt Relay did not observe the session; it was not captured automatically. [\(userSupplied)]")
+            + "into BearlyCopy. BearlyCopy did not observe the session; it was not captured automatically. [\(userSupplied)]")
         if report.isHistoricalPackage {
-            add("- The pasted text is itself an earlier Prompt Relay package. Its labels (such as “\(confirmed)”) describe "
+            add("- The pasted text is itself an earlier BearlyCopy package. Its labels (such as “\(confirmed)”) describe "
                 + "the machine and the time it was made; here the whole text counts as pasted by the user. [\(userSupplied)]")
         }
         add("- Project: \(report.projectName ?? "not specified") [\(report.projectName == nil ? unavailable : userSupplied)]")
@@ -66,7 +66,7 @@ public enum ReviewPack {
         add()
         add("## Original user request")
         if let task = report.task {
-            add("[\(userSupplied)] As entered by the user when importing; not matched by Prompt Relay.")
+            add("[\(userSupplied)] As entered by the user when importing; not matched by BearlyCopy.")
             add()
             add(block(task, info: "text"))
         } else {
@@ -79,7 +79,7 @@ public enum ReviewPack {
         add(block(report.text, info: "markdown"))
         add()
         add("## Observed during this turn")
-        add("[\(unavailable)] Prompt Relay did not observe this session: no commands, tests or files are known.")
+        add("[\(unavailable)] BearlyCopy did not observe this session: no commands, tests or files are known.")
         add()
         add("## Git state")
         add("- [\(unavailable)] Not collected for this manual import.")
@@ -91,9 +91,9 @@ public enum ReviewPack {
     static func importedNotChecked() -> [String] {
         ["## Not checked (provenance and verification limits)",
          "- The AI's claims of success, passing tests or completed work: [\(notVerified)]. "
-            + "Nothing about this session was observed by Prompt Relay; the text was imported by you.",
+            + "Nothing about this session was observed by BearlyCopy; the text was imported by you.",
          "- CI: no source is connected [\(unavailable)]",
-         "- Completion signal: none observed by Prompt Relay; the report was imported by the user [\(unavailable)]"]
+         "- Completion signal: none observed by BearlyCopy; the report was imported by the user [\(unavailable)]"]
     }
 
     /// The Core's pack for a local report, with the materials the user
@@ -133,7 +133,7 @@ public enum ReviewPack {
         case .agentObserved: return "observed file; added by you [\(confirmed)]"
         case .agentResult: return "observed result file, snapshotted locally [\(confirmed)]"
         case .namedVerified: return "named in the agent's answer; file changed during this turn (local time), snapshotted locally; who wrote it is not observed [\(reported)]"
-        case .windowCapture: return "auto screenshot of the window the user linked to this agent, taken by Prompt Relay after the final answer; it may not show the answer's last lines [\(userSupplied)]"
+        case .windowCapture: return "auto screenshot of the window the user linked to this agent, taken by BearlyCopy after the final answer; it may not show the answer's last lines [\(userSupplied)]"
         case .windowSnapshot: return "screenshot of a window the user picked [\(userSupplied)]"
         }
     }
@@ -149,7 +149,7 @@ public enum ReviewPack {
         let fileCount = files.count + stateFiles
         var lines = ["## Attachments (\(fileCount) \(fileCount == 1 ? "file" : "files"), sent separately)",
                      "These files are part of this review only if they are attached to this message. "
-                     + "Prompt Relay does not send files; links are listed, not opened."]
+                     + "BearlyCopy does not send files; links are listed, not opened."]
         let documents = files.filter { $0.effectiveKind != .image }
         let images = files.filter { $0.effectiveKind == .image }
         if !documents.isEmpty {
@@ -174,7 +174,7 @@ public enum ReviewPack {
                 lines.append("- Source: \(m.provenance)")
                 if let url = m.url {
                     lines.append("- Link: \(url) — " + (m.isPrivateLink ? "private; you probably cannot open it [\(unavailable)]"
-                                                                    : "not opened by Prompt Relay"))
+                                                                    : "not opened by BearlyCopy"))
                 }
                 let captured = m.states.filter { $0.selected && $0.status == .captured }
                 lines.append("- States known: \(m.states.count) · images attached: \(captured.count)")
@@ -201,7 +201,7 @@ public enum ReviewPack {
         if !links.isEmpty {
             lines += ["", "### Links"]
             for l in links {
-                lines.append("- \(l.title): \(l.url ?? "?") — " + (l.isPrivateLink ? "private; you probably cannot open it" : "not opened by Prompt Relay"))
+                lines.append("- \(l.title): \(l.url ?? "?") — " + (l.isPrivateLink ? "private; you probably cannot open it" : "not opened by BearlyCopy"))
             }
         }
         if !unavailable.isEmpty {

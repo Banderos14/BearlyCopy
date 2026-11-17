@@ -3,13 +3,13 @@ import ScreenCaptureKit
 
 /// Phase 9.4, Capture Final Window: one still image of one window that the
 /// user picks in macOS's own content picker. The system shows the picker and
-/// handles screen-capture consent; Prompt Relay never chooses a window, never
+/// handles screen-capture consent; BearlyCopy never chooses a window, never
 /// lists windows, never records, and never captures the screen. Nothing
 /// happens unless the user starts it, and a cancelled or failed pick adds
 /// nothing.
 ///
 /// Phase 14: auto screenshots use windows the user picked the same way, one
-/// per link (`PickedWindow`), kept for this app run only. Prompt Relay's own
+/// per link (`PickedWindow`), kept for this app run only. BearlyCopy's own
 /// windows are excluded from the picker.
 public protocol WindowCapturing: AnyObject {
     /// Manual: the picker, then one still image. nil: cancelled.
@@ -19,14 +19,14 @@ public protocol WindowCapturing: AnyObject {
     /// One still image of a picked window; fails if it is gone (never
     /// another window or the screen).
     @MainActor func capture(_ window: PickedWindow) async throws -> WindowCapture.Shot
-    /// Drops what Prompt Relay holds for a picked window.
+    /// Drops what BearlyCopy holds for a picked window.
     @MainActor func forget(_ window: PickedWindow)
     /// Phase 15.2: whether macOS still has the picked window — metadata only
     /// (no image, no title), so a failed capture of a minimized window or one
     /// on another Space is not mistaken for a closed window.
     @MainActor func presence(of window: PickedWindow) -> WindowPresence
     /// Owner request (Phase 18): the window of the app in front right now,
-    /// where the person just typed a prompt. nil: none usable (Prompt Relay
+    /// where the person just typed a prompt. nil: none usable (BearlyCopy
     /// itself, no on-screen window, no permission). Never a window of another app.
     @MainActor func frontmostWindow() async -> PickedWindow?
 }
@@ -138,7 +138,7 @@ public final class WindowCapture: NSObject, WindowCapturing, SCContentSharingPic
         return .present(onScreen: (entry[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue ?? false)
     }
 
-    /// ScreenCaptureKit's errors in Prompt Relay's words.
+    /// ScreenCaptureKit's errors in BearlyCopy's words.
     nonisolated static func map(_ error: Error) -> WindowCaptureError {
         if let own = error as? WindowCaptureError { return own }
         let ns = error as NSError
@@ -186,7 +186,7 @@ public final class WindowCapture: NSObject, WindowCapturing, SCContentSharingPic
         var config = SCContentSharingPickerConfiguration()
         config.allowedPickerModes = [.singleWindow]
         config.allowsChangingSelectedContent = false
-        // Phase 14: Prompt Relay never captures itself instead of the agent.
+        // Phase 14: BearlyCopy never captures itself instead of the agent.
         if let own = Bundle.main.bundleIdentifier { config.excludedBundleIDs = [own] }
         picker.defaultConfiguration = config
         picker.add(self)

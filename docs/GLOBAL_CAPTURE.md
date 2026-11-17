@@ -3,12 +3,12 @@
 ## Why an answer was missed (2026-11-09)
 
 Claude Desktop Code worked in the Tête-à-Tête Theatre repository. That
-folder was never switched on in Prompt Relay, so the hook rejected every
+folder was never switched on in BearlyCopy, so the hook rejected every
 event of that task — `handler.log` (metadata only) shows `PostToolUse …
 project_not_enabled` and, at 13:32:25 UTC, `Stop … project_not_enabled`.
-Nothing was written: the answer is **not** in Prompt Relay's history and
+Nothing was written: the answer is **not** in BearlyCopy's history and
 cannot be recovered from it. Claude Code's own transcripts are never read by
-Prompt Relay (product invariant 1). To keep that answer, copy it in Claude
+BearlyCopy (product invariant 1). To keep that answer, copy it in Claude
 and use **Import AI Result…** (menu-bar bear).
 
 ## Modes
@@ -27,7 +27,7 @@ and use **Import AI Result…** (menu-bar bear).
 * **Fails closed:** a missing/relative `cwd` (`no_project_dir`), an
   unreadable, invalid or unknown config (`config_*`) — nothing is stored.
 * **Projects appear automatically** from the stored sessions, grouped by
-  Prompt Relay's existing Project Intelligence (`projects.py`): Git root
+  BearlyCopy's existing Project Intelligence (`projects.py`): Git root
   (a subfolder joins its repository), nested repositories and linked
   worktrees stay separate, same-named folders in different places stay
   separate, symlinked paths resolve to one project. Raw folders are never
@@ -66,7 +66,7 @@ no adapter.
    History and `config.json` are not touched. Open conversations keep the
    old hook until a **new** Claude Code session (Desktop: new conversation
    or restart Claude) starts.
-3. In Prompt Relay → Settings → Daily Use → **Set Up…** (or Projects →
+3. In BearlyCopy → Settings → Daily Use → **Set Up…** (or Projects →
    **Capture All Projects**). Since Phase 17 the switch is refused, with
    the reason, while the installed plugin is older than 0.8.0 — before, it
    was made and the old plugin then stored nothing.

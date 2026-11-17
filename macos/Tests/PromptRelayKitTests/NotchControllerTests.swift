@@ -631,7 +631,7 @@ final class NotchControllerTests: XCTestCase {
         XCTAssertFalse(pointer.isMonitoring)
     }
 
-    /// Regression (owner's screenshot): the bear lay over Prompt Relay's own plain
+    /// Regression (owner's screenshot): the bear lay over BearlyCopy's own plain
     /// menu-bar icon. That icon is hidden while the bear is drawn at the notch.
     func testPlainMenuBarIconStepsAsideWhileTheBearIsAtTheNotch() async {
         var bearAtNotch: [Bool] = []
@@ -976,7 +976,7 @@ extension NotchControllerTests {
 
     func testAnotherCopyKeepsTheNotchSoOnlyOneRelayShows() async {
         settings.mascotEnabled = true
-        neighbors.promptRelayCopies = ["Prompt Relay (Debug) (PID 42)"]
+        neighbors.promptRelayCopies = ["BearlyCopy (Debug) (PID 42)"]
         let controller = makeController()
         controller.start()
         XCTAssertTrue(controller.isYielding)

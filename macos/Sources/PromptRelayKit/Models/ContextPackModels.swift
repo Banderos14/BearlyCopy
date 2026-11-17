@@ -237,7 +237,7 @@ public enum ContextPackFormat {
 
 /// Where the user says they will take the pack. A receiver, not a capture
 /// source. Nothing here was tested against the real apps unless it says so:
-/// Prompt Relay never pastes, sends, reads another app's chat or drives a
+/// BearlyCopy never pastes, sends, reads another app's chat or drives a
 /// browser. The choice only changes the guidance and the suggested order.
 public enum HandoffDestination: String, Codable, CaseIterable, Identifiable, Sendable {
     case generic, chatGPT = "chatgpt", claude, gemini, codex
@@ -254,9 +254,9 @@ public enum HandoffDestination: String, Codable, CaseIterable, Identifiable, Sen
         }
     }
 
-    /// What a receiver may take, as far as Prompt Relay knows.
+    /// What a receiver may take, as far as BearlyCopy knows.
     public enum Support: String, Equatable, Sendable {
-        /// Standard macOS behaviour for this kind of receiver (still not tested by Prompt Relay).
+        /// Standard macOS behaviour for this kind of receiver (still not tested by BearlyCopy).
         case standard
         /// Not verified on this Mac: try it; it may not work.
         case unverified

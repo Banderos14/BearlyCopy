@@ -13,7 +13,7 @@ Code plugin root (`plugin/`), and the CLI is `bin/prompt-relay`. See
    │  /bin/sh ${CLAUDE_PLUGIN_ROOT}/hooks/run-hook  → finds Python 3.9+
    │  → python -I -S hooks/prompt_relay_hook.py
    ▼
- ┌──────────────────────────── Prompt Relay Core (platform-independent) ──┐
+ ┌──────────────────────────── BearlyCopy Core (platform-independent) ──┐
  │ (or bin/prompt-relay hook for settings-based checks)                   │
  │ hook.main ──► hook.py ──► config.py (project allowlist)                │
  │                              │                                          │
@@ -191,7 +191,7 @@ SwiftUI app ──exec──► <python> bin/prompt-relay <command> --json ─�
 
 - The repository is a marketplace (`.claude-plugin/marketplace.json`) with one
   plugin, `./plugin`. Claude Code owns install, enable, disable, update and
-  uninstall. Prompt Relay never edits settings files.
+  uninstall. BearlyCopy never edits settings files.
 - The plugin root changes with every version (`cache/…/<version>/`). It
   holds only code. History and `python-path` live in the data dir, which an
   update or uninstall never touches. `${CLAUDE_PLUGIN_DATA}` is not used,

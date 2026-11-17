@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 /// `NSPasteboard.changeCount`; when it changes, only the item *types* are
 /// looked at, and image bytes are read only for images. Text is never read.
 /// Items marked concealed or transient (password managers, nspasteboard.org)
-/// and Prompt Relay's own copies are skipped.
+/// and BearlyCopy's own copies are skipped.
 @MainActor
 @Observable
 public final class ClipboardImageHistory {

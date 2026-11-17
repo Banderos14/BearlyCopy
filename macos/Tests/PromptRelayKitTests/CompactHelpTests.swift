@@ -21,7 +21,7 @@ struct CompactHelpTests {
         #expect(tips.tip?.owner == first)
         tips.leave(first)
         #expect(tips.tip?.owner == first, "Leaving starts a grace period")
-        tips.enter(second, text: "Customize Prompt Relay", anchor: .zero)
+        tips.enter(second, text: "Customize BearlyCopy", anchor: .zero)
         #expect(tips.tip?.owner == second)
         try await Task.sleep(nanoseconds: 150_000_000)
         #expect(tips.tip?.owner == second, "The old dismissal must not hide the new owner")

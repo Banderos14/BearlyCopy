@@ -269,7 +269,7 @@
    "permission_mode": "auto",
    "hook_event_name": "UserPromptSubmit",
    "prompt": "<task-notification>\n<task-id>b8pb2cvr1</task-id>\n<tool-use-i…[redacted]",
-   "session_title": "Prompt Relay 5.1 hook payload test"
+   "session_title": "BearlyCopy 5.1 hook payload test"
   },
   {
    "session_id": "00000000-0000-0000-0000-000000000001",
@@ -559,7 +559,7 @@
    "permission_mode": "auto",
    "hook_event_name": "UserPromptSubmit",
    "prompt": "<agent-message from=\"a32201f288d413e64\">\n[Subagent hand-back…[redacted]",
-   "session_title": "Prompt Relay 5.1 hook payload test"
+   "session_title": "BearlyCopy 5.1 hook payload test"
   },
   {
    "session_id": "00000000-0000-0000-0000-000000000001",

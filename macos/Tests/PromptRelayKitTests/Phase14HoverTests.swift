@@ -140,7 +140,7 @@ final class Phase14HoverTests: XCTestCase {
         let click = CGPoint(x: tall.midX, y: tall.minY + 30)
         XCTAssertFalse(try XCTUnwrap(c.panelFrame).contains(click), "the panel does not cover the click: it reaches the app below")
         XCTAssertFalse(NSApp.windows.contains { $0 is NotchPanel && $0.isVisible && $0.frame.contains(click) },
-                       "no Prompt Relay window under the pointer")
+                       "no BearlyCopy window under the pointer")
         corridor.press?(click)
         clock.advance(0.2)
         XCTAssertEqual(c.interaction.phase, .compact, "working in the app below is a departure")

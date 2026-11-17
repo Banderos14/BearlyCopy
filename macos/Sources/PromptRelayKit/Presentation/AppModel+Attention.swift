@@ -4,7 +4,7 @@ import Foundation
 ///
 /// The state comes only from the Core's `attention` (hook signals:
 /// AskUserQuestion, ExitPlanMode, PermissionRequest, MCP elicitation). It is
-/// never inferred from time, never shown as an answer, and Prompt Relay never
+/// never inferred from time, never shown as an answer, and BearlyCopy never
 /// answers, approves or allows anything. A host that sends no such signal
 /// keeps its last confirmed state (Working / Waiting / Answer).
 extension AppModel {
@@ -86,7 +86,7 @@ extension AppModel {
             return "\(who) asked for input (\(agent.kind.title)) and nothing has happened since; it may have been answered "
                 + "or cancelled without a signal. Check the agent's app."
         }
-        return "\(who) waits for you: \(agent.kind.title). Answer it in the agent's app; Prompt Relay never answers for you."
+        return "\(who) waits for you: \(agent.kind.title). Answer it in the agent's app; BearlyCopy never answers for you."
     }
 
     /// Waits not yet announced (optional notification). The first load only
