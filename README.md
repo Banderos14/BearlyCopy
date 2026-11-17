@@ -137,7 +137,7 @@ It verifies the download's SHA-256 and that the app is signed by the author's Ap
   <a href="https://github.com/Banderos14/prompt-relay/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-Prompt%20Relay.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
 </p>
 
-1. Download `Prompt-Relay-0.9.3.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
+1. Download `Prompt-Relay-0.9.4.dmg` from the [latest release](https://github.com/Banderos14/prompt-relay/releases/latest), open it and drag **Prompt Relay** to **Applications**.
 2. The build is signed but **not notarized** (that needs a paid Apple Developer ID), so macOS says *"Prompt Relay" Not Opened*. Click **Done**, open **System Settings → Privacy & Security**, scroll to **Security**, click **Open Anyway** next to *Prompt Relay*, then **Open**. (On current macOS right-click → Open no longer works.) Or run once in Terminal: `xattr -dr com.apple.quarantine "/Applications/Prompt Relay.app"`.
 
 Prefer the terminal? Connect Claude Code by hand:
