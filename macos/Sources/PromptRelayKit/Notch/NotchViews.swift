@@ -79,8 +79,11 @@ public struct NotchRootView: View {
         let notch = presentation.notchSize
         if expanded { return CGSize(width: presentation.islandWidth, height: notch.height + presentation.contentHeight) }
         if presentation.hasEars {
-            let ears = presentation.isFloating ? 2 : (presentation.hasLeftEar ? 1 : 0) + (presentation.hasRightEar ? 1 : 0)
-            return CGSize(width: notch.width + ear * CGFloat(ears), height: notch.height)
+            // Floating pill: both ears around the middle. On a notch: the
+            // notch's width plus a chin below it (nothing beside the notch).
+            return presentation.isFloating
+                ? CGSize(width: notch.width + ear * 2, height: notch.height)
+                : CGSize(width: notch.width, height: notch.height + NotchLayout.chinHeight)
         }
         return Self.restingSize(notch: notch)
     }
@@ -191,7 +194,8 @@ public struct NotchRootView: View {
                     .islandFrame("resting.indicator")
             }
         }
-        .frame(height: islandSize.height)
+        .frame(height: presentation.isFloating ? islandSize.height : NotchLayout.chinHeight)
+        .frame(height: islandSize.height, alignment: .bottom)   // on a notch: the chin below it
         .contentShape(Rectangle())
         .onTapGesture { interaction.toggle() }
         .accessibilityElement(children: .ignore)

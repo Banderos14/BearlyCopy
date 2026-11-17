@@ -54,7 +54,7 @@ final class SnapshotTests: XCTestCase {
             for (background, theme) in [(Color(white: 0.86), "light"), (Color(white: 0.22), "dark")] {
                 for _ in 0..<2 {
                     let size = expanded ? NSSize(width: NotchLayout.peekWidth, height: 32 + p.contentHeight)
-                                        : NSSize(width: 185 + 2 * NotchLayout.earWidth, height: 32)
+                                        : NSSize(width: 185 + 2 * NotchLayout.earWidth, height: 32 + NotchLayout.chinHeight)
                     try render(NotchRootView(model: model, presentation: p, interaction: interaction, actions: actions, settings: settings),
                                size: size, background: background, to: "\(dir)/\(prefix)-\(name)-\(theme).png")
                 }

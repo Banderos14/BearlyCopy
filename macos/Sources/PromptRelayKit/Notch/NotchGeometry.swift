@@ -129,6 +129,9 @@ public struct NotchLayout: Equatable, Sendable {
 
     /// Width of each ear beside the camera housing in the compact state.
     public static let earWidth: CGFloat = 38
+    /// Height of the chin under the notch that holds the resting bear and
+    /// indicator (the bear's pose budget is 32 pt tall).
+    public static let chinHeight: CGFloat = 32
     /// Details on a MacBook (Phase 5): wider than Phase 4's 480, but low.
     public static let expandedWidth: CGFloat = 640
     /// Details on a large display (≥ 1700 pt wide).
@@ -188,17 +191,17 @@ public struct NotchLayout: Equatable, Sendable {
     /// Size of the expanded island itself (without the shadow margin).
     public var expandedIslandWidth: CGFloat { expanded.width - Self.shadowInset * 2 }
 
-    /// The resting island with only the ears that have something to show:
-    /// the bear's ear on the left, the activity ear on the right. A bare ear
-    /// is black and would hide the menu-bar items macOS puts next to the
-    /// notch (a menu-bar manager's arrow, another app's icon). Without a
-    /// notch (floating pill) both ears stay.
-    public func compactFrame(left: Bool, right: Bool) -> CGRect {
+    /// The resting island with something to show (the bear, an indicator):
+    /// the notch's own width, extended downward by a "chin" that holds the
+    /// bear and the indicator. Nothing is drawn beside the notch, so no
+    /// menu-bar item (app menus, a manager's arrow, status icons) is ever
+    /// covered; macOS offers no way to reserve menu-bar room, so the island
+    /// stays below the bar instead. Without a notch (floating pill) the
+    /// frame is the pill's.
+    public func restingFrame(withChin: Bool) -> CGRect {
+        guard withChin else { return notch }
         guard !isFloating else { return compact }
-        var frame = notch
-        if left { frame.origin.x -= Self.earWidth; frame.size.width += Self.earWidth }
-        if right { frame.size.width += Self.earWidth }
-        return frame
+        return CGRect(x: notch.minX, y: notch.minY - Self.chinHeight, width: notch.width, height: notch.height + Self.chinHeight)
     }
 
     /// Extra height is measured visible content (banners, handoff and help),

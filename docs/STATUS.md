@@ -1,5 +1,17 @@
 # Status
 
+## 2026-11-17 — Bear and indicator rest below the notch, nothing beside it
+
+Owner's screenshots: ears beside the notch (even narrowed) still hid menu-bar
+items next to it (app menus, a menu-bar manager's arrow, status icons), and
+macOS offers no way to reserve menu-bar room as the hardware notch does. The
+resting island is now the notch's own width plus a 32 pt "chin" below the
+menu bar that holds the bear and the indicator; with nothing to show it is
+the notch itself. `NotchLayout.restingFrame(withChin:)`; floating pill
+unchanged. Regression tests: frame never wider than the notch, offscreen
+render with content has transparent pixels beside the notch. XCTest 389/0
+(18 skips), Swift Testing 177. Live check on the owner's screen: see the next entry.
+
 ## 2026-11-17 — Narrow ears: the resting island covers only what it shows (not released, no version bump)
 
 Owner's screenshot: the black right ear hid the arrow of a menu-bar manager

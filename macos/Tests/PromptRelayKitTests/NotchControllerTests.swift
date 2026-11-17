@@ -637,8 +637,8 @@ final class NotchControllerTests: XCTestCase {
         let controller = makeController()
         controller.start()
         await model.refreshNow()
-        assertFrame(controller.panelFrame, controller.layout?.compactFrame(left: true, right: false),
-                    "the bear needs its own ear only; the right side of the menu bar stays free")
+        assertFrame(controller.panelFrame, controller.layout?.restingFrame(withChin: true),
+                    "the bear rests in the chin below the notch, never beside it")
         XCTAssertTrue(controller.presentation.showsMascot)
         XCTAssertTrue(controller.isBlinkLoopRunning, "blinks while the resting island is on screen")
 
@@ -767,7 +767,7 @@ final class NotchControllerTests: XCTestCase {
         await model.refreshNow()
         await settle()
         XCTAssertTrue(controller.presentation.showsIndicator)
-        assertFrame(controller.panelFrame, controller.layout?.compact)
+        assertFrame(controller.panelFrame, controller.layout?.restingFrame(withChin: true), "a chin below the notch, nothing beside it")
 
         controller.interaction.toggle()                    // opening reveals and acknowledges it
         // Wait for the reveal's loads (a fixed 100 ms was too short under full-suite load).
@@ -881,7 +881,7 @@ final class NotchAppearanceTests: XCTestCase {
         p.contentHeight = 150
         p.surface = full ? .expanded : .peek
         let height: CGFloat = 32 + 150
-        let size = expanded ? NSSize(width: NotchLayout.expandedWidth, height: height) : NSSize(width: 185 + 2 * NotchLayout.earWidth, height: 32)
+        let size = expanded ? NSSize(width: NotchLayout.expandedWidth, height: height) : NSSize(width: 185 + 2 * NotchLayout.earWidth, height: 32 + NotchLayout.chinHeight)
         let host = NSHostingView(rootView: NotchRootView(model: model, presentation: p,
                                                          interaction: NotchInteraction(scheduler: MainQueueScheduler()),
                                                          actions: PreviewFixtures.actions)
@@ -930,6 +930,20 @@ final class NotchAppearanceTests: XCTestCase {
         let scale = CGFloat(rep.pixelsWide) / (185 + 2 * ear)
         for x in [0, Int(ear * scale) - 1, rep.pixelsWide - Int(ear * scale)] {
             XCTAssertLessThan(rep.colorAt(x: x, y: rep.pixelsHigh / 2)?.alphaComponent ?? 1, 0.02, "column \(x)")
+        }
+    }
+
+    /// Regression (owner's screenshots): with the bear/indicator showing, nothing
+    /// is drawn beside the notch (the menu-bar items there stay visible); the
+    /// content hangs below it instead.
+    func testRestingIslandWithContentDrawsNothingBesideTheNotch() throws {
+        let rep = try render(expanded: false, indicator: true)
+        let ear = NotchLayout.earWidth
+        let scale = CGFloat(rep.pixelsWide) / (185 + 2 * ear)
+        for y in [rep.pixelsHigh / 4, rep.pixelsHigh * 3 / 4] {
+            for x in [0, Int(ear * scale) - 2, rep.pixelsWide - Int(ear * scale) + 1, rep.pixelsWide - 1] {
+                XCTAssertLessThan(rep.colorAt(x: x, y: y)?.alphaComponent ?? 1, 0.02, "column \(x), row \(y)")
+            }
         }
     }
 }
