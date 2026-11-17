@@ -16,7 +16,7 @@
 		AB0000000000000000000201 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = main.swift; path = ../Sources/PromptRelayApp/main.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000202 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AB0000000000000000000204 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = AppIcon.icns; path = ../Resources/AppIcon.icns; sourceTree = SOURCE_ROOT; };
-		AB0000000000000000000203 /* Prompt Relay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Prompt Relay.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB0000000000000000000203 /* BearlyCopy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "BearlyCopy.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,7 +52,7 @@
 		AB0000000000000000000403 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AB0000000000000000000203 /* Prompt Relay.app */,
+				AB0000000000000000000203 /* BearlyCopy.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -60,9 +60,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AB0000000000000000000501 /* Prompt Relay */ = {
+		AB0000000000000000000501 /* BearlyCopy */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AB0000000000000000000802 /* Build configuration list for PBXNativeTarget "Prompt Relay" */;
+			buildConfigurationList = AB0000000000000000000802 /* Build configuration list for PBXNativeTarget "BearlyCopy" */;
 			buildPhases = (
 				AB0000000000000000000601 /* Sources */,
 				AB0000000000000000000301 /* Frameworks */,
@@ -73,12 +73,12 @@
 			);
 			dependencies = (
 			);
-			name = "Prompt Relay";
+			name = "BearlyCopy";
 			packageProductDependencies = (
 				AB0000000000000000000901 /* PromptRelayKit */,
 			);
-			productName = "Prompt Relay";
-			productReference = AB0000000000000000000203 /* Prompt Relay.app */;
+			productName = "BearlyCopy";
+			productReference = AB0000000000000000000203 /* BearlyCopy.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -108,7 +108,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				AB0000000000000000000501 /* Prompt Relay */,
+				AB0000000000000000000501 /* BearlyCopy */,
 			);
 		};
 /* End PBXProject section */
@@ -202,11 +202,11 @@
 		AB0000000000000000000821 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				APP_DISPLAY_NAME = "Prompt Relay Dev";
+				APP_DISPLAY_NAME = "BearlyCopy Dev";
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 0.9.4;
+				CURRENT_PROJECT_VERSION = 0.9.5;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -216,9 +216,9 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.4;
+				MARKETING_VERSION = 0.9.5;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.banderos14.PromptRelay.debug;
-				PRODUCT_NAME = "Prompt Relay";
+				PRODUCT_NAME = "BearlyCopy";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -226,11 +226,11 @@
 		AB0000000000000000000822 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				APP_DISPLAY_NAME = "Prompt Relay";
+				APP_DISPLAY_NAME = "BearlyCopy";
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 0.9.4;
+				CURRENT_PROJECT_VERSION = 0.9.5;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -240,9 +240,9 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.4;
+				MARKETING_VERSION = 0.9.5;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.banderos14.PromptRelay;
-				PRODUCT_NAME = "Prompt Relay";
+				PRODUCT_NAME = "BearlyCopy";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -259,7 +259,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AB0000000000000000000802 /* Build configuration list for PBXNativeTarget "Prompt Relay" */ = {
+		AB0000000000000000000802 /* Build configuration list for PBXNativeTarget "BearlyCopy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AB0000000000000000000821 /* Debug */,

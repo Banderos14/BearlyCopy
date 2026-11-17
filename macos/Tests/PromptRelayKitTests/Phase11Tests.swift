@@ -54,7 +54,7 @@ struct Phase11SettingsStoreTests {
 struct Phase11BuildDiagnosticsTests {
     let a = AppBuild.Stamp(version: "0.3.0", commit: "aaaaaaa", builtAt: "2026-11-05T10:00:00Z", coreVersion: "0.3.0")
     let b = AppBuild.Stamp(version: "0.3.0", commit: "bbbbbbb", builtAt: "2026-11-05T12:00:00Z", coreVersion: "0.3.0")
-    let installed = "/Users/me/Applications/Prompt Relay.app"
+    let installed = "/Users/me/Applications/BearlyCopy.app"
 
     @Test func sameBuildEverywhereSaysNothing() {
         let notes = AppBuild.diagnose(running: a, runningPath: installed, isDebug: false, onDiskAtRunningPath: a,
@@ -63,7 +63,7 @@ struct Phase11BuildDiagnosticsTests {
     }
 
     @Test func xcodeBuildNamesTheStaleInstalledApp() {
-        let notes = AppBuild.diagnose(running: b, runningPath: "/DerivedData/Prompt Relay.app", isDebug: true,
+        let notes = AppBuild.diagnose(running: b, runningPath: "/DerivedData/BearlyCopy.app", isDebug: true,
                                       onDiskAtRunningPath: b, installed: [(installed, a)], coreInUse: nil)
         #expect(notes.count == 1)
         #expect(notes[0].contains("Xcode build"))
@@ -188,7 +188,7 @@ struct Phase11ConnectionStatusTests {
     }
 }
 
-/// Security review follow-up: a foreign hook is not counted as Prompt Relay's.
+/// Security review follow-up: a foreign hook is not counted as BearlyCopy's.
 struct Phase11HookMatchingTests {
     @Test func onlyTheExactRelayCommandShapeCounts() {
         let ok = "env PROMPT_RELAY_PROVIDER=codex PROMPT_RELAY_HOST=xcode /bin/sh '/Users/me/Projects/prompt relay/plugin/hooks/run-hook'"

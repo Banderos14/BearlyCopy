@@ -1,6 +1,6 @@
 import Foundation
 
-/// Failure Inspector (Phase 8): what Prompt Relay really saw of each command
+/// Failure Inspector (Phase 8): what BearlyCopy really saw of each command
 /// that did not exit 0, read only from the stored hook facts. It never runs
 /// a command, never calls a failure fixed and never fills in what the hook
 /// did not record: what is missing is listed as missing.

@@ -99,7 +99,7 @@ class ContextPackTests(IsolatedTestCase):
         real = [l for l in outside_fences(text) if l.startswith("## Result ")]
         self.assertEqual(real, ["## Result 1 of 1 — Claude Code · Default · Unknown · project-a"])
         self.assertIn("## Review request", text)
-        self.assertIn("[Prompt Relay standard text]", text)
+        self.assertIn("[BearlyCopy standard text]", text)
 
     def test_section_matches_copy_with_context_one_level_deeper(self) -> None:
         self.claude("s1", "p1", "Task", "Answer")

@@ -175,7 +175,7 @@ struct Phase82Tests {
                 let footer = try #require(island.presentation.layoutFrames[id])
                 for reduced in [false, true] {
                     island.presentation.reduceMotion = reduced
-                    for text in ["Copy the original answer", String(repeating: "Explain this action clearly. ", count: 8), "Customize Prompt Relay"] {
+                    for text in ["Copy the original answer", String(repeating: "Explain this action clearly. ", count: 8), "Customize BearlyCopy"] {
                         island.tips.show(UUID(), text: text, anchor: footer); island.settle()
                         let help = try #require(island.presentation.layoutFrames["tooltip"])
                         #expect(island.height > base)

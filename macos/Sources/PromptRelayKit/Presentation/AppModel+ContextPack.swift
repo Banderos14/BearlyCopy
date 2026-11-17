@@ -12,7 +12,7 @@ public enum ContextPackState: Equatable {
 }
 
 /// What the user did with one prepared pack. Copied, dragged or exported
-/// never means another app received it: Prompt Relay cannot see that.
+/// never means another app received it: BearlyCopy cannot see that.
 public struct PackProgress: Equatable, Sendable {
     public var packID: String?
     public var textCopiedAt: String?
@@ -264,7 +264,7 @@ extension AppModel {
             switch ref {
             case .local(let key, let turn):
                 guard let result = core?.results.first(where: { $0.sessionKey == key && $0.turn == turn }) else {
-                    return .failure(PackFailure(message: "A chosen result is no longer in Prompt Relay's history."))
+                    return .failure(PackFailure(message: "A chosen result is no longer in BearlyCopy's history."))
                 }
                 let label = profileKey(ofSession: key).flatMap { profileLabels[$0.id] }.flatMap { $0.isEmpty ? nil : $0 }
                 let input = ContextPackComposer.Input(ref: ref, source: .local(result), profileLabel: label, attachments: chosen,
@@ -281,7 +281,7 @@ extension AppModel {
                                    requestOrigin: m.request.origin))
             case .imported(let id):
                 guard let report = imports.first(where: { $0.id == id }) else {
-                    return .failure(PackFailure(message: "A chosen import is no longer in Prompt Relay's history."))
+                    return .failure(PackFailure(message: "A chosen import is no longer in BearlyCopy's history."))
                 }
                 let input = ContextPackComposer.Input(ref: ref, source: .imported(report), attachments: chosen,
                                                       materials: selectedMaterials, names: handoffNames(for: ref), missing: missing)
@@ -306,14 +306,14 @@ extension AppModel {
         var text = ContextPackComposer.compose(inputs, exportedAt: builtAt, instructions: instructions, coreWarnings: coreWarnings)
         var warnings = coreWarnings
         if let mixed = ContextPackComposer.mixedProjectWarning(inputs.map(\.entry.project)) { warnings.insert(mixed, at: 0) }
-        var manifest = PackManifest(preparedAt: builtAt, preparedBy: "Prompt Relay " + ((Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "(development build)"),
+        var manifest = PackManifest(preparedAt: builtAt, preparedBy: "BearlyCopy " + ((Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "(development build)"),
                                     resultCount: refs.count, results: manifests,
                                     reviewInstructions: .init(suppliedByUser: instructions != nil, characters: instructions.map(CharacterCount.of) ?? 0),
                                     markdownCharacters: CharacterCount.of(text), destination: destination.rawValue, warnings: warnings,
                                     limits: ["Claims inside a response are the agent's own words and are not verified.",
                                              "Git state is read when the pack is prepared, not when the agent finished.",
                                              "Copying, dragging or exporting the pack does not mean another app received it.",
-                                             "Window snapshots exist in memory only and are lost when Prompt Relay quits."])
+                                             "Window snapshots exist in memory only and are lost when BearlyCopy quits."])
         if packIncludesManifest {
             text += "\n## Manifest (machine-readable)\n[\(ReviewPack.confirmed)] Facts about this pack; no paths, session ids or text.\n\n```json\n"
                 + manifest.json() + Self.manifestFenceEnd
@@ -403,7 +403,7 @@ extension AppModel {
         let files = packAttachments(pack).filter { !$0.isInMemory }
         guard !files.isEmpty else { return [] }
         do { return try store.handoffFiles(for: files, names: packNames(pack), folder: "handoff-pack") } catch {
-            packMessage = "Prompt Relay could not prepare the files."
+            packMessage = "BearlyCopy could not prepare the files."
             return []
         }
     }
@@ -487,7 +487,7 @@ extension AppModel {
         let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "").prefix(15)
         let names = packNames(pack)
         do {
-            let folder = try ExportBundle.write(into: parent, name: "Prompt Relay Context Pack \(stamp)", package: pack.text,
+            let folder = try ExportBundle.write(into: parent, name: "BearlyCopy Context Pack \(stamp)", package: pack.text,
                                                 files: chosen.map { a in (Self.renamed(a, names[a.id]), attachmentURL(a)) },
                                                 memory: Dictionary(uniqueKeysWithValues: chosen.filter(\.isInMemory)
                                                     .compactMap { a in attachmentData(a).map { (a.id, $0) } }),

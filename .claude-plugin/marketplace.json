@@ -1,6 +1,6 @@
 {
   "name": "prompt-relay",
-  "description": "Prompt Relay: local capture of Claude Code answers for copying into another chat.",
+  "description": "BearlyCopy: local capture of Claude Code answers for copying into another chat.",
   "owner": {
     "name": "Banderos14"
   },

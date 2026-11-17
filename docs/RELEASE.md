@@ -1,6 +1,6 @@
-# Releasing Prompt Relay on GitHub (Phase 11, ADR-020)
+# Releasing BearlyCopy on GitHub (Phase 11, ADR-020)
 
-> Every release must also carry the stable-name assets `Prompt-Relay-macOS.zip` and `Prompt-Relay-macOS.dmg` (copies of the versioned files) and a `SHA256SUMS.txt` listing them: `scripts/install.sh` downloads `releases/latest/download/Prompt-Relay-macOS.zip`. Keep the Team ID pinned in that script equal to the signing team.
+> Every release must also carry the stable-name assets `BearlyCopy-macOS.zip` and `BearlyCopy-macOS.dmg` (copies of the versioned files) and a `SHA256SUMS.txt` listing them: `scripts/install.sh` downloads `releases/latest/download/BearlyCopy-macOS.zip`. Keep the Team ID pinned in that script equal to the signing team.
 
 Nothing in this file has been run against Apple's notary service. As of
 Phase 11 this Mac has only an *Apple Development* certificate, which cannot
@@ -23,8 +23,8 @@ Apple Developer Program, Account Holder creates it) is required.
 git switch main && git pull                 # a reviewed, merged commit
 scripts/check.sh && (cd macos && swift test)
 DEVELOPER_ID="Developer ID Application: <Name> (<TEAMID>)" scripts/release-build.sh
-scripts/release-notarize.sh dist/Prompt-Relay-<v>.dmg            # preflight + plan, sends nothing
-NOTARY_PROFILE=prompt-relay scripts/release-notarize.sh --submit dist/Prompt-Relay-<v>.dmg
+scripts/release-notarize.sh dist/BearlyCopy-<v>.dmg            # preflight + plan, sends nothing
+NOTARY_PROFILE=prompt-relay scripts/release-notarize.sh --submit dist/BearlyCopy-<v>.dmg
 ```
 
 What the scripts guarantee:
@@ -57,7 +57,7 @@ refuses these files.
 
 1. Download the DMG through a browser (so it gets the quarantine flag).
 2. Open, drag to Applications, open the app: no "unidentified developer"
-   dialog; `spctl -a -vv "/Applications/Prompt Relay.app"` →
+   dialog; `spctl -a -vv "/Applications/BearlyCopy.app"` →
    `source=Notarized Developer ID`.
 3. Without Python: Setup shows the Python step, no CLT installer pops up by
    itself.

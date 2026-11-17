@@ -1,6 +1,6 @@
 import Foundation
 
-/// The one way Prompt Relay counts the characters of copied text: Unicode
+/// The one way BearlyCopy counts the characters of copied text: Unicode
 /// scalars, which is what every copy confirmation, Preview and the hand-off
 /// show (an emoji with a skin tone counts as its scalars). File and image
 /// sizes are never added.

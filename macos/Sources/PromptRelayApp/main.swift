@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MainActor.assumeIsolated { AppServices.shared.startNotch() }
     }
 
-    /// Phase 16: opening Prompt Relay again while it runs (double-click in
+    /// Phase 16: opening BearlyCopy again while it runs (double-click in
     /// Applications, Spotlight, Launchpad) opens the island, so the app you
     /// just opened is visibly there — it has no Dock icon or windows.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -74,7 +74,7 @@ struct PromptRelayApp: App {
     var body: some Scene {
         // The fallback way in: open the island, its settings, or quit.
         MenuBarExtra(isInserted: Bindable(services.fallback).inserted) {
-            Button("Open Prompt Relay  \(HotKeyRegistration.displayString)") { services.present(.home) }
+            Button("Open BearlyCopy  \(HotKeyRegistration.displayString)") { services.present(.home) }
             Button("Results Inbox") { services.present(.inbox) }
             Button("Go To…") { services.present(.switcher) }
             Button("Clipboard") { services.present(.copies) }
@@ -92,15 +92,15 @@ struct PromptRelayApp: App {
             Button("Settings…") { services.present(.settings) }
                 .keyboardShortcut(",")
             Divider()
-            Button("Quit Prompt Relay") { NSApp.terminate(nil) }
+            Button("Quit BearlyCopy") { NSApp.terminate(nil) }
                 .keyboardShortcut("q")
         } label: {
             // A Debug build has its own icon, so two running builds are told
             // apart; the installed app shows Relay's silhouette (Phase 16).
             if AppBuild.isDebugBuild {
-                Image(systemName: "hammer.circle").accessibilityLabel("Prompt Relay (Debug)")
+                Image(systemName: "hammer.circle").accessibilityLabel("BearlyCopy (Debug)")
             } else {
-                Image(nsImage: AppIcon.menuBarImage()).accessibilityLabel("Prompt Relay")
+                Image(nsImage: AppIcon.menuBarImage()).accessibilityLabel("BearlyCopy")
             }
         }
         .menuBarExtraStyle(.menu)

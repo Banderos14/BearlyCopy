@@ -3,7 +3,7 @@
 # _NSDetectedLayoutRecursion ("It's not legal to call -layoutSubtreeIfNeeded
 # on a view which is already being laid out"). AppKit logs that warning only
 # once per process, so the log cannot show where it comes from; the
-# breakpoint fires every time. Prints each hit's Prompt Relay frames and
+# breakpoint fires every time. Prints each hit's BearlyCopy frames and
 # exits 1 if there is any. macOS only; read-only (tests use fakes).
 set -eu
 cd "$(dirname "$0")/../macos"

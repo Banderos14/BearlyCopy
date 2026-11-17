@@ -1,6 +1,6 @@
 import Foundation
 
-// Swift view of the Prompt Relay CLI JSON API, version 1
+// Swift view of the BearlyCopy CLI JSON API, version 1
 // (docs/JSON_API.md, docs/api/api-v1.schema.json).
 //
 // Rules from JSON_API.md §6 that this file follows:

@@ -1,12 +1,12 @@
 {
   "name": "prompt-relay",
-  "displayName": "Prompt Relay",
-  "version": "0.9.4",
+  "displayName": "BearlyCopy",
+  "version": "0.9.5",
   "description": "Captures Claude Code's final answers locally so you can copy them verbatim into another chat. No network, no extra API calls.",
   "author": {
     "name": "Banderos14"
   },
-  "repository": "https://github.com/Banderos14/prompt-relay",
+  "repository": "https://github.com/Banderos14/BearlyCopy",
   "license": "SEE LICENSE IN LICENSE",
   "keywords": [
     "clipboard",

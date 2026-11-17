@@ -12,7 +12,7 @@ public final class PreviewCore: CoreProviding, @unchecked Sendable {
     try clipboard.copy(text)
     ```
 
-    Claude сообщает: тесты прошли — это не проверено Prompt Relay.
+    Claude сообщает: тесты прошли — это не проверено BearlyCopy.
     """
 
     public init() {}

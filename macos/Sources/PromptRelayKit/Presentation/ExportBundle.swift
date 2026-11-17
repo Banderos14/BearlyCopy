@@ -100,14 +100,14 @@ extension AppModel {
             }
             let turn: Int? = { if case .local(_, let i) = ref { return i } else { return nil } }()
             let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "")
-            let name = "Prompt Relay \(ExportBundle.safe(project)) \(turn.map { "turn \($0)" } ?? "import") \(stamp.prefix(15))"
+            let name = "BearlyCopy \(ExportBundle.safe(project)) \(turn.map { "turn \($0)" } ?? "import") \(stamp.prefix(15))"
             do {
                 let folder = try ExportBundle.write(into: parent, name: name, package: pack.text,
                                                     files: chosen.map { ($0, attachmentURL($0)) },
                                                     memory: Dictionary(uniqueKeysWithValues: chosen.filter(\.isInMemory)
                                                         .compactMap { a in attachmentData(a).map { (a.id, $0) } })) { entries in
                     ExportBundle.Manifest(exportedAt: pack.builtAt,
-                                          source: selectedImport != nil ? "imported by you" : "captured on this Mac by the Prompt Relay hooks",
+                                          source: selectedImport != nil ? "imported by you" : "captured on this Mac by the BearlyCopy hooks",
                                           project: project, session: label, turn: turn, detail: pack.detail.rawValue,
                                           package: "context.md", files: entries, materials: materials,
                                           limitations: ["Only the chosen attachments are included.",

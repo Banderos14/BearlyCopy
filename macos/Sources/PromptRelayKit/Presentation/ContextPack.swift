@@ -72,11 +72,11 @@ public enum ContextPackComposer {
         }.joined(separator: "; ")
         return [
             "# Context Pack: \(count) AI \(count == 1 ? "result" : "results") for an independent check",
-            "Prepared by Prompt Relay at \(exportedAt). No AI service was used. Format: \(ContextPackFormat.name) v\(ContextPackFormat.version).",
+            "Prepared by BearlyCopy at \(exportedAt). No AI service was used. Format: \(ContextPackFormat.name) v\(ContextPackFormat.version).",
             "",
-            "Provenance labels: [\(confirmed)] = recorded on this machine by Prompt Relay; "
+            "Provenance labels: [\(confirmed)] = recorded on this machine by BearlyCopy; "
                 + (reported.isEmpty ? "" : reported + "; ")
-                + "[\(userSupplied)] = typed or pasted into Prompt Relay by the user; "
+                + "[\(userSupplied)] = typed or pasted into BearlyCopy by the user; "
                 + "[\(notVerified)] = no independent source; [\(unavailable)] = could not be determined.",
             "",
             "Each result below is a separate section with its own source. Their texts are not merged or rewritten, "
@@ -113,7 +113,7 @@ public enum ContextPackComposer {
                     ""]
         }
         return ["## Review request",
-                "[Prompt Relay standard text] The user wrote no instructions; this is Prompt Relay's default request.",
+                "[BearlyCopy standard text] The user wrote no instructions; this is BearlyCopy's default request.",
                 "",
                 standardRequest,
                 ""]
@@ -138,7 +138,7 @@ public enum ContextPackComposer {
         }.joined(separator: "\n")
     }
 
-    /// Puts every heading line written by Prompt Relay one level deeper. Only
+    /// Puts every heading line written by BearlyCopy one level deeper. Only
     /// used on lines the app generated itself (never on a verbatim block).
     static func shifted(_ lines: [String]) -> [String] {
         lines.map { $0.hasPrefix("#") ? "#" + $0 : $0 }
@@ -162,7 +162,7 @@ public enum ContextPackComposer {
             lines += ["", "#### Availability (checked when this pack was prepared)"]
             for a in memory {
                 lines.append("- \(input.names[a.id] ?? a.originalFilename) — temporary window snapshot, held in memory only "
-                             + "(no file was written); lost when Prompt Relay quits [\(confirmed)]")
+                             + "(no file was written); lost when BearlyCopy quits [\(confirmed)]")
             }
             for a in gone {
                 lines.append("- \(input.names[a.id] ?? a.originalFilename) — not available: \(a.isInMemory ? "the snapshot is no longer in memory" : "the stored copy is missing"); "

@@ -7,7 +7,7 @@ so "Claude · Personal" and "Claude · Work" never mix.
 
 What this is NOT: an account. The folder says where the agent keeps its
 settings, not who is signed in; a person can sign in to another account in
-the same folder, and hooks do not tell. Prompt Relay therefore never reads
+the same folder, and hooks do not tell. BearlyCopy therefore never reads
 credentials, tokens, ``auth.json``, keychain items or e-mail addresses, and
 never calls a profile an account. Names ("Work") are labels the user gives
 in the app; they are not stored here.

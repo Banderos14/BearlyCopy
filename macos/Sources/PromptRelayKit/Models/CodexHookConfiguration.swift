@@ -18,7 +18,7 @@ struct CodexHookConfiguration: Equatable {
 
     static func inspect(at url: URL) -> Self { inspect(at: url, host: "xcode") }
 
-    /// Counts Prompt Relay's own definitions for one host label; other
+    /// Counts BearlyCopy's own definitions for one host label; other
     /// hooks in the file are never read beyond their command strings.
     static func inspect(at url: URL, host: String) -> Self {
         guard FileManager.default.fileExists(atPath: url.path) else { return Self(state: .absent) }

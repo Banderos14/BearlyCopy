@@ -10,10 +10,10 @@
 > Relay at rest moves its head within computed bounds and breathes. Where
 > this document and the proposal differ, the proposal is current.
 
-Prompt Relay exists for one loop:
+BearlyCopy exists for one loop:
 
 1. You give Claude Code a task. 2. Claude Code works and writes a final
-report. 3. Prompt Relay captures that report (hooks, plugin). 4. The notch
+report. 3. BearlyCopy captures that report (hooks, plugin). 4. The notch
 shows it. 5. One click copies the original report or a Review Pack. 6. You
 paste it yourself into ChatGPT for an independent review, and go back to work.
 
@@ -99,7 +99,7 @@ Every visible control, what it does, its data and where it belongs.
 |---|---|---|---|---|---|
 | Resting ears / bear | notch | click: open Expanded; hover: Quick Peek | `hasUnseenAnswer`, mascot state | bear hidden when off | resting |
 | ⌄ (peek) | Quick Peek | open Expanded on Home | — | — | peek |
-| Project name ⌄ | Home row 1 | open Projects | selected project or import's project | "Prompt Relay" | primary |
+| Project name ⌄ | Home row 1 | open Projects | selected project or import's project | "BearlyCopy" | primary |
 | Source label | Home row 1 | none (fact) | local turn / import | — | primary |
 | Task ⌄ | Task card | show more of the request | `turn.request`, import task | "Unavailable: …" | primary |
 | ‹ n/m › | Response card | older / newer answer of the session | turns | hidden with one answer | primary |
@@ -143,7 +143,7 @@ Response card and History).
 - **Projects** — one card: ✓ for the shown project, "New" tag, "N sessions ·
   last …, N cloud imports", a capture switch per row; Add Project…. Capture
   starts off for new folders; turning it off keeps history.
-- **Recent Copies** — the last five copies made in Prompt Relay: kind
+- **Recent Copies** — the last five copies made in BearlyCopy: kind
   (Response / Review Pack), project, session or import, time, **Copy
   Again**. References only; the text is fetched again; a removed report says
   "No longer in history". A pack that needed "Copy Anyway" is not kept.
@@ -196,7 +196,7 @@ them and no documented interface returns their messages (details:
 MACOS_APP.md §6). The supported path is the explicit **Import**.
 `--teleport` is never run (it changes the repository).
 
-Attachments are images the user adds with 📎: copied into Prompt Relay's
+Attachments are images the user adds with 📎: copied into BearlyCopy's
 private folder with name, type, size, SHA-256 and provenance ("Added by you
 from a file on this Mac"). The bytes must decode as an image; the type comes
 from the content (a JPEG named .png is stored as JPEG); unreadable,

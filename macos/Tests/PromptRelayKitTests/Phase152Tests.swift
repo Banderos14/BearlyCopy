@@ -78,7 +78,7 @@ import Testing
 
     @Test func windowNotLinkedExplainsLinkingAndCaptureNow() throws {
         let detail = try #require(AutoCaptureStatus.windowNotBound.detail)
-        #expect(detail.contains("Links end when Prompt Relay quits"))
+        #expect(detail.contains("Links end when BearlyCopy quits"))
         #expect(detail.contains("Capture Now"))
         #expect(AutoCaptureStatus.windowUnavailable.title == "Window closed")
         #expect(AutoCaptureStatus.windowNotCapturable.detail?.contains("link is kept") == true)
@@ -107,7 +107,7 @@ import Testing
     }
 
     @Test func theDebugPermissionHintNamesTheRebuildPitfall() {
-        #expect(AutoCaptureStatus.debugBuildPermissionHint.contains("“Prompt Relay Dev”"), "the Debug app's CFBundleDisplayName")
+        #expect(AutoCaptureStatus.debugBuildPermissionHint.contains("“BearlyCopy Dev”"), "the Debug app's CFBundleDisplayName")
         #expect(AutoCaptureStatus.debugBuildPermissionHint.contains("turn it off and on again"))
     }
 }

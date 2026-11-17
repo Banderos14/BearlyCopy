@@ -102,7 +102,7 @@ import Testing
     }
 
     @Test func aHostWithoutSignalsKeepsItsLastConfirmedState() async throws {
-        // Codex in Xcode: no waiting signal reaches Prompt Relay. Nothing is invented.
+        // Codex in Xcode: no waiting signal reaches BearlyCopy. Nothing is invented.
         // Phase 16: fixed timestamps and a pinned clock — the result no longer
         // depends on how long the run takes (it failed once after a 33 s stall).
         let last = "2026-11-08T10:00:00.000Z"

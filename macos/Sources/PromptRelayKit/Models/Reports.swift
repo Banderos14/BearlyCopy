@@ -21,10 +21,10 @@ public enum ReportRef: Hashable, Codable, Sendable {
 /// Where a report came from. Shown on every report and written into the
 /// Review Pack, so an import is never mistaken for a local capture.
 public enum ReportSource: String, Codable, Sendable {
-    /// Captured on this Mac by the Prompt Relay hooks (Claude Code Stop).
+    /// Captured on this Mac by the BearlyCopy hooks (Claude Code Stop).
     case localClaudeCode
     case localCodex
-    /// Pasted into Prompt Relay by the user (for example from a Claude Code
+    /// Pasted into BearlyCopy by the user (for example from a Claude Code
     /// cloud session, which the local hooks cannot observe).
     case cloudManualImport
 
@@ -54,7 +54,7 @@ public struct ImportedReport: Codable, Identifiable, Equatable, Sendable {
     public let digest: String
     /// Phase 7.1 (optional, older imports decode unchanged): the AI the user
     /// says it came from (`ImportAssistant.rawValue`), and whether a pasted
-    /// Prompt Relay package was kept as historical context or plain text.
+    /// BearlyCopy package was kept as historical context or plain text.
     public var assistant: String? = nil
     public var importedAs: String? = nil
     public var host: AgentHost? = nil
@@ -142,7 +142,7 @@ public struct ReportAttachment: Codable, Identifiable, Equatable, Sendable {
     public var stateID: String? = nil
     /// Phase 10: a window snapshot held in memory only (never in the index).
     public var inMemory: Bool? = nil
-    /// Phase 17: Prompt Relay prepared it when the answer arrived (no Add).
+    /// Phase 17: BearlyCopy prepared it when the answer arrived (no Add).
     /// An optional field, not a new `source` value: an older app that reads
     /// this index after a rollback still decodes every record.
     public var autoPrepared: Bool? = nil
@@ -156,7 +156,7 @@ public struct ReportAttachment: Codable, Identifiable, Equatable, Sendable {
 /// A state of an interactive mockup: a named screen with its own image.
 public struct MockupState: Codable, Identifiable, Equatable, Sendable {
     public enum Status: String, Codable, Sendable {
-        /// An image is stored in Prompt Relay.
+        /// An image is stored in BearlyCopy.
         case captured
         /// Only the name is known (declared by the page or typed by the user).
         case namedOnly = "named_only"
@@ -201,7 +201,7 @@ public struct ReportMaterial: Codable, Identifiable, Equatable, Sendable {
     }
 }
 
-/// One copy the user made in Prompt Relay (Recent Copies). Only a
+/// One copy the user made in BearlyCopy (Recent Copies). Only a
 /// reference: the text is fetched again when copying again.
 public struct CopyRecord: Codable, Identifiable, Equatable, Sendable {
     public enum Kind: String, Codable, Sendable {

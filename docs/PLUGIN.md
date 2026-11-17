@@ -1,8 +1,8 @@
-# Prompt Relay as a Claude Code plugin
+# BearlyCopy as a Claude Code plugin
 
-Prompt Relay connects to Claude Code as an official **Claude Code plugin**
+BearlyCopy connects to Claude Code as an official **Claude Code plugin**
 (ADR-008). Claude Code itself installs, enables, disables, updates and
-uninstalls it. Prompt Relay never edits your `settings.json`, and it never
+uninstalls it. BearlyCopy never edits your `settings.json`, and it never
 touches other tools' hooks, such as NotchBuddy.
 
 Capture stays **off** until you enable a project. Uninstalling the plugin
@@ -89,7 +89,7 @@ when `plugin.json`'s `version` changes) and start a new session. Whether
 
 In Claude Desktop instead of the shell: open the Code tab, click **+** next
 to the prompt box, then **Add plugins** (or **Plugins → Browse plugins**),
-select **Prompt Relay**, and choose **your user account** as the scope. The
+select **BearlyCopy**, and choose **your user account** as the scope. The
 marketplace must have been added first, from the shell or with
 `/plugin marketplace add ~/code/prompt-relay` in a CLI session.
 
@@ -99,7 +99,7 @@ collaborator.
 
 ### Alternative: from GitHub
 ```bash
-claude plugin marketplace add Banderos14/prompt-relay#claude/loving-mccarthy-ossw3q
+claude plugin marketplace add Banderos14/BearlyCopy#claude/loving-mccarthy-ossw3q
 claude plugin install prompt-relay@prompt-relay
 ```
 - The repository is private, so your git credentials must already work
@@ -143,7 +143,7 @@ UserPromptSubmit and one Stop) proves the plugin hook actually ran. Then
 | Stop capturing one project | `bin/prompt-relay disable <dir>` | kept |
 | Turn the plugin off everywhere, keep it installed | `claude plugin disable prompt-relay@prompt-relay` (or Desktop plugin panel) | kept |
 | Turn it back on | `claude plugin enable prompt-relay@prompt-relay` | — |
-| Uninstall | `claude plugin uninstall prompt-relay@prompt-relay` | kept (Prompt Relay stores nothing in `${CLAUDE_PLUGIN_DATA}`) |
+| Uninstall | `claude plugin uninstall prompt-relay@prompt-relay` | kept (BearlyCopy stores nothing in `${CLAUDE_PLUGIN_DATA}`) |
 | Remove the marketplace (also uninstalls its plugins) | `claude plugin marketplace remove prompt-relay` | kept |
 | Delete history | `bin/prompt-relay delete …` / `prune …` (previews first; see JSON_API.md) | deleted only with `--yes` |
 
@@ -154,7 +154,7 @@ you want everything gone.
 ## 6. Diagnostics: what `doctor` can and cannot tell
 | Kind | Source | Examples |
 |---|---|---|
-| **Configuration** (what files say) | `~/.claude/settings.json`, the project's `.claude/settings.json` and `.claude/settings.local.json`, `~/.claude/plugins/installed_plugins.json` (respects `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_PLUGIN_CACHE_DIR`) | install records, `enabledPlugins` for prompt-relay, Prompt Relay settings hooks, the **number** of other tools' hooks per event |
+| **Configuration** (what files say) | `~/.claude/settings.json`, the project's `.claude/settings.json` and `.claude/settings.local.json`, `~/.claude/plugins/installed_plugins.json` (respects `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_PLUGIN_CACHE_DIR`) | install records, `enabledPlugins` for prompt-relay, BearlyCopy settings hooks, the **number** of other tools' hooks per event |
 | **Observed** (what really ran) | `<data dir>/handler.log`, metadata only: time, event, `via=plugin\|direct`, outcome | "plugin: 12 events, last at …", errors such as `unsafe_path` |
 | **Unverified** | — | whether a running Desktop session loaded the plugin (check `claude plugin list` or the Desktop panel, then look for `via=plugin` events) |
 
@@ -198,16 +198,16 @@ exits 0. Claude Code is never blocked.
 ## 8. Coexistence and double registration
 
 - **Other hooks (NotchBuddy and others).** Claude Code merges hooks from all
-  sources and runs matching hooks in parallel. Prompt Relay's hook writes
+  sources and runs matching hooks in parallel. BearlyCopy's hook writes
   nothing to stdout, returns no decision and always exits 0, so it cannot
-  change what other hooks do. Prompt Relay does not read, write or rewrite
+  change what other hooks do. BearlyCopy does not read, write or rewrite
   other tools' entries.
 - **Double registration.** If the plugin is installed and an older
   settings-based hook (from `hook-config`) is also registered, the handler
   runs twice per event. The second run stores nothing: the event's
   fingerprint is already in the session file (`duplicate`). `doctor` reports
   `double_registration` from configuration and `events_from_two_sources`
-  from the log. Remove the settings entry by hand; Prompt Relay does not
+  from the log. Remove the settings entry by hand; BearlyCopy does not
   edit settings.
 - **Two copies of the plugin** (installed and `--plugin-dir`): Claude Code
   itself loads only one copy per plugin name (docs: "Name conflicts").

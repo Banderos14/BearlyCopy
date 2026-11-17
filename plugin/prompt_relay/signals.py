@@ -3,7 +3,7 @@
 Claude Code shows a question (AskUserQuestion), a plan for approval
 (ExitPlanMode), a permission dialog (PermissionRequest), or an MCP
 elicitation, and stops working until the person acts. Hooks report these
-moments; Prompt Relay only *observes* them:
+moments; BearlyCopy only *observes* them:
 
 - the handler never writes stdout and always exits 0, which the hooks
   documentation defines as "no decision" — the normal dialog appears and

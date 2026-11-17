@@ -3,7 +3,7 @@ import Observation
 import QuartzCore
 import SwiftUI
 
-/// Prompt Relay's mascot: Relay, a small bear cub drawn in vector (SwiftUI
+/// BearlyCopy's mascot: Relay, a small bear cub drawn in vector (SwiftUI
 /// Canvas), original artwork. It sits beside the notch and at the top of the
 /// open island. It reacts only to facts the app knows: an answer was
 /// captured, a copy succeeded, something failed. Nothing about it says that
@@ -208,7 +208,7 @@ struct MascotView: View {
 
     private var label: String {
         switch state.mood {
-        case .idle: return state.expression == .sleepy ? "Relay is resting" : "Relay, the Prompt Relay bear"
+        case .idle: return state.expression == .sleepy ? "Relay is resting" : "Relay, the BearlyCopy bear"
         case .curious: return "Relay: a new answer was captured"
         case .pleased: return "Relay: copied"
         case .concerned: return "Relay: something needs attention"

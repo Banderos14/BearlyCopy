@@ -37,7 +37,7 @@ when the hook is set up:
 - Codex: `CODEX_HOME` (default `~/.codex`; Xcode uses
   `~/Library/Developer/Xcode/CodingAssistant/codex`). The hook command
   runs inside Codex's environment, so `CODEX_HOME` is read directly (`cx-…`); no extra variable is needed.
-- The user names profiles in Prompt Relay ("Work", "Personal"); the label
+- The user names profiles in BearlyCopy ("Work", "Personal"); the label
   is local UI state, never sent to the agent.
 
 Two profiles of one provider stay separate because their config homes

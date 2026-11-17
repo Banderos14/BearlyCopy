@@ -1,6 +1,6 @@
-# Contributing to Prompt Relay
+# Contributing to BearlyCopy
 
-Prompt Relay is a source-available portfolio project (see `LICENSE`): the code
+BearlyCopy is a source-available portfolio project (see `LICENSE`): the code
 is public to read, but **external contributions and reuse are not accepted**.
 Issues with bug reports are welcome. The rules below are the maintainer's own
 working rules and show how the project is kept trustworthy.
@@ -17,7 +17,7 @@ Read `CLAUDE.md` — it applies to human contributors too. In short:
 5. User data never enters the repository. Never commit captured text or real
    payloads without redaction.
 6. The Core is Python 3.9+, standard library only.
-7. Prompt Relay never writes Claude Code settings or other tools' hooks.
+7. BearlyCopy never writes Claude Code settings or other tools' hooks.
 
 Most of these are enforced by tests; a change that needs to relax one needs
 an ADR in `docs/DECISIONS.md` first.

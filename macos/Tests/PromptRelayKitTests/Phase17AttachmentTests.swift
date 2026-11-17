@@ -41,7 +41,7 @@ struct Phase17AttachmentTests {
         }
     }
 
-    static let schema = #"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Prompt Relay JSON API v1","type":"object"}"#
+    static let schema = #"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"BearlyCopy JSON API v1","type":"object"}"#
     static let longAgo = Date(timeIntervalSinceNow: -30 * 86_400)
 
     /// The Core's `show` for one final answer. `written`: files a tool was

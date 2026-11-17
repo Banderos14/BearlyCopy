@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install or update Prompt Relay from this checkout as a normal Mac app that
+# Install or update BearlyCopy from this checkout as a normal Mac app that
 # you open from Applications — no Xcode needed to use it (Phases 11, 16).
 #
 #   scripts/install-local.sh --status      what is installed, what runs, what this checkout is
@@ -11,18 +11,18 @@
 #
 # Options:
 #   --yes             agree up front (no questions; still never force-quits)
-#   --quit-debug      also ask a running Debug build ("Prompt Relay Dev") to quit normally,
+#   --quit-debug      also ask a running Debug build ("BearlyCopy Dev") to quit normally,
 #                     so the installed app is the one at the notch (asked when interactive)
 #   --system          install into /Applications instead of ~/Applications (one location only)
 #   --sign IDENTITY   sign with this code-signing identity instead of ad-hoc, e.g.
 #                     --sign "Apple Development" (keeps Screen Recording permission across updates)
-#   --no-build        install macos/build/Prompt Relay.app as it is: built from HEAD, or from an
+#   --no-build        install macos/build/BearlyCopy.app as it is: built from HEAD, or from an
 #                     earlier commit when only files outside the app's sources changed since
 #   --no-launch       install without opening the app
 #   --skip-checks     skip the pre-install Core smoke test (not recommended)
 #
 # What it touches, and nothing else:
-#   ~/Applications/Prompt Relay.app (or /Applications with --system)  replaced, old copy kept as a backup
+#   ~/Applications/BearlyCopy.app (or /Applications with --system)  replaced, old copy kept as a backup
 #   ~/Library/Application Support/PromptRelay-AppBackups/              backups (never deleted by this script)
 # If anything fails before the new app is in place, the installed app is
 # untouched (and reopened if it had been quit). If the new app does not
@@ -43,7 +43,7 @@ debug_id="${PROMPT_RELAY_DEBUG_ID:-io.github.banderos14.PromptRelay.debug}"
 user_apps="$HOME/Applications"
 system_apps="/Applications"
 backups="${PROMPT_RELAY_BACKUP_DIR:-$HOME/Library/Application Support/PromptRelay-AppBackups}"
-built="${PROMPT_RELAY_BUILT_APP:-$repo/macos/build/Prompt Relay.app}"
+built="${PROMPT_RELAY_BUILT_APP:-$repo/macos/build/BearlyCopy.app}"
 data_dir="$HOME/Library/Application Support/PromptRelay"
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
@@ -72,7 +72,7 @@ done
 if [ -n "${PROMPT_RELAY_INSTALL_DIR:-}" ]; then dest_dir=$PROMPT_RELAY_INSTALL_DIR
 elif [ "$location" = system ]; then dest_dir=$system_apps
 else dest_dir=$user_apps; fi
-dest="$dest_dir/Prompt Relay.app"
+dest="$dest_dir/BearlyCopy.app"
 # The other Applications folder, where a second installed copy would compete.
 if [ -n "${PROMPT_RELAY_INSTALL_DIR:-}" ]; then other_dir="${PROMPT_RELAY_OTHER_DIR:-}"
 elif [ "$location" = system ]; then other_dir=$user_apps
@@ -131,7 +131,7 @@ installed_release_pids() { # release copies running from $dest
     done
 }
 
-# Other Prompt Relay bundles in the Applications folders (old copies,
+# Other BearlyCopy bundles in the Applications folders (old copies,
 # renamed backups): macOS lists each in Spotlight and Launchpad, and opening
 # one starts an outdated app.
 strays() {
@@ -173,7 +173,7 @@ quit_id() { # bundle id, name → asks every copy to quit normally; dies if one 
         [ -z "$(pids_of "$id")" ] && { say "   $name quit."; return 0; }
         sleep 0.5
     done
-    die "$name is still running (PID $(pids_of "$id" | tr '\n' ' ')). Quit it yourself: its menu-bar icon → Quit Prompt Relay (or Settings → About), then run this again. If macOS asked whether Terminal may control Prompt Relay and you declined, that is why. Nothing was replaced."
+    die "$name is still running (PID $(pids_of "$id" | tr '\n' ' ')). Quit it yourself: its menu-bar icon → Quit BearlyCopy (or Settings → About), then run this again. If macOS asked whether Terminal may control BearlyCopy and you declined, that is why. Nothing was replaced."
 }
 
 verify_bundle() { # app [1: must match this checkout] → checks, dies on failure
@@ -276,7 +276,7 @@ show_running() {
     local r d
     r=$(all_release_pids | tr '\n' ' ')
     d=$(debug_pids | tr '\n' ' ')
-    say "Running:    Release ${r:-none}   Debug (\"Prompt Relay Dev\") ${d:-none}"
+    say "Running:    Release ${r:-none}   Debug (\"BearlyCopy Dev\") ${d:-none}"
 }
 
 # Launch Services: Finder, Spotlight and Launchpad find the app and its icon.
@@ -284,7 +284,7 @@ register() { if [ "${PROMPT_RELAY_TEST_NO_LSREGISTER:-0}" != 1 ] && [ -x "$lsreg
 unregister() { if [ "${PROMPT_RELAY_TEST_NO_LSREGISTER:-0}" != 1 ] && [ -x "$lsregister" ]; then "$lsregister" -u "$1" >/dev/null 2>&1 || true; fi; }
 
 backup_name() { # app, stamp → path in $backups
-    printf '%s/Prompt Relay %s-%s-%s.app' "$backups" "$(safe "$(plist_get "$1" CFBundleShortVersionString)")" \
+    printf '%s/BearlyCopy %s-%s-%s.app' "$backups" "$(safe "$(plist_get "$1" CFBundleShortVersionString)")" \
         "$(safe "$(plist_get "$1" PRGitCommit)")" "$2"
 }
 
@@ -302,7 +302,7 @@ stage_copy() { # source app → $staged
     mkdir -p "$dest_dir" "$backups" || die "cannot create $dest_dir or $backups"
     chmod 700 "$backups"
     [ -w "$dest_dir" ] || die "$dest_dir is not writable by you$([ "$dest_dir" = "$system_apps" ] && echo ' (an administrator account is needed for /Applications; or install in ~/Applications without --system)')"
-    staged="$dest_dir/.Prompt Relay.app.installing-$(date +%Y%m%d-%H%M%S)"
+    staged="$dest_dir/.BearlyCopy.app.installing-$(date +%Y%m%d-%H%M%S)"
     if [ "${PROMPT_RELAY_TEST_FAIL_COPY:-0}" = 1 ] || ! ditto "$src" "$staged"; then
         rm -rf "$staged"; staged=""; die "copying the new app failed (disk full?); nothing was quit or replaced"
     fi
@@ -384,8 +384,8 @@ report_running() {
         say "!! more than one Release copy runs (PIDs $others) — quit the extra ones from their menu-bar icon"
     fi
     dbg=$(debug_pids | tr '\n' ' ')
-    [ -z "${dbg// /}" ] || say "note: the Debug build (\"Prompt Relay Dev\", PID ${dbg// /}) is running too; the installed app steps aside at the notch while it runs. Quit the Debug copy from its hammer menu-bar icon to use the installed app."
-    say "Check: Prompt Relay's menu-bar icon → Settings → About: Release, version $(plist_get "$dest" CFBundleShortVersionString), commit $commit."
+    [ -z "${dbg// /}" ] || say "note: the Debug build (\"BearlyCopy Dev\", PID ${dbg// /}) is running too; the installed app steps aside at the notch while it runs. Quit the Debug copy from its hammer menu-bar icon to use the installed app."
+    say "Check: BearlyCopy's menu-bar icon → Settings → About: Release, version $(plist_get "$dest" CFBundleShortVersionString), commit $commit."
 }
 
 launch_and_check() { # expected commit → verified launch, or automatic recovery
@@ -398,9 +398,9 @@ launch_and_check() { # expected commit → verified launch, or automatic recover
     fi
     # Automatic recovery: quit the new copy if it runs, keep it as a backup
     # marked "(failed launch)", put the previous app back and open it.
-    quit_id "$release_id" "the new Prompt Relay"
+    quit_id "$release_id" "the new BearlyCopy"
     stamp=$(date +%Y%m%d-%H%M%S)
-    failed="$backups/Prompt Relay $(safe "$(plist_get "$dest" CFBundleShortVersionString)")-$(safe "$(plist_get "$dest" PRGitCommit)")-$stamp (failed launch).app"
+    failed="$backups/BearlyCopy $(safe "$(plist_get "$dest" CFBundleShortVersionString)")-$(safe "$(plist_get "$dest" PRGitCommit)")-$stamp (failed launch).app"
     mv "$dest" "$failed" || die "$launch_problem; could not move it aside. Restore by hand: scripts/install-local.sh --rollback"
     unregister "$failed"
     mv "$backup" "$dest" || die "$launch_problem; the previous app is still at $(tilde "$backup") — move it back to $(tilde "$dest_dir")"
@@ -423,8 +423,8 @@ status)
     say "Checkout:   $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)$([ -n "$(git status --porcelain --untracked-files=no -- macos/Sources macos/Resources bin plugin)" ] && echo ' + uncommitted changes') · version $(sed -n 's/^__version__ = "\(.*\)"/\1/p' plugin/prompt_relay/__init__.py)"
     say "Installed:  $(describe "$dest")"
     say "            $(tilde "$dest")"
-    if [ -n "$other_dir" ] && [ -d "$other_dir/Prompt Relay.app" ]; then
-        say "Also:       $(describe "$other_dir/Prompt Relay.app") — $(tilde "$other_dir/Prompt Relay.app")"
+    if [ -n "$other_dir" ] && [ -d "$other_dir/BearlyCopy.app" ]; then
+        say "Also:       $(describe "$other_dir/BearlyCopy.app") — $(tilde "$other_dir/BearlyCopy.app")"
     fi
     show_running
     s=$(strays)
@@ -442,7 +442,7 @@ list)
     exit 0 ;;
 tidy)
     s=$(strays)
-    [ -n "$s" ] || { say "No stray Prompt Relay copies in the Applications folders."; exit 0; }
+    [ -n "$s" ] || { say "No stray BearlyCopy copies in the Applications folders."; exit 0; }
     say "These copies would be moved (not deleted) to $(tilde "$backups")/:"
     printf '%s\n' "$s" | while IFS= read -r app; do say "   $(plist_get "$app" CFBundleShortVersionString) — $(tilde "$app")"; done
     [ "$dry" = 0 ] || { say "Dry run: nothing changed."; exit 0; }
@@ -462,7 +462,7 @@ rollback)
     # stamp is the version installed just before the current one. Folder
     # times are not used (a moved bundle keeps its old time). Copies marked
     # "(moved …)" or "(failed launch)" are never chosen automatically.
-    latest=$(find "$backups" -maxdepth 1 -type d -name 'Prompt Relay *-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9].app' 2>/dev/null \
+    latest=$(find "$backups" -maxdepth 1 -type d -name 'BearlyCopy *-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9].app' 2>/dev/null \
         | sed -E 's/^(.*-([0-9]{8}-[0-9]{6})\.app)$/\2	\1/' | sort -r | head -1 | cut -f2- || true)
     [ -n "$latest" ] || die "no backup to roll back to in $backups"
     say "Installed now: $(describe "$dest")"
@@ -474,7 +474,7 @@ rollback)
     confirm "Quit the running Release app (if any), keep the current app as a backup and restore this one?"
     stage_copy "$latest"     # a verified copy; the backup itself is kept
     [ -z "$(all_release_pids)" ] || previous_was_running=1
-    quit_id "$release_id" "Prompt Relay"
+    quit_id "$release_id" "BearlyCopy"
     replace_staged
     launch_and_check "$(plist_get "$dest" PRGitCommit)"
     say "Backups are all kept. Running --rollback again swaps back to the version you just replaced."
@@ -510,8 +510,8 @@ say "Installed:  $(describe "$dest")"
 say "            $(tilde "$dest")"
 show_running
 s=$(strays)
-[ -z "$s" ] || say "Note:       $(printf '%s\n' "$s" | wc -l | tr -d ' ') old Prompt Relay copies are in Applications; see --status and --tidy"
-if [ -n "$other_dir" ] && [ -d "$other_dir/Prompt Relay.app" ]; then
+[ -z "$s" ] || say "Note:       $(printf '%s\n' "$s" | wc -l | tr -d ' ') old BearlyCopy copies are in Applications; see --status and --tidy"
+if [ -n "$other_dir" ] && [ -d "$other_dir/BearlyCopy.app" ]; then
     say "Note:       another installed copy is in $(tilde "$other_dir") — open only one; --tidy moves it to the backups"
 fi
 say "Keeps:      history, settings and integrations ($(tilde "$data_dir"), app preferences, Claude/Codex config, plugin) — untouched"
@@ -525,12 +525,12 @@ fi
 if [ "$dry" = 1 ]; then say ""; say "Dry run: nothing changed."; exit 0; fi
 confirm "Quit the running Release app (if any) and install this build?"
 if [ -n "$(debug_pids)" ]; then
-    if [ "$quit_debug" = 1 ] || ask "A Debug build (\"Prompt Relay Dev\") is running and would keep the notch. Ask it to quit normally too?"; then
-        quit_id "$debug_id" "Prompt Relay Dev (Debug)"
+    if [ "$quit_debug" = 1 ] || ask "A Debug build (\"BearlyCopy Dev\") is running and would keep the notch. Ask it to quit normally too?"; then
+        quit_id "$debug_id" "BearlyCopy Dev (Debug)"
     fi
 fi
 stage_copy "$built"
 [ -z "$(all_release_pids)" ] || previous_was_running=1
-quit_id "$release_id" "Prompt Relay"
+quit_id "$release_id" "BearlyCopy"
 replace_staged
 launch_and_check "$(plist_get "$built" PRGitCommit)"

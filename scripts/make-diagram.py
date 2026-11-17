@@ -15,7 +15,7 @@ f_body = ImageFont.truetype("/System/Library/Fonts/SFNS.ttf", 36)
 f_num = ImageFont.truetype("/System/Library/Fonts/SFNS.ttf", 40)
 steps = [
     ("Your agent", ["Claude Code or Codex", "does the work as usual"]),
-    ("Prompt Relay", ["Keeps the final answer", "exactly as written, with the", "request, project and files"]),
+    ("BearlyCopy", ["Keeps the final answer", "exactly as written, with the", "request, project and files"]),
     ("Copy", ["Copy Answer, or Copy with", "Context for a reviewer:", "every claim labelled"]),
     ("Paste anywhere", ["ChatGPT, another Claude", "chat, a teammate"]),
 ]

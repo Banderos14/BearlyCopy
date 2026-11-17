@@ -1,6 +1,6 @@
 # Rules for AI agents working in this repository
 
-Prompt Relay is an independent product. Read `docs/STATUS.md` and
+BearlyCopy is an independent product. Read `docs/STATUS.md` and
 `docs/archive/CLOUD_TO_LOCAL_HANDOFF.md` first. They hold the current phase and what
 is approved.
 
@@ -32,7 +32,7 @@ is approved.
    payloads without redaction.
 8. Standard library only for the Core (Python 3.9 compatible) unless an ADR
    says otherwise.
-9. Integration is plugin-first (ADR-008). Prompt Relay code never writes
+9. Integration is plugin-first (ADR-008). BearlyCopy code never writes
    Claude Code settings files, and never changes or prints other tools'
    hooks; read-only diagnostics may only count them. Real plugin installs happen only on
    the owner's Mac, through `claude plugin` commands, with consent.

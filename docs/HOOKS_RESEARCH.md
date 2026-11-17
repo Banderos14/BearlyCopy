@@ -28,7 +28,7 @@ is part of `LOCAL_MAC_VALIDATION.md`.
 
 ## 2. Common input fields (all events)
 
-| Field | Use in Prompt Relay | Notes |
+| Field | Use in BearlyCopy | Notes |
 |---|---|---|
 | `session_id` | session key; never merged across ids | treated as optional; when it is missing, events go to the `_no-session` bucket |
 | `prompt_id` | **primary request↔response link** | UUID of the user prompt being processed. "Absent until the first user input". Present on Stop as a common field |
@@ -40,9 +40,9 @@ is part of `LOCAL_MAC_VALIDATION.md`.
 | `effort`, `scratchpad_dir` | stored only | newer versions |
 
 Environment: `CLAUDE_PROJECT_DIR` is the project root where the session
-started, and it stays at that root inside worktrees. Prompt Relay prefers it
+started, and it stays at that root inside worktrees. BearlyCopy prefers it
 over `cwd` as the project identity. `CLAUDE_CODE_REMOTE="true"` marks cloud
-sessions. Prompt Relay records it, so cloud-originated events stay
+sessions. BearlyCopy records it, so cloud-originated events stay
 distinguishable.
 
 ## 3. Events
@@ -52,7 +52,7 @@ Input: common fields + `prompt` (and `session_title` when set).
 Output semantics that matter for safety:
 - **Plain stdout on exit 0 is added to Claude's context.** The handler therefore
   never writes to stdout.
-- `decision: "block"` would stop the prompt. Prompt Relay never emits a decision.
+- `decision: "block"` would stop the prompt. BearlyCopy never emits a decision.
 - The default timeout is lowered to 30 s for this event.
 
 Observed 2026-10-30 (Claude Desktop, CLI 2.1.309), stage 5.11:
@@ -61,7 +61,7 @@ Observed 2026-10-30 (Claude Desktop, CLI 2.1.309), stage 5.11:
   finishes, the parent's next turn begins with a prompt made only of
   `<system-reminder>` and `<side-sessions-event>` blocks, with a new
   `prompt_id`. Phase 5's whole implementation ran in such a turn, so its pack
-  showed that text as the user's request. Prompt Relay now classifies the
+  showed that text as the user's request. BearlyCopy now classifies the
   origin from the text's structure (ADR-017).
 - A session started from another one (`start_session`) receives as its first
   prompt a `<system-reminder>` listing linked sessions, then
@@ -82,13 +82,13 @@ Input: common fields + `stop_hook_active`, `last_assistant_message`,
 - `last_assistant_message` is "the text content of Claude's final response".
   The docs recommend it over reading the transcript.
 - Stop "does not run if the stoppage occurred due to a user interrupt". So an
-  interrupted turn has a prompt with no response. Prompt Relay shows it as
+  interrupted turn has a prompt with no response. BearlyCopy shows it as
   `awaiting_response` / `no_matched_response`.
 - "API errors fire StopFailure instead."
 - `stop_hook_active: true` means Claude is continuing because a stop hook
   blocked. **Several Stops can belong to one prompt.**
 - `background_tasks` non-empty means the session is paused while work is
-  still in flight, and it may wake and Stop again. Prompt Relay marks this
+  still in flight, and it may wake and Stop again. BearlyCopy marks this
   `stop_received_background_tasks_pending` and never "done".
 - Exit 2, or JSON `decision: "block"`, would force Claude to continue. The
   handler always exits 0 with empty stdout.
@@ -100,7 +100,7 @@ Input: common fields + `error` (`rate_limit`, `overloaded`,
 `max_output_tokens`, `cloud_credential_error`, `unknown`), optional
 `error_details` and optional `last_assistant_message`, which **holds the API
 error string, not Claude's answer**. Output and exit code are ignored.
-Prompt Relay stores it as `api_error` and never offers its text as a response.
+BearlyCopy stores it as `api_error` and never offers its text as a response.
 
 ### PostToolUse / PostToolUseFailure — observed 2026-10-30 (stage 5.1)
 Captured in a sandbox: a Claude Desktop Code-tab session in a throwaway
@@ -187,7 +187,7 @@ nothing.
   terminal, IDE extensions, the Desktop app, and cloud sessions."
 - Documented: cloud sessions don't read the local `~/.claude/settings.json`.
   A user-level hook on the Mac therefore never sees cloud sessions. That is
-  correct for Prompt Relay, which only captures local work.
+  correct for BearlyCopy, which only captures local work.
 - Desktop: "The desktop app reads the same settings files as the CLI." Which
   Claude Code version the Desktop Code tab bundles is **not verified**. Check
   it locally (LOCAL_MAC_VALIDATION §2).
@@ -204,7 +204,7 @@ nothing.
 | D4 | Desktop Code tab Claude Code version and hook support parity | **Observed**: Desktop 4.29.0 bundles Claude Code 2.1.309 and runs hooks from a project's `.claude/settings.local.json`; user-level hooks of other tools run alongside. Desktop does not pass the shell environment to hooks (hence `hook-config --data-dir`) |
 | D5 | Whether pbcopy preserves NUL characters | **Observed**: preserved. pbcopy → pbpaste and NSPasteboard return NUL, CRLF, C0 controls and 1.18 MB byte-identical (macOS 27.0.1). How a target app treats NUL on paste is not checked |
 | D6 | `agent_id` is a common field ("subagent or in-process teammate the hook fires in"). Can a Stop/UserPromptSubmit with `agent_id` reach the main session's hooks? | The docs say Stop is for the main agent, and SubagentStop is not connected. `agent_id` is stored but not used for correlation. Verify with a subagent/teammate turn on the Mac (LOCAL_MAC_VALIDATION M3 prompt 5) |
-| D7 | A prompt blocked by *another* UserPromptSubmit hook (hooks run in parallel) is still stored by Prompt Relay but gets no Stop. Without `prompt_id`, the next answer becomes `ambiguous` | By design (the handler cannot see other hooks' decisions); documented |
+| D7 | A prompt blocked by *another* UserPromptSubmit hook (hooks run in parallel) is still stored by BearlyCopy but gets no Stop. Without `prompt_id`, the next answer becomes `ambiguous` | By design (the handler cannot see other hooks' decisions); documented |
 | D8 | Interrupted turns (Esc) produce no Stop. Without `prompt_id`, the next answer becomes `ambiguous` instead of being guessed | By design; `prompt_id` avoids it |
 | D9 | Does an authentication failure fire StopFailure? | **Observed** in CLI 2.1.268 (`-p`, expired OAuth): UserPromptSubmit fired, **no** Stop and **no** StopFailure. The turn stays `awaiting_response`, which is correct (no answer is invented) |
 
@@ -250,7 +250,7 @@ From the hooks reference (code.claude.com/docs/en/hooks), read 2026-11-05:
 **Observed on this Mac:** `claude plugin details` (Claude Code 2.1.268)
 registers all nine hooks of the 0.4.1 plugin from `--plugin-dir`, "no model
 context cost". **Not observed:** a live AskUserQuestion / ExitPlanMode /
-PermissionRequest payload through Prompt Relay (the active plugin is 0.4.0;
+PermissionRequest payload through BearlyCopy (the active plugin is 0.4.0;
 record field names here after the owner's check).
 
 ### Phase 12.1 live probe (2026-11-06) — what was actually observed
@@ -272,14 +272,14 @@ plugin 0.4.1 launcher wrote to a temp data dir.
 **Not observed:** the CLI's OAuth session had expired ("Failed to
 authenticate"), so no model turn ran: `PreToolUse` (AskUserQuestion,
 ExitPlanMode), `PermissionRequest`, `Notification` and `PostToolUse` field
-names remain **documented only** (section above). Prompt Relay does not log
+names remain **documented only** (section above). BearlyCopy does not log
 in on the owner's behalf. Next: the owner's interactive check in Claude
 Desktop (plugin 0.4.1 active after restart), or `claude` re-login, then the
 same probe.
 
 ### Phase 12.2 (2026-11-06): waiting events observed live in Claude Desktop
 Claude Desktop's Code tab, plugin 0.4.1, this repository's own session
-(capture enabled); read from Prompt Relay's reduced records (field presence
+(capture enabled); read from BearlyCopy's reduced records (field presence
 only, no text):
 - **AskUserQuestion**: `PreToolUse` (with `tool_use_id`) → `PermissionRequest`
   for tool `AskUserQuestion` (no `tool_use_id`) within ~0.2 s →
@@ -291,7 +291,7 @@ only, no text):
 - **Bash permission, allowed**: `PermissionRequest` (Bash) → `PostToolUse`
   Bash when the command finished.
 - Consequence: a `PermissionRequest` is also the dialog of a question or a
-  plan; Prompt Relay keeps the more specific kind (api.attention).
+  plan; BearlyCopy keeps the more specific kind (api.attention).
 - `PostToolUse` fires for AskUserQuestion and ExitPlanMode (not stated in
   the docs).
 - Not observed yet: a denied permission, a cancelled question, elicitation.

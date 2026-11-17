@@ -9,7 +9,7 @@ public protocol PointerEvents: AnyObject {
 }
 
 /// A global monitor for mouse movement (other apps' windows) plus a local
-/// one (Prompt Relay's own windows, which global monitors skip). Mouse
+/// one (BearlyCopy's own windows, which global monitors skip). Mouse
 /// events need no Accessibility permission; key events are never monitored.
 @MainActor
 public final class LivePointerEvents: PointerEvents {
@@ -138,7 +138,7 @@ public final class LiveCorridorEvents: CorridorEvents {
         if let m = NSEvent.addGlobalMonitorForEvents(matching: presses, handler: { _ in
             MainActor.assumeIsolated { press(NSEvent.mouseLocation) }
         }) { monitors.append(m) }
-        // Moves over Prompt Relay's own windows (global monitors skip them).
+        // Moves over BearlyCopy's own windows (global monitors skip them).
         if let m = NSEvent.addLocalMonitorForEvents(matching: moves, handler: { event in
             MainActor.assumeIsolated { move(NSEvent.mouseLocation) }
             return event

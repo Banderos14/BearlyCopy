@@ -6,11 +6,11 @@ import Foundation
 // which window belongs to a finished answer, when that is ambiguous, and
 // whether two captures of a window show the same picture.
 
-/// A window the user picked in macOS's own content picker. Prompt Relay never
+/// A window the user picked in macOS's own content picker. BearlyCopy never
 /// enumerates windows: it only knows what the picker returned, for this app
 /// run (window identity does not survive a restart of either app).
 public struct PickedWindow: Equatable, Hashable, Sendable {
-    /// Prompt Relay's handle for the picker's filter (memory only).
+    /// BearlyCopy's handle for the picker's filter (memory only).
     public let handle: String
     /// "Claude — Window" when macOS says (15.2+), else "the window you picked".
     public let label: String
@@ -102,9 +102,9 @@ public enum AutoCaptureStatus: Equatable, Sendable {
         switch self {
         case .pending: return "Taking the auto screenshot…"
         case .captured: return nil
-        case .permissionRequired: return "Allow Prompt Relay to capture your linked window."
-        case .restartRequired: return "Permission was granted. Quit and reopen Prompt Relay to use it — your results and settings stay."
-        case .windowNotBound: return "Link the window showing this conversation. Links end when Prompt Relay quits; Capture Now takes one picture without linking."
+        case .permissionRequired: return "Allow BearlyCopy to capture your linked window."
+        case .restartRequired: return "Permission was granted. Quit and reopen BearlyCopy to use it — your results and settings stay."
+        case .windowNotBound: return "Link the window showing this conversation. Links end when BearlyCopy quits; Capture Now takes one picture without linking."
         case .windowUnavailable: return "The linked window was closed, so its link was removed. Link the window again to resume auto screenshots."
         case .windowNotCapturable: return "The linked window exists but could not be captured (minimized, on another Space or hidden). The link is kept; the next answer tries again."
         case .failed: return "The auto screenshot failed. The answer text is complete; you can capture the window yourself."
@@ -135,7 +135,7 @@ public enum AutoCaptureStatus: Equatable, Sendable {
     /// rebuild as a new app: an entry already switched on can belong to an
     /// earlier build. Shown only in a Debug build.
     public static let debugBuildPermissionHint =
-        "This is the Debug build: allow “Prompt Relay Dev”, not “Prompt Relay”. After a rebuild, if it already shows as on, turn it off and on again."
+        "This is the Debug build: allow “BearlyCopy Dev”, not “BearlyCopy”. After a rebuild, if it already shows as on, turn it off and on again."
 
     /// Phase 15.2: Open Screen Recording Settings stays reachable from every
     /// state where a screenshot was not taken, not only "Permission
@@ -150,10 +150,10 @@ public enum AutoCaptureStatus: Equatable, Sendable {
 
     /// Phase 14.1: Open Screen Recording Settings + Check Again.
     public var offersPermissionRecovery: Bool { self == .permissionRequired }
-    /// Phase 14.1: Quit Prompt Relay (to reopen it) + Check Again.
+    /// Phase 14.1: Quit BearlyCopy (to reopen it) + Check Again.
     public var offersRestartRecovery: Bool { self == .restartRequired }
     /// Check Again is useful whenever the status could have changed outside
-    /// Prompt Relay (a permission toggle, a relaunch, the window reopening).
+    /// BearlyCopy (a permission toggle, a relaunch, the window reopening).
     public var offersRecheck: Bool {
         switch self {
         case .permissionRequired, .restartRequired, .windowUnavailable, .windowNotCapturable, .failed: return true
@@ -206,7 +206,7 @@ public enum AutoCapturePlanner {
         guard let binding = found else { return .skip(.windowNotBound) }
         guard finishedAt >= binding.createdAt else { return .skip(nil) }   // before the link: never
         // Another active conversation whose link resolves to the same window
-        // could be the one on screen: Prompt Relay cannot tell, so it takes
+        // could be the one on screen: BearlyCopy cannot tell, so it takes
         // nothing rather than a picture of the wrong agent.
         for other in others where other.sessionKey != sessionKey {
             guard let otherKey = other.key else { continue }

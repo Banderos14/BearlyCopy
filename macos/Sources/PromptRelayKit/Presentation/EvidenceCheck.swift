@@ -1,6 +1,6 @@
 import Foundation
 
-/// Phase 7: what Prompt Relay saw on this Mac, kept apart from what the AI
+/// Phase 7: what BearlyCopy saw on this Mac, kept apart from what the AI
 /// said, plus how complete the materials are and what the developer should
 /// still check. Deterministic rules over facts already stored (hook events,
 /// attachment manifests, the answer's text); no AI, no new capture. A rule
@@ -265,14 +265,14 @@ public struct ArtifactCompleteness: Equatable, Sendable {
 }
 
 /// A few things the developer should check personally, from fixed rules.
-/// Prompt Relay never ticks them; the user does, and that is shown as the
+/// BearlyCopy never ticks them; the user does, and that is shown as the
 /// user's own check, apart from observed facts.
 public struct ReviewChecklist: Equatable, Sendable {
     public struct Item: Equatable, Sendable, Identifiable {
         public let id: String
         public let text: String
         public let reason: String
-        /// Phase 14.2: only the CI item — Prompt Relay has no CI integration
+        /// Phase 14.2: only the CI item — BearlyCopy has no CI integration
         /// to actually run, so ticking it should never be the only way to
         /// say "checked"; "Not applicable" says plainly that there is
         /// nothing here to check, without counting as a verified CI pass.
@@ -314,7 +314,7 @@ public struct ReviewChecklist: Equatable, Sendable {
         }
         if claims.tests || claims.build || evidence.items.contains(where: { $0.text.contains("test command") || $0.text.contains("build command") }) {
             items.append(Item(id: "ci", text: "Check CI, if the project has it",
-                              reason: "Prompt Relay is not connected to any CI; it cannot see CI results. If this project has no CI, mark Not applicable.",
+                              reason: "BearlyCopy is not connected to any CI; it cannot see CI results. If this project has no CI, mark Not applicable.",
                               allowsNotApplicable: true))
         }
         if handoffFiles > 0 {
@@ -384,7 +384,7 @@ extension AppModel {
 
     static let reviewChecksKey = "reviewChecks.v1"
 
-    /// Items the user ticked for the answer shown (never ticked by Prompt Relay).
+    /// Items the user ticked for the answer shown (never ticked by BearlyCopy).
     public func isReviewChecked(_ item: String) -> Bool {
         guard let key = currentRef?.key else { return false }
         return reviewChecks[key]?.contains(item) ?? false

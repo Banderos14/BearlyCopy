@@ -19,7 +19,7 @@ struct IslandSettingsView: View {
     @State private var profilesOpen = false
     @State private var login = LoginItemController()
 
-    static let repository = URL(string: "https://github.com/Banderos14/prompt-relay")!
+    static let repository = URL(string: "https://github.com/Banderos14/BearlyCopy")!
 
     var body: some View {
         BoundedScroll(maxHeight: presentation.listHeight(chrome: 16)) {
@@ -53,7 +53,7 @@ struct IslandSettingsView: View {
     @ViewBuilder private var loginRow: some View {
         toggle("Open at login",
                detail: login.unavailableReason
-                   ?? "Starts Prompt Relay when you log in, through macOS login items. Off removes it again.",
+                   ?? "Starts BearlyCopy when you log in, through macOS login items. Off removes it again.",
                isOn: Binding(get: { login.isOn }, set: { login.set($0) }))
             .disabled(login.unavailableReason != nil)
             .onAppear { login.refresh() }
@@ -74,7 +74,7 @@ struct IslandSettingsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("In the open island: ⌘K Go To · ⌘I Results Inbox · ⌘J next unread · ⇧⌘C Copy Answer · ⌥⌘C Copy with Context · ⌘[ Back · Esc close.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
-                Text("Everywhere (\(HotKeyRegistration.displayString) opens Prompt Relay). The others are off until you turn them on; none needs Accessibility access.")
+                Text("Everywhere (\(HotKeyRegistration.displayString) opens BearlyCopy). The others are off until you turn them on; none needs Accessibility access.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                 ForEach(GlobalShortcut.allCases) { shortcut in
                     Toggle(isOn: Binding(get: { settings.enabledShortcuts.contains(shortcut) },
@@ -109,7 +109,7 @@ struct IslandSettingsView: View {
     private var profilesRow: some View {
         DisclosureGroup(isExpanded: $profilesOpen) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("A profile is the configuration folder an agent ran with (CLAUDE_CONFIG_DIR, CODEX_HOME). It is not an account: Prompt Relay never reads sign-in data, so two accounts used in one folder look the same.")
+                Text("A profile is the configuration folder an agent ran with (CLAUDE_CONFIG_DIR, CODEX_HOME). It is not an account: BearlyCopy never reads sign-in data, so two accounts used in one folder look the same.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
                 ForEach(model.knownProfiles) { key in ProfileLabelRow(model: model, key: key) }
             }
@@ -140,7 +140,7 @@ struct IslandSettingsView: View {
                    options: [("Automatic", DisplayChoice.automatic)]
                     + screens.filter(\.hasNotch).map { ($0.name, DisplayChoice.display($0.displayID)) }) { settings.display = $0 }
             Hairline()
-            toggle("Make room for other notch apps", detail: "When another app uses the notch, open Prompt Relay from the menu bar.",
+            toggle("Make room for other notch apps", detail: "When another app uses the notch, open BearlyCopy from the menu bar.",
                    isOn: $settings.yieldToOtherNotchApps)
             Hairline()
             toggle("Stay on the conversation I open",
@@ -174,7 +174,7 @@ struct IslandSettingsView: View {
                     Task {
                         if !(await notifier.requestAuthorization()) {
                             settings.notifyNeedsInput = false
-                            note = "Notifications are off for Prompt Relay in System Settings → Notifications."
+                            note = "Notifications are off for BearlyCopy in System Settings → Notifications."
                         }
                     }
                 }
@@ -187,7 +187,7 @@ struct IslandSettingsView: View {
                     Task {
                         if !(await notifier.requestAuthorization()) {
                             settings.notifyWhenReady = false
-                            note = "Notifications are off for Prompt Relay in System Settings → Notifications."
+                            note = "Notifications are off for BearlyCopy in System Settings → Notifications."
                         }
                     }
                 }
@@ -298,7 +298,7 @@ struct IslandSettingsView: View {
     private var handoff: some View {
         section("Clipboard & Handoff") {
             toggle("Attach result files automatically",
-                   detail: "When a final answer arrives, safe files it wrote or names in its project are copied into Prompt Relay. Off: they are offered with Add.",
+                   detail: "When a final answer arrives, safe files it wrote or names in its project are copied into BearlyCopy. Off: they are offered with Add.",
                    isOn: Binding(get: { model.autoSelectResultAttachments }, set: { model.autoSelectResultAttachments = $0 }))
             if model.autoSelectResultAttachments {
                 Hairline()
@@ -321,7 +321,7 @@ struct IslandSettingsView: View {
                    detail: "Images you copy anywhere, kept on this Mac for 24 hours. Text from other apps is never read. Off deletes them.",
                    isOn: Binding(get: { model.clipboardHistoryEnabled }, set: { model.clipboardHistoryEnabled = $0 }))
             Hairline()
-            rowButton("Open Clipboard", detail: "Your last copies in Prompt Relay and the kept images.",
+            rowButton("Open Clipboard", detail: "Your last copies in BearlyCopy and the kept images.",
                       value: model.clipboardHistoryEnabled ? "\(model.clipboardImages?.items.count ?? 0) of \(ClipboardImageHistory.limit) images" : "") {
                 model.navigate(to: .clipboard)
             }
@@ -398,14 +398,14 @@ struct IslandSettingsView: View {
                     copyButton("Copy Install Command", text: "xcode-select --install")
                 }
             case .cliMissing:
-                status("Prompt Relay Core", value: "Missing from the app", ok: false)
+                status("BearlyCopy Core", value: "Missing from the app", ok: false)
             default:
-                status("Prompt Relay Core", value: error.title, ok: false)
+                status("BearlyCopy Core", value: error.title, ok: false)
             }
         } else if let core = model.doctor.value?.core {
-            status("Prompt Relay Core", value: "\(core.promptRelayVersion) · Python \(core.python.version)", ok: core.python.supported)
+            status("BearlyCopy Core", value: "\(core.promptRelayVersion) · Python \(core.python.version)", ok: core.python.supported)
         } else {
-            status("Prompt Relay Core", value: "Checking…", ok: true)
+            status("BearlyCopy Core", value: "Checking…", ok: true)
         }
     }
 
@@ -433,7 +433,7 @@ struct IslandSettingsView: View {
         section("About") {
             Button("Show Quick Tour") { model.startTour() }
                 .buttonStyle(IslandPillStyle(prominent: false)).padding(.horizontal, 12).padding(.top, 6)
-                .islandHelp("Nine short pages on what Prompt Relay does")
+                .islandHelp("Nine short pages on what BearlyCopy does")
             HStack {
                 Text("Version").font(.system(size: 12.5)).foregroundStyle(Island.primary)
                 Spacer()
@@ -675,7 +675,7 @@ struct AutoCaptureLinksView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if model.autoCaptureBindings.isEmpty {
-                Text("No window linked. Open a conversation, then link the window of its app. Links last until Prompt Relay quits.")
+                Text("No window linked. Open a conversation, then link the window of its app. Links last until BearlyCopy quits.")
                     .font(.system(size: 11)).foregroundStyle(Island.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             ForEach(model.autoCaptureBindings) { binding in

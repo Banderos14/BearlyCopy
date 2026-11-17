@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Notarize, staple and check a Developer ID-signed DMG (Phase 11, ADR-020).
 #
-#   scripts/release-notarize.sh dist/Prompt-Relay-<v>.dmg            show the plan only
-#   NOTARY_PROFILE=prompt-relay scripts/release-notarize.sh --submit dist/Prompt-Relay-<v>.dmg
+#   scripts/release-notarize.sh dist/BearlyCopy-<v>.dmg            show the plan only
+#   NOTARY_PROFILE=prompt-relay scripts/release-notarize.sh --submit dist/BearlyCopy-<v>.dmg
 #
 # One-time setup (stores an app-specific password in the keychain; Apple ID
 # and Team ID are yours):
@@ -23,7 +23,7 @@ case "$dmg" in *UNSIGNED*) die "refusing: this is an unsigned test package" ;; e
 mnt=$(mktemp -d)
 hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mnt" "$dmg"
 trap 'hdiutil detach -quiet "$mnt" >/dev/null 2>&1 || true; rmdir "$mnt" 2>/dev/null || true' EXIT
-app="$mnt/Prompt Relay.app"
+app="$mnt/BearlyCopy.app"
 codesign --verify --strict --deep "$app" || die "app signature does not verify"
 # Code requirement, not text matching: Apple-anchored Developer ID
 # Application leaf (OID 1.2.840.113635.100.6.1.13) and its intermediate.

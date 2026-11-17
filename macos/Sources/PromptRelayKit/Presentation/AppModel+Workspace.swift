@@ -56,13 +56,13 @@ extension AppModel {
         allSessions.lazy.filter { $0.profileKey == key }.compactMap { $0.profile?.hint }.first
     }
 
-    /// What Prompt Relay knows about a profile, in words (Settings, tooltips).
+    /// What BearlyCopy knows about a profile, in words (Settings, tooltips).
     public func profileExplanation(_ key: ProfileKey) -> String {
         if key.isUnassigned {
             return "Recorded before profiles were tracked. These conversations stay here; they are not moved into another profile."
         }
         let folder = profileHint(key).map { "Configuration folder \($0)." } ?? "Configuration folder recorded by its hash only."
-        return folder + " A folder is not an account: if you sign in to another account in the same folder, Prompt Relay cannot tell."
+        return folder + " A folder is not an account: if you sign in to another account in the same folder, BearlyCopy cannot tell."
     }
 
     /// Names a profile locally. Empty text removes the name; history is

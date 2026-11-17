@@ -23,8 +23,8 @@
 | T11 | Capture of unintended projects | Opt-in allowlist; fails closed on a broken config; refuses `/` and `$HOME` |
 | T12 | Denial of service through huge stdin | 64 MiB cap; larger payloads are rejected without storing |
 | T13 | Concurrent writes corrupt history | `flock` + single-buffer append + `fsync`; partial lines isolated; tested with 12 parallel writers |
-| T14 | Hook from a repository runs Prompt Relay unexpectedly | Claude Code's workspace trust applies. Prompt Relay never writes `.claude/settings.json` into user repos |
-| T16 | Deletion removes user files outside Prompt Relay, or follows a symlink | Deletion only removes regular, non-symlink files with session-file names directly inside a non-symlink `events/`, re-checked under the file lock (`Store.safe_unlink`); config, logs and foreign files are never touched; tested with symlinked files, a symlinked `events/`, crafted paths and foreign names |
+| T14 | Hook from a repository runs BearlyCopy unexpectedly | Claude Code's workspace trust applies. BearlyCopy never writes `.claude/settings.json` into user repos |
+| T16 | Deletion removes user files outside BearlyCopy, or follows a symlink | Deletion only removes regular, non-symlink files with session-file names directly inside a non-symlink `events/`, re-checked under the file lock (`Store.safe_unlink`); config, logs and foreign files are never touched; tested with symlinked files, a symlinked `events/`, crafted paths and foreign names |
 | T17 | Deleting the history of a running session / losing a concurrent event | Sessions active in the last 30 min are kept unless `--force-active`; files changed since planning are kept; a hook waiting on the lock reopens the path after an unlink. Tested with 16 hooks and 3 concurrent deleters |
 | T18 | Accidental bulk deletion | Every destructive command previews by default and needs `--yes`; nothing is automatic, even with a retention period set |
 | T19 | Symlink planted at a session path redirects hook writes | `O_NOFOLLOW` on open; the hook logs `unsafe_path` and exits 0 |
@@ -72,12 +72,12 @@
 ## 5. Hook installation safety
 
 Phase 2B uses the official plugin mechanism (ADR-008): Claude Code installs
-and removes the hooks, and Prompt Relay writes no settings file. The rules
+and removes the hooks, and BearlyCopy writes no settings file. The rules
 below apply only if a settings-based fallback installer is ever built.
 1. Never replace a settings file. Parse it, refuse to act on invalid JSON,
    and merge only our entries.
 2. Back up the file with a timestamp before changing it.
-3. Make it idempotent: detect existing Prompt Relay entries by the exact
+3. Make it idempotent: detect existing BearlyCopy entries by the exact
    command path; never add duplicates.
 4. Show a dry-run diff and require explicit confirmation for user-level
    (global) settings.
@@ -96,7 +96,7 @@ below apply only if a settings-based fallback installer is ever built.
 
 ### Automatic result files (Phase 17)
 
-When a final answer arrives, Prompt Relay copies eligible files into its own
+When a final answer arrives, BearlyCopy copies eligible files into its own
 folder and ticks them for the hand-off. It is a local copy only: nothing is
 uploaded, nothing is executed, and a hand-off still happens only when the
 user copies or drags.
@@ -116,7 +116,7 @@ user copies or drags.
   user's explicit choice.
 * **Residual risk:** the secret patterns are heuristics. A secret in an
   unrecognised form inside a file the answer names would be copied into
-  Prompt Relay's private folder and ticked. It leaves the Mac only if the
+  BearlyCopy's private folder and ticked. It leaves the Mac only if the
   user hands it over; Copy with Context still scans the text it copies.
   "Attach result files automatically" (off) or "Select attached files for
   handoff" (off) remove the automatic step.

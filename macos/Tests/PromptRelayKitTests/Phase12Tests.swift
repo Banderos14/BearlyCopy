@@ -554,13 +554,13 @@ import Testing
     }
 
     @Test func openAtLoginIsOffByDefaultAndOnlyForTheInstalledReleaseCopy() {
-        let installed = URL(fileURLWithPath: "/Users/x/Applications/Prompt Relay.app")
+        let installed = URL(fileURLWithPath: "/Users/x/Applications/BearlyCopy.app")
         let fake = FakeLogin()
         let debug = LoginItemController(service: fake, bundleURL: installed, isDebugBuild: true, installedLocations: [installed])
         #expect(debug.unavailableReason != nil)
         debug.set(true)
         #expect(fake.calls.isEmpty, "a Debug build never registers itself")
-        let build = LoginItemController(service: fake, bundleURL: URL(fileURLWithPath: "/tmp/DerivedData/Prompt Relay.app"),
+        let build = LoginItemController(service: fake, bundleURL: URL(fileURLWithPath: "/tmp/DerivedData/BearlyCopy.app"),
                                         isDebugBuild: false, installedLocations: [installed])
         #expect(build.unavailableReason != nil)
         let app = LoginItemController(service: fake, bundleURL: installed, isDebugBuild: false, installedLocations: [installed])

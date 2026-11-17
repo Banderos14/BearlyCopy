@@ -18,7 +18,7 @@ public enum ConnectionTarget: String, CaseIterable, Identifiable, Sendable {
         }
     }
     var provider: AgentProvider { self == .claudeCode ? .claudeCode : .codex }
-    /// The host label Prompt Relay's Codex hook command carries.
+    /// The host label BearlyCopy's Codex hook command carries.
     var codexHost: String? {
         switch self {
         case .claudeCode: return nil
@@ -99,7 +99,7 @@ public struct AgentFacts: Equatable, Sendable {
             switch claudePlugin {
             case .unknown: return claudeFootprint ? .installed : .notDetected
             case .missing: return claudeFootprint ? .configurationRequired : .notDetected
-            case .broken: return .error("The Prompt Relay plugin record exists but its files are missing. Reinstall it with claude plugin install.")
+            case .broken: return .error("The BearlyCopy plugin record exists but its files are missing. Reinstall it with claude plugin install.")
             case .installed:
                 if enabledProjects == 0 { return .captureDisabled }
                 return .waitingForFirstEvent
@@ -138,15 +138,15 @@ public struct AgentFacts: Equatable, Sendable {
                     ? "No Codex CLI found (no ~/.codex folder). Skip it if you do not use Codex in Terminal."
                     : "No Xcode coding assistant data for Codex found. Skip it if you do not use Codex in Xcode."
         case .installed:
-            return "Claude Code is installed. Checking whether the Prompt Relay plugin is installed…"
+            return "Claude Code is installed. Checking whether the BearlyCopy plugin is installed…"
         case .configurationRequired:
             return target == .claudeCode
-                ? "The Prompt Relay plugin is not installed in Claude Code. Copy the two commands below and run them in Terminal; Claude Code shows what it installs."
-                : "Prompt Relay's hooks are not in \(target == .codexCLI ? "~/.codex/hooks.json" : "Xcode's Codex hooks.json"). Preview the change with the command below, then apply it; your other hooks are kept and a backup is written."
+                ? "The BearlyCopy plugin is not installed in Claude Code. Copy the two commands below and run them in Terminal; Claude Code shows what it installs."
+                : "BearlyCopy's hooks are not in \(target == .codexCLI ? "~/.codex/hooks.json" : "Xcode's Codex hooks.json"). Preview the change with the command below, then apply it; your other hooks are kept and a backup is written."
         case .trustRequired:
-            return "The hooks are defined, but Codex has not run them yet. Codex runs new hooks only after you trust them: open Codex, review Prompt Relay's hooks in /hooks (or accept the prompt on the next start)."
+            return "The hooks are defined, but Codex has not run them yet. Codex runs new hooks only after you trust them: open Codex, review BearlyCopy's hooks in /hooks (or accept the prompt on the next start)."
         case .captureDisabled:
-            return "Capture is off for every project. Enable the project you work in (step 3); Prompt Relay ignores everything else."
+            return "Capture is off for every project. Enable the project you work in (step 3); BearlyCopy ignores everything else."
         case .waitingForFirstEvent:
             return "Set up. Send any prompt to \(target.provider.title) in an enabled project; the status turns Connected when its first event is stored."
         case .connected(let at):
@@ -159,7 +159,7 @@ public struct AgentFacts: Equatable, Sendable {
 
 extension AgentFacts {
     /// Read-only gathering. Existence checks only; the Codex hook files are
-    /// parsed just to count Prompt Relay's own commands (as before).
+    /// parsed just to count BearlyCopy's own commands (as before).
     @MainActor
     static func gather(model: AppModel, fileManager: FileManager = .default,
                        home: URL = FileManager.default.homeDirectoryForCurrentUser) -> AgentFacts {
@@ -187,7 +187,7 @@ extension AgentFacts {
             facts.enabledProjects = doctor.capture.enabledProjects.count
             facts.codexObserved = doctor.observed.bySource ?? [:]
             if let error = doctor.capture.configError { facts.coreProblem = "Capture configuration error: \(error)" }
-            else if !doctor.storage.writable { facts.coreProblem = "Prompt Relay cannot write its history folder (\(doctor.storage.dataDir))." }
+            else if !doctor.storage.writable { facts.coreProblem = "BearlyCopy cannot write its history folder (\(doctor.storage.dataDir))." }
         } else if let error = model.doctor.error {
             facts.coreProblem = error.title
         }

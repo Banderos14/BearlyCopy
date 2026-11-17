@@ -18,11 +18,11 @@ public enum ImportAssistant: String, CaseIterable, Codable, Sendable, Identifiab
 }
 
 /// What the pasted text itself says, read only from explicit structure:
-/// a Prompt Relay package's known headings, a `## Task`-style heading, and
+/// a BearlyCopy package's known headings, a `## Task`-style heading, and
 /// `Project:` / `Repository:` fields. Never guessed from loose words; never
 /// raises the trust of anything in the text (it stays imported by the user).
 public struct ImportAnalysis: Equatable, Sendable {
-    /// The text is a Copy with Context package Prompt Relay made earlier.
+    /// The text is a Copy with Context package BearlyCopy made earlier.
     public var isPromptRelayPackage = false
     /// A request stated in the text, verbatim, when its place is unambiguous.
     public var task: String?

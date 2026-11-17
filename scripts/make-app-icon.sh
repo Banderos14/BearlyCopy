@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render Prompt Relay's application icon from Relay's vector drawing
+# Render BearlyCopy's application icon from Relay's vector drawing
 # (macos/Sources/PromptRelayKit/Notch/AppIcon.swift, which draws
 # MascotView.shapes — the notch bear) into macos/Resources/AppIcon.icns and a
 # 1024-pixel preview, docs/images/app-icon-1024.png (Phase 16).

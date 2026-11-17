@@ -158,7 +158,7 @@ struct EvidenceView: View {
                         }
                     }
                     if let checklist = model.reviewChecklist {
-                        section("Review Checklist", note: "For you to check yourself. Prompt Relay has not done these checks; a tick is your own.",
+                        section("Review Checklist", note: "For you to check yourself. BearlyCopy has not done these checks; a tick is your own.",
                                badge: model.reviewProgress?.summary) {
                             if checklist.items.isEmpty {
                                 Text("Nothing specific to check from what was recorded.").font(.system(size: 11.5)).foregroundStyle(Island.tertiary)

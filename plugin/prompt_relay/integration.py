@@ -1,4 +1,4 @@
-"""Read-only diagnostics of how Prompt Relay is connected to Claude Code.
+"""Read-only diagnostics of how BearlyCopy is connected to Claude Code.
 
 Three kinds of evidence, never mixed (docs/PLUGIN.md §6):
 - configuration: what settings files and plugin records *say* (may be stale);
@@ -41,7 +41,7 @@ def _older(version: Any, floor: str) -> bool:
     return a is not None and b is not None and a < b
 MAX_JSON_BYTES = 5 * 1024 * 1024
 LOG_TAIL_LINES = 5000
-# Markers that identify a Prompt Relay hook handler in a settings file.
+# Markers that identify a BearlyCopy hook handler in a settings file.
 OUR_MARKERS = ("prompt-relay", "prompt_relay")
 
 
@@ -240,13 +240,13 @@ def diagnose(env: Mapping[str, str], project: Optional[str], python_version: Tup
         add("warning", "project_not_enabled", "capture is off for this project")
     if plugin_configured and settings_hooks:
         add("warning", "double_registration",
-            "Prompt Relay is configured both as a plugin and as settings hooks ("
+            "BearlyCopy is configured both as a plugin and as settings hooks ("
             + ", ".join(s["scope"] for s in settings_hooks) + "). Events are deduplicated, but remove the settings "
             "hooks to avoid running the handler twice")
     if len(settings_hooks) > 1:
-        add("warning", "settings_registered_twice", "settings hooks for Prompt Relay exist in more than one settings file")
+        add("warning", "settings_registered_twice", "settings hooks for BearlyCopy exist in more than one settings file")
     if not plugin_configured and not settings_hooks:
-        add("warning", "not_registered", "no plugin install record and no settings hooks found for Prompt Relay")
+        add("warning", "not_registered", "no plugin install record and no settings hooks found for BearlyCopy")
     for rec in plugin["records"]:
         if not rec["manifest_found"] or not rec["launcher_found"]:
             add("error", "plugin_install_incomplete", f"install record {rec['id']} points to a directory without the plugin files")

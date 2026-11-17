@@ -1,7 +1,7 @@
 import CoreServices
 import Foundation
 
-/// Watches the Prompt Relay data dir with FSEvents and reports, debounced,
+/// Watches the BearlyCopy data dir with FSEvents and reports, debounced,
 /// that history may have changed. It never reads the files: the app then
 /// asks the Core again, which tolerates a file being appended mid-read.
 ///

@@ -1,6 +1,6 @@
 import AppKit
 
-/// Which Prompt Relay build this is, and whether another one runs.
+/// Which BearlyCopy build this is, and whether another one runs.
 ///
 /// Debug (Xcode) and Release builds have different bundle IDs, so they keep
 /// separate preferences and can run side by side: two menu-bar icons and,
@@ -14,7 +14,7 @@ public enum AppBuild {
     public static var bundleID: String? { Bundle.main.bundleIdentifier }
     public static var isDebugBuild: Bool { bundleID == debugBundleID }
 
-    /// Prompt Relay builds in `running` other than this process (a second
+    /// BearlyCopy builds in `running` other than this process (a second
     /// copy with the same bundle ID counts too).
     public static func otherBuilds(own: String?, running: [String]) -> [String] {
         let known: Set<String> = [releaseBundleID, debugBundleID]
@@ -39,7 +39,7 @@ public enum AppBuild {
         }
     }
 
-    /// One running copy of Prompt Relay.
+    /// One running copy of BearlyCopy.
     public struct Copy: Equatable, Sendable {
         public let pid: Int32
         public let bundleID: String
@@ -121,7 +121,7 @@ public enum AppBuild {
     }
 
     public static func name(of bundleID: String) -> String {
-        bundleID == debugBundleID ? "Prompt Relay (Debug)" : "Prompt Relay"
+        bundleID == debugBundleID ? "BearlyCopy (Debug)" : "BearlyCopy"
     }
 
     // MARK: Phase 11 — what this build is, and whether it is the one you think
@@ -182,8 +182,8 @@ public enum AppBuild {
     /// Where the Release app is installed by `scripts/install-local.sh` and
     /// by dragging from the DMG.
     public static var installedLocations: [URL] {
-        [FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications/Prompt Relay.app"),
-         URL(fileURLWithPath: "/Applications/Prompt Relay.app")]
+        [FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications/BearlyCopy.app"),
+         URL(fileURLWithPath: "/Applications/BearlyCopy.app")]
     }
 
     /// Mismatches worth telling the user about. Only facts read from the
@@ -194,7 +194,7 @@ public enum AppBuild {
         var notes: [String] = []
         if let disk = onDiskAtRunningPath, disk != running,
            disk.commit != running.commit || disk.builtAt != running.builtAt || disk.version != running.version {
-            notes.append("A different build (\(disk.version ?? "?") · \(disk.commitText)) was installed here after this one started. Quit and reopen Prompt Relay to use it.")
+            notes.append("A different build (\(disk.version ?? "?") · \(disk.commitText)) was installed here after this one started. Quit and reopen BearlyCopy to use it.")
         }
         if let app = running.version, let core = running.coreVersion, app != core {
             notes.append("This build's bundled Core is \(core), the app is \(app). Rebuild with scripts/build-macos-app.sh.")

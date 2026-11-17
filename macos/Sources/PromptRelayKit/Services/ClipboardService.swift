@@ -140,7 +140,7 @@ public final class ClipboardService {
         guard back.map(\.standardizedFileURL) == urls.map(\.standardizedFileURL) else { throw ClipboardError.verificationFailed }
     }
 
-    /// Marks what Prompt Relay wrote, so its own clipboard image history
+    /// Marks what BearlyCopy wrote, so its own clipboard image history
     /// never takes it back in. Added to the first item.
     private func markOwn() {
         pasteboard.pasteboardItems?.first?.setData(Data([1]), forType: ClipboardImageHistory.ownType)

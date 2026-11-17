@@ -29,7 +29,7 @@ project folder.
 
 ```
 # Context Pack: N AI results for an independent check
-Prepared by Prompt Relay at <time>. No AI service was used. Format: prompt-relay-context-pack v1.
+Prepared by BearlyCopy at <time>. No AI service was used. Format: prompt-relay-context-pack v1.
 
 Provenance labels: [Confirmed locally] …; [Reported by Claude] …; [Reported by Codex] …;
 [Supplied by you] …; [Not verified] …; [Unavailable] …
@@ -57,7 +57,7 @@ Each result below is a separate section with its own source. …
 
 ## Review instructions                     [Supplied by you], verbatim in a fence
    — or —
-## Review request                          [Prompt Relay standard text], labelled as such
+## Review request                          [BearlyCopy standard text], labelled as such
 
 ## Manifest (machine-readable)             optional (“Add manifest”), fenced JSON
 ```
@@ -102,7 +102,7 @@ others — image data in memory — but start unchecked unless the user turns
 on "Include auto screenshots in handoff"; an unchecked one is not in the
 text, the manifest, Copy Files, Drag or Export. Their origin line says
 "auto screenshot of the window the user linked to this agent, taken by
-Prompt Relay after the final answer; it may not show the answer's last
+BearlyCopy after the final answer; it may not show the answer's last
 lines". Format v1 is unchanged.
 
 A change to results, order, instructions, receiver, manifest option or
@@ -120,7 +120,7 @@ ChatGPT, Claude, Gemini, Codex, any AI chat. Receivers, not capture sources.
 Text and Markdown (as plain-text source) are a standard paste. Image data,
 file URLs and several files at once are **not verified** for any receiver;
 for Codex in a terminal, image paste is not possible and a dropped file
-becomes its path. The choice changes guidance only. Prompt Relay never
+becomes its path. The choice changes guidance only. BearlyCopy never
 pastes, presses Send, reads another app or drives a browser.
 
 ## 6. Handoff History

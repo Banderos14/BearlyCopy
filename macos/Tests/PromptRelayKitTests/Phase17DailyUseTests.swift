@@ -421,7 +421,7 @@ final class Phase17PermissionRecoveryTests: XCTestCase {
 
     func testEveryStateFitsOneShortSentence() {
         for text in ["Nothing new is saved while capture is paused.",
-                     "Screenshots need Screen Recording for this version of Prompt Relay.",
+                     "Screenshots need Screen Recording for this version of BearlyCopy.",
                      "Pick the Claude window once to get screenshots. Needed again after each restart."] {
             XCTAssertLessThanOrEqual(text.count, 90)
         }

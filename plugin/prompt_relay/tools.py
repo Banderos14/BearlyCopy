@@ -1,6 +1,6 @@
 """Observed tool results (ADR-013): PostToolUse and PostToolUseFailure.
 
-The hook reduces each payload to the few fields Prompt Relay may keep before
+The hook reduces each payload to the few fields BearlyCopy may keep before
 anything is stored. The raw payload of these two events never reaches disk:
 it can hold full file contents (Write/Edit ``originalFile``,
 ``structuredPatch``), command output and secrets.

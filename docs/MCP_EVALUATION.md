@@ -1,21 +1,21 @@
 # Hooks, local store, or MCP? (Phase 11 evaluation)
 
 Question from the owner: could the Model Context Protocol simplify passing
-context between agents, or even replace Prompt Relay's hooks?
+context between agents, or even replace BearlyCopy's hooks?
 
-Short answer: **MCP can be a useful read-only *output* of Prompt Relay
+Short answer: **MCP can be a useful read-only *output* of BearlyCopy
 later. It cannot replace the hooks as the *input*.** Decision: ADR-022.
 
 ## The three mechanisms
 
-| | Lifecycle hooks (today) | Prompt Relay's local store (today) | MCP server (possible) |
+| | Lifecycle hooks (today) | BearlyCopy's local store (today) | MCP server (possible) |
 |---|---|---|---|
 | Who starts it | The agent runtime, on every event (UserPromptSubmit, Stop, PostToolUse…) | The app / CLI, when the user acts | The **model**, when it decides to call a tool |
 | Sees the final answer | Yes — `last_assistant_message` on `Stop`, verbatim, every turn | Yes, from the hooks | Only if the model passes it as a tool argument |
 | Verbatim guarantee | Yes (bytes from the runtime) | Yes (tests enforce it) | No — the model would re-emit text; it can shorten or rephrase |
 | Works without the model's cooperation | Yes | Yes | No |
 | Cost per turn | ~40–60 ms local process, no tokens | none | Tool-call tokens and latency inside the agent's turn |
-| Direction | agent → Prompt Relay | storage | Prompt Relay → agent (read), or agent → Prompt Relay (write) |
+| Direction | agent → BearlyCopy | storage | BearlyCopy → agent (read), or agent → BearlyCopy (write) |
 | Trust boundary | Runs as the user; Codex asks for hook trust | User's data dir, 0700 | Any MCP client the user connects can call it |
 
 ## Can MCP replace passive capture?
@@ -55,7 +55,7 @@ JSON-RPC over stdin/stdout) would map:
 
 ## Safety rules if it is ever built
 
-- **Off by default**, enabled per project in Prompt Relay; a project not on
+- **Off by default**, enabled per project in BearlyCopy; a project not on
   the MCP allowlist is invisible (not "forbidden" — absent).
 - **Read-only.** No tool writes, deletes, enables capture, or copies to the
   clipboard.

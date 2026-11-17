@@ -250,7 +250,7 @@ extension AppModel {
         public let path: String?
         public let exists: Bool
         public let artifact: ObservedArtifact?
-        /// Phase 17: why Prompt Relay did not attach it by itself (nil: not
+        /// Phase 17: why BearlyCopy did not attach it by itself (nil: not
         /// tried yet, or automatic preparation is off).
         var autoSkip: ResultAttachments.Skip? = nil
 
@@ -274,7 +274,7 @@ extension AppModel {
         /// Why Add is not offered, in words; nil when it is.
         public var notAttachableReason: String? {
             if attachable { return nil }
-            return exists ? "Not attachable — Prompt Relay keeps text, PDF and images" : "File no longer exists — cannot be attached"
+            return exists ? "Not attachable — BearlyCopy keeps text, PDF and images" : "File no longer exists — cannot be attached"
         }
     }
 
@@ -415,12 +415,12 @@ extension AppModel {
     ///
     /// Phase 16: never silent. Every outcome is said in `attachmentNotice`
     /// (added and selected for hand-off; already attached; why it failed),
-    /// and only a record actually written to Prompt Relay's store counts as
+    /// and only a record actually written to BearlyCopy's store counts as
     /// "attached". Returns that outcome.
     @discardableResult
     public func accept(_ suggestion: Suggestion) -> AttachOutcome {
         guard let ref = currentRef else { return report(.failed(suggestion.title, "no answer is selected")) }
-        guard let store = reportStore else { return report(.failed(suggestion.title, "Prompt Relay's attachment folder is not available")) }
+        guard let store = reportStore else { return report(.failed(suggestion.title, "BearlyCopy's attachment folder is not available")) }
         let roots = detail.value.map(attachmentRoots(for:))
         let root = roots?.display
         let outcome: AttachOutcome
@@ -437,7 +437,7 @@ extension AppModel {
                                                displayPath: Self.displayPath(path, root: root))
                 // Confirm it is in the store now, not just returned.
                 guard store.attachments(for: ref).contains(where: { $0.id == stored.id }) else {
-                    outcome = .failed(suggestion.title, "it could not be saved in Prompt Relay's folder"); break
+                    outcome = .failed(suggestion.title, "it could not be saved in BearlyCopy's folder"); break
                 }
                 if before.contains(stored.id) {
                     // The same bytes were attached already (perhaps under another name):
@@ -527,14 +527,14 @@ extension AppModel {
         case .notAnImage: return "it is not an image"
         case .tooLarge: return "it is larger than 50 MB"
         case .documentTooLarge: return "text documents can be at most 1 MB"
-        case .lockUnavailable: return "Prompt Relay's folder is busy or not writable; nothing was saved — try again"
-        case .noPermission: return "macOS does not allow Prompt Relay to read it"
+        case .lockUnavailable: return "BearlyCopy's folder is busy or not writable; nothing was saved — try again"
+        case .noPermission: return "macOS does not allow BearlyCopy to read it"
         case .damagedImage: return "it is damaged or not a readable image"
         case .unreadable: return "it could not be read (moved, deleted or a folder?)"
-        case .writeFailed: return "it could not be saved in Prompt Relay's folder"
+        case .writeFailed: return "it could not be saved in BearlyCopy's folder"
         case .removeFailed: return "it could not be saved"
         case .empty: return "it is empty"
-        case .unsupported: return "Prompt Relay keeps text documents, PDFs and images, not this kind of file"
+        case .unsupported: return "BearlyCopy keeps text documents, PDFs and images, not this kind of file"
         }
     }
 
@@ -670,7 +670,7 @@ extension AppModel {
         let chosen = step.attachmentIDs.compactMap { byID[$0] }
         guard chosen.count == step.attachmentIDs.count else { return [] }
         do { return try store.handoffFiles(for: chosen.filter { !$0.isInMemory }, names: handoffNames(for: step.ref)) } catch {
-            attachmentMessage = "Prompt Relay could not prepare the files."
+            attachmentMessage = "BearlyCopy could not prepare the files."
             return []
         }
     }

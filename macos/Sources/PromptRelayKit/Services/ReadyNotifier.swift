@@ -40,7 +40,7 @@ public final class ReadyNotifier {
         guard let center else { return }
         let content = UNMutableNotificationContent()
         content.title = "Claude Code answer ready"
-        content.body = "\(answer.projectName) — open Prompt Relay to copy it."
+        content.body = "\(answer.projectName) — open BearlyCopy to copy it."
         content.threadIdentifier = "prompt-relay.ready"
         let request = UNNotificationRequest(identifier: "prompt-relay.ready.\(answer.sessionKey)", content: content, trigger: nil)
         center.add(request) { _ in }

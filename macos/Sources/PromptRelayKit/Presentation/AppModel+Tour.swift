@@ -21,10 +21,10 @@ extension AppModel {
     public static let tourBearSymbol = "relay.bear"
 
     public static let tourPages: [TourPage] = [
-        TourPage(id: 0, symbol: tourBearSymbol, title: "Welcome to Prompt Relay",
+        TourPage(id: 0, symbol: tourBearSymbol, title: "Welcome to BearlyCopy",
                  text: "It keeps the final answer of Claude Code or Codex exactly as written, one click from any other chat."),
         TourPage(id: 1, symbol: "macbook", title: "The notch is the app",
-                 text: "Hover the notch to open Prompt Relay. Press Esc or click anywhere else to close it."),
+                 text: "Hover the notch to open BearlyCopy. Press Esc or click anywhere else to close it."),
         TourPage(id: 2, symbol: "eye", title: "Quick Peek",
                  text: "The latest answer, the request it answered, and two buttons. Click Details for everything."),
         TourPage(id: 3, symbol: "doc.on.doc", title: "Copy Answer",

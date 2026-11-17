@@ -150,6 +150,6 @@ final class AppBuildTests: XCTestCase {
         XCTAssertEqual(AppBuild.otherBuilds(own: release, running: [release, debug]), [debug])
         XCTAssertEqual(AppBuild.otherBuilds(own: debug, running: [release, debug, "fr.louisraille.Coucou"]), [release])
         XCTAssertEqual(AppBuild.otherBuilds(own: release, running: [release, release]), [release], "a second copy of the same build")
-        XCTAssertEqual(AppBuild.name(of: debug), "Prompt Relay (Debug)")
+        XCTAssertEqual(AppBuild.name(of: debug), "BearlyCopy (Debug)")
     }
 }

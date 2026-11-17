@@ -64,7 +64,7 @@ public final class NotchSettings {
 
     private let defaults: any SettingsStore
 
-    /// The resting island at the notch opens on hover. Off: Prompt Relay
+    /// The resting island at the notch opens on hover. Off: BearlyCopy
     /// opens only from the menu-bar item or the hotkey. On by default since
     /// Phase 3D: the island is the app's interface.
     public var notchEnabled: Bool { didSet { defaults.set(notchEnabled, forKey: Key.notchEnabled) } }

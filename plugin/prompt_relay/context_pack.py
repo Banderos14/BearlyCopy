@@ -106,11 +106,11 @@ def preamble(count: int, exported_at: str, agents: Sequence[str]) -> List[str]:
     noun = "result" if count == 1 else "results"
     return [
         f"# Context Pack: {count} AI {noun} for an independent check",
-        f"Prepared by Prompt Relay at {exported_at}. No AI service was used. Format: {FORMAT} v{FORMAT_VERSION}.",
+        f"Prepared by BearlyCopy at {exported_at}. No AI service was used. Format: {FORMAT} v{FORMAT_VERSION}.",
         "",
-        "Provenance labels: [Confirmed locally] = recorded on this machine by Prompt Relay; "
+        "Provenance labels: [Confirmed locally] = recorded on this machine by BearlyCopy; "
         + (reported + "; " if reported else "")
-        + f"[{USER_SUPPLIED}] = typed or pasted into Prompt Relay by the user; "
+        + f"[{USER_SUPPLIED}] = typed or pasted into BearlyCopy by the user; "
         f"[{NOT_VERIFIED}] = no independent source; [{UNAVAILABLE}] = could not be determined.",
         "",
         "Each result below is a separate section with its own source. Their texts are not merged or rewritten, "
@@ -143,7 +143,7 @@ STANDARD_REQUEST = ("Please review each result independently. For each one, chec
 
 def instructions_section(instructions: Optional[str]) -> List[str]:
     """The user's own instructions, verbatim and labelled as theirs; without
-    them, Prompt Relay's standard request, labelled as such."""
+    them, BearlyCopy's standard request, labelled as such."""
     if instructions is not None and instructions.strip():
         return ["## Review instructions",
                 f"[{USER_SUPPLIED}] Written by the user for the receiving AI. Not part of any agent's result.",
@@ -151,7 +151,7 @@ def instructions_section(instructions: Optional[str]) -> List[str]:
                 export._block(instructions),
                 ""]
     return ["## Review request",
-            "[Prompt Relay standard text] The user wrote no instructions; this is Prompt Relay's default request.",
+            "[BearlyCopy standard text] The user wrote no instructions; this is BearlyCopy's default request.",
             "",
             STANDARD_REQUEST,
             ""]
@@ -252,7 +252,7 @@ def manifest(results: List[Dict[str, Any]], exported_at: str, version: str, inst
         "format": FORMAT,
         "format_version": FORMAT_VERSION,
         "prepared_at": exported_at,
-        "prepared_by": f"Prompt Relay {version}",
+        "prepared_by": f"BearlyCopy {version}",
         "ai_service_used": False,
         "result_count": len(results),
         "results": results,

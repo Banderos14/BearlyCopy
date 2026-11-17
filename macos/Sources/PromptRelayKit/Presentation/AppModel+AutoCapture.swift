@@ -16,7 +16,7 @@ import Foundation
 ///   unaffected either way.
 extension AppModel {
     /// The capture identity of a conversation: agent, local profile, host and
-    /// project as Prompt Relay groups it.
+    /// project as BearlyCopy groups it.
     func captureKey(for session: SessionSummary) -> CaptureSourceKey? {
         guard let path = projectPath(for: session) ?? session.project.path else { return nil }
         return CaptureSourceKey(provider: session.provider, profileID: session.profile?.id ?? ProfileKey.unassigned,
@@ -76,7 +76,7 @@ extension AppModel {
                 self.autoCapturePermissionBlocked = denied
                 self.autoCaptureMessage = denied
                     ? AutoCaptureStatus.permissionRequired.message
-                    : "The window could not be linked (screen capture may be off for Prompt Relay)."
+                    : "The window could not be linked (screen capture may be off for BearlyCopy)."
             case nil: break
             }
         }
@@ -88,7 +88,7 @@ extension AppModel {
     /// seconds ago) is linked to the window of the app in front: that is where
     /// the person typed it — Claude Desktop, a terminal, an editor, anything.
     /// One link per conversation, replaced when a later prompt is sent from
-    /// another window; never when Prompt Relay itself is in front, never for a
+    /// another window; never when BearlyCopy itself is in front, never for a
     /// conversation that was already working, never a window of another app.
     func autoLinkWorkingWindows() {
         // Never reads the window list unless the person turned this on AND
@@ -333,7 +333,7 @@ extension AppModel {
     /// any reason except permission — a minimized window, one on another
     /// Space, or a transient ScreenCaptureKit error lost its link. The link
     /// is now dropped only when its invalidity is established: macOS no
-    /// longer lists the window, or Prompt Relay no longer holds its source.
+    /// longer lists the window, or BearlyCopy no longer holds its source.
     /// Never replaced by another window.
     func afterCaptureFailure(_ error: WindowCaptureError, binding: WindowBinding) -> AutoCaptureStatus {
         let gone = error == .noSource || windowCapture.presence(of: binding.window) == .gone

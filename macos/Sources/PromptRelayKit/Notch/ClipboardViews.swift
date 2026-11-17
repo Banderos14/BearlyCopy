@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-// Clipboard: Prompt Relay's small shelf, usable without Claude Code. Text
-// holds the last ten copies made in Prompt Relay (references, fetched
+// Clipboard: BearlyCopy's small shelf, usable without Claude Code. Text
+// holds the last ten copies made in BearlyCopy (references, fetched
 // fresh on Copy Again; text from other apps is never read). Images holds
 // the last ten images copied anywhere (ADR-014's history: SHA-256
 // de-duplication, 20 MB limit, 24 h, sensitive types skipped, local only).

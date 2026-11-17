@@ -208,7 +208,7 @@ struct LatestChip: View {
                 .font(.system(size: 11, weight: .medium)).foregroundStyle(Island.secondary)
                 .padding(.horizontal, 6).frame(height: 18).background(Capsule().fill(Island.cardRaised))
                 .accessibilityLabel("This conversation is pinned")
-                .islandHelp("Prompt Relay stays on this conversation. Follow Latest in Settings unpins it.")
+                .islandHelp("BearlyCopy stays on this conversation. Follow Latest in Settings unpins it.")
             }
             if !pinOnly, model.isOffLatest, let latest = model.readyAnswer {
                 Button {

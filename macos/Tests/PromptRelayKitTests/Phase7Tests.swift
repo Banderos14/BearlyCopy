@@ -451,7 +451,7 @@ final class ReviewCheckMarkTests: XCTestCase {
         core.turnsBySession["s"] = [turn(1), turn(2)]
         let m = AppModel(core: core, clipboard: ClipboardService(pasteboard: board), dataDirectory: nil, stateDefaults: defaults)
         await m.refreshNow()
-        XCTAssertFalse(m.isReviewChecked("ui"), "never ticked by Prompt Relay")
+        XCTAssertFalse(m.isReviewChecked("ui"), "never ticked by BearlyCopy")
         m.setReviewChecked("ui", true)
         XCTAssertTrue(m.isReviewChecked("ui"))
         m.selectTurn(1)
@@ -496,8 +496,8 @@ final class ExportBundleTests: XCTestCase {
         let folder = try XCTUnwrap(first)
         guard case .success(let pack) = await m.buildPack(ref) else { return XCTFail("pack") }
         let written = try String(contentsOf: folder.appendingPathComponent("context.md"), encoding: .utf8)
-        XCTAssertEqual(written.replacingOccurrences(of: #"Exported by Prompt Relay at [^\n]*"#, with: "", options: .regularExpression),
-                       pack.text.replacingOccurrences(of: #"Exported by Prompt Relay at [^\n]*"#, with: "", options: .regularExpression),
+        XCTAssertEqual(written.replacingOccurrences(of: #"Exported by BearlyCopy at [^\n]*"#, with: "", options: .regularExpression),
+                       pack.text.replacingOccurrences(of: #"Exported by BearlyCopy at [^\n]*"#, with: "", options: .regularExpression),
                        "the same package as Copy with Context")
         XCTAssertTrue(written.contains("Ответ ✅\n```\ncode\n```"), "the answer verbatim")
         let original = try Data(contentsOf: src.appendingPathComponent("plan.md"))

@@ -1,4 +1,4 @@
-# Prompt Relay JSON API — version 1
+# BearlyCopy JSON API — version 1
 
 The local, machine-readable interface for the future SwiftUI/AppKit app and
 other tools. There is no server and no HTTP: the consumer runs the CLI and
@@ -69,7 +69,7 @@ fractional digits and a `Z` suffix: `2026-10-29T14:04:18.117766Z`.
 | `prune` | `--older-than-days N` (default: the retention setting), `--yes` | `plan_data` |
 | `retention` | `--days N` or `--off` | `retention_data` |
 | `results` | `--project DIR`, `--provider claude_code\|codex`, `--profile ID\|unassigned`, `--limit N` (1–10000, default 500) | `results_data` (Phase 12): final results of every session, newest `answered_at` first (ties: session key, turn); `total` before the limit. A result is a turn with a final response whose `completion` is `answer`, `answer_background_running` or `waiting_background` (the app shows the last only after its wait expired); intermediate Stops never. Each `result_summary`: `session_key`, `turn`, `answered_at`, `status`, `completion`, `conversation{title,session_id}`, `source?`, `profile?`, `native_session_id?`, `project`, `logical_project?`, `request{turn,own,display_preview,char_count}` (for a turn the harness started: the request that began the work chain, `own:false`), `response{preview,truncated,char_count}`, `observed`. Previews only; `show`/`context` give the verbatim texts |
-| `doctor` | `--project DIR` (default: the current directory), `--no-project` | `doctor_data`: `core` (Python, pinned hook interpreter), `storage`, `capture`, `configuration` (plugin install records, settings files: Prompt Relay hooks, **counts** of other hooks, `enabledPlugins` for prompt-relay), `observed` (handler.log by `via` and outcome), `findings[]` (`level`, `code`, `message`), `unverified[]`. Every finding is also in `warnings`. Added in Phase 2B; a compatible addition |
+| `doctor` | `--project DIR` (default: the current directory), `--no-project` | `doctor_data`: `core` (Python, pinned hook interpreter), `storage`, `capture`, `configuration` (plugin install records, settings files: BearlyCopy hooks, **counts** of other hooks, `enabledPlugins` for prompt-relay), `observed` (handler.log by `via` and outcome), `findings[]` (`level`, `code`, `message`), `unverified[]`. Every finding is also in `warnings`. Added in Phase 2B; a compatible addition |
 
 ### Session summary
 `session_id` (`null` for events captured without one), `session_key` (the

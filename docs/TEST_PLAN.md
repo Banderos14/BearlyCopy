@@ -72,7 +72,7 @@ registration, update, disable/uninstall (LOCAL_MAC_VALIDATION §11).
 - Any change in copied bytes versus the stored text.
 - `api_error` presented as a response.
 - Data written inside a repository.
-- Settings files modified by Prompt Relay.
+- Settings files modified by BearlyCopy.
 - Real payloads captured on the Mac are added as fixtures (redacted) and must
   keep producing the same turns.
 - Any change in `--json` output without a golden-file update (golden tests

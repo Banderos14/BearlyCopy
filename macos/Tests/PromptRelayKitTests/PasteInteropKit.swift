@@ -15,7 +15,7 @@ final class PasteInteropKit: XCTestCase {
         }
         _ = NSApplication.shared
         let stamp = ISO8601DateFormatter().string(from: Date())
-        let text = "Prompt Relay paste test \(stamp)\n\nLine 2: Кириллица ✅ — `code` 🚀\n"
+        let text = "BearlyCopy paste test \(stamp)\n\nLine 2: Кириллица ✅ — `code` 🚀\n"
         let image = NSImage(size: NSSize(width: 480, height: 160), flipped: false) { rect in
             NSColor(red: 0.45, green: 0.85, blue: 0.72, alpha: 1).setFill(); rect.fill()
             ("PROMPT RELAY TEST IMAGE\n" + stamp as NSString).draw(
@@ -37,6 +37,6 @@ final class PasteInteropKit: XCTestCase {
         let types = NSPasteboard.general.pasteboardItems?.map { $0.types.map(\.rawValue).joined(separator: ", ") } ?? []
         print("PASTE-TEST mode=\(mode) items=\(types.count)")
         for (i, t) in types.enumerated() { print("PASTE-TEST item \(i + 1): \(t)") }
-        print("PASTE-TEST text first line: Prompt Relay paste test \(stamp)")
+        print("PASTE-TEST text first line: BearlyCopy paste test \(stamp)")
     }
 }

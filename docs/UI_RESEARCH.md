@@ -20,10 +20,10 @@ NotchBuddy), code under the MIT license; its name, character, icons and
 sounds are all rights reserved (LICENSE-ASSETS) and none were used. No Coucou
 code was copied. Techniques compared: Coucou keeps a fixed 720 × 560
 transparent NSPanel at `mainMenu + 3`, polls the pointer at 8/20/60 Hz and
-toggles `ignoresMouseEvents`; Prompt Relay instead resizes its panel to the
+toggles `ignoresMouseEvents`; BearlyCopy instead resizes its panel to the
 island for each phase and uses a tracking area, so it costs nothing while
 idle. Both override `constrainFrameRect` so AppKit keeps the panel in the
-menu-bar band. Coucou's compact state adds 80 pt ears; Prompt Relay uses
+menu-bar band. Coucou's compact state adds 80 pt ears; BearlyCopy uses
 26 pt.
 
 ## Planned interface
@@ -36,7 +36,7 @@ serves as the fallback on displays without a notch.
 | Project | License | Notes from public sources | Fit |
 |---|---|---|---|
 | **OpenNook** (`athledev-labs/opennook`, formerly `twinkling-reality/opennook`) | Apache-2.0. The `NookSurface` component is MIT (separate `LICENSE-MIT-NOOKSURFACE`) | A framework, not an app. Provides the notch window, hover expand/collapse, backdrop, settings shell, global hotkey (⌥⌘;) and a compact pill. Layout is notch-fused on notched panels and a floating capsule elsewhere, which covers the no-notch fallback. Swift 5.9+, **macOS 15+**. README: "a base layer plus a working demo — not a finished product". Release notes: public API **not frozen** (v0.4.0 latest seen) | Best candidate. Apache-2.0 is compatible with a closed or open product if the NOTICE and license texts are kept. Risk: API churn, and the macOS 15 minimum |
-| boring.notch (`TheBoredTeam/boring.notch`) | GPL-3.0 | A full app (media, calendar, shelf, HUD replacement). macOS 14.2+ | Copying code would force GPL on Prompt Relay. Reference only |
+| boring.notch (`TheBoredTeam/boring.notch`) | GPL-3.0 | A full app (media, calendar, shelf, HUD replacement). macOS 14.2+ | Copying code would force GPL on BearlyCopy. Reference only |
 | MewNotch, DynamicNotch | GPL-3.0 | Apps | Reference only |
 | NotchDrop (`Lakr233/NotchDrop`) | MIT | A file-drop shelf app | Permissive; a small reference for notch window geometry |
 | DynamicNotchKit (`MrKai77/DynamicNotchKit`) | check its LICENSE before use | A SwiftUI package for notch-style popovers | Alternative to OpenNook; evaluate in Phase 4 |
