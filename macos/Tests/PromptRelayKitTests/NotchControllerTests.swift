@@ -59,10 +59,57 @@ final class NotchControllerTests: XCTestCase {
     var neighbors = FakeNeighbors()
     var pointer = FakePointerEvents()
 
+    /// Stands in for the menu-bar bear: tests never touch the real menu bar.
+    @MainActor
+    final class FakeStatusItem: StatusItemHosting {
+        var visible = false
+        var onEvent: (@MainActor (StatusItemEvent) -> Void)?
+        var bearCenter: CGPoint? { visible ? CGPoint(x: 400, y: 982) : nil }
+        func setVisible(_ visible: Bool) { self.visible = visible }
+        func refreshLayout() {}
+    }
+
+    var statusItem = FakeStatusItem()
+
     func makeController() -> NotchController {
-        NotchController(model: model, settings: settings, actions: SurfaceActions(openWindow: {}, openStatus: {}, quit: {}),
+        let fake = statusItem
+        return NotchController(model: model, settings: settings, actions: SurfaceActions(openWindow: {}, openStatus: {}, quit: {}),
                         screens: screens, scheduler: clock, center: center, workspaceCenter: workspace, makeHotKey: { nil },
-                        neighbors: neighbors, pointerEvents: pointer)
+                        neighbors: neighbors, pointerEvents: pointer,
+                        statusItemFactory: { _, onEvent in fake.onEvent = onEvent; return fake })
+    }
+
+    /// Regression (owner's screenshots): the bear drew in a window "ear" over the
+    /// menu bar and hid the items next to the notch. It is a real menu-bar item
+    /// now, so macOS lays the other items out around it.
+    func testBearIsAMenuBarItemAndNothingIsDrawnBesideTheNotch() async {
+        settings.mascotEnabled = true
+        let controller = makeController()
+        controller.start()
+        defer { controller.stop() }
+        await settle()
+        XCTAssertTrue(statusItem.visible, "the bear is a status item")
+        assertFrame(controller.panelFrame, controller.layout?.notch, "the island at rest is only the notch: no ears over the menu bar")
+        settings.mascotEnabled = false
+        controller.relayout()
+        XCTAssertFalse(statusItem.visible, "nothing to show: no menu-bar item")
+        settings.mascotEnabled = true
+        controller.relayout()
+        XCTAssertTrue(statusItem.visible)
+    }
+
+    func testMenuBarBearHoverAndClickDriveTheIsland() async {
+        settings.mascotEnabled = true
+        let controller = makeController()
+        controller.start()
+        defer { controller.stop() }
+        await settle()
+        statusItem.onEvent?(.clicked)
+        XCTAssertTrue(controller.interaction.phase.isExpanded, "a click opens the island")
+        statusItem.onEvent?(.exited)
+        XCTAssertTrue(controller.interaction.phase.isExpanded, "the pointer now over the island is not a departure")
+        statusItem.onEvent?(.clicked)
+        XCTAssertEqual(controller.interaction.phase, .compact, "a second click closes it")
     }
 
     func testStepsAsideWhileAnotherNotchAppRuns() async {
@@ -584,7 +631,7 @@ final class NotchControllerTests: XCTestCase {
         controller.start()
         await model.refreshNow()
         XCTAssertTrue(controller.isFollowingPointer, "resting with the bear: following the pointer")
-        let ear = try XCTUnwrap(controller.panelFrame)
+        let bear = try XCTUnwrap(statusItem.bearCenter, "the bear is a menu-bar item")
         // The pointer far below-left, on the external display (left of the built-in one).
         pointer.move(to: CGPoint(x: -900, y: 300))
         let mascot = controller.presentation.mascot
@@ -596,7 +643,7 @@ final class NotchControllerTests: XCTestCase {
         XCTAssertGreaterThan(mascot.gaze.x, -0.5, "eased, not a jump")
         Self.runFrames(mascot.motion, seconds: 1.5)
         XCTAssertEqual(mascot.gaze, mascot.motion.lookTarget, "arrives and settles within 1.5 s")
-        pointer.move(to: CGPoint(x: ear.minX + NotchLayout.earWidth / 2 + 30, y: ear.midY))
+        pointer.move(to: CGPoint(x: bear.x + 27, y: bear.y))
         clock.advance(0.1)
         Self.runFrames(mascot.motion, seconds: 1)
         XCTAssertGreaterThan(mascot.gaze.x, 0.02, "just right of the bear: a small look right")
@@ -637,8 +684,7 @@ final class NotchControllerTests: XCTestCase {
         let controller = makeController()
         controller.start()
         await model.refreshNow()
-        assertFrame(controller.panelFrame, controller.layout?.compactFrame(left: true, right: false),
-                    "the bear needs its own ear only; the right side of the menu bar stays free")
+        XCTAssertTrue(statusItem.visible, "the bear is a menu-bar item, not an ear")
         XCTAssertTrue(controller.presentation.showsMascot)
         XCTAssertTrue(controller.isBlinkLoopRunning, "blinks while the resting island is on screen")
 
@@ -767,7 +813,8 @@ final class NotchControllerTests: XCTestCase {
         await model.refreshNow()
         await settle()
         XCTAssertTrue(controller.presentation.showsIndicator)
-        assertFrame(controller.panelFrame, controller.layout?.compact)
+        XCTAssertTrue(statusItem.visible, "the indicator shows in the menu-bar item")
+        assertFrame(controller.panelFrame, controller.layout?.notch, "the island itself stays the notch")
 
         controller.interaction.toggle()                    // opening reveals and acknowledges it
         // Wait for the reveal's loads (a fixed 100 ms was too short under full-suite load).

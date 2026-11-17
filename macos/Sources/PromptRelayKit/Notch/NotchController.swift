@@ -63,15 +63,11 @@ public final class NotchPresentation {
     /// Relay breathes (Core Animation) while it rests visible and motion is allowed.
     public internal(set) var breathes = false
     /// The resting island has ears: a new answer, or the mascot.
-    var hasEars: Bool { showsIndicator || showsMascot }
-    /// Left ear: the bear, or the "new answer" bubble when the bear is off.
-    var hasLeftEar: Bool {
-        if showsMascot { return true }
-        if case .ready = indicator { return true }
-        return false
-    }
-    /// Right ear: only while there is activity or an unseen answer to show.
-    var hasRightEar: Bool { showsIndicator }
+    /// The floating pill (a display without a notch) has two small ears.
+    /// On a notch the bear and the indicator live in the menu bar as a real
+    /// status item instead (`RelayStatusItem`): macOS lays it out among the
+    /// other items, so nothing is hidden behind it.
+    var hasEars: Bool { isFloating && (showsIndicator || showsMascot) }
     var onContentHeight: ((CGFloat) -> Void)?
     #if DEBUG
     /// Frames reported by `islandFrame(_:)`, for layout tests.
@@ -207,6 +203,15 @@ public final class NotchController {
     /// Relay's idle moments (Phase 7.1); one timer, only while visible.
     let life: RelayLife
     let follower: PointerFollower
+    /// The bear and indicator as a real menu-bar item (nil in tests: nothing is
+    /// put in the menu bar).
+    private let makeStatusItem: StatusItemFactory?
+    var statusHost: (any StatusItemHosting)?
+    /// The bear is in the menu bar right now.
+    private(set) var bearInMenuBar = false
+    /// The menu-bar bear appeared or went (the app hides its fallback menu icon
+    /// while the bear is there, so there is one Prompt Relay icon).
+    public var onBearInMenuBar: (@MainActor (Bool) -> Void)?
     private let scheduler: NotchScheduling
     var eyesReturn: NotchTimer?
     /// Phase 8: the pointer was on Relay at the last update, and when Relay
@@ -239,7 +244,9 @@ public final class NotchController {
                 pointerEvents: PointerEvents? = nil,
                 mouseLocation: (@MainActor () -> CGPoint)? = nil,
                 corridorEvents: CorridorEvents? = nil,
-                pressedMouseButtons: (@MainActor () -> Int)? = nil) {
+                pressedMouseButtons: (@MainActor () -> Int)? = nil,
+                statusItemFactory: StatusItemFactory? = nil) {
+        self.makeStatusItem = statusItemFactory
         self.mouseLocation = mouseLocation ?? { NSEvent.mouseLocation }
         self.pressedMouseButtons = pressedMouseButtons ?? { NSEvent.pressedMouseButtons }
         self.corridorEvents = corridorEvents ?? LiveCorridorEvents()
@@ -337,6 +344,10 @@ public final class NotchController {
         blinkTask?.cancel()
         blinkTask = nil
         follower.stop()
+        statusHost?.setVisible(false)
+        statusHost = nil
+        bearInMenuBar = false
+        onBearInMenuBar?(false)
         presentation.mascot.motion.reset()
         interaction.setAvailable(false)   // cancels timers, orders the panel out
         panel?.tearDown()
@@ -396,6 +407,7 @@ public final class NotchController {
         presentation.isFloating = newLayout.isFloating
         let mascotChanged = presentation.showsMascot != settings.mascotEnabled
         presentation.showsMascot = settings.mascotEnabled
+        updateStatusItem()
         presentation.reduceMotion = settings.reducesMotion(systemReduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         ensurePanel()
         if interaction.phase == .hidden {
@@ -527,8 +539,7 @@ public final class NotchController {
 
     private func compactFrame() -> CGRect? {
         guard let layout else { return nil }
-        guard presentation.hasEars else { return layout.notch }
-        return layout.compactFrame(left: presentation.hasLeftEar, right: presentation.hasRightEar)
+        return presentation.hasEars ? layout.compact : layout.notch
     }
 
     private func placePanel(for phase: NotchInteraction.Phase) {
@@ -809,6 +820,7 @@ public final class NotchController {
         let showIndicator = unseen.4 != .none
         if presentation.indicator != unseen.4 {
             withAnimation(presentation.animation) { presentation.indicator = unseen.4 }
+            updateStatusItem()
         }
         if presentation.showsIndicator != showIndicator {
             withAnimation(presentation.animation) { presentation.showsIndicator = showIndicator }
@@ -861,6 +873,13 @@ extension NotchController {
     /// Eyes and head follow the pointer anywhere on screen (see
     /// `PointerFollower`): only the newest position is used, nothing is stored.
     func follow(globalPoint point: CGPoint) {
+        // Resting in the menu bar: look from where the bear really is.
+        if interaction.phase == .compact, bearInMenuBar, let bear = statusHost?.bearCenter {
+            life.activity()
+            guard settings.relayFollowsPointer, settings.relayMotion != .off, !presentation.reduceMotion else { return }
+            setGaze(Self.gaze(dx: point.x - bear.x, dy: bear.y - point.y))
+            return
+        }
         guard let panel, panel.isVisible else { return }
         life.activity()
         guard settings.relayFollowsPointer, settings.relayMotion != .off else { return }
@@ -1020,7 +1039,7 @@ extension NotchController {
     /// allowed; nothing runs otherwise.
     func updateBlinking() {
         let visible = isRunning && presentation.showsMascot && !presentation.reduceMotion && !screensAsleep && !dialogOpen
-            && (interaction.phase.isExpanded || (interaction.phase == .compact && hasRestingTarget))
+            && (interaction.phase.isExpanded || (interaction.phase == .compact && (hasRestingTarget || bearInMenuBar)))
         let breathing = visible && interaction.phase == .compact && settings.relayMotion != .off
         if presentation.breathes != breathing { presentation.breathes = breathing }
         let still = settings.relayMotion == .off
@@ -1205,3 +1224,37 @@ extension NotchController {
     }
 }
 #endif
+
+
+// MARK: - Menu-bar bear
+
+extension NotchController {
+    /// The bear and the indicator live in the menu bar (a status item) on a
+    /// display with a notch, while the island has something to rest as. The
+    /// floating pill keeps its own ears.
+    func updateStatusItem() {
+        guard let makeStatusItem else { return }
+        let show = isRunning && hasRestingTarget && !presentation.isFloating
+            && (presentation.showsMascot || presentation.indicator != .none)
+        if show {
+            if statusHost == nil {
+                statusHost = makeStatusItem(presentation) { [weak self] event in self?.statusItemEvent(event) }
+            }
+            statusHost?.setVisible(true)
+            statusHost?.refreshLayout()
+        } else {
+            statusHost?.setVisible(false)
+        }
+        bearInMenuBar = show
+        onBearInMenuBar?(show)
+    }
+
+    func statusItemEvent(_ event: StatusItemEvent) {
+        switch event {
+        case .entered: if interaction.phase == .compact { interaction.pointerEntered() }
+        // Once the island is open the pointer is over it (it covers the item): not a departure.
+        case .exited: if interaction.phase == .compact { interaction.pointerExited() }
+        case .clicked: interaction.toggle()
+        }
+    }
+}

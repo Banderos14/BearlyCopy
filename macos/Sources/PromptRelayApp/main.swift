@@ -7,9 +7,18 @@ import SwiftUI
 // behavior lives in PromptRelayKit. There are no regular windows: projects,
 // history, settings and the full response open inside the island.
 
+/// Whether the plain menu-bar icon (the fallback way in) is shown. While Relay
+/// the bear is in the menu bar as its own item, this one is hidden, so there
+/// is one Prompt Relay icon.
+@MainActor @Observable
+final class MenuBarFallback {
+    var inserted = true
+}
+
 @MainActor
 final class AppServices {
     static let shared = AppServices()
+    let fallback = MenuBarFallback()
 
     let model = AppModel.live()
     let settings = NotchSettings()
@@ -21,7 +30,13 @@ final class AppServices {
         guard coordinator == nil else { return }
         let model = self.model, settings = self.settings, notifier = self.notifier
         coordinator = NotchCoordinator(model: model, settings: settings, notifier: notifier) {
-            NotchController(model: model, settings: settings, actions: Actions.current, notifier: notifier)
+            let controller = NotchController(
+                model: model, settings: settings, actions: Actions.current, notifier: notifier,
+                statusItemFactory: { presentation, onEvent in
+                    RelayStatusItem(presentation: presentation, makeMenu: { AppMenu.make() }, onEvent: onEvent)
+                })
+            controller.onBearInMenuBar = { inMenuBar in AppServices.shared.fallback.inserted = !inMenuBar }
+            return controller
         }
         #if DEBUG
         // Debug builds: PROMPT_RELAY_DEBUG_CAPTURE_DIR=<dir> renders the real
@@ -62,7 +77,7 @@ struct PromptRelayApp: App {
 
     var body: some Scene {
         // The fallback way in: open the island, its settings, or quit.
-        MenuBarExtra {
+        MenuBarExtra(isInserted: Bindable(services.fallback).inserted) {
             Button("Open Prompt Relay  \(HotKeyRegistration.displayString)") { services.present(.home) }
             Button("Results Inbox") { services.present(.inbox) }
             Button("Go To…") { services.present(.switcher) }
@@ -93,6 +108,48 @@ struct PromptRelayApp: App {
             }
         }
         .menuBarExtraStyle(.menu)
+    }
+}
+
+/// The same menu as the fallback icon, for the bear's right click.
+@MainActor
+enum AppMenu {
+    private final class Action: NSObject {
+        let run: @MainActor () -> Void
+        init(_ run: @escaping @MainActor () -> Void) { self.run = run }
+        @objc func fire() { MainActor.assumeIsolated { run() } }
+    }
+
+    static func make() -> NSMenu {
+        let services = AppServices.shared
+        let menu = NSMenu()
+        func add(_ title: String, key: String = "", _ run: @escaping @MainActor () -> Void) {
+            let action = Action(run)
+            let item = NSMenuItem(title: title, action: #selector(Action.fire), keyEquivalent: key)
+            item.target = action
+            item.representedObject = action   // keeps the action alive as long as the item
+            menu.addItem(item)
+        }
+        add("Open Prompt Relay  \(HotKeyRegistration.displayString)") { services.present(.home) }
+        add("Results Inbox") { services.present(.inbox) }
+        add("Go To…") { services.present(.switcher) }
+        add("Clipboard") { services.present(.copies) }
+        add("History") { services.present(.history) }
+        add("Import AI Result…") { services.present(.importReport) }
+        menu.addItem(.separator())
+        let status = NSMenuItem(title: services.model.captureStatus.title, action: nil, keyEquivalent: "")
+        status.isEnabled = false
+        menu.addItem(status)
+        if services.model.captureSettings?.mode == .paused {
+            add("Resume Capture") { Task { await services.model.setCaptureMode(.resume) } }
+        } else if services.model.captureSettings != nil {
+            add("Pause Capture") { Task { await services.model.setCaptureMode(.mode(.paused)) } }
+        }
+        menu.addItem(.separator())
+        add("Settings…", key: ",") { services.present(.settings) }
+        menu.addItem(.separator())
+        add("Quit Prompt Relay", key: "q") { NSApp.terminate(nil) }
+        return menu
     }
 }
 

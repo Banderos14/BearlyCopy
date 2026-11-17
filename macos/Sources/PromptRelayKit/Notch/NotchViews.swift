@@ -78,10 +78,7 @@ public struct NotchRootView: View {
     private var islandSize: CGSize {
         let notch = presentation.notchSize
         if expanded { return CGSize(width: presentation.islandWidth, height: notch.height + presentation.contentHeight) }
-        if presentation.hasEars {
-            let ears = presentation.isFloating ? 2 : (presentation.hasLeftEar ? 1 : 0) + (presentation.hasRightEar ? 1 : 0)
-            return CGSize(width: notch.width + ear * CGFloat(ears), height: notch.height)
-        }
+        if presentation.hasEars { return CGSize(width: notch.width + ear * 2, height: notch.height) }
         return Self.restingSize(notch: notch)
     }
 
