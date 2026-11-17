@@ -202,11 +202,11 @@ struct IslandSettingsView: View {
                    current: settings.theme.title,
                    options: IslandTheme.allCases.map { ($0.title, $0) }) { settings.theme = $0 }
             Hairline()
-            picker("Motion", detail: "Follow System uses Reduce Motion. Reduced: short fades only, Relay keeps still.",
+            picker("Motion", detail: "Follow System uses Reduce Motion. Reduced: short fades only, Bearly keeps still.",
                    current: settings.animation.title,
                    options: NotchSettings.Animation.allCases.map { ($0.title, $0) }) { settings.animation = $0 }
             Hairline()
-            toggle("Show Relay the bear", detail: "A small companion beside the notch that reacts to new answers.",
+            toggle("Show Bearly the bear", detail: "A small companion beside the notch that reacts to new answers.",
                    isOn: $settings.mascotEnabled)
             if settings.mascotEnabled {
                 Hairline()
@@ -222,11 +222,11 @@ struct IslandSettingsView: View {
                         toggle("Follow the pointer", detail: "Eyes and head turn toward the pointer near the island.",
                                isOn: $settings.relayFollowsPointer)
                         Hairline()
-                        toggle("Relay on displays without a notch", detail: "A small pill under the menu bar; hover opens Quick Peek.",
+                        toggle("Bearly on displays without a notch", detail: "A small pill under the menu bar; hover opens Quick Peek.",
                                isOn: $settings.relayWithoutNotch)
                     }
                 } label: {
-                    Text("Relay options").font(.system(size: 12.5)).foregroundStyle(Island.primary)
+                    Text("Bearly options").font(.system(size: 12.5)).foregroundStyle(Island.primary)
                         .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading).contentShape(Rectangle())
                         .onTapGesture { relayOptions.toggle() }
                 }

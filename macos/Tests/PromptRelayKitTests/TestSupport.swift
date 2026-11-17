@@ -68,7 +68,7 @@ func envelope(command: String, ok: Bool = true, data: String = "null", error: St
     Data("{\"api_version\":\(version),\"command\":\"\(command)\",\"data\":\(data),\"error\":\(error),\"ok\":\(ok),\"warnings\":\(warnings)}".utf8)
 }
 
-/// Phase 7.2: Relay is Core Animation layers; this renders the real layer
+/// Phase 7.2: Bearly is Core Animation layers; this renders the real layer
 /// tree (`RelayLayerView`) into a bitmap, top-left origin.
 @MainActor
 enum RelayRender {
@@ -84,7 +84,7 @@ enum RelayRender {
         view.render(at: RelayMotion.clock())
         guard let layer = view.layer else { return nil }
         // `render(in:)` draws y-up and ignores a root layer's geometry flip:
-        // place Relay from the bottom so `origin` is measured from the top.
+        // place Bearly from the bottom so `origin` is measured from the top.
         let container = CALayer()
         container.bounds = CGRect(origin: .zero, size: canvas)
         container.anchorPoint = .zero

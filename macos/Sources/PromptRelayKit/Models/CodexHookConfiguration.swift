@@ -53,8 +53,8 @@ struct CodexHookConfiguration: Equatable {
     var summary: String {
         switch state {
         case .absent: return "Xcode hooks.json: absent · setup required"
-        case .partial(let count): return "Xcode hooks.json: \(count)/3 Relay event definitions · review required"
-        case .defined: return "Xcode hooks.json: 3/3 Relay event definitions · trust not verified"
+        case .partial(let count): return "Xcode hooks.json: \(count)/3 Bearly event definitions · review required"
+        case .defined: return "Xcode hooks.json: 3/3 Bearly event definitions · trust not verified"
         case .unreadable: return "Xcode hooks.json: unreadable or invalid · review required"
         }
     }

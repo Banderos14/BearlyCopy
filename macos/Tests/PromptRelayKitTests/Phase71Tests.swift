@@ -3,8 +3,8 @@ import SwiftUI
 import XCTest
 @testable import PromptRelayKit
 
-/// Phase 7.1: persistent hand-off with its character count, one Relay per
-/// screen across running copies, Capture Health, Living Relay, import.
+/// Phase 7.1: persistent hand-off with its character count, one Bearly per
+/// screen across running copies, Capture Health, Living Bearly, import.
 @MainActor
 final class Phase71Tests: XCTestCase {
     var suite: String!
@@ -137,7 +137,7 @@ final class Phase71Tests: XCTestCase {
         XCTAssertTrue(AppModel.loadHandoffs(try XCTUnwrap(m.reportStore)).isEmpty)
     }
 
-    // MARK: One Relay
+    // MARK: One Bearly
 
     func testOnlyTheNewestCopyOfABuildKeepsTheNotch() {
         let t0 = Date(timeIntervalSince1970: 1_000), t1 = Date(timeIntervalSince1970: 2_000)
@@ -185,7 +185,7 @@ final class TooltipWidthTests: XCTestCase {
     }
 }
 
-// MARK: - Living Relay
+// MARK: - Living Bearly
 
 @MainActor
 final class LivingRelayTests: XCTestCase {
@@ -279,14 +279,14 @@ final class LivingRelayTests: XCTestCase {
     }
 }
 
-/// Opt-in: PROMPT_RELAY_SNAPSHOT_DIR=<dir> renders Relay's poses (the real
+/// Opt-in: PROMPT_RELAY_SNAPSHOT_DIR=<dir> renders Bearly's poses (the real
 /// drawing code, offscreen) for docs/images/phase71-relay/. Not a check of
 /// motion on the live screen.
 @MainActor
 final class RelayPoseRenderTests: XCTestCase {
     func testRenderPoses() throws {
         guard let dir = ProcessInfo.processInfo.environment["PROMPT_RELAY_SNAPSHOT_DIR"] else {
-            throw XCTSkip("set PROMPT_RELAY_SNAPSHOT_DIR to render Relay's poses")
+            throw XCTSkip("set PROMPT_RELAY_SNAPSHOT_DIR to render Bearly's poses")
         }
         let poses: [(String, CGPoint, MascotState.Mood, MascotState.Expression, CGFloat)] = [
             ("neutral", .zero, .idle, .none, 0), ("left", CGPoint(x: -1, y: 0), .idle, .none, 0),

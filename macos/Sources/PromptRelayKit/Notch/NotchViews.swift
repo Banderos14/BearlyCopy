@@ -159,12 +159,12 @@ public struct NotchRootView: View {
 
     // MARK: Compact
 
-    /// Left ear: Relay the bear (or a bubble for a new answer when the
+    /// Left ear: Bearly the bear (or a bubble for a new answer when the
     /// mascot is off); right ear: the "new answer" dot.
     private var compactContent: some View {
         HStack(spacing: 0) {
             // No notch (Phase 7.1): the floating pill has no camera between
-            // the ears, so Relay sits in its middle, clear of the round ends.
+            // the ears, so Bearly sits in its middle, clear of the round ends.
             if presentation.isFloating, presentation.showsMascot { Spacer(minLength: 0) }
             if presentation.showsMascot {
                 // R8: at x = 8 in the ear (3.4 pt clear of the visible side

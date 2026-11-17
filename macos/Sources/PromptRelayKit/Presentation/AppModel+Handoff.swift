@@ -47,7 +47,7 @@ extension AppModel {
     }
 
     /// How a stored attachment got here, for its row: prepared by Prompt
-    /// Relay or added by the user, and on what evidence.
+    /// Bearly or added by the user, and on what evidence.
     public nonisolated static func attachmentStatus(_ attachment: ReportAttachment) -> String {
         switch attachment.effectiveSource {
         case .agentResult: return "Attached automatically · written this turn"
@@ -269,7 +269,7 @@ extension AppModel {
         }
 
         /// Phase 16: Add can work — the file is there and of a kind Prompt
-        /// Relay keeps (text document, PDF or image); mockups always.
+        /// Bearly keeps (text document, PDF or image); mockups always.
         public var attachable: Bool { kind == .mockup || (exists && ReportStore.canKeep(name: title)) }
         /// Why Add is not offered, in words; nil when it is.
         public var notAttachableReason: String? {

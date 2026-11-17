@@ -4,7 +4,7 @@ import SwiftUI
 /// the roles in `Island` (never a hex value). The camera band and the
 /// resting island stay black in every theme.
 public enum IslandTheme: String, CaseIterable, Identifiable, Sendable {
-    /// Built around Relay: warm graphite cards, caramel accent and main
+    /// Built around Bearly: warm graphite cards, caramel accent and main
     /// button, sand for materials. The default for new installs.
     case warmCocoa
     /// Phase 6: graphite with one teal accent (kept to compare and to go back to).

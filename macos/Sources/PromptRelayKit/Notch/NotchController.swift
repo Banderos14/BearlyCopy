@@ -57,10 +57,10 @@ public final class NotchPresentation {
     public internal(set) var showsIndicator = false
     /// Phase 8: what the right ear shows (an unseen answer, or work in progress).
     public internal(set) var indicator: AppModel.ReadyIndicator = .none
-    /// Relay the bear beside the notch and in the band (Settings → Appearance).
+    /// Bearly the bear beside the notch and in the band (Settings → Appearance).
     public internal(set) var showsMascot = false
     public let mascot = MascotState()
-    /// Relay breathes (Core Animation) while it rests visible and motion is allowed.
+    /// Bearly breathes (Core Animation) while it rests visible and motion is allowed.
     public internal(set) var breathes = false
     /// The resting island has ears: a new answer, or the mascot.
     var hasEars: Bool { showsIndicator || showsMascot }
@@ -207,16 +207,16 @@ public final class NotchController {
     private var sensitivePending = false
     private var dialogOpen = false
     var blinkTask: Task<Void, Never>?
-    /// Relay's idle moments (Phase 7.1); one timer, only while visible.
+    /// Bearly's idle moments (Phase 7.1); one timer, only while visible.
     let life: RelayLife
     let follower: PointerFollower
     private let scheduler: NotchScheduling
     var eyesReturn: NotchTimer?
-    /// Phase 8: the pointer was on Relay at the last update, and when Relay
+    /// Phase 8: the pointer was on Bearly at the last update, and when Bearly
     /// last perked (so a pointer resting on it does not repeat the perk).
     var wasOnRelay = false
     var lastPerk: Date?
-    /// The displays are asleep: Relay neither blinks nor follows the pointer.
+    /// The displays are asleep: Bearly neither blinks nor follows the pointer.
     var screensAsleep = false
     private var resizeWork: DispatchWorkItem?
     private var pendingHeight: CGFloat?
@@ -384,7 +384,7 @@ public final class NotchController {
         // ID to verify), so stepping aside for them stays under the same user
         // setting as other notch apps; Settings names who the island yields to.
         let yielding = settings.yieldToOtherNotchApps && !(neighbors.running.isEmpty && copies.isEmpty)
-        // Without a notch (Phase 7.1) Relay rests in the floating layout's
+        // Without a notch (Phase 7.1) Bearly rests in the floating layout's
         // small pill under the menu bar, when the mascot and that option are on.
         // "Open on hover" governs both: no hover surface ever appears with it off.
         let resting = settings.notchEnabled && (!newLayout.isFloating || (settings.mascotEnabled && settings.relayWithoutNotch)) && !yielding
@@ -890,8 +890,8 @@ extension NotchController {
     func look(at point: CGPoint) {
         guard presentation.showsMascot, !presentation.reduceMotion, let panel else { return }
         setGaze(Self.gaze(toward: point, windowHeight: panel.frame.height, presentation: presentation, windowWidth: panel.frame.width))
-        // Phase 8: the pointer arriving on Relay gets a tiny perk (at most
-        // every 4 s, never while still), then Relay looks at you.
+        // Phase 8: the pointer arriving on Bearly gets a tiny perk (at most
+        // every 4 s, never while still), then Bearly looks at you.
         let c = Self.gazeCenter(windowHeight: panel.frame.height, presentation: presentation, windowWidth: panel.frame.width)
         let onRelay = hypot(point.x - c.x, point.y - c.y) < 16
         if onRelay, !wasOnRelay, !presentation.mascot.still, (lastPerk.map { Date().timeIntervalSince($0) > 4 } ?? true) {
@@ -912,18 +912,18 @@ extension NotchController {
         if mascot.motion.look(at: target) { mascot.wake() }
     }
 
-    /// −1…1 per axis (y down) from Relay toward `point` (window coordinates,
+    /// −1…1 per axis (y down) from Bearly toward `point` (window coordinates,
     /// origin bottom-left): the left ear at rest, the band's leading edge when
     /// open.
     ///
     /// Phase 8: the *direction* to the pointer, scaled by a soft saturation
     /// of the distance (tanh, no threshold). Before, each axis saturated on
-    /// its own: Relay sits at the top of the screen, so the pointer was
+    /// its own: Bearly sits at the top of the screen, so the pointer was
     /// nearly always 200–900 pt below it and `tanh(dy/160)` stayed at
     /// 0.96–1.0 — moving the mouse up and down barely moved the eyes. Now
     /// a pointer low on the screen gives a downward look, one level with the
-    /// menu bar a sideways one, and one beside Relay a look up: "level" is a
-    /// point `eyeLevel` below Relay, so the menu bar reads as up. On Relay
+    /// menu bar a sideways one, and one beside Bearly a look up: "level" is a
+    /// point `eyeLevel` below Bearly, so the menu bar reads as up. On Bearly
     /// itself the look fades to the viewer (no jitter at zero distance).
     static func gaze(toward point: CGPoint, windowHeight: CGFloat, presentation: NotchPresentation,
                      windowWidth: CGFloat? = nil) -> CGPoint {
@@ -931,18 +931,18 @@ extension NotchController {
         return gaze(dx: point.x - center.x, dy: center.y - point.y)
     }
 
-    /// Where "straight ahead" is: this far below Relay.
+    /// Where "straight ahead" is: this far below Bearly.
     static let eyeLevel: CGFloat = 90
     /// The distance at which the look reaches 76 % of its range.
     static let gazeReach: CGFloat = 170
 
-    /// `dx` right, `dy` down from Relay, in points.
+    /// `dx` right, `dy` down from Bearly, in points.
     static func gaze(dx: CGFloat, dy: CGFloat) -> CGPoint {
         let vy = dy - eyeLevel
         let r = hypot(dx, vy)
         guard r > 0.5 else { return .zero }
         let reach = tanh(r / gazeReach)
-        // On Relay (within ~14 pt) it looks at you; fully toward the pointer from ~44 pt.
+        // On Bearly (within ~14 pt) it looks at you; fully toward the pointer from ~44 pt.
         let near = hypot(dx, dy)
         let p = max(0, min(1, (near - 14) / 30))
         let fade = p * p * (3 - 2 * p)
@@ -959,7 +959,7 @@ extension NotchController {
         return center
     }
 
-    /// The pointer rested or following stopped: Relay looks back to the
+    /// The pointer rested or following stopped: Bearly looks back to the
     /// centre (the head trails the eyes on its spring).
     func pointerLeft() {
         let mascot = presentation.mascot
@@ -988,7 +988,7 @@ extension NotchController {
         let mascot = presentation.mascot
         if newAnswer || copy != .idle || coreDown { life.activity() }
         if case .copied = copy, mascot.mood != .pleased, !presentation.reduceMotion {
-            // Attention: Relay looks at you for the happy hop.
+            // Attention: Bearly looks at you for the happy hop.
             if mascot.motion.look(at: .zero) { mascot.wake() }
         }
         let mood: MascotState.Mood
@@ -1033,7 +1033,7 @@ extension NotchController {
         life.expressive = settings.relayMotion == .expressive
         if visible && settings.relayIdle && !still { life.start() } else { life.stop() }
         // The system-wide pointer monitor runs only when following is wanted:
-        // with "Follow the pointer" or Relay off, it is not started at all.
+        // with "Follow the pointer" or Bearly off, it is not started at all.
         if visible && settings.relayFollowsPointer && settings.relayMotion != .off {
             follower.start()
         } else {

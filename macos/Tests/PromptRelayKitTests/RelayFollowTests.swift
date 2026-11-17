@@ -50,7 +50,7 @@ final class PointerFollowerTests: XCTestCase {
         clock.advance(PointerFollower.restAfter - 1)
         XCTAssertEqual(rested, 0)
         clock.advance(2)
-        XCTAssertEqual(rested, 1, "after a long stillness Relay looks ahead again")
+        XCTAssertEqual(rested, 1, "after a long stillness Bearly looks ahead again")
         follower.stop()
         XCTAssertFalse(events.isMonitoring, "monitors removed")
         XCTAssertEqual(clock.liveTimers, 0, "no timer left behind")
@@ -61,12 +61,12 @@ final class PointerFollowerTests: XCTestCase {
 }
 
 /// Opt-in (PROMPT_RELAY_PERF=1): CPU of this process with the real panel and
-/// Relay on screen, the pointer still and then moving at 120 Hz.
+/// Bearly on screen, the pointer still and then moving at 120 Hz.
 @MainActor
 final class RelayPerformanceTests: XCTestCase {
     func testCPUWhileThePointerIsStillAndMoving() async throws {
         guard ProcessInfo.processInfo.environment["PROMPT_RELAY_PERF"] == "1" else {
-            throw XCTSkip("set PROMPT_RELAY_PERF=1 to measure Relay's CPU use")
+            throw XCTSkip("set PROMPT_RELAY_PERF=1 to measure Bearly's CPU use")
         }
         _ = NSApplication.shared
         let suite = "PromptRelayPerf.\(UUID().uuidString)"
@@ -112,7 +112,7 @@ final class RelayPerformanceTests: XCTestCase {
             return ((cpu() - start) / elapsed * 100, server)
         }
         func idle(seconds: Double) async -> (app: Double, server: Double) {
-            // The pointer still and no loop: what Relay at rest costs.
+            // The pointer still and no loop: what Bearly at rest costs.
             let start = cpu(), serverStart = windowServer.flatMap(Self.cpuTime), began = Date()
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1e9))
             let elapsed = Date().timeIntervalSince(began)
@@ -145,13 +145,13 @@ final class RelayPerformanceTests: XCTestCase {
         print(String(format: "RELAY-PERF rest %.2f%% app, %.2f%% WindowServer; still %.1f%% CPU, moving %.1f%% CPU (WindowServer %.1f%%), %.0f gaze updates/s (events 120/s), RSS %d MB",
                      rest.app, rest.server, still.app, moving.app, moving.server, rate, Self.residentMB()))
         XCTAssertLessThanOrEqual(rate, Double(PointerFollower.maxRate) * 1.1)
-        // The same with Relay off: what the test itself and the panel cost.
+        // The same with Bearly off: what the test itself and the panel cost.
         settings.mascotEnabled = false
         controller.relayout()
         try? await Task.sleep(nanoseconds: 500_000_000)
         let restOff = await idle(seconds: 8)
         let loopOnly = await measure(seconds: 5, moving: true)
-        print(String(format: "RELAY-PERF Relay off: rest %.2f%% app, %.2f%% WindowServer; loop alone %.1f%% CPU (WindowServer %.1f%%)",
+        print(String(format: "RELAY-PERF Bearly off: rest %.2f%% app, %.2f%% WindowServer; loop alone %.1f%% CPU (WindowServer %.1f%%)",
                      restOff.app, restOff.server, loopOnly.app, loopOnly.server))
         controller.stop()
     }

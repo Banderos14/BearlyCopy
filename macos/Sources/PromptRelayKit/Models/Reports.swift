@@ -115,7 +115,7 @@ public enum AttachmentSource: String, Codable, Sendable {
 }
 
 /// A file kept with a report: a private snapshot copied into Prompt
-/// Relay's folder (SHA-256, time). Later changes to the original are not
+/// Bearly's folder (SHA-256, time). Later changes to the original are not
 /// applied silently.
 public struct ReportAttachment: Codable, Identifiable, Equatable, Sendable {
     public let id: String

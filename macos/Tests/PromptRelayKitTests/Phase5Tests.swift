@@ -3,7 +3,7 @@ import SwiftUI
 import XCTest
 @testable import PromptRelayKit
 
-/// Phase 5: Relay at rest (R8), typed attachments and mockups (R10, R11),
+/// Phase 5: Bearly at rest (R8), typed attachments and mockups (R10, R11),
 /// suggestions from what Claude did, the file hand-off, and the clipboard
 /// image history (ADR-014).
 @MainActor
@@ -47,7 +47,7 @@ final class RelayRestingTests: XCTestCase {
         XCTAssertGreaterThan(worst.k, 0.5, "… but not switched off")
     }
 
-    /// The real SwiftUI view, rendered: no opaque pixel of Relay outside the
+    /// The real SwiftUI view, rendered: no opaque pixel of Bearly outside the
     /// ear's visible area or over the camera housing, in any extreme pose.
     func testRenderedRelayIsNeverClippedAndNeverOverTheCamera() throws {
         let scale: CGFloat = 4
@@ -55,7 +55,7 @@ final class RelayRestingTests: XCTestCase {
             for mood in [MascotState.Mood.idle, .curious] {
                 let state = MascotState()
                 state.gaze = gaze; state.head = gaze; state.mood = mood
-                // Phase 7.2: the real layers (the drawing Relay uses on screen).
+                // Phase 7.2: the real layers (the drawing Bearly uses on screen).
                 let image = try XCTUnwrap(RelayRender.image(state, canvas: CGSize(width: 64, height: 40),
                                                             origin: CGPoint(x: RestingPose.origin.x, y: 2), scale: scale))
                 let alpha = try alphaMap(image)

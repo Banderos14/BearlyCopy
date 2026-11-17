@@ -105,8 +105,8 @@ from the menu bar or with ⌃⌥⌘P); Esc or a click elsewhere closes it; with 
 external monitor the island stays on the MacBook notch.
 
 <p align="center">
-  <img src="docs/images/phase71-relay/relay-poses.png" width="560" alt="Relay the bear: resting, working, done">
-  <br><sub>Relay the bear shows what the agent is doing: resting, working, waiting for you, done.</sub>
+  <img src="docs/images/phase71-relay/relay-poses.png" width="560" alt="Bearly the bear: resting, working, done">
+  <br><sub>Bearly the bear shows what the agent is doing: resting, working, waiting for you, done.</sub>
 </p>
 
 ## Privacy and security
@@ -134,7 +134,7 @@ It verifies the download's SHA-256 and that the app is signed by the author's Ap
 ### Or download the DMG
 
 <p align="center">
-  <a href="https://github.com/Banderos14/BearlyCopy/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-Prompt%20Relay.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
+  <a href="https://github.com/Banderos14/BearlyCopy/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-BearlyCopy.dmg-D9A66B?style=for-the-badge&logo=apple&logoColor=white" height="44"></a>
 </p>
 
 1. Download `BearlyCopy-0.9.5.dmg` from the [latest release](https://github.com/Banderos14/BearlyCopy/releases/latest), open it and drag **BearlyCopy** to **Applications**.

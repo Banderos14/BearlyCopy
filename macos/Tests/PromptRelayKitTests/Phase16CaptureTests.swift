@@ -87,7 +87,7 @@ final class Phase16CaptureTests: XCTestCase {
         XCTAssertFalse(m.offersGlobalCapture)
 
         let theatreAnswer = "Сцена 2 готова ✅\n\n```js\nstage.play()\n```"
-        try turn("s-relay", in: relay, answer: "Relay done")
+        try turn("s-relay", in: relay, answer: "Bearly done")
         try turn("s-theatre", in: theatre, answer: theatreAnswer)
         try FileManager.default.createDirectory(atPath: third + "/src", withIntermediateDirectories: true)
         try turn("s-third", in: third + "/src", answer: "Third done")   // a subfolder of a third, unknown repository

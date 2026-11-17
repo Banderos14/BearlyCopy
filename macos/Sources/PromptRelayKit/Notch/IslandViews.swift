@@ -225,7 +225,7 @@ struct IslandContent: View {
             IslandBand(presentation: presentation) {
                 HStack(spacing: 7) {
                     if presentation.showsMascot {
-                        // Layers with their own frame clock (Phase 7.2): Relay's
+                        // Layers with their own frame clock (Phase 7.2): Bearly's
                         // frames never re-run the island's SwiftUI.
                         let size = MascotView.size(notchHeight: presentation.notchSize.height)
                         MascotView(state: presentation.mascot, size: size, reduceMotion: presentation.reduceMotion)

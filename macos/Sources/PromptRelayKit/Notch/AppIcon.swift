@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 /// Phase 16: BearlyCopy's application icon (Finder, Applications,
 /// Launchpad, Spotlight, Privacy & Security lists) and its menu-bar mark.
 ///
-/// Drawn from Relay's own vector geometry — `MascotView.shapes`, the same
+/// Drawn from Bearly's own vector geometry — `MascotView.shapes`, the same
 /// bear the notch shows — never from a screenshot. `scripts/make-app-icon.sh`
 /// renders every macOS size from this code into `macos/Resources/AppIcon.icns`,
 /// which the Xcode target and `scripts/build-macos-app.sh` both bundle; a
@@ -27,7 +27,7 @@ public enum AppIcon {
     /// 100 pixels in from each edge (room for the system's shadow).
     static let tileInset: CGFloat = 100.0 / 1024
     static let tileRadius: CGFloat = 185.0 / 1024
-    /// Relay's drawing size relative to the canvas; its ears and head span
+    /// Bearly's drawing size relative to the canvas; its ears and head span
     /// 0.9 of that, so the bear fills about 68 % of the tile.
     static let bearScale: CGFloat = 0.61
     /// Where the centre of the bear's silhouette sits (y down, of the canvas).
@@ -47,7 +47,7 @@ public enum AppIcon {
         ctx.setShouldAntialias(true)
         ctx.interpolationQuality = .high
         ctx.clear(CGRect(x: 0, y: 0, width: n, height: n))
-        // Draw in y-down coordinates, like Relay's own geometry.
+        // Draw in y-down coordinates, like Bearly's own geometry.
         ctx.translateBy(x: 0, y: n)
         ctx.scaleBy(x: 1, y: -1)
 
@@ -89,7 +89,7 @@ public enum AppIcon {
             ctx.restoreGState()
         }
 
-        // Relay: the notch bear's own shapes, smiling, looking at you.
+        // Bearly: the notch bear's own shapes, smiling, looking at you.
         let s = bearScale * n
         let origin = CGPoint(x: bearCentre.x * n - 0.5 * s, y: bearCentre.y * n - 0.48 * s)
         let shapes = MascotView.shapes(size: CGSize(width: s, height: s), mood: .idle, gaze: .zero, expression: .smile)
@@ -138,7 +138,7 @@ public enum AppIcon {
 
     // MARK: Menu bar
 
-    /// Relay's silhouette as a template image for the menu bar (ears and
+    /// Bearly's silhouette as a template image for the menu bar (ears and
     /// head; eyes and nose cut out), so the menu-bar item is recognisably
     /// BearlyCopy in light and dark menu bars.
     public static func menuBarImage(points: CGFloat = 18) -> NSImage {

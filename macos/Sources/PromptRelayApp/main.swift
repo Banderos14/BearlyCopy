@@ -8,7 +8,7 @@ import SwiftUI
 // history, settings and the full response open inside the island.
 
 /// Whether the plain menu-bar icon (the fallback way in) is shown. It is
-/// hidden while Relay the bear is drawn beside the notch, so the bear never
+/// hidden while Bearly the bear is drawn beside the notch, so the bear never
 /// lies over it; the island has the menu's actions.
 @MainActor @Observable
 final class MenuBarFallback {
@@ -96,7 +96,7 @@ struct PromptRelayApp: App {
                 .keyboardShortcut("q")
         } label: {
             // A Debug build has its own icon, so two running builds are told
-            // apart; the installed app shows Relay's silhouette (Phase 16).
+            // apart; the installed app shows Bearly's silhouette (Phase 16).
             if AppBuild.isDebugBuild {
                 Image(systemName: "hammer.circle").accessibilityLabel("BearlyCopy (Debug)")
             } else {

@@ -72,7 +72,7 @@ final class IslandLayoutTests: XCTestCase {
             // One left edge for the band and the content below it.
             XCTAssertEqual(try XCTUnwrap(f["band.mascot"]).minX, try XCTUnwrap(f["card.task"]).minX, accuracy: 0.5)
             XCTAssertLessThanOrEqual(try XCTUnwrap(f["band.mascot"]).maxX, (island.width - 185) / 2 - 8,
-                                     "Relay stays clear of the camera housing")
+                                     "Bearly stays clear of the camera housing")
             // Blocks are separated by the shared spacing, nothing touches.
             let task = try XCTUnwrap(f["card.task"]), response = try XCTUnwrap(f["card.response"])
             XCTAssertEqual(response.minY - task.maxY, metrics.spacing, accuracy: 0.5)
@@ -231,10 +231,10 @@ final class IslandLayoutTests: XCTestCase {
         p.surface = .expanded
         let height: CGFloat = 400
         let center = CGPoint(x: IslandMetrics.of(p).leading + MascotView.size(notchHeight: 32) / 2, y: height - 16)
-        XCTAssertEqual(NotchController.gaze(toward: center, windowHeight: height, presentation: p), .zero, "on Relay: looks at you")
+        XCTAssertEqual(NotchController.gaze(toward: center, windowHeight: height, presentation: p), .zero, "on Bearly: looks at you")
         let right = NotchController.gaze(toward: CGPoint(x: center.x + 3000, y: center.y), windowHeight: height, presentation: p)
         XCTAssertEqual(right.x, 1, accuracy: 0.01, "far away (another display): settles at the edge")
-        XCTAssertLessThan(right.y, 0, "level with Relay is a little above its eye level")
+        XCTAssertLessThan(right.y, 0, "level with Bearly is a little above its eye level")
         let below = NotchController.gaze(toward: CGPoint(x: center.x, y: center.y - 600), windowHeight: height, presentation: p)
         XCTAssertEqual(below.y, 1, accuracy: 0.02, "y grows downward")
         XCTAssertEqual(below.x, 0, accuracy: 0.001)
@@ -284,7 +284,7 @@ final class IslandLayoutTests: XCTestCase {
 
     // MARK: Visual examples (opt-in)
 
-    /// PROMPT_RELAY_VISUALS=<dir> writes PNGs of the island and of Relay for review.
+    /// PROMPT_RELAY_VISUALS=<dir> writes PNGs of the island and of Bearly for review.
     func testWriteVisualExamples() async throws {
         guard let dir = ProcessInfo.processInfo.environment["PROMPT_RELAY_VISUALS"] else {
             throw XCTSkip("set PROMPT_RELAY_VISUALS=<dir> to write visual examples")
@@ -335,7 +335,7 @@ final class IslandLayoutTests: XCTestCase {
             try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: "\(dir)/\(name)"))
         }
 
-        // Relay: each mood, a blink, the happy closed eyes, and the gaze.
+        // Bearly: each mood, a blink, the happy closed eyes, and the gaze.
         var tiles: [(String, NSBitmapImageRep)] = []
         for (name, mood) in [("idle", MascotState.Mood.idle), ("curious", .curious), ("pleased", .pleased), ("concerned", .concerned)] {
             tiles.append((name, try MascotSheet.render(mood: mood, gaze: .zero, eyeOpen: 1, squint: 0, size: 96, background: .black)))
@@ -499,7 +499,7 @@ final class IslandHost {
     }
 }
 
-/// Relay drawn on its own, for checks and the visual examples.
+/// Bearly drawn on its own, for checks and the visual examples.
 @MainActor
 enum MascotSheet {
     static func render(mood: MascotState.Mood, gaze: CGPoint, eyeOpen: CGFloat, squint: CGFloat, size: CGFloat,

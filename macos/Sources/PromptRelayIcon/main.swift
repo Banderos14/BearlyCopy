@@ -1,7 +1,7 @@
 import AppKit
 import PromptRelayKit
 
-// Phase 16: writes the application icon's .iconset from Relay's vector
+// Phase 16: writes the application icon's .iconset from Bearly's vector
 // drawing (`AppIcon`). Used by scripts/make-app-icon.sh; not part of the app.
 //
 //   swift run --package-path macos PromptRelayIcon <out.iconset> [preview.png]

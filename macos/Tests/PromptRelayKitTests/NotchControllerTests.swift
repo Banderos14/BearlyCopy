@@ -549,7 +549,7 @@ final class NotchControllerTests: XCTestCase {
         XCTAssertEqual(NotchRootView.restingSize(notch: CGSize(width: 185, height: 32)), CGSize(width: 183, height: 31))
     }
 
-    /// Phase 7.2: the engine moves Relay per display frame and stops: it
+    /// Phase 7.2: the engine moves Bearly per display frame and stops: it
     /// arrives exactly, the timeline is asked to run only while moving, and
     /// no timer is left (the old 30 Hz follower is gone).
     func testRelayMovesPerFrameAndStopsWhenSettled() async throws {
@@ -561,7 +561,7 @@ final class NotchControllerTests: XCTestCase {
         await model.refreshNow()
         let mascot = controller.presentation.mascot
         controller.setGaze(CGPoint(x: 0.6, y: 0.2))
-        XCTAssertTrue(mascot.animating, "the timeline runs while Relay moves")
+        XCTAssertTrue(mascot.animating, "the timeline runs while Bearly moves")
         Self.runFrames(mascot.motion, seconds: 1.5)
         XCTAssertEqual(mascot.gaze, CGPoint(x: 0.6, y: 0.2), "arrives exactly")
         XCTAssertEqual(mascot.head, CGPoint(x: 0.6, y: 0.2))
@@ -601,7 +601,7 @@ final class NotchControllerTests: XCTestCase {
         Self.runFrames(mascot.motion, seconds: 1)
         XCTAssertGreaterThan(mascot.gaze.x, 0.02, "just right of the bear: a small look right")
         XCTAssertLessThan(mascot.gaze.x, 0.2)
-        XCTAssertLessThan(mascot.gaze.y, 0, "level with Relay at the top of the screen: a little up")
+        XCTAssertLessThan(mascot.gaze.y, 0, "level with Bearly at the top of the screen: a little up")
         clock.advance(PointerFollower.restAfter + 0.1)
         Self.runFrames(mascot.motion, seconds: 0.6)
         XCTAssertEqual(mascot.head.x, 0, accuracy: 0.01, "R8: the head is back first")
@@ -950,17 +950,17 @@ final class NotchAppearanceTests: XCTestCase {
     }
 }
 
-// MARK: - Phase 7.1: Relay without a notch, one Relay
+// MARK: - Phase 7.1: Bearly without a notch, one Bearly
 
 extension NotchControllerTests {
-    /// On a display without a notch Relay rests in a small pill under the
+    /// On a display without a notch Bearly rests in a small pill under the
     /// menu bar (one panel), and nothing rests there when the option is off.
     func testRelayRestsInAPillOnADisplayWithoutANotch() async {
         screens.screens = [externalScreen()]
         settings.mascotEnabled = true
         let controller = makeController()
         controller.start()
-        XCTAssertTrue(controller.hasRestingTarget, "a resting Relay on the external display")
+        XCTAssertTrue(controller.hasRestingTarget, "a resting Bearly on the external display")
         XCTAssertEqual(notchPanels().count, 1, "exactly one panel, so one bear")
         let frame = controller.panelFrame ?? .zero
         let screen = externalScreen().frame
@@ -980,7 +980,7 @@ extension NotchControllerTests {
         let controller = makeController()
         controller.start()
         XCTAssertTrue(controller.isYielding)
-        XCTAssertEqual(notchPanels().count, 0, "the newer copy shows the only Relay")
+        XCTAssertEqual(notchPanels().count, 0, "the newer copy shows the only Bearly")
         controller.stop()
     }
 

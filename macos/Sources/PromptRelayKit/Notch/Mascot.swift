@@ -3,7 +3,7 @@ import Observation
 import QuartzCore
 import SwiftUI
 
-/// BearlyCopy's mascot: Relay, a small bear cub drawn in vector (SwiftUI
+/// BearlyCopy's mascot: Bearly, a small bear cub drawn in vector (SwiftUI
 /// Canvas), original artwork. It sits beside the notch and at the top of the
 /// open island. It reacts only to facts the app knows: an answer was
 /// captured, a copy succeeded, something failed. Nothing about it says that
@@ -21,7 +21,7 @@ public final class MascotState {
         case concerned
     }
 
-    /// Relay's own idle faces (Phase 7.1, `RelayLife`); moods win over them.
+    /// Bearly's own idle faces (Phase 7.1, `RelayLife`); moods win over them.
     public enum Expression: String, Equatable, Sendable {
         case none, smile, sleepy, curious
     }
@@ -30,14 +30,14 @@ public final class MascotState {
     public internal(set) var expression: Expression = .none
     /// A curious tilt of the whole head, in degrees (idle beats only).
     public internal(set) var roll: Double = 0
-    /// Settings → Relay: Off draws a still bear (no head motion, no hops).
+    /// Settings → Bearly: Off draws a still bear (no head motion, no hops).
     public internal(set) var still = false
     /// Phase 7.2: the motion engine, stepped by the layer view's display
     /// link while `animating`; not observed, so moving it never re-runs
     /// SwiftUI. `animating`: a frame clock is running now.
     @ObservationIgnored let motion = RelayMotion()
     public internal(set) var animating = false
-    /// Where Relay looks and points its head now (read from the engine).
+    /// Where Bearly looks and points its head now (read from the engine).
     public var gaze: CGPoint {
         get { motion.gaze }
         set { motion.place(gaze: newValue, head: motion.head) }
@@ -49,12 +49,12 @@ public final class MascotState {
     /// Frames drawn (for the frame-pacing check; Release too).
     @ObservationIgnored var framesDrawn = 0
 
-    /// The layer views drawing this Relay (the resting ear, the open band).
+    /// The layer views drawing this Bearly (the resting ear, the open band).
     @ObservationIgnored private var views = NSHashTable<RelayLayerView>.weakObjects()
 
     func attach(_ view: RelayLayerView) { views.add(view) }
 
-    /// Starts the frame clock of every view showing Relay, if the engine has
+    /// Starts the frame clock of every view showing Bearly, if the engine has
     /// something to do. Without a view on screen nothing runs.
     func wake() {
         for view in views.allObjects { view.wake() }
@@ -94,7 +94,7 @@ struct MascotPose: Equatable {
 
 /// The head beside the camera (R8, PHASE5_PROPOSAL §7.1). The ear is 38 ×
 /// 32 pt; its visible side is 6 pt in from the window edge (the outline's
-/// top flare) and the camera housing starts at 38 pt. Relay (28 pt) sits at
+/// top flare) and the camera housing starts at 38 pt. Bearly (28 pt) sits at
 /// x = 8 so it has 3.4 pt on both sides. The head shifts up to ±1.4 pt,
 /// turns up to ±4° around its centre and moves 0.8 pt up / 1 pt down. Before
 /// a pose is drawn, its silhouette (ears and head) is checked against a safe
@@ -191,7 +191,7 @@ struct MascotView: View {
     /// Breathing (resting only): a render-server animation, no frames drawn.
     var breathes = false
 
-    /// Phase 7.2: Relay is Core Animation shape layers updated once per
+    /// Phase 7.2: Bearly is Core Animation shape layers updated once per
     /// display frame by `NSView.displayLink` while it moves, and paused when
     /// it rests. SwiftUI only passes the facts (mood, face, settings) down:
     /// a TimelineView + Canvas re-ran SwiftUI every frame (13–17 % CPU at 60
@@ -208,10 +208,10 @@ struct MascotView: View {
 
     private var label: String {
         switch state.mood {
-        case .idle: return state.expression == .sleepy ? "Relay is resting" : "Relay, the BearlyCopy bear"
-        case .curious: return "Relay: a new answer was captured"
-        case .pleased: return "Relay: copied"
-        case .concerned: return "Relay: something needs attention"
+        case .idle: return state.expression == .sleepy ? "Bearly is resting" : "Bearly, the BearlyCopy bear"
+        case .curious: return "Bearly: a new answer was captured"
+        case .pleased: return "Bearly: copied"
+        case .concerned: return "Bearly: something needs attention"
         }
     }
 
@@ -393,7 +393,7 @@ struct MascotView: View {
     }
 }
 
-/// One filled or stroked part of Relay's face.
+/// One filled or stroked part of Bearly's face.
 struct RelayShape {
     let path: CGPath
     let color: CGColor
@@ -440,7 +440,7 @@ struct MascotFace: View, Animatable {
     }
 }
 
-/// What SwiftUI passes to Relay's layers; a change redraws one frame (or
+/// What SwiftUI passes to Bearly's layers; a change redraws one frame (or
 /// starts a reaction), nothing else.
 struct RelayFacts: Equatable {
     var mood: MascotState.Mood
@@ -472,10 +472,10 @@ struct RelayLayerRepresentable: NSViewRepresentable {
     }
 }
 
-/// Relay as Core Animation layers. `displayLink` (the system frame clock,
+/// Bearly as Core Animation layers. `displayLink` (the system frame clock,
 /// aligned to the display's refresh) steps the motion engine while it
 /// moves, asking for about 60 fps (also on ProMotion); once settled the link
-/// is paused, so a resting Relay costs nothing but breathing on the render
+/// is paused, so a resting Bearly costs nothing but breathing on the render
 /// server. Layer changes are committed without implicit animations.
 @MainActor
 final class RelayLayerView: NSView {
@@ -490,7 +490,7 @@ final class RelayLayerView: NSView {
     private var facts: RelayFacts?
     private(set) var isBreathing = false
     static let breathKey = "relay.breathing"
-    /// The link is running (Relay moves).
+    /// The link is running (Bearly moves).
     var isAnimating: Bool { link.map { !$0.isPaused } ?? false }
 
     init(state: MascotState) {
