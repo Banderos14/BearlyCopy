@@ -193,6 +193,9 @@ public final class NotchController {
     private let makeHotKey: @MainActor () -> HotKeyRegistration?
     private let neighbors: NotchNeighbors
     private let notifier: ReadyNotifier
+    /// The notch's bear is drawn beside the notch right now (the app hides its
+    /// plain menu-bar icon then, so the bear never lies over it).
+    public var onBearAtNotch: (@MainActor (Bool) -> Void)?
     private var panel: NotchPanel?
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
     private var hotKey: HotKeyRegistration?
@@ -339,6 +342,7 @@ public final class NotchController {
         follower.stop()
         presentation.mascot.motion.reset()
         interaction.setAvailable(false)   // cancels timers, orders the panel out
+        onBearAtNotch?(false)
         panel?.tearDown()
         panel?.close()
         panel = nil
@@ -396,6 +400,7 @@ public final class NotchController {
         presentation.isFloating = newLayout.isFloating
         let mascotChanged = presentation.showsMascot != settings.mascotEnabled
         presentation.showsMascot = settings.mascotEnabled
+        onBearAtNotch?(resting && !newLayout.isFloating && settings.mascotEnabled)
         presentation.reduceMotion = settings.reducesMotion(systemReduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         ensurePanel()
         if interaction.phase == .hidden {
