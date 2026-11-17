@@ -7,9 +7,18 @@ import SwiftUI
 // behavior lives in PromptRelayKit. There are no regular windows: projects,
 // history, settings and the full response open inside the island.
 
+/// Whether the plain menu-bar icon (the fallback way in) is shown. It is
+/// hidden while Relay the bear is drawn beside the notch, so the bear never
+/// lies over it; the island has the menu's actions.
+@MainActor @Observable
+final class MenuBarFallback {
+    var inserted = true
+}
+
 @MainActor
 final class AppServices {
     static let shared = AppServices()
+    let fallback = MenuBarFallback()
 
     let model = AppModel.live()
     let settings = NotchSettings()
@@ -21,7 +30,9 @@ final class AppServices {
         guard coordinator == nil else { return }
         let model = self.model, settings = self.settings, notifier = self.notifier
         coordinator = NotchCoordinator(model: model, settings: settings, notifier: notifier) {
-            NotchController(model: model, settings: settings, actions: Actions.current, notifier: notifier)
+            let controller = NotchController(model: model, settings: settings, actions: Actions.current, notifier: notifier)
+            controller.onBearAtNotch = { atNotch in AppServices.shared.fallback.inserted = !atNotch }
+            return controller
         }
         #if DEBUG
         // Debug builds: PROMPT_RELAY_DEBUG_CAPTURE_DIR=<dir> renders the real
@@ -62,7 +73,7 @@ struct PromptRelayApp: App {
 
     var body: some Scene {
         // The fallback way in: open the island, its settings, or quit.
-        MenuBarExtra {
+        MenuBarExtra(isInserted: Bindable(services.fallback).inserted) {
             Button("Open Prompt Relay  \(HotKeyRegistration.displayString)") { services.present(.home) }
             Button("Results Inbox") { services.present(.inbox) }
             Button("Go To…") { services.present(.switcher) }

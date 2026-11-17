@@ -631,6 +631,22 @@ final class NotchControllerTests: XCTestCase {
         XCTAssertFalse(pointer.isMonitoring)
     }
 
+    /// Regression (owner's screenshot): the bear lay over Prompt Relay's own plain
+    /// menu-bar icon. That icon is hidden while the bear is drawn at the notch.
+    func testPlainMenuBarIconStepsAsideWhileTheBearIsAtTheNotch() async {
+        var bearAtNotch: [Bool] = []
+        settings.mascotEnabled = true
+        let controller = makeController()
+        controller.onBearAtNotch = { bearAtNotch.append($0) }
+        controller.start()
+        defer { controller.stop() }
+        await settle()
+        XCTAssertEqual(bearAtNotch.last, true, "bear beside the notch: the plain icon is hidden")
+        settings.mascotEnabled = false
+        controller.relayout()
+        XCTAssertEqual(bearAtNotch.last, false, "no bear: the plain icon is the way in")
+    }
+
     func testMascotSitsInTheLeftEarBlinksOnlyWhileVisibleAndReactsToFacts() async throws {
         settings.mascotEnabled = true
         settings.animation = .full

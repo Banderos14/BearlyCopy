@@ -1,5 +1,18 @@
 # Status
 
+## 2026-11-17 — Plain menu-bar icon steps aside while the bear is at the notch
+
+Owner's screenshot: the bear lay over Prompt Relay's own white menu-bar icon.
+That icon (the fallback way in) is now hidden while the bear is drawn beside
+the notch (`NotchController.onBearAtNotch`, `MenuBarExtra(isInserted:)`); it
+returns when the bear is off, the island yields to another notch app, or the
+display has no notch. The island has the menu's actions. Other apps' icons are
+not moved (macOS cannot reserve menu-bar room). Test:
+`testPlainMenuBarIconStepsAsideWhileTheBearIsAtTheNotch`. Not checked on the
+live screen. Two experiments (ears narrowed to content; chin below the notch;
+bear as an `NSStatusItem`) were rejected by the owner and are not in `main`
+except the narrowed right ear.
+
 ## 2026-11-17 — Narrow ears: the resting island covers only what it shows (not released, no version bump)
 
 Owner's screenshot: the black right ear hid the arrow of a menu-bar manager
