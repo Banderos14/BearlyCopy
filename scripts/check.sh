@@ -5,7 +5,15 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PYTHONS=${PYTHONS:-"python3 $(command -v python3.9 || true)"}
+if [ -z "${PYTHONS:-}" ]; then
+  PYTHONS="python3 $(command -v python3.9 || true)"
+  # macOS ships Python 3.9 as /usr/bin/python3 with no python3.9 name on PATH.
+  if ! command -v python3.9 >/dev/null 2>&1 && [ -x /usr/bin/python3 ] \
+     && /usr/bin/python3 -c 'import sys; sys.exit(0 if sys.version_info[:2] == (3, 9) else 1)' 2>/dev/null \
+     && [ "$(command -v python3)" != /usr/bin/python3 ]; then
+    PYTHONS="$PYTHONS /usr/bin/python3"
+  fi
+fi
 status=0
 for py in $PYTHONS; do
   [ -x "$(command -v "$py" 2>/dev/null)" ] || continue

@@ -112,7 +112,7 @@ final class Phase6VisualTests: XCTestCase {
         var heights: [CGFloat] = []
         withAnimation(Island.geometry(reduceMotion: false)) { m.taskExpanded = true }
         for _ in 0..<10 {
-            island.host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+            island.host.layoutSubtreeIfNeeded(); spinMainRunLoop(0.03)
             heights.append(island.presentation.layoutFrames["task.body"]?.height ?? 0)
         }
         XCTAssertGreaterThanOrEqual(heights.min() ?? 0, collapsed - 0.5, "never below the collapsed height: \(heights)")

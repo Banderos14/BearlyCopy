@@ -240,7 +240,7 @@ final class Phase6Tests: XCTestCase {
         .environment(\.islandFrameSink, { id, rect in frames[id] = rect })
         let host = NSHostingView(rootView: view)
         host.frame = NSRect(x: 0, y: 0, width: 400, height: 600)
-        for _ in 0..<4 { host.layoutSubtreeIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+        for _ in 0..<4 { host.layoutSubtreeIfNeeded(); spinMainRunLoop(0.1) }
         let scroll = try XCTUnwrap(frames["task.body"], "the expanded task scrolls")
         XCTAssertLessThanOrEqual(scroll.height, TaskCard.expandedHeight + 0.5, "80 lines never grow the card past its limit")
         XCTAssertGreaterThan(scroll.height, 60)
