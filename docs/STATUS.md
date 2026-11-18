@@ -1,5 +1,9 @@
 # Status
 
+## 2026-11-18 — Final diagnostic pass (no product change)
+
+Python 295+15 on 3.14 and 3.9.6, XCTest 390/0 (18 opt-in skips), Swift Testing 177/177, Debug/Release built, offscreen renders reviewed (no clipped text found). Fixed: five Swift test warnings (`spinMainRunLoop`), `scripts/check.sh` now also runs macOS's `/usr/bin/python3` when it is 3.9. Known: two timer-based `Phase14CaptureTests` failed once under heavy machine load and passed twice alone. Not checked: live island, Screen Recording, pasting into other apps (owner).
+
 ## 2026-11-17 — Renamed to BearlyCopy (0.9.5)
 
 The product name is now **BearlyCopy** (bear + barely): app bundle `BearlyCopy.app`, window and menu texts, README, docs, release asset names (`BearlyCopy-<v>.zip/.dmg`, `BearlyCopy-macOS.*`), repository `Banderos14/BearlyCopy` (GitHub redirects the old name). Deliberately **unchanged**: bundle ID `io.github.banderos14.PromptRelay`, the Swift/Python module names, the plugin `prompt-relay@prompt-relay`, the `prompt-relay` command, the data folder `~/Library/Application Support/PromptRelay` — renaming these would drop the Screen Recording permission, the plugin binding and the history. Historical docs (`docs/archive`, older STATUS entries) keep the old name. The installer moves a leftover `Prompt Relay.app` into the backups. The bear is now called **Bearly** in the app and the README. README images were re-rendered (`how-it-works`, `context-preview`, `details`) with the new name.
