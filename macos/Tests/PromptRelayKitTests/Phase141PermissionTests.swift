@@ -239,7 +239,7 @@ final class Phase141PermissionTests: XCTestCase {
     // MARK: Regression: normal capture still works end to end when granted
 
     func testNormalAutoCaptureStillWorksWhenAccessIsGranted() async throws {
-        let (m, permission, capture) = await model()
+        let (m, permission, _) = await model()
         permission.granted = true
         m.chooseAutoCaptureWindow()
         let core = m.core as! FakeCore

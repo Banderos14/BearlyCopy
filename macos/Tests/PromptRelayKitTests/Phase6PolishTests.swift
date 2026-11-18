@@ -187,7 +187,7 @@ final class Phase6PolishTests: XCTestCase {
         NotchRootView.step(m, by: 1)
         for _ in 0..<12 {
             island.host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+            spinMainRunLoop(0.03)
             heights.append(island.presentation.layoutFrames["response.scroll"]?.height ?? 0)
         }
         XCTAssertGreaterThan(heights.min() ?? 0, before * 0.8, "no dip to the preview's height: \(heights)")

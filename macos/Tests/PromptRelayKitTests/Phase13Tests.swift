@@ -397,7 +397,7 @@ final class Phase13Tests: XCTestCase {
             window.contentView = host
             host.frame = NSRect(origin: .zero, size: size)
             host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: Date().addingTimeInterval(0.4))
+            spinMainRunLoop(0.4)
             host.layoutSubtreeIfNeeded()
             let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
             host.cacheDisplay(in: host.bounds, to: rep)
